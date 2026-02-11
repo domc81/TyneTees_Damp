@@ -58,12 +58,18 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [skippedSections, setSkippedSections] = useState<Set<string>>(new Set())
 
   // Load saved answers from localStorage on mount
   useEffect(() => {
     const savedAnswers = localStorage.getItem(`survey-answers-${project.id}`)
     if (savedAnswers) {
       setAnswers(JSON.parse(savedAnswers))
+    }
+
+    const savedSkipped = localStorage.getItem(`survey-skipped-${project.id}`)
+    if (savedSkipped) {
+      setSkippedSections(new Set(JSON.parse(savedSkipped)))
     }
 
     // Pre-populate header from project
@@ -80,6 +86,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   // Save answers to localStorage
   const saveAnswers = () => {
     localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
+    localStorage.setItem(`survey-skipped-${project.id}`, JSON.stringify(Array.from(skippedSections)))
     setLastSaved(new Date())
     setIsSaving(true)
     setTimeout(() => setIsSaving(false), 1000)
@@ -115,12 +122,41 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
     })
   }
 
+  // Toggle section skip status
+  const toggleSkipSection = (sectionId: string) => {
+    setSkippedSections(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId)
+      } else {
+        newSet.add(sectionId)
+        // Clear answers for skipped section
+        const section = surveySections.find(s => s.id === sectionId)
+        if (section) {
+          setAnswers(prevAnswers => {
+            const newAnswers = { ...prevAnswers }
+            section.questions.forEach(q => {
+              delete newAnswers[q.id]
+            })
+            return newAnswers
+          })
+        }
+      }
+      return newSet
+    })
+  }
+
   // Progress calculation
   const getProgress = () => {
     let totalRequired = 0
     let answeredRequired = 0
 
     surveySections.forEach(section => {
+      // Skip sections marked as not applicable
+      if (skippedSections.has(section.id)) {
+        return
+      }
+
       section.questions.forEach(q => {
         if (q.required) {
           totalRequired++
@@ -131,12 +167,14 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
       })
     })
 
-    return Math.round((answeredRequired / totalRequired) * 100)
+    return totalRequired === 0 ? 100 : Math.round((answeredRequired / totalRequired) * 100)
   }
 
   // Check overall completion
   const isSurveyComplete = () => {
-    return surveySections.every(section => isSectionComplete(section, answers))
+    return surveySections.every(section =>
+      skippedSections.has(section.id) || isSectionComplete(section, answers)
+    )
   }
 
   const progress = getProgress()
@@ -192,6 +230,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                 const Icon = sectionIcons[section.id] || FileText
                 const completed = isSectionComplete(section, answers)
                 const isActive = activeSection === section.id
+                const isSkipped = skippedSections.has(section.id)
 
                 return (
                   <button
@@ -203,6 +242,8 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                     className={`p-4 rounded-lg border transition-all duration-200 flex items-center gap-2 text-left ${
                       isActive
                         ? 'border-brand-500 bg-brand-500/20 text-brand-300 ring-2 ring-brand-500/30'
+                        : isSkipped
+                        ? 'border-white/20 bg-white/5 text-white/40'
                         : completed
                         ? 'border-green-500/50 bg-green-500/20 text-green-300'
                         : 'border-white/10 hover:border-white/30 hover:bg-white/10 text-white/80'
@@ -211,11 +252,15 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                     <Icon className="w-5 h-5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{section.title}</p>
-                      {completed && (
+                      {isSkipped ? (
+                        <p className="text-xs text-white/40 flex items-center gap-1">
+                          Skipped
+                        </p>
+                      ) : completed ? (
                         <p className="text-xs text-green-400 font-medium flex items-center gap-1 mt-0.5">
                           <Check className="w-4 h-4" /> Complete
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </button>
                 )
@@ -229,6 +274,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
               const Icon = sectionIcons[section.id] || FileText
               const isExpanded = expandedSection === section.id || activeSection === section.id
               const completed = isSectionComplete(section, answers)
+              const isSkipped = skippedSections.has(section.id)
 
               return (
                 <div
@@ -247,7 +293,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-3 rounded-lg ${
-                        completed ? 'bg-green-500/20 text-green-400' : 'bg-brand-500/20 text-brand-400'
+                        isSkipped ? 'bg-white/5 text-white/40' : completed ? 'bg-green-500/20 text-green-400' : 'bg-brand-500/20 text-brand-400'
                       }`}>
                         <Icon className="w-6 h-6" />
                       </div>
@@ -259,7 +305,22 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {completed && (
+                      {section.id !== 'header' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleSkipSection(section.id)
+                          }}
+                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                            isSkipped
+                              ? 'bg-white/10 text-white/60 hover:bg-white/20'
+                              : 'bg-white/5 text-white/40 hover:bg-white/10'
+                          }`}
+                        >
+                          {isSkipped ? 'Include Section' : 'Skip Section'}
+                        </button>
+                      )}
+                      {!isSkipped && completed && (
                         <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">Complete</span>
                       )}
                       <ChevronDown className={`w-6 h-6 text-white/40 transition-transform ${
@@ -269,7 +330,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                   </button>
 
                   {/* Section Questions */}
-                  {isExpanded && (
+                  {isExpanded && !isSkipped && (
                     <div className="border-t border-white/5 p-8 space-y-8 bg-white/5">
                       {section.questions
                         .filter(q => isQuestionVisible(q, answers))
