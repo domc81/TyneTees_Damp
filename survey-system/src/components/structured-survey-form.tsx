@@ -185,7 +185,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
           {/* Section Navigation */}
           <div className="section-card mb-10">
             <div className="section-card-header">
-              <h2 className="font-semibold text-white">Survey Sections</h2>
+              <h2 className="font-semibold text-white tracking-tight">Survey Sections</h2>
             </div>
             <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {surveySections.map(section => {
@@ -200,12 +200,12 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       setActiveSection(section.id)
                       setExpandedSection(expandedSection === section.id ? null : section.id)
                     }}
-                    className={`p-4 rounded-lg border transition-all flex items-center gap-2 text-left ${
+                    className={`p-4 rounded-lg border transition-all duration-200 flex items-center gap-2 text-left ${
                       isActive
-                        ? 'border-brand-500 bg-brand-500/20 text-brand-300'
+                        ? 'border-brand-500 bg-brand-500/20 text-brand-300 ring-2 ring-brand-500/30'
                         : completed
                         ? 'border-green-500/50 bg-green-500/20 text-green-300'
-                        : 'border-white/10 hover:border-white/20 hover:bg-white/5 text-white/80'
+                        : 'border-white/10 hover:border-white/30 hover:bg-white/10 text-white/80'
                     }`}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
@@ -254,7 +254,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       <div className="text-left">
                         <h3 className="font-semibold text-white">{section.title}</h3>
                         {section.description && (
-                          <p className="text-sm text-white/50">{section.description}</p>
+                          <p className="text-sm text-white/50 leading-relaxed">{section.description}</p>
                         )}
                       </div>
                     </div>
@@ -293,8 +293,8 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
           {/* Completion Actions */}
           {progress >= 50 && (
-            <div className="mt-8 p-8 bg-brand-500/10 border border-brand-400/30 rounded-2xl">
-              <div className="flex items-center justify-between">
+            <div className="mt-8 p-8 bg-brand-500/10 border border-brand-400/30 rounded-2xl shadow-lg">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-semibold text-brand-300">
                     {isSurveyComplete() ? 'Survey Complete!' : 'Almost There!'}
@@ -360,7 +360,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
   return (
     <div className="space-y-3">
       <label className="block mb-3">
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-semibold text-white">
           {question.label}
         </span>
         {question.subLabel && (
@@ -376,7 +376,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
       {/* Yes/No Question */}
       {question.type === 'yes_no' && (
         <div className="flex gap-6">
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
             <input
               type="radio"
               name={question.id}
@@ -386,7 +386,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
             />
             <span className="text-sm text-white/80">Yes</span>
           </label>
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
             <input
               type="radio"
               name={question.id}
@@ -446,7 +446,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
       {question.type === 'multi_select' && (
         <div className="space-y-3">
           {question.options?.map(option => (
-            <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
+            <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
               <input
                 type="checkbox"
                 checked={isChecked(option)}
@@ -466,13 +466,13 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
           onChange={(e) => onChange(e.target.value)}
           placeholder={question.placeholder}
           rows={3}
-          className="input-field resize-none text-base min-h-[100px]"
+          className="input-field resize-none text-base min-h-[120px] focus:ring-2 focus:ring-brand-500/50"
         />
       )}
 
       {/* Help Text */}
       {question.helpText && (
-        <p className="text-xs text-white/50 mt-1">{question.helpText}</p>
+        <p className="text-xs text-white/50 mt-2 leading-relaxed">{question.helpText}</p>
       )}
     </div>
   )
