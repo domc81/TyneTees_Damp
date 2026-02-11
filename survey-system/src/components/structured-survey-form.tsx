@@ -1,0 +1,479 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import {
+  ArrowLeft,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  AlertCircle,
+  Save,
+  FileText,
+  Camera,
+  Thermometer,
+  Home,
+  Building,
+  Mountain,
+  Shield,
+  Wind,
+  Layers,
+  TreeDeciduous,
+  Droplets,
+  AlertTriangle,
+} from 'lucide-react'
+import {
+  surveySections,
+  type SurveySection,
+  type SurveyQuestion,
+  isQuestionVisible,
+  isSectionComplete,
+} from '@/lib/survey-sections'
+import type { Project } from '@/types/database.types'
+
+// Section icons mapping
+const sectionIcons: Record<string, typeof Home> = {
+  header: Thermometer,
+  property: Home,
+  building_defects: Building,
+  wall_ties: Shield,
+  cracking_walls: AlertTriangle,
+  ground_levels: Mountain,
+  dpc: Layers,
+  subfloor_vent: Wind,
+  subfloor_timbers: TreeDeciduous,
+  internal_floors: Layers,
+  internal_walls: Droplets,
+}
+
+interface StructuredSurveyFormProps {
+  project: Project
+}
+
+export default function StructuredSurveyForm({ project }: StructuredSurveyFormProps) {
+  const router = useRouter()
+  const [answers, setAnswers] = useState<Record<string, any>>({})
+  const [activeSection, setActiveSection] = useState<string>('header')
+  const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+
+  // Load saved answers from localStorage on mount
+  useEffect(() => {
+    const savedAnswers = localStorage.getItem(`survey-answers-${project.id}`)
+    if (savedAnswers) {
+      setAnswers(JSON.parse(savedAnswers))
+    }
+
+    // Pre-populate header from project
+    const initialAnswers: Record<string, any> = {
+      client_name: project.client_name,
+      site_address: `${project.site_address}${project.site_address_line2 ? `, ${project.site_address_line2}` : ''}${project.site_city ? `, ${project.site_city}` : ''}`,
+      internal_reference: project.project_number,
+      survey_date: new Date().toLocaleDateString('en-GB'),
+      weather_conditions: project.weather_conditions || '',
+    }
+    setAnswers(prev => ({ ...prev, ...initialAnswers }))
+  }, [project])
+
+  // Save answers to localStorage
+  const saveAnswers = () => {
+    localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
+    setLastSaved(new Date())
+    setIsSaving(true)
+    setTimeout(() => setIsSaving(false), 1000)
+  }
+
+  // Handle answer change
+  const handleAnswerChange = (questionId: string, value: any) => {
+    setAnswers(prev => {
+      const newAnswers = { ...prev, [questionId]: value }
+
+      // Reset dependent answers when parent changes
+      surveySections.forEach(section => {
+        section.questions.forEach(q => {
+          if (q.conditionalOn === questionId && q.conditionalValue !== value) {
+            newAnswers[q.id] = undefined
+          }
+        })
+      })
+
+      return newAnswers
+    })
+  }
+
+  // Handle checkbox group change
+  const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
+    setAnswers(prev => {
+      const current = (prev[questionId] as string[]) || []
+      if (checked) {
+        return { ...prev, [questionId]: [...current, option] }
+      } else {
+        return { ...prev, [questionId]: current.filter(o => o !== option) }
+      }
+    })
+  }
+
+  // Progress calculation
+  const getProgress = () => {
+    let totalRequired = 0
+    let answeredRequired = 0
+
+    surveySections.forEach(section => {
+      section.questions.forEach(q => {
+        if (q.required) {
+          totalRequired++
+          if (answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== '') {
+            answeredRequired++
+          }
+        }
+      })
+    })
+
+    return Math.round((answeredRequired / totalRequired) * 100)
+  }
+
+  // Check overall completion
+  const isSurveyComplete = () => {
+    return surveySections.every(section => isSectionComplete(section, answers))
+  }
+
+  const progress = getProgress()
+
+  return (
+    <div className="min-h-screen bg-surface-50">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-white border-b border-surface-200 px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href={`/projects/${project.id}`} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-surface-600" />
+            </Link>
+            <div>
+              <p className="text-sm font-mono text-surface-500">{project.project_number}</p>
+              <h1 className="text-xl font-bold text-surface-900">Structured Survey</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm text-surface-500">Progress</p>
+              <p className="font-semibold text-brand-600">{progress}% Complete</p>
+            </div>
+            <button
+              onClick={saveAnswers}
+              disabled={isSaving}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse' : ''}`} />
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mt-4 h-2 bg-surface-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </header>
+
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Section Navigation */}
+          <div className="section-card mb-8">
+            <div className="section-card-header">
+              <h2 className="font-semibold text-surface-900">Survey Sections</h2>
+            </div>
+            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {surveySections.map(section => {
+                const Icon = sectionIcons[section.id] || FileText
+                const completed = isSectionComplete(section, answers)
+                const isActive = activeSection === section.id
+
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => {
+                      setActiveSection(section.id)
+                      setExpandedSection(expandedSection === section.id ? null : section.id)
+                    }}
+                    className={`p-3 rounded-lg border transition-all flex items-center gap-2 text-left ${
+                      isActive
+                        ? 'border-brand-500 bg-brand-50 text-brand-700'
+                        : completed
+                        ? 'border-green-200 bg-green-50 text-green-700'
+                        : 'border-surface-200 hover:border-surface-300 hover:bg-surface-50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{section.title}</p>
+                      {completed && (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Complete
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Survey Form */}
+          <div className="space-y-6">
+            {surveySections.map(section => {
+              const Icon = sectionIcons[section.id] || FileText
+              const isExpanded = expandedSection === section.id || activeSection === section.id
+              const completed = isSectionComplete(section, answers)
+
+              return (
+                <div
+                  key={section.id}
+                  className={`section-card transition-all ${
+                    activeSection === section.id ? 'ring-2 ring-brand-500' : ''
+                  }`}
+                >
+                  {/* Section Header */}
+                  <button
+                    onClick={() => {
+                      setActiveSection(section.id)
+                      setExpandedSection(isExpanded && expandedSection === section.id ? null : section.id)
+                    }}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        completed ? 'bg-green-100 text-green-600' : 'bg-brand-100 text-brand-600'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold text-surface-900">{section.title}</h3>
+                        {section.description && (
+                          <p className="text-sm text-surface-500">{section.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {completed && (
+                        <span className="badge badge-green">Complete</span>
+                      )}
+                      <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`} />
+                    </div>
+                  </button>
+
+                  {/* Section Questions */}
+                  {isExpanded && (
+                    <div className="border-t border-surface-100 p-6 space-y-6 bg-surface-50/50">
+                      {section.questions
+                        .filter(q => isQuestionVisible(q, answers))
+                        .map(question => (
+                          <QuestionRenderer
+                            key={question.id}
+                            question={question}
+                            value={answers[question.id]}
+                            onChange={(value) => handleAnswerChange(question.id, value)}
+                            onCheckboxChange={(option, checked) =>
+                              handleCheckboxChange(question.id, option, checked)
+                            }
+                          />
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Completion Actions */}
+          {progress >= 50 && (
+            <div className="mt-8 p-6 bg-brand-50 border border-brand-200 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-brand-900">
+                    {isSurveyComplete() ? 'Survey Complete!' : 'Almost There!'}
+                  </h3>
+                  <p className="text-sm text-brand-700 mt-1">
+                    {isSurveyComplete()
+                      ? 'All required questions have been answered.'
+                      : `Complete ${100 - progress}% more to finish the survey.`}
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={saveAnswers}
+                    className="btn-secondary"
+                  >
+                    Save & Continue Later
+                  </button>
+                  {isSurveyComplete() && (
+                    <Link
+                      href={`/projects/${project.id}/costing`}
+                      className="btn-primary flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Proceed to Costing
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Last Saved Indicator */}
+          {lastSaved && (
+            <p className="text-center text-sm text-surface-500 mt-4">
+              Last saved: {lastSaved.toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// QUESTION RENDERER COMPONENT
+// ============================================================================
+
+interface QuestionRendererProps {
+  question: SurveyQuestion
+  value: any
+  onChange: (value: any) => void
+  onCheckboxChange: (option: string, checked: boolean) => void
+}
+
+function QuestionRenderer({ question, value, onChange, onCheckboxChange }: QuestionRendererProps) {
+  const isChecked = (option: string) => {
+    if (Array.isArray(value)) {
+      return value.includes(option)
+    }
+    return false
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="block">
+        <span className="text-sm font-medium text-surface-900">
+          {question.label}
+        </span>
+        {question.subLabel && (
+          <span className="text-sm text-surface-500 ml-2">
+            {question.subLabel}
+          </span>
+        )}
+        {question.required && (
+          <span className="text-red-500 ml-1">*</span>
+        )}
+      </label>
+
+      {/* Yes/No Question */}
+      {question.type === 'yes_no' && (
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={question.id}
+              checked={value === true}
+              onChange={() => onChange(true)}
+              className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-sm text-surface-700">Yes</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={question.id}
+              checked={value === false}
+              onChange={() => onChange(false)}
+              className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-sm text-surface-700">No</span>
+          </label>
+        </div>
+      )}
+
+      {/* Text Input */}
+      {question.type === 'text' && (
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={question.placeholder}
+          className="input-field"
+        />
+      )}
+
+      {/* Number Input */}
+      {question.type === 'number' && (
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={value || ''}
+            onChange={(e) => onChange(Number(e.target.value))}
+            placeholder={question.placeholder}
+            min={question.validation?.min}
+            max={question.validation?.max}
+            className="input-field"
+          />
+          {question.subLabel && (
+            <span className="text-sm text-surface-500">{question.subLabel}</span>
+          )}
+        </div>
+      )}
+
+      {/* Select Dropdown */}
+      {question.type === 'select' && (
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="input-field"
+        >
+          <option value="">Select...</option>
+          {question.options?.map(option => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      )}
+
+      {/* Multi-Select (Checkboxes) */}
+      {question.type === 'multi_select' && (
+        <div className="space-y-2">
+          {question.options?.map(option => (
+            <label key={option} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isChecked(option)}
+                onChange={(e) => onCheckboxChange(option, e.target.checked)}
+                className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
+              />
+              <span className="text-sm text-surface-700">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {/* Rich Text / Textarea */}
+      {question.type === 'rich_text' && (
+        <textarea
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={question.placeholder}
+          rows={3}
+          className="input-field resize-none"
+        />
+      )}
+
+      {/* Help Text */}
+      {question.helpText && (
+        <p className="text-xs text-surface-500 mt-1">{question.helpText}</p>
+      )}
+    </div>
+  )
+}
