@@ -22,11 +22,11 @@ import {
   TreeDeciduous,
   Droplets,
   AlertTriangle,
+  X,
 } from 'lucide-react'
 import {
   surveySections,
   type SurveySection,
-  type SurveyQuestion,
   isQuestionVisible,
   isSectionComplete,
 } from '@/lib/survey-sections'
@@ -59,6 +59,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [skippedSections, setSkippedSections] = useState<Set<string>>(new Set())
+  const [questionPhotos, setQuestionPhotos] = useState<Record<string, string[]>>({})
 
   // Load saved answers from localStorage on mount
   useEffect(() => {
@@ -70,6 +71,11 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
     const savedSkipped = localStorage.getItem(`survey-skipped-${project.id}`)
     if (savedSkipped) {
       setSkippedSections(new Set(JSON.parse(savedSkipped)))
+    }
+
+    const savedPhotos = localStorage.getItem(`survey-photos-${project.id}`)
+    if (savedPhotos) {
+      setQuestionPhotos(JSON.parse(savedPhotos))
     }
 
     // Pre-populate header from project
@@ -87,6 +93,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const saveAnswers = () => {
     localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
     localStorage.setItem(`survey-skipped-${project.id}`, JSON.stringify(Array.from(skippedSections)))
+    localStorage.setItem(`survey-photos-${project.id}`, JSON.stringify(questionPhotos))
     setLastSaved(new Date())
     setIsSaving(true)
     setTimeout(() => setIsSaving(false), 1000)
@@ -144,6 +151,51 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
       }
       return newSet
     })
+  }
+
+  // Handle photo capture for a specific question
+  const handlePhotoCapture = async (questionId: string) => {
+    try {
+      // Use browser's file input for photo capture
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.capture = 'environment' // Use rear camera on mobile
+
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (file) {
+          // Convert to base64 for localStorage
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64 = reader.result as string
+            setQuestionPhotos(prev => ({
+              ...prev,
+              [questionId]: [...(prev[questionId] || []), base64]
+            }))
+            saveAnswers()
+          }
+          reader.readAsDataURL(file)
+        }
+      }
+
+      input.click()
+    } catch (error) {
+      console.error('Photo capture failed:', error)
+    }
+  }
+
+  // Remove a photo from a question
+  const removePhoto = (questionId: string, photoIndex: number) => {
+    setQuestionPhotos(prev => {
+      const updated = { ...prev }
+      updated[questionId] = updated[questionId].filter((_, i) => i !== photoIndex)
+      if (updated[questionId].length === 0) {
+        delete updated[questionId]
+      }
+      return updated
+    })
+    saveAnswers()
   }
 
   // Progress calculation
@@ -335,15 +387,162 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       {section.questions
                         .filter(q => isQuestionVisible(q, answers))
                         .map(question => (
-                          <QuestionRenderer
-                            key={question.id}
-                            question={question}
-                            value={answers[question.id]}
-                            onChange={(value) => handleAnswerChange(question.id, value)}
-                            onCheckboxChange={(option, checked) =>
-                              handleCheckboxChange(question.id, option, checked)
-                            }
-                          />
+                          <div key={question.id} className="space-y-4">
+                            {/* Question with photo capture button */}
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <label className="block">
+                                  <span className="text-sm font-semibold text-white">
+                                    {question.label}
+                                  </span>
+                                  {question.subLabel && (
+                                    <span className="text-sm text-white/60 ml-2">
+                                      {question.subLabel}
+                                    </span>
+                                  )}
+                                  {question.required && (
+                                    <span className="text-red-500 ml-1">*</span>
+                                  )}
+                                </label>
+                                {question.helpText && (
+                                  <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                                    {question.helpText}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Photo capture button for relevant questions */}
+                              {(question.type === 'rich_text' ||
+                                question.id.includes('defect') ||
+                                question.id.includes('damage') ||
+                                question.id.includes('condition') ||
+                                question.id.includes('evidence') ||
+                                question.id.includes('photo')) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePhotoCapture(question.id)}
+                                  className="flex-shrink-0 p-2 rounded-lg bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition-colors"
+                                  title="Add photo evidence"
+                                >
+                                  <Camera className="w-5 h-5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Photo thumbnails for this question */}
+                            {questionPhotos[question.id] && questionPhotos[question.id].length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {questionPhotos[question.id].map((photo, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <img
+                                      src={photo}
+                                      alt={`Evidence ${idx + 1}`}
+                                      className="w-20 h-20 object-cover rounded-lg border-2 border-white/10"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removePhoto(question.id, idx)}
+                                      className="absolute -top-2 -right-2 p-1 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Question input rendering */}
+                            {question.type === 'yes_no' && (
+                              <div className="flex gap-6">
+                                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
+                                  <input
+                                    type="radio"
+                                    name={question.id}
+                                    checked={value === true}
+                                    onChange={() => handleAnswerChange(question.id, true)}
+                                    className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                                  />
+                                  <span className="text-sm text-white/80">Yes</span>
+                                </label>
+                                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
+                                  <input
+                                    type="radio"
+                                    name={question.id}
+                                    checked={value === false}
+                                    onChange={() => handleAnswerChange(question.id, false)}
+                                    className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                                  />
+                                  <span className="text-sm text-white/80">No</span>
+                                </label>
+                              </div>
+                            )}
+
+                            {question.type === 'text' && (
+                              <input
+                                type="text"
+                                value={value || ''}
+                                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                                placeholder={question.placeholder}
+                                className="input-field text-base"
+                              />
+                            )}
+
+                            {question.type === 'number' && (
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="number"
+                                  value={value || ''}
+                                  onChange={(e) => handleAnswerChange(question.id, Number(e.target.value))}
+                                  placeholder={question.placeholder}
+                                  min={question.validation?.min}
+                                  max={question.validation?.max}
+                                  className="input-field text-base w-32"
+                                />
+                                {question.subLabel && (
+                                  <span className="text-sm text-white/60">{question.subLabel}</span>
+                                )}
+                              </div>
+                            )}
+
+                            {question.type === 'select' && (
+                              <select
+                                value={value || ''}
+                                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                                className="input-field text-base"
+                              >
+                                <option value="">Select...</option>
+                                {question.options?.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            )}
+
+                            {question.type === 'multi_select' && (
+                              <div className="space-y-3">
+                                {question.options?.map(option => (
+                                  <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
+                                    <input
+                                      type="checkbox"
+                                      checked={Array.isArray(value) && value.includes(option)}
+                                      onChange={(e) => handleCheckboxChange(question.id, option, e.target.checked)}
+                                      className="w-4 h-4 text-brand-500 rounded focus:ring-brand-500"
+                                    />
+                                    <span className="text-sm text-white/80">{option}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+
+                            {question.type === 'rich_text' && (
+                              <textarea
+                                value={value || ''}
+                                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                                placeholder={question.placeholder}
+                                rows={3}
+                                className="input-field resize-none text-base min-h-[120px] focus:ring-2 focus:ring-brand-500/50"
+                              />
+                            )}
+                          </div>
                         ))}
                     </div>
                   )}
@@ -395,146 +594,6 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-// ============================================================================
-// QUESTION RENDERER COMPONENT
-// ============================================================================
-
-interface QuestionRendererProps {
-  question: SurveyQuestion
-  value: any
-  onChange: (value: any) => void
-  onCheckboxChange: (option: string, checked: boolean) => void
-}
-
-function QuestionRenderer({ question, value, onChange, onCheckboxChange }: QuestionRendererProps) {
-  const isChecked = (option: string) => {
-    if (Array.isArray(value)) {
-      return value.includes(option)
-    }
-    return false
-  }
-
-  return (
-    <div className="space-y-3">
-      <label className="block mb-3">
-        <span className="text-sm font-semibold text-white">
-          {question.label}
-        </span>
-        {question.subLabel && (
-          <span className="text-sm text-white/60 ml-2">
-            {question.subLabel}
-          </span>
-        )}
-        {question.required && (
-          <span className="text-red-500 ml-1">*</span>
-        )}
-      </label>
-
-      {/* Yes/No Question */}
-      {question.type === 'yes_no' && (
-        <div className="flex gap-6">
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
-            <input
-              type="radio"
-              name={question.id}
-              checked={value === true}
-              onChange={() => onChange(true)}
-              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
-            />
-            <span className="text-sm text-white/80">Yes</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
-            <input
-              type="radio"
-              name={question.id}
-              checked={value === false}
-              onChange={() => onChange(false)}
-              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
-            />
-            <span className="text-sm text-white/80">No</span>
-          </label>
-        </div>
-      )}
-
-      {/* Text Input */}
-      {question.type === 'text' && (
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder}
-          className="input-field text-base"
-        />
-      )}
-
-      {/* Number Input */}
-      {question.type === 'number' && (
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(Number(e.target.value))}
-            placeholder={question.placeholder}
-            min={question.validation?.min}
-            max={question.validation?.max}
-            className="input-field text-base w-32"
-          />
-          {question.subLabel && (
-            <span className="text-sm text-white/60">{question.subLabel}</span>
-          )}
-        </div>
-      )}
-
-      {/* Select Dropdown */}
-      {question.type === 'select' && (
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="input-field text-base"
-        >
-          <option value="">Select...</option>
-          {question.options?.map(option => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-      )}
-
-      {/* Multi-Select (Checkboxes) */}
-      {question.type === 'multi_select' && (
-        <div className="space-y-3">
-          {question.options?.map(option => (
-            <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-all duration-150 border border-transparent hover:border-white/10">
-              <input
-                type="checkbox"
-                checked={isChecked(option)}
-                onChange={(e) => onCheckboxChange(option, e.target.checked)}
-                className="w-4 h-4 text-brand-500 rounded focus:ring-brand-500"
-              />
-              <span className="text-sm text-white/80">{option}</span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {/* Rich Text / Textarea */}
-      {question.type === 'rich_text' && (
-        <textarea
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder}
-          rows={3}
-          className="input-field resize-none text-base min-h-[120px] focus:ring-2 focus:ring-brand-500/50"
-        />
-      )}
-
-      {/* Help Text */}
-      {question.helpText && (
-        <p className="text-xs text-white/50 mt-2 leading-relaxed">{question.helpText}</p>
-      )}
     </div>
   )
 }
