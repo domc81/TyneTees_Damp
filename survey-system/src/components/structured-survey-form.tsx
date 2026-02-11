@@ -148,7 +148,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href={`/projects/${project.id}`} className="p-2 rounded-lg hover:bg-white/5 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-white/60" />
+              <ArrowLeft className="w-6 h-6 text-white/60" />
             </Link>
             <div>
               <p className="text-xs font-mono text-white/50 tracking-wider uppercase">{project.project_number}</p>
@@ -165,7 +165,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
               disabled={isSaving}
               className="btn-secondary flex items-center gap-2"
             >
-              <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse' : ''}`} />
+              <Save className={`w-5 h-5 ${isSaving ? 'animate-pulse' : ''}`} />
               {isSaving ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -208,12 +208,12 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                         : 'border-white/10 hover:border-white/30 hover:bg-white/10 text-white/80'
                     }`}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <Icon className="w-5 h-5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{section.title}</p>
                       {completed && (
                         <p className="text-xs text-green-400 font-medium flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3" /> Complete
+                          <Check className="w-4 h-4" /> Complete
                         </p>
                       )}
                     </div>
@@ -249,7 +249,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       <div className={`p-3 rounded-lg ${
                         completed ? 'bg-green-500/20 text-green-400' : 'bg-brand-500/20 text-brand-400'
                       }`}>
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-6 h-6" />
                       </div>
                       <div className="text-left">
                         <h3 className="font-semibold text-white">{section.title}</h3>
@@ -262,7 +262,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       {completed && (
                         <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">Complete</span>
                       )}
-                      <ChevronDown className={`w-5 h-5 text-white/40 transition-transform ${
+                      <ChevronDown className={`w-6 h-6 text-white/40 transition-transform ${
                         isExpanded ? 'rotate-180' : ''
                       }`} />
                     </div>
@@ -317,7 +317,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       href={`/projects/${project.id}/costing`}
                       className="btn-primary flex items-center gap-2 px-6 py-2.5 font-semibold"
                     >
-                      <FileText className="w-4 h-4" />
+                      <FileText className="w-5 h-5" />
                       Proceed to Costing
                     </Link>
                   )}
