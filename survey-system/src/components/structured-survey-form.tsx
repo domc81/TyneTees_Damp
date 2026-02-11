@@ -142,23 +142,23 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const progress = getProgress()
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-navy-1000">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white border-b border-surface-200 px-8 py-4">
+      <header className="sticky top-0 z-10 bg-navy-950/80 backdrop-blur-xl border-b border-white/10 px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href={`/projects/${project.id}`} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-surface-600" />
+            <Link href={`/projects/${project.id}`} className="p-2 rounded-lg hover:bg-white/5 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-white/60" />
             </Link>
             <div>
-              <p className="text-sm font-mono text-surface-500">{project.project_number}</p>
-              <h1 className="text-xl font-bold text-surface-900">Structured Survey</h1>
+              <p className="text-sm font-mono text-white/50">{project.project_number}</p>
+              <h1 className="text-xl font-bold text-white">Structured Survey</h1>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm text-surface-500">Progress</p>
-              <p className="font-semibold text-brand-600">{progress}% Complete</p>
+              <p className="text-sm text-white/50">Progress</p>
+              <p className="font-semibold text-brand-400">{progress}% Complete</p>
             </div>
             <button
               onClick={saveAnswers}
@@ -172,7 +172,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-4 h-2 bg-surface-100 rounded-full overflow-hidden">
+        <div className="mt-4 h-2 bg-white/5 rounded-full overflow-hidden">
           <div
             className="h-full bg-brand-500 transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -181,13 +181,13 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
       </header>
 
       <div className="p-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Section Navigation */}
-          <div className="section-card mb-8">
+          <div className="section-card mb-10">
             <div className="section-card-header">
-              <h2 className="font-semibold text-surface-900">Survey Sections</h2>
+              <h2 className="font-semibold text-white">Survey Sections</h2>
             </div>
-            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {surveySections.map(section => {
                 const Icon = sectionIcons[section.id] || FileText
                 const completed = isSectionComplete(section, answers)
@@ -200,19 +200,19 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       setActiveSection(section.id)
                       setExpandedSection(expandedSection === section.id ? null : section.id)
                     }}
-                    className={`p-3 rounded-lg border transition-all flex items-center gap-2 text-left ${
+                    className={`p-4 rounded-lg border transition-all flex items-center gap-2 text-left ${
                       isActive
-                        ? 'border-brand-500 bg-brand-50 text-brand-700'
+                        ? 'border-brand-500 bg-brand-500/20 text-brand-300'
                         : completed
-                        ? 'border-green-200 bg-green-50 text-green-700'
-                        : 'border-surface-200 hover:border-surface-300 hover:bg-surface-50'
+                        ? 'border-green-500/50 bg-green-500/20 text-green-300'
+                        : 'border-white/10 hover:border-white/20 hover:bg-white/5 text-white/80'
                     }`}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{section.title}</p>
                       {completed && (
-                        <p className="text-xs text-green-600 flex items-center gap-1">
+                        <p className="text-xs text-green-400 flex items-center gap-1">
                           <Check className="w-3 h-3" /> Complete
                         </p>
                       )}
@@ -224,7 +224,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
           </div>
 
           {/* Survey Form */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {surveySections.map(section => {
               const Icon = sectionIcons[section.id] || FileText
               const isExpanded = expandedSection === section.id || activeSection === section.id
@@ -243,26 +243,26 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       setActiveSection(section.id)
                       setExpandedSection(isExpanded && expandedSection === section.id ? null : section.id)
                     }}
-                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors"
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-white/5 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        completed ? 'bg-green-100 text-green-600' : 'bg-brand-100 text-brand-600'
+                      <div className={`p-3 rounded-lg ${
+                        completed ? 'bg-green-500/20 text-green-400' : 'bg-brand-500/20 text-brand-400'
                       }`}>
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-surface-900">{section.title}</h3>
+                        <h3 className="font-semibold text-white">{section.title}</h3>
                         {section.description && (
-                          <p className="text-sm text-surface-500">{section.description}</p>
+                          <p className="text-sm text-white/50">{section.description}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {completed && (
-                        <span className="badge badge-green">Complete</span>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Complete</span>
                       )}
-                      <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${
+                      <ChevronDown className={`w-5 h-5 text-white/40 transition-transform ${
                         isExpanded ? 'rotate-180' : ''
                       }`} />
                     </div>
@@ -270,7 +270,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
                   {/* Section Questions */}
                   {isExpanded && (
-                    <div className="border-t border-surface-100 p-6 space-y-6 bg-surface-50/50">
+                    <div className="border-t border-white/5 p-8 space-y-8 bg-white/5">
                       {section.questions
                         .filter(q => isQuestionVisible(q, answers))
                         .map(question => (
@@ -293,13 +293,13 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
           {/* Completion Actions */}
           {progress >= 50 && (
-            <div className="mt-8 p-6 bg-brand-50 border border-brand-200 rounded-2xl">
+            <div className="mt-8 p-8 bg-brand-500/10 border border-brand-400/30 rounded-2xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-brand-900">
+                  <h3 className="font-semibold text-brand-300">
                     {isSurveyComplete() ? 'Survey Complete!' : 'Almost There!'}
                   </h3>
-                  <p className="text-sm text-brand-700 mt-1">
+                  <p className="text-sm text-brand-200 mt-1">
                     {isSurveyComplete()
                       ? 'All required questions have been answered.'
                       : `Complete ${100 - progress}% more to finish the survey.`}
@@ -328,7 +328,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
           {/* Last Saved Indicator */}
           {lastSaved && (
-            <p className="text-center text-sm text-surface-500 mt-4">
+            <p className="text-center text-sm text-white/50 mt-4">
               Last saved: {lastSaved.toLocaleTimeString()}
             </p>
           )}
@@ -358,13 +358,13 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
   }
 
   return (
-    <div className="space-y-2">
-      <label className="block">
-        <span className="text-sm font-medium text-surface-900">
+    <div className="space-y-3">
+      <label className="block mb-3">
+        <span className="text-sm font-medium text-white">
           {question.label}
         </span>
         {question.subLabel && (
-          <span className="text-sm text-surface-500 ml-2">
+          <span className="text-sm text-white/60 ml-2">
             {question.subLabel}
           </span>
         )}
@@ -384,7 +384,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
               onChange={() => onChange(true)}
               className="w-4 h-4 text-brand-600 focus:ring-brand-500"
             />
-            <span className="text-sm text-surface-700">Yes</span>
+            <span className="text-sm text-white/80">Yes</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -394,7 +394,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
               onChange={() => onChange(false)}
               className="w-4 h-4 text-brand-600 focus:ring-brand-500"
             />
-            <span className="text-sm text-surface-700">No</span>
+            <span className="text-sm text-white/80">No</span>
           </label>
         </div>
       )}
@@ -453,7 +453,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
                 onChange={(e) => onCheckboxChange(option, e.target.checked)}
                 className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
               />
-              <span className="text-sm text-surface-700">{option}</span>
+              <span className="text-sm text-white/80">{option}</span>
             </label>
           ))}
         </div>
@@ -472,7 +472,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
 
       {/* Help Text */}
       {question.helpText && (
-        <p className="text-xs text-surface-500 mt-1">{question.helpText}</p>
+        <p className="text-xs text-white/50 mt-1">{question.helpText}</p>
       )}
     </div>
   )
