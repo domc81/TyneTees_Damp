@@ -181,13 +181,13 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
       </header>
 
       <div className="p-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Section Navigation */}
-          <div className="section-card mb-8">
+          <div className="section-card mb-10">
             <div className="section-card-header">
               <h2 className="font-semibold text-surface-900">Survey Sections</h2>
             </div>
-            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {surveySections.map(section => {
                 const Icon = sectionIcons[section.id] || FileText
                 const completed = isSectionComplete(section, answers)
@@ -200,7 +200,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       setActiveSection(section.id)
                       setExpandedSection(expandedSection === section.id ? null : section.id)
                     }}
-                    className={`p-3 rounded-lg border transition-all flex items-center gap-2 text-left ${
+                    className={`p-4 rounded-lg border transition-all flex items-center gap-2 text-left ${
                       isActive
                         ? 'border-brand-500 bg-brand-50 text-brand-700'
                         : completed
@@ -224,7 +224,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
           </div>
 
           {/* Survey Form */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {surveySections.map(section => {
               const Icon = sectionIcons[section.id] || FileText
               const isExpanded = expandedSection === section.id || activeSection === section.id
@@ -243,10 +243,10 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                       setActiveSection(section.id)
                       setExpandedSection(isExpanded && expandedSection === section.id ? null : section.id)
                     }}
-                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors"
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-surface-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
+                      <div className={`p-3 rounded-lg ${
                         completed ? 'bg-green-100 text-green-600' : 'bg-brand-100 text-brand-600'
                       }`}>
                         <Icon className="w-5 h-5" />
@@ -270,7 +270,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
                   {/* Section Questions */}
                   {isExpanded && (
-                    <div className="border-t border-surface-100 p-6 space-y-6 bg-surface-50/50">
+                    <div className="border-t border-surface-100 p-8 space-y-8 bg-surface-50/50">
                       {section.questions
                         .filter(q => isQuestionVisible(q, answers))
                         .map(question => (
@@ -293,13 +293,13 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
           {/* Completion Actions */}
           {progress >= 50 && (
-            <div className="mt-8 p-6 bg-brand-50 border border-brand-200 rounded-2xl">
+            <div className="mt-8 p-8 bg-brand-500/10 border border-brand-400/30 rounded-2xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-brand-900">
+                  <h3 className="font-semibold text-brand-300">
                     {isSurveyComplete() ? 'Survey Complete!' : 'Almost There!'}
                   </h3>
-                  <p className="text-sm text-brand-700 mt-1">
+                  <p className="text-sm text-brand-200 mt-1">
                     {isSurveyComplete()
                       ? 'All required questions have been answered.'
                       : `Complete ${100 - progress}% more to finish the survey.`}
@@ -358,8 +358,8 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
   }
 
   return (
-    <div className="space-y-2">
-      <label className="block">
+    <div className="space-y-3">
+      <label className="block mb-3">
         <span className="text-sm font-medium text-surface-900">
           {question.label}
         </span>
