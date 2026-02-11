@@ -369,6 +369,64 @@ export async function createProject(
   return data
 }
 
+// Create project from form data (simpler version for new survey form)
+// Returns the project with generated ID and number
+export async function createProjectFromForm(data: {
+  client_name: string
+  client_email?: string
+  client_phone?: string
+  site_address: string
+  site_address_line2?: string
+  site_city?: string
+  site_county?: string
+  site_postcode: string
+  survey_type: string
+  status: string
+  weather_conditions?: string
+  survey_date?: string
+  notes?: string
+}): Promise<Project | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  // Generate project number
+  const { data: countData } = await supabase
+    .from('projects')
+    .select('count', { count: 'exact', head: true })
+
+  const count = (countData?.count || 0) + 1
+  const year = new Date().getFullYear()
+  const projectNumber = `TT-${year}-${count.toString().padStart(4, '0')}`
+
+  const { data: project, error } = await supabase
+    .from('projects')
+    .insert({
+      client_name: data.client_name,
+      client_email: data.client_email || null,
+      client_phone: data.client_phone || null,
+      site_address: data.site_address,
+      site_address_line2: data.site_address_line2 || null,
+      site_city: data.site_city || null,
+      site_county: data.site_county || null,
+      site_postcode: data.site_postcode,
+      survey_type: data.survey_type,
+      status: data.status || 'draft',
+      weather_conditions: data.weather_conditions || null,
+      survey_date: data.survey_date || null,
+      notes: data.notes || null,
+      project_number: projectNumber,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating project from form:', error)
+    return null
+  }
+
+  return project
+}
+
 export async function updateProject(
   id: string,
   updates: Partial<Project>

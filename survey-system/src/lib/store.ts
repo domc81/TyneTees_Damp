@@ -768,7 +768,36 @@ export function createProject(data: Omit<Project, 'id' | 'project_number' | 'cre
   }
   projects.push(project)
   saveProjects(projects)
+
+  // Also save to Supabase database
+  saveProjectToSupabase(project)
+
   return project
+}
+
+// Save project to Supabase database
+async function saveProjectToSupabase(project: Project): Promise<void> {
+  try {
+    const { createProjectFromForm } = await import('@/lib/supabase-data')
+    await createProjectFromForm({
+      client_name: project.client_name,
+      client_email: project.client_email,
+      client_phone: project.client_phone,
+      site_address: project.site_address,
+      site_address_line2: project.site_address_line2,
+      site_city: project.site_city,
+      site_county: project.site_county,
+      site_postcode: project.site_postcode,
+      survey_type: project.survey_type,
+      status: project.status,
+      weather_conditions: project.weather_conditions,
+      survey_date: project.survey_date,
+      notes: project.notes,
+    })
+  } catch (err) {
+    console.warn('Failed to save project to Supabase:', err)
+    // Project is already saved locally, so we don't fail
+  }
 }
 
 export function getProject(id: string): Project | null {
