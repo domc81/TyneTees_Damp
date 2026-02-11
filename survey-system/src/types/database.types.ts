@@ -35,6 +35,11 @@ export interface Project {
   internal_reference?: string
   created_at: string
   updated_at: string
+  // Survey data (structured survey answers)
+  survey_data?: Record<string, any>
+  survey_skipped_sections?: string[]
+  survey_progress?: number
+  survey_completed?: boolean
   // Joined data
   surveyor?: Profile
   sections?: Section[]

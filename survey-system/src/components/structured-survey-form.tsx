@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -23,6 +23,8 @@ import {
   Droplets,
   AlertTriangle,
   X,
+  Cloud,
+  CloudOff,
 } from 'lucide-react'
 import {
   surveySections,
@@ -31,6 +33,11 @@ import {
   isSectionComplete,
 } from '@/lib/survey-sections'
 import type { Project } from '@/types/database.types'
+import {
+  saveSurveyData,
+  loadSurveyData,
+  updateSurveyProgress,
+} from '@/lib/supabase-data'
 
 // Section icons mapping
 const sectionIcons: Record<string, typeof Home> = {
@@ -60,44 +67,79 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [skippedSections, setSkippedSections] = useState<Set<string>>(new Set())
   const [questionPhotos, setQuestionPhotos] = useState<Record<string, string[]>>({})
+  const [isSynced, setIsSynced] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load saved answers from localStorage on mount
+  // Load saved answers from database and localStorage on mount
   useEffect(() => {
-    const savedAnswers = localStorage.getItem(`survey-answers-${project.id}`)
-    if (savedAnswers) {
-      setAnswers(JSON.parse(savedAnswers))
+    async function loadData() {
+      setIsLoading(true)
+
+      // Try loading from database first
+      const dbData = await loadSurveyData(project.id)
+      if (dbData && Object.keys(dbData.answers).length > 0) {
+        setAnswers(dbData.answers)
+        setSkippedSections(new Set(dbData.skippedSections))
+        setQuestionPhotos(dbData.photos)
+        console.log('Loaded survey data from database')
+      } else {
+        // Fallback to localStorage
+        const savedAnswers = localStorage.getItem(`survey-answers-${project.id}`)
+        if (savedAnswers) {
+          setAnswers(JSON.parse(savedAnswers))
+        }
+
+        const savedSkipped = localStorage.getItem(`survey-skipped-${project.id}`)
+        if (savedSkipped) {
+          setSkippedSections(new Set(JSON.parse(savedSkipped)))
+        }
+
+        const savedPhotos = localStorage.getItem(`survey-photos-${project.id}`)
+        if (savedPhotos) {
+          setQuestionPhotos(JSON.parse(savedPhotos))
+        }
+        console.log('Loaded survey data from localStorage')
+      }
+
+      // Pre-populate header from project
+      const initialAnswers: Record<string, any> = {
+        client_name: project.client_name,
+        site_address: `${project.site_address}${project.site_address_line2 ? `, ${project.site_address_line2}` : ''}${project.site_city ? `, ${project.site_city}` : ''}`,
+        internal_reference: project.project_number,
+        survey_date: new Date().toLocaleDateString('en-GB'),
+        weather_conditions: project.weather_conditions || '',
+      }
+      setAnswers(prev => ({ ...prev, ...initialAnswers }))
+      setIsLoading(false)
     }
 
-    const savedSkipped = localStorage.getItem(`survey-skipped-${project.id}`)
-    if (savedSkipped) {
-      setSkippedSections(new Set(JSON.parse(savedSkipped)))
-    }
-
-    const savedPhotos = localStorage.getItem(`survey-photos-${project.id}`)
-    if (savedPhotos) {
-      setQuestionPhotos(JSON.parse(savedPhotos))
-    }
-
-    // Pre-populate header from project
-    const initialAnswers: Record<string, any> = {
-      client_name: project.client_name,
-      site_address: `${project.site_address}${project.site_address_line2 ? `, ${project.site_address_line2}` : ''}${project.site_city ? `, ${project.site_city}` : ''}`,
-      internal_reference: project.project_number,
-      survey_date: new Date().toLocaleDateString('en-GB'),
-      weather_conditions: project.weather_conditions || '',
-    }
-    setAnswers(prev => ({ ...prev, ...initialAnswers }))
+    loadData()
   }, [project])
 
-  // Save answers to localStorage
-  const saveAnswers = () => {
+  // Save answers to localStorage and database
+  const saveAnswers = useCallback(async () => {
+    // Save to localStorage
     localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
     localStorage.setItem(`survey-skipped-${project.id}`, JSON.stringify(Array.from(skippedSections)))
     localStorage.setItem(`survey-photos-${project.id}`, JSON.stringify(questionPhotos))
     setLastSaved(new Date())
     setIsSaving(true)
+
+    // Save to database
+    const isComplete = surveySections.every(section =>
+      skippedSections.has(section.id) || isSectionComplete(section, answers)
+    )
+    const dbSuccess = await saveSurveyData(project.id, {
+      answers,
+      skippedSections: Array.from(skippedSections),
+      photos: questionPhotos,
+      progress: getProgress(),
+      isComplete,
+    })
+
+    setIsSynced(dbSuccess)
     setTimeout(() => setIsSaving(false), 1000)
-  }
+  }, [answers, skippedSections, questionPhotos, project.id])
 
   // Handle answer change
   const handleAnswerChange = (questionId: string, value: any) => {
@@ -246,6 +288,24 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Sync Status */}
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-white/50">
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-xs">Loading...</span>
+              </div>
+            ) : isSynced ? (
+              <div className="flex items-center gap-2 text-green-400" title="Saved to database">
+                <Cloud className="w-4 h-4" />
+                <span className="text-xs">Synced</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-amber-400" title="Not synced - changes saved locally only">
+                <CloudOff className="w-4 h-4" />
+                <span className="text-xs">Local only</span>
+              </div>
+            )}
+
             <div className="text-right">
               <p className="text-xs font-medium text-white/50 uppercase tracking-wide">Progress</p>
               <p className="text-lg font-bold text-brand-400 mt-1">{progress}% Complete</p>

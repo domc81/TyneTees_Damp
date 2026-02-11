@@ -124,10 +124,17 @@ export interface Project {
   weather_conditions: string | null
   client_name: string
   site_address: string
+  site_address_line2?: string
+  site_city?: string
   site_postcode: string
   notes: string | null
   created_at: string
   updated_at: string
+  // Survey data (structured survey answers)
+  survey_data?: Record<string, any>
+  survey_skipped_sections?: string[]
+  survey_progress?: number
+  survey_completed?: boolean
 }
 
 export interface SurveyRoom {
@@ -879,5 +886,227 @@ export async function initializeSampleData(): Promise<void> {
   } catch (err) {
     console.warn('Database initialization failed, using mock data:', err)
     useMockData = true
+  }
+}
+
+// ============================================================================
+// Structured Survey Data (Phase 10)
+// ============================================================================
+
+/**
+ * Save survey answers to the database
+ * Stores answers, skipped sections, progress, and completion status
+ */
+export async function saveSurveyData(
+  projectId: string,
+  data: {
+    answers: Record<string, any>
+    skippedSections: string[]
+    photos?: Record<string, string[]>
+    progress: number
+    isComplete: boolean
+  }
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.warn('Supabase not available, skipping database save')
+    return false
+  }
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        survey_data: data.answers,
+        survey_skipped_sections: data.skippedSections,
+        survey_progress: data.progress,
+        survey_completed: data.isComplete,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', projectId)
+
+    if (error) {
+      console.error('Error saving survey data:', error)
+      return false
+    }
+
+    // Optionally save photos to database (if provided)
+    if (data.photos && Object.keys(data.photos).length > 0) {
+      await saveSurveyPhotos(projectId, data.photos)
+    }
+
+    return true
+  } catch (err) {
+    console.error('Exception saving survey data:', err)
+    return false
+  }
+}
+
+/**
+ * Load survey answers from the database
+ */
+export async function loadSurveyData(projectId: string): Promise<{
+  answers: Record<string, any>
+  skippedSections: string[]
+  photos: Record<string, string[]>
+  progress: number
+  isComplete: boolean
+} | null> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.warn('Supabase not available')
+    return null
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('survey_data, survey_skipped_sections, survey_progress, survey_completed')
+      .eq('id', projectId)
+      .single()
+
+    if (error) {
+      console.error('Error loading survey data:', error)
+      return null
+    }
+
+    // Load photos from database
+    const photos = await loadSurveyPhotos(projectId)
+
+    return {
+      answers: (data.survey_data as Record<string, any>) || {},
+      skippedSections: (data.survey_skipped_sections as string[]) || [],
+      photos: photos,
+      progress: data.survey_progress || 0,
+      isComplete: data.survey_completed || false,
+    }
+  } catch (err) {
+    console.error('Exception loading survey data:', err)
+    return null
+  }
+}
+
+/**
+ * Save survey photos to the photos table
+ */
+async function saveSurveyPhotos(
+  projectId: string,
+  photos: Record<string, string[]>
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  try {
+    // For each question with photos
+    for (const [questionId, questionPhotos] of Object.entries(photos)) {
+      for (let i = 0; i < questionPhotos.length; i++) {
+        const photo = questionPhotos[i]
+        const photoId = `${projectId}-${questionId}-${i}`
+
+        // Check if photo already exists
+        const { data: existing } = await supabase
+          .from('photos')
+          .select('id')
+          .eq('id', photoId)
+          .single()
+
+        if (existing) {
+          // Update existing photo
+          await supabase
+            .from('photos')
+            .update({
+              description: `Survey question: ${questionId}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', photoId)
+        } else {
+          // Insert new photo
+          await supabase.from('photos').insert({
+            id: photoId,
+            project_id: projectId,
+            file_path: photo, // Base64 data URL
+            file_name: `survey_${questionId}_${i}.jpg`,
+            mime_type: 'image/jpeg',
+            description: `Survey question: ${questionId}`,
+            uploaded_by: 'system',
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error saving survey photos:', err)
+  }
+}
+
+/**
+ * Load survey photos from the photos table
+ */
+async function loadSurveyPhotos(projectId: string): Promise<Record<string, string[]>> {
+  const supabase = getSupabase()
+  if (!supabase) return {}
+
+  try {
+    const { data, error } = await supabase
+      .from('photos')
+      .select('id, file_path, description')
+      .eq('project_id', projectId)
+      .ilike('description', 'survey question:%')
+
+    if (error) {
+      console.error('Error loading survey photos:', error)
+      return {}
+    }
+
+    const photos: Record<string, string[]> = {}
+
+    for (const photo of data || []) {
+      // Extract question ID from description (format: "Survey question: questionId")
+      const match = photo.description?.match(/Survey question: (.+)/)
+      if (match && match[1]) {
+        const questionId = match[1]
+        if (!photos[questionId]) {
+          photos[questionId] = []
+        }
+        photos[questionId].push(photo.file_path)
+      }
+    }
+
+    return photos
+  } catch (err) {
+    console.error('Exception loading survey photos:', err)
+    return {}
+  }
+}
+
+/**
+ * Update survey progress in the database
+ */
+export async function updateSurveyProgress(
+  projectId: string,
+  progress: number,
+  isComplete: boolean = false
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        survey_progress: progress,
+        survey_completed: isComplete,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', projectId)
+
+    if (error) {
+      console.error('Error updating survey progress:', error)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.error('Exception updating survey progress:', err)
+    return false
   }
 }
