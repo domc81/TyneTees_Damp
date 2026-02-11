@@ -144,21 +144,21 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   return (
     <div className="min-h-screen bg-navy-1000">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-navy-950/80 backdrop-blur-xl border-b border-white/10 px-8 py-4">
+      <header className="sticky top-0 z-10 bg-navy-950/80 backdrop-blur-xl border-b border-white/10 px-8 py-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href={`/projects/${project.id}`} className="p-2 rounded-lg hover:bg-white/5 transition-colors">
               <ArrowLeft className="w-5 h-5 text-white/60" />
             </Link>
             <div>
-              <p className="text-sm font-mono text-white/50">{project.project_number}</p>
-              <h1 className="text-xl font-bold text-white">Structured Survey</h1>
+              <p className="text-xs font-mono text-white/50 tracking-wider uppercase">{project.project_number}</p>
+              <h1 className="text-xl font-bold text-white mt-1">Structured Survey</h1>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm text-white/50">Progress</p>
-              <p className="font-semibold text-brand-400">{progress}% Complete</p>
+              <p className="text-xs font-medium text-white/50 uppercase tracking-wide">Progress</p>
+              <p className="text-lg font-bold text-brand-400 mt-1">{progress}% Complete</p>
             </div>
             <button
               onClick={saveAnswers}
@@ -172,7 +172,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-4 h-2 bg-white/5 rounded-full overflow-hidden">
+        <div className="mt-5 h-2.5 bg-white/5 rounded-full overflow-hidden">
           <div
             className="h-full bg-brand-500 transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -212,7 +212,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{section.title}</p>
                       {completed && (
-                        <p className="text-xs text-green-400 flex items-center gap-1">
+                        <p className="text-xs text-green-400 font-medium flex items-center gap-1 mt-0.5">
                           <Check className="w-3 h-3" /> Complete
                         </p>
                       )}
@@ -260,7 +260,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                     </div>
                     <div className="flex items-center gap-3">
                       {completed && (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Complete</span>
+                        <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">Complete</span>
                       )}
                       <ChevronDown className={`w-5 h-5 text-white/40 transition-transform ${
                         isExpanded ? 'rotate-180' : ''
@@ -308,14 +308,14 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                 <div className="flex gap-3">
                   <button
                     onClick={saveAnswers}
-                    className="btn-secondary"
+                    className="btn-secondary px-6 py-2.5"
                   >
                     Save & Continue Later
                   </button>
                   {isSurveyComplete() && (
                     <Link
                       href={`/projects/${project.id}/costing`}
-                      className="btn-primary flex items-center gap-2"
+                      className="btn-primary flex items-center gap-2 px-6 py-2.5 font-semibold"
                     >
                       <FileText className="w-4 h-4" />
                       Proceed to Costing
@@ -328,7 +328,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
 
           {/* Last Saved Indicator */}
           {lastSaved && (
-            <p className="text-center text-sm text-white/50 mt-4">
+            <p className="text-center text-xs text-white/40 mt-6 font-medium">
               Last saved: {lastSaved.toLocaleTimeString()}
             </p>
           )}
