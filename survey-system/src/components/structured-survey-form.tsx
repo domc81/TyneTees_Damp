@@ -386,8 +386,10 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                     <div className="border-t border-white/5 p-8 space-y-8 bg-white/5">
                       {section.questions
                         .filter(q => isQuestionVisible(q, answers))
-                        .map(question => (
-                          <div key={question.id} className="space-y-4">
+                        .map(question => {
+                          const value = answers[question.id]
+                          return (
+                            <div key={question.id} className="space-y-4">
                             {/* Question with photo capture button */}
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
@@ -543,7 +545,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                               />
                             )}
                           </div>
-                        ))}
+                        )})}
                     </div>
                   )}
                 </div>
