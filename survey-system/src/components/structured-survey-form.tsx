@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -9,7 +9,6 @@ import {
   ChevronDown,
   Check,
   AlertCircle,
-  Save,
   FileText,
   Camera,
   Thermometer,
@@ -69,6 +68,64 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
   const [questionPhotos, setQuestionPhotos] = useState<Record<string, string[]>>({})
   const [isSynced, setIsSynced] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingSave, setPendingSave] = useState(false)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Debounced auto-save function
+  const triggerAutoSave = useCallback(() => {
+    // Clear any pending save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // Set pending save flag
+    setPendingSave(true)
+
+    // Debounce: save after 1 second of inactivity
+    saveTimeoutRef.current = setTimeout(async () => {
+      await saveCurrentData()
+      setPendingSave(false)
+    }, 1000)
+  }, [answers, skippedSections, questionPhotos, project.id])
+
+  // Save function that can be called from anywhere
+  const saveCurrentData = useCallback(async () => {
+    if (isSaving) return // Prevent concurrent saves
+
+    setIsSaving(true)
+    setLastSaved(new Date())
+
+    // Save to localStorage (answers and skipped sections only)
+    try {
+      localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
+      localStorage.setItem(`survey-skipped-${project.id}`, JSON.stringify(Array.from(skippedSections)))
+      localStorage.setItem(`survey-photos-${project.id}`, JSON.stringify(questionPhotos))
+    } catch (quotaError) {
+      console.warn('localStorage quota exceeded, database sync will still work')
+    }
+
+    // Save to database
+    const isComplete = surveySections.every(section =>
+      skippedSections.has(section.id) || isSectionComplete(section, answers)
+    )
+    const dbSuccess = await saveSurveyData(project.id, {
+      answers,
+      skippedSections: Array.from(skippedSections),
+      photos: questionPhotos,
+      progress: getProgress(),
+      isComplete,
+    })
+
+    setIsSynced(dbSuccess)
+    setIsSaving(false)
+  }, [answers, skippedSections, questionPhotos, project.id, isSaving])
+
+  // Auto-save when data changes
+  useEffect(() => {
+    if (!isLoading) {
+      triggerAutoSave()
+    }
+  }, [answers, skippedSections, questionPhotos, isLoading, triggerAutoSave])
 
   // Load saved answers from database and localStorage on mount
   useEffect(() => {
@@ -101,7 +158,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
         console.log('Loaded survey data from localStorage')
       }
 
-      // Pre-populate header from project
+      // Pre-populate header from project (only if not already set)
       const initialAnswers: Record<string, any> = {
         client_name: project.client_name,
         site_address: `${project.site_address}${project.site_address_line2 ? `, ${project.site_address_line2}` : ''}${project.site_city ? `, ${project.site_city}` : ''}`,
@@ -109,37 +166,18 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
         survey_date: new Date().toLocaleDateString('en-GB'),
         weather_conditions: project.weather_conditions || '',
       }
-      setAnswers(prev => ({ ...prev, ...initialAnswers }))
+      setAnswers(prev => {
+        // Only set if not already populated
+        if (Object.keys(prev).length === 0) {
+          return { ...initialAnswers }
+        }
+        return prev
+      })
       setIsLoading(false)
     }
 
     loadData()
   }, [project])
-
-  // Save answers to localStorage and database
-  const saveAnswers = useCallback(async () => {
-    // Save to localStorage
-    localStorage.setItem(`survey-answers-${project.id}`, JSON.stringify(answers))
-    localStorage.setItem(`survey-skipped-${project.id}`, JSON.stringify(Array.from(skippedSections)))
-    localStorage.setItem(`survey-photos-${project.id}`, JSON.stringify(questionPhotos))
-    setLastSaved(new Date())
-    setIsSaving(true)
-
-    // Save to database
-    const isComplete = surveySections.every(section =>
-      skippedSections.has(section.id) || isSectionComplete(section, answers)
-    )
-    const dbSuccess = await saveSurveyData(project.id, {
-      answers,
-      skippedSections: Array.from(skippedSections),
-      photos: questionPhotos,
-      progress: getProgress(),
-      isComplete,
-    })
-
-    setIsSynced(dbSuccess)
-    setTimeout(() => setIsSaving(false), 1000)
-  }, [answers, skippedSections, questionPhotos, project.id])
 
   // Handle answer change
   const handleAnswerChange = (questionId: string, value: any) => {
@@ -215,7 +253,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
               ...prev,
               [questionId]: [...(prev[questionId] || []), base64]
             }))
-            saveAnswers()
+            // Auto-save will trigger via useEffect
           }
           reader.readAsDataURL(file)
         }
@@ -237,7 +275,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
       }
       return updated
     })
-    saveAnswers()
+    // Auto-save will trigger via useEffect
   }
 
   // Progress calculation
@@ -294,15 +332,20 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                 <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 <span className="text-xs">Loading...</span>
               </div>
+            ) : pendingSave ? (
+              <div className="flex items-center gap-2 text-amber-400" title="Saving changes...">
+                <CloudOff className="w-4 h-4 animate-pulse" />
+                <span className="text-xs">Saving...</span>
+              </div>
             ) : isSynced ? (
-              <div className="flex items-center gap-2 text-green-400" title="Saved to database">
+              <div className="flex items-center gap-2 text-green-400" title="All changes saved">
                 <Cloud className="w-4 h-4" />
-                <span className="text-xs">Synced</span>
+                <span className="text-xs">Saved</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-amber-400" title="Not synced - changes saved locally only">
+              <div className="flex items-center gap-2 text-white/40" title="Changes saved locally">
                 <CloudOff className="w-4 h-4" />
-                <span className="text-xs">Local only</span>
+                <span className="text-xs">Local</span>
               </div>
             )}
 
@@ -310,14 +353,6 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
               <p className="text-xs font-medium text-white/50 uppercase tracking-wide">Progress</p>
               <p className="text-lg font-bold text-brand-400 mt-1">{progress}% Complete</p>
             </div>
-            <button
-              onClick={saveAnswers}
-              disabled={isSaving}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Save className={`w-5 h-5 ${isSaving ? 'animate-pulse' : ''}`} />
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
           </div>
         </div>
 
@@ -623,25 +658,28 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
                   </h3>
                   <p className="text-sm text-brand-200 mt-1">
                     {isSurveyComplete()
-                      ? 'All required questions have been answered.'
+                      ? 'All required questions have been answered. Complete the survey to finalize.'
                       : `Complete ${100 - progress}% more to finish the survey.`}
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <button
-                    onClick={saveAnswers}
-                    className="btn-secondary px-6 py-2.5"
-                  >
-                    Save & Continue Later
-                  </button>
-                  {isSurveyComplete() && (
-                    <Link
-                      href={`/projects/${project.id}/costing`}
+                  {isSurveyComplete() ? (
+                    <button
+                      onClick={async () => {
+                        // Final save and complete
+                        await saveCurrentData()
+                        // Update project status to in_progress if draft
+                        router.push(`/projects/${project.id}/costing`)
+                      }}
                       className="btn-primary flex items-center gap-2 px-6 py-2.5 font-semibold"
                     >
-                      <FileText className="w-5 h-5" />
-                      Proceed to Costing
-                    </Link>
+                      <Check className="w-5 h-5" />
+                      Complete Survey
+                    </button>
+                  ) : (
+                    <p className="text-sm text-brand-200">
+                      Keep going! Your progress is saved automatically.
+                    </p>
                   )}
                 </div>
               </div>
@@ -651,7 +689,7 @@ export default function StructuredSurveyForm({ project }: StructuredSurveyFormPr
           {/* Last Saved Indicator */}
           {lastSaved && (
             <p className="text-center text-xs text-white/40 mt-6 font-medium">
-              Last saved: {lastSaved.toLocaleTimeString()}
+              All changes saved automatically
             </p>
           )}
         </div>

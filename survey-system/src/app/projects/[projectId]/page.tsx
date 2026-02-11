@@ -29,7 +29,10 @@ import {
   Building,
 } from 'lucide-react'
 import type { Project, SurveyType } from '@/types/database.types'
-import { getProject, getProjectSections, getProjectItems, getProjectPhotos, getProjectRooms, initializeSampleData } from '@/lib/store'
+import { getProjectSections, getProjectItems, initializeSampleData } from '@/lib/store'
+import { getPhotoUrl, getProjectPhotos as getSupabaseProjectPhotos, getProject as getSupabaseProject, getSurveyRooms, createSurveyRoom, updateSurveyRoom } from '@/lib/supabase-data'
+import { getSupabase } from '@/lib/supabase-client'
+import type { SurveyRoom } from '@/lib/supabase-data'
 import { formatCurrency, calculateLineItemTotal } from '@/lib/cost-calculator'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; bgColor: string; label: string }> = {
@@ -54,20 +57,60 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [project, setProject] = useState<Project | null>(null)
   const [activeTab, setActiveTab] = useState('details')
   const [isLoading, setIsLoading] = useState(true)
+  const [photos, setPhotos] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    initializeSampleData()
-    const data = getProject(params.projectId)
-    if (data) {
-      setProject(data)
+    async function loadProject() {
+      try {
+        setIsLoading(true)
+        initializeSampleData()
+        const data = await getSupabaseProject(params.projectId)
+        setProject(data)
+        if (data) {
+          // Load photos for this project
+          const projectPhotos = await getSupabaseProjectPhotos(data.id)
+          setPhotos(projectPhotos)
+        }
+      } catch (err) {
+        console.error('Error loading project:', err)
+        setError('Failed to load project')
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+    loadProject()
   }, [params.projectId])
+
+  // Load photos from Supabase
+  useEffect(() => {
+    if (!project) return
+
+    getSupabaseProjectPhotos(project.id).then((loadedPhotos) => {
+      setPhotos(loadedPhotos)
+    }).catch((err) => {
+      console.error('Error loading photos:', err)
+    })
+  }, [project?.id])
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-surface-50 flex items-center justify-center">
         <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-surface-900">Error loading project</h2>
+          <p className="text-surface-500 mt-2">{error}</p>
+          <Link href="/projects" className="btn-primary mt-4 inline-block">
+            Back to Projects
+          </Link>
+        </div>
       </div>
     )
   }
@@ -88,7 +131,6 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const config = surveyTypeConfig[project.survey_type]
   const sections = getProjectSections(project.id)
   const allItems = getProjectItems(project.id)
-  const photos = getProjectPhotos(project.id)
 
   // Calculate totals
   const totals = allItems.reduce((acc, item) => {
@@ -403,19 +445,44 @@ function PhotosTab({ photos, projectId }: { photos: ReturnType<typeof getProject
         </div>
       ) : (
         <div className="grid grid-cols-4 gap-4">
-          {photos.map((photo) => (
-            <div key={photo.id} className="aspect-square rounded-xl bg-surface-100 overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center text-surface-400">
-                <Camera className="w-12 h-12" />
+          {photos.map((photo) => {
+            const photoUrl = getPhotoUrl(photo)
+            return (
+              <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-surface-100 group relative">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt={photo.description || 'Survey photo'}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to placeholder on error
+                      e.currentTarget.style.display = 'none'
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                      if (fallback) fallback.classList.remove('hidden')
+                    }}
+                  />
+                ) : null}
+                <div
+                  className={`w-full h-full flex items-center justify-center text-surface-400 ${photoUrl ? 'hidden' : ''}`}
+                >
+                  <Camera className="w-12 h-12" />
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-sm font-medium text-white truncate">
+                    {photo.description || 'No description'}
+                  </p>
+                  <p className="text-xs text-white/80">
+                    {photo.created_at ? new Date(photo.created_at).toLocaleDateString() : ''}
+                  </p>
+                </div>
               </div>
-              <div className="p-3 bg-white border-t border-surface-100">
-                <p className="text-sm font-medium text-surface-900 truncate">{photo.description}</p>
-                <p className="text-xs text-surface-500">{new Date(photo.created_at).toLocaleDateString()}</p>
-              </div>
-            </div>
-          ))}
-          {/* Add more photo slots */}
-          <button onClick={() => setShowUpload(true)} className="aspect-square rounded-xl border-2 border-dashed border-surface-300 flex flex-col items-center justify-center gap-2 hover:border-brand-400 hover:bg-brand-50 transition-colors">
+            )
+          })}
+          {/* Add more photo slot */}
+          <button
+            onClick={() => setShowUpload(true)}
+            className="aspect-square rounded-xl border-2 border-dashed border-surface-300 flex flex-col items-center justify-center gap-2 hover:border-brand-400 hover:bg-brand-50 transition-colors"
+          >
             <Plus className="w-8 h-8 text-surface-400" />
             <span className="text-sm text-surface-500">Add Photo</span>
           </button>
@@ -516,54 +583,117 @@ function CostingTab({
 
 // ============ INSPECTION TAB ============
 function InspectionTab({ projectId }: { projectId: string }) {
-  const [rooms, setRooms] = useState<ReturnType<typeof getProjectRooms>>([])
+  const [rooms, setRooms] = useState<SurveyRoom[]>([])
   const [expandedRoom, setExpandedRoom] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [pendingSave, setPendingSave] = useState(false)
 
+  // Load rooms from Supabase
   useEffect(() => {
-    setRooms(getProjectRooms(projectId))
+    async function loadRooms() {
+      try {
+        setIsLoading(true)
+        const data = await getSurveyRooms(projectId)
+        setRooms(data)
+      } catch (err) {
+        console.error('Error loading rooms:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadRooms()
   }, [projectId])
 
-  const roomTypes = [
-    { value: 'living_room', label: 'Living Room' },
-    { value: 'bedroom', label: 'Bedroom' },
-    { value: 'kitchen', label: 'Kitchen' },
-    { value: 'bathroom', label: 'Bathroom' },
-    { value: 'hallway', label: 'Hallway' },
-    { value: 'basement', label: 'Basement' },
-  ]
+  // Auto-save function
+  const saveRoom = async (room: SurveyRoom) => {
+    try {
+      if (room.id.startsWith('local-')) {
+        // New room - create it
+        const created = await createSurveyRoom({
+          project_id: projectId,
+          name: room.name,
+          room_type: room.room_type,
+          floor_level: room.floor_level,
+          findings: room.findings || '',
+          recommendations: room.recommendations || '',
+        })
+        if (created) {
+          setRooms(prev => prev.map(r => r.id === room.id ? created : r))
+        }
+      } else {
+        // Existing room - update it
+        await updateSurveyRoom(room.id, {
+          name: room.name,
+          room_type: room.room_type,
+          floor_level: room.floor_level,
+          findings: room.findings || '',
+          recommendations: room.recommendations || '',
+        })
+      }
+    } catch (err) {
+      console.error('Error saving room:', err)
+    }
+  }
 
-  const floorLevels = [
-    { value: 'ground', label: 'Ground Floor' },
-    { value: 'first', label: 'First Floor' },
-    { value: 'basement', label: 'Basement' },
-  ]
-
-  const handleAddRoom = () => {
-    const newRoom = {
-      id: crypto.randomUUID(),
+  const handleAddRoom = async () => {
+    const newRoom: SurveyRoom = {
+      id: `local-${Date.now()}`,
       project_id: projectId,
       name: 'New Room',
       room_type: 'living_room',
       floor_level: 'ground',
-      order: rooms.length + 1,
+      display_order: rooms.length + 1,
       findings: '',
       recommendations: '',
-      moisture_readings: '',
-      photos: [],
+      is_completed: false,
       created_at: new Date().toISOString(),
     }
-    // Save room to localStorage
-    const existingRooms = JSON.parse(localStorage.getItem('tyne-tees-rooms') || '[]')
-    existingRooms.push(newRoom)
-    localStorage.setItem('tyne-tees-rooms', JSON.stringify(existingRooms))
-    setRooms([...rooms, newRoom])
+    setRooms(prev => [...prev, newRoom])
+    // Save immediately
+    const created = await createSurveyRoom({
+      project_id: projectId,
+      name: newRoom.name,
+      room_type: newRoom.room_type,
+      floor_level: newRoom.floor_level,
+      findings: '',
+      recommendations: '',
+    })
+    if (created) {
+      setRooms(prev => prev.map(r => r.id === newRoom.id ? created : r))
+    }
   }
 
-  const handleDeleteRoom = (id: string) => {
-    const existingRooms = JSON.parse(localStorage.getItem('tyne-tees-rooms') || '[]')
-    const filtered = existingRooms.filter((r: { id: string }) => r.id !== id)
-    localStorage.setItem('tyne-tees-rooms', JSON.stringify(filtered))
-    setRooms(rooms.filter(r => r.id !== id))
+  const handleDeleteRoom = async (id: string) => {
+    if (!confirm('Delete this room?')) return
+    setRooms(prev => prev.filter(r => r.id !== id))
+    // Delete from Supabase if not a local ID
+    if (!id.startsWith('local-')) {
+      try {
+        const { error } = await supabase
+          .from('survey_rooms')
+          .delete()
+          .eq('id', id)
+        if (error) console.error('Error deleting room:', error)
+      } catch (err) {
+        console.error('Error deleting room:', err)
+      }
+    }
+  }
+
+  const handleRoomChange = async (roomId: string, updates: Partial<SurveyRoom>) => {
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r))
+    const room = rooms.find(r => r.id === roomId)
+    if (room) {
+      await saveRoom({ ...room, ...updates })
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="spinner" />
+      </div>
+    )
   }
 
   return (
@@ -590,121 +720,106 @@ function InspectionTab({ projectId }: { projectId: string }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {rooms.map((room, index) => {
-            const roomTypeLabel = roomTypes.find(r => r.value === room.room_type)?.label || room.room_type
-            const floorLabel = floorLevels.find(f => f.value === room.floor_level)?.label || room.floor_level
-
-            return (
-              <div key={room.id} className="section-card">
-                <button
-                  onClick={() => setExpandedRoom(expandedRoom === room.id ? null : room.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-sm">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <h4 className="font-semibold text-surface-900">{room.name}</h4>
-                      <p className="text-sm text-surface-500">{roomTypeLabel} • {floorLabel}</p>
-                    </div>
+          {rooms.map((room, index) => (
+            <div key={room.id} className="section-card">
+              <button
+                onClick={() => setExpandedRoom(expandedRoom === room.id ? null : room.id)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-sm">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <h4 className="font-semibold text-surface-900">{room.name}</h4>
+                    <p className="text-sm text-surface-500">
+                      {room.room_type?.replace('_', ' ')} • {room.floor_level?.replace('_', ' ')}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    {room.findings && (
-                      <span className="badge badge-amber">Findings recorded</span>
-                    )}
-                    <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${expandedRoom === room.id ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
+                </div>
+                <div className="flex items-center gap-4">
+                  {room.findings && (
+                    <span className="badge badge-amber">Findings recorded</span>
+                  )}
+                  <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${expandedRoom === room.id ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
 
-                {expandedRoom === room.id && (
-                  <div className="border-t border-surface-100 px-6 py-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="input-label">Room Name</label>
-                        <input
-                          type="text"
-                          value={room.name}
-                          onChange={(e) => {
-                            const updated = rooms.map(r => r.id === room.id ? { ...r, name: e.target.value } : r)
-                            setRooms(updated)
-                            localStorage.setItem('tyne-tees-rooms', JSON.stringify(updated))
-                          }}
-                          className="input-field"
-                        />
-                      </div>
-                      <div>
-                        <label className="input-label">Room Type</label>
-                        <select
-                          value={room.room_type}
-                          onChange={(e) => {
-                            const updated = rooms.map(r => r.id === room.id ? { ...r, room_type: e.target.value } : r)
-                            setRooms(updated)
-                            localStorage.setItem('tyne-tees-rooms', JSON.stringify(updated))
-                          }}
-                          className="input-field"
-                        >
-                          {roomTypes.map(rt => (
-                            <option key={rt.value} value={rt.value}>{rt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
+              {expandedRoom === room.id && (
+                <div className="border-t border-surface-100 px-6 py-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="input-label">Findings / Observations</label>
-                      <textarea
-                        value={room.findings}
-                        onChange={(e) => {
-                          const updated = rooms.map(r => r.id === room.id ? { ...r, findings: e.target.value } : r)
-                          setRooms(updated)
-                          localStorage.setItem('tyne-tees-rooms', JSON.stringify(updated))
-                        }}
-                        className="input-field resize-none"
-                        rows={3}
-                        placeholder="Describe what was found..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="input-label">Recommendations</label>
-                      <textarea
-                        value={room.recommendations}
-                        onChange={(e) => {
-                          const updated = rooms.map(r => r.id === room.id ? { ...r, recommendations: e.target.value } : r)
-                          setRooms(updated)
-                          localStorage.setItem('tyne-tees-rooms', JSON.stringify(updated))
-                        }}
-                        className="input-field resize-none"
-                        rows={3}
-                        placeholder="Recommended works..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="input-label">Moisture Readings</label>
+                      <label className="input-label">Room Name</label>
                       <input
                         type="text"
-                        value={typeof room.moisture_readings === 'string' ? room.moisture_readings : JSON.stringify(room.moisture_readings)}
-                        onChange={(e) => {
-                          const updated = rooms.map(r => r.id === room.id ? { ...r, moisture_readings: e.target.value } : r)
-                          setRooms(updated)
-                          localStorage.setItem('tyne-tees-rooms', JSON.stringify(updated))
-                        }}
+                        value={room.name}
+                        onChange={(e) => handleRoomChange(room.id, { name: e.target.value })}
                         className="input-field"
-                        placeholder="e.g., 18-22% elevated"
                       />
                     </div>
-
-                    <button onClick={() => handleDeleteRoom(room.id)} className="btn-ghost text-red-600 flex items-center gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      Delete Room
-                    </button>
+                    <div>
+                      <label className="input-label">Room Type</label>
+                      <select
+                        value={room.room_type}
+                        onChange={(e) => handleRoomChange(room.id, { room_type: e.target.value })}
+                        className="input-field"
+                      >
+                        <option value="living_room">Living Room</option>
+                        <option value="bedroom">Bedroom</option>
+                        <option value="kitchen">Kitchen</option>
+                        <option value="bathroom">Bathroom</option>
+                        <option value="hallway">Hallway</option>
+                        <option value="basement">Basement</option>
+                        <option value="loft">Loft</option>
+                      </select>
+                    </div>
                   </div>
-                )}
-              </div>
-            )
-          })}
+
+                  <div>
+                    <label className="input-label">Floor Level</label>
+                    <select
+                      value={room.floor_level}
+                      onChange={(e) => handleRoomChange(room.id, { floor_level: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="ground">Ground Floor</option>
+                      <option value="first">First Floor</option>
+                      <option value="second">Second Floor</option>
+                      <option value="basement">Basement</option>
+                      <option value="attic">Attic</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="input-label">Findings / Observations</label>
+                    <textarea
+                      value={room.findings || ''}
+                      onChange={(e) => handleRoomChange(room.id, { findings: e.target.value })}
+                      className="input-field resize-none"
+                      rows={3}
+                      placeholder="Describe what was found..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="input-label">Recommendations</label>
+                    <textarea
+                      value={room.recommendations || ''}
+                      onChange={(e) => handleRoomChange(room.id, { recommendations: e.target.value })}
+                      className="input-field resize-none"
+                      rows={3}
+                      placeholder="Recommended works..."
+                    />
+                  </div>
+
+                  <button onClick={() => handleDeleteRoom(room.id)} className="btn-ghost text-red-600 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Delete Room
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

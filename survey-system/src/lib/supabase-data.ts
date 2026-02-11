@@ -4,6 +4,30 @@
 import { getSupabase } from './supabase-client'
 
 // ============================================================================
+// Photo URL Helper
+// ============================================================================
+
+/**
+ * Get the public URL for a photo from Supabase Storage
+ */
+export function getPhotoUrl(photo: { storage_path?: string | null; file_path?: string }): string {
+  // If storage_path exists, construct Supabase public URL
+  if (photo.storage_path) {
+    const supabase = getSupabase()
+    if (supabase) {
+      const { data } = supabase
+        .storage
+        .from('survey-photos')
+        .getPublicUrl(photo.storage_path)
+      return data.publicUrl
+    }
+  }
+
+  // Fallback to file_path for legacy photos (during migration)
+  return photo.file_path || ''
+}
+
+// ============================================================================
 // Mock Data for Fallback (when Supabase isn't available)
 // ============================================================================
 
@@ -1045,7 +1069,20 @@ export async function loadSurveyData(projectId: string): Promise<{
 }
 
 /**
- * Save survey photos to the photos table
+ * Helper: Convert base64 string to Blob
+ */
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64)
+  const byteNumbers = new Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+  }
+  const byteArray = new Uint8Array(byteNumbers)
+  return new Blob([byteArray], { type: mimeType })
+}
+
+/**
+ * Save survey photos to Supabase Storage and database
  */
 async function saveSurveyPhotos(
   projectId: string,
@@ -1058,36 +1095,70 @@ async function saveSurveyPhotos(
     // For each question with photos
     for (const [questionId, questionPhotos] of Object.entries(photos)) {
       for (let i = 0; i < questionPhotos.length; i++) {
-        const photo = questionPhotos[i]
+        const photoDataUrl = questionPhotos[i]
+
+        // Skip if already uploaded (detected by data URL prefix)
+        if (photoDataUrl.startsWith('http')) {
+          // Photo already in storage, skip
+          continue
+        }
+
+        // Convert base64 data URL to Blob
+        const base64Data = photoDataUrl.split(',')[1]
+        const mimeType = photoDataUrl.match(/data:([^;]+);/)?.[1] || 'image/jpeg'
+        const blob = base64ToBlob(base64Data, mimeType)
+
+        // Generate file path in storage: projectId/questionId/index.jpg
+        const fileExtension = mimeType.split('/')[1] || 'jpg'
+        const fileName = `photo_${i}.${fileExtension}`
+        const storagePath = `${projectId}/${questionId}/${fileName}`
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from('survey-photos')
+          .upload(storagePath, blob, {
+            contentType: mimeType,
+            upsert: true, // Overwrite if exists
+          })
+
+        if (uploadError) {
+          console.error('Error uploading photo to storage:', uploadError)
+          continue
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase
+          .storage
+          .from('survey-photos')
+          .getPublicUrl(storagePath)
+
+        const publicUrl = urlData?.publicUrl || `http://127.0.0.1:54321/storage/v1/object/public/survey-photos/${storagePath}`
+
+        // Save metadata to database
         const photoId = `${projectId}-${questionId}-${i}`
 
-        // Check if photo already exists
-        const { data: existing } = await supabase
-          .from('photos')
-          .select('id')
-          .eq('id', photoId)
-          .single()
+        const photoRecord = {
+          id: photoId,
+          project_id: projectId,
+          question_id: questionId,
+          storage_path: storagePath,
+          file_name: fileName,
+          file_size: blob.size,
+          mime_type: mimeType,
+          photo_category: 'survey_question',
+          description: `Survey question: ${questionId}`,
+          taken_at: new Date().toISOString(),
+          uploaded_by: 'survey_system',
+        }
 
-        if (existing) {
-          // Update existing photo
-          await supabase
-            .from('photos')
-            .update({
-              description: `Survey question: ${questionId}`,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', photoId)
-        } else {
-          // Insert new photo
-          await supabase.from('photos').insert({
-            id: photoId,
-            project_id: projectId,
-            file_path: photo, // Base64 data URL
-            file_name: `survey_${questionId}_${i}.jpg`,
-            mime_type: 'image/jpeg',
-            description: `Survey question: ${questionId}`,
-            uploaded_by: 'system',
-          })
+        // Upsert to database
+        const { error: dbError } = await supabase
+          .from('photos')
+          .upsert(photoRecord, { onConflict: 'id' })
+
+        if (dbError) {
+          console.error('Error saving photo metadata:', dbError)
         }
       }
     }
@@ -1097,7 +1168,7 @@ async function saveSurveyPhotos(
 }
 
 /**
- * Load survey photos from the photos table
+ * Load survey photos from storage
  */
 async function loadSurveyPhotos(projectId: string): Promise<Record<string, string[]>> {
   const supabase = getSupabase()
@@ -1106,9 +1177,11 @@ async function loadSurveyPhotos(projectId: string): Promise<Record<string, strin
   try {
     const { data, error } = await supabase
       .from('photos')
-      .select('id, file_path, description')
+      .select('question_id, storage_path')
       .eq('project_id', projectId)
-      .ilike('description', 'survey question:%')
+      .not('question_id', 'is', null)
+      .order('question_id')
+      .order('created_at')
 
     if (error) {
       console.error('Error loading survey photos:', error)
@@ -1118,15 +1191,19 @@ async function loadSurveyPhotos(projectId: string): Promise<Record<string, strin
     const photos: Record<string, string[]> = {}
 
     for (const photo of data || []) {
-      // Extract question ID from description (format: "Survey question: questionId")
-      const match = photo.description?.match(/Survey question: (.+)/)
-      if (match && match[1]) {
-        const questionId = match[1]
-        if (!photos[questionId]) {
-          photos[questionId] = []
-        }
-        photos[questionId].push(photo.file_path)
+      if (!photo.question_id || !photo.storage_path) continue
+
+      // Get public URL from storage path
+      const { data: urlData } = supabase
+        .storage
+        .from('survey-photos')
+        .getPublicUrl(photo.storage_path)
+
+      if (!photos[photo.question_id]) {
+        photos[photo.question_id] = []
       }
+
+      photos[photo.question_id].push(urlData.publicUrl)
     }
 
     return photos

@@ -49,12 +49,19 @@ export interface Project {
 export interface Photo {
   id: string
   project_id: string
-  storage_path: string
+  room_id?: string | null           // Optional room linkage
+  question_id?: string | null        // Link to survey question
+
+  // Storage
+  storage_path: string               // Path in Supabase Storage
+  file_path?: string | null         // DEPRECATED: Legacy base64 storage
   file_name: string
   file_size?: number
   mime_type?: string
+
+  // Metadata
   description?: string
-  photo_category?: string
+  photo_category?: string           // 'survey_question', 'room', 'detail', etc
   latitude?: number
   longitude?: number
   taken_at?: string
