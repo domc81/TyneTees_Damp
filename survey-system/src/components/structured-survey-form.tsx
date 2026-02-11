@@ -375,24 +375,24 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
 
       {/* Yes/No Question */}
       {question.type === 'yes_no' && (
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex gap-6">
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
             <input
               type="radio"
               name={question.id}
               checked={value === true}
               onChange={() => onChange(true)}
-              className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
             />
             <span className="text-sm text-white/80">Yes</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
             <input
               type="radio"
               name={question.id}
               checked={value === false}
               onChange={() => onChange(false)}
-              className="w-4 h-4 text-brand-600 focus:ring-brand-500"
+              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
             />
             <span className="text-sm text-white/80">No</span>
           </label>
@@ -406,13 +406,13 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={question.placeholder}
-          className="input-field"
+          className="input-field text-base"
         />
       )}
 
       {/* Number Input */}
       {question.type === 'number' && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <input
             type="number"
             value={value || ''}
@@ -420,10 +420,10 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
             placeholder={question.placeholder}
             min={question.validation?.min}
             max={question.validation?.max}
-            className="input-field"
+            className="input-field text-base w-32"
           />
           {question.subLabel && (
-            <span className="text-sm text-surface-500">{question.subLabel}</span>
+            <span className="text-sm text-white/60">{question.subLabel}</span>
           )}
         </div>
       )}
@@ -433,7 +433,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
         <select
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="input-field"
+          className="input-field text-base"
         >
           <option value="">Select...</option>
           {question.options?.map(option => (
@@ -444,14 +444,14 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
 
       {/* Multi-Select (Checkboxes) */}
       {question.type === 'multi_select' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {question.options?.map(option => (
-            <label key={option} className="flex items-center gap-2 cursor-pointer">
+            <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
               <input
                 type="checkbox"
                 checked={isChecked(option)}
                 onChange={(e) => onCheckboxChange(option, e.target.checked)}
-                className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
+                className="w-4 h-4 text-brand-500 rounded focus:ring-brand-500"
               />
               <span className="text-sm text-white/80">{option}</span>
             </label>
@@ -466,7 +466,7 @@ function QuestionRenderer({ question, value, onChange, onCheckboxChange }: Quest
           onChange={(e) => onChange(e.target.value)}
           placeholder={question.placeholder}
           rows={3}
-          className="input-field resize-none"
+          className="input-field resize-none text-base min-h-[100px]"
         />
       )}
 
