@@ -18,6 +18,7 @@ import {
   Trash2,
   Download,
 } from 'lucide-react'
+import { uploadPhoto, deletePhoto, getPhotoUrl } from '@/lib/supabase-data'
 
 // Photo categories with icons
 const photoCategories = [
@@ -31,10 +32,10 @@ const photoCategories = [
 
 // Sample photos
 const samplePhotos = [
-  { id: '1', file_name: 'IMG_001.jpg', photo_category: 'damp_evidence', description: 'Rising damp on living room wall', created_at: '2026-02-04T10:30:00Z' },
-  { id: '2', file_name: 'IMG_002.jpg', photo_category: 'timber_damage', description: 'Joist damage in basement', created_at: '2026-02-04T10:35:00Z' },
-  { id: '3', file_name: 'IMG_003.jpg', photo_category: 'general', description: 'Full room view', created_at: '2026-02-04T10:40:00Z' },
-  { id: '4', file_name: 'IMG_004.jpg', photo_category: 'damp_evidence', description: 'Salt crystallisation detail', created_at: '2026-02-04T11:00:00Z' },
+  { id: '1', file_name: 'IMG_001.jpg', photo_category: 'damp_evidence', description: 'Rising damp on living room wall', created_at: '2026-02-04T10:30:00Z', storage_path: 'projects/a0000000-0000-0000-0000-000000000001/IMG_001.jpg' },
+  { id: '2', file_name: 'IMG_002.jpg', photo_category: 'timber_damage', description: 'Joist damage in basement', created_at: '2026-02-04T10:35:00Z', storage_path: 'projects/a0000000-0000-0000-0000-000000000001/IMG_002.jpg' },
+  { id: '3', file_name: 'IMG_003.jpg', photo_category: 'general', description: 'Full room view', created_at: '2026-02-04T10:40:00Z', storage_path: 'projects/a0000000-0000-0000-0000-000000000001/IMG_003.jpg' },
+  { id: '4', file_name: 'IMG_004.jpg', photo_category: 'damp_evidence', description: 'Salt crystallisation detail', created_at: '2026-02-04T11:00:00Z', storage_path: 'projects/a0000000-0000-0000-0000-000000000001/IMG_004.jpg' },
 ]
 
 export default function PhotosPage({ params }: { params: { projectId: string } }) {
@@ -45,6 +46,9 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [newPhotoDesc, setNewPhotoDesc] = useState('')
   const [selectedPhoto, setSelectedPhoto] = useState<typeof photos[0] | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredPhotos = selectedCategory
@@ -54,9 +58,30 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      // Would upload to Supabase Storage here
-      console.log('Uploading:', files[0].name)
+      const file = files[0]
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp']
+      
+      // Handle mobile device formats
+      if (file.type === 'image/heic' || file.type === 'image/heif') {
+        setUploadError('HEIC/HEIF format not supported. Please use JPG, PNG, or WebP.')
+        return
+      }
+      
+      if (!validTypes.includes(file.type)) {
+        setUploadError('Please select a valid image file (JPEG, PNG, or WebP)')
+        return
+      }
+      
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError('File size exceeds 10MB limit')
+        return
+      }
+      
+      setSelectedFile(file)
       setShowUploadModal(true)
+      setUploadError(null)
     }
   }
 
@@ -65,6 +90,24 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
       setIsCapturing(true)
     } else {
       setShowUploadModal(true)
+    }
+  }
+
+  const handleDeletePhoto = async (photoId: string, storagePath: string) => {
+    if (!confirm('Are you sure you want to delete this photo? This cannot be undone.')) {
+      return
+    }
+
+    try {
+      const success = await deletePhoto(photoId, storagePath)
+      if (success) {
+        setPhotos(prev => prev.filter(photo => photo.id !== photoId))
+      } else {
+        setUploadError('Failed to delete photo. Please try again.')
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+      setUploadError(error instanceof Error ? error.message : 'Delete failed. Please try again.')
     }
   }
 
@@ -108,7 +151,34 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
         </div>
       </header>
 
-      <div className="p-8">
+      {/* Error Display */}
+      {uploadError && (
+        <div className="p-4">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <X className="h-5 w-5 text-red-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{uploadError}</p>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    onClick={() => setUploadError(null)}
+                    className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+     <div className="p-8">
         {/* Category Filters */}
         <div className="mb-6">
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -165,10 +235,23 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
                   className="group relative aspect-square rounded-xl overflow-hidden bg-surface-100 cursor-pointer
                              hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                 >
-                  {/* Placeholder for photo */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-surface-200 to-surface-300">
-                    <Icon className="w-12 h-12 text-surface-400" />
-                  </div>
+                  {/* Actual photo or placeholder */}
+                  {photo.storage_path ? (
+                    <img
+                      src={getPhotoUrl({ storage_path: photo.storage_path })}
+                      alt={photo.description || 'Survey photo'}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.onerror = null
+                        e.currentTarget.src = `/placeholder-photo.jpg`
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-surface-200 to-surface-300">
+                      <Icon className="w-12 h-12 text-surface-400" />
+                    </div>
+                  )}
 
                   {/* Category Badge */}
                   <div className="absolute top-2 left-2">
@@ -188,7 +271,13 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
 
                   {/* Hover Actions */}
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 rounded-lg bg-white/90 hover:bg-white shadow-sm transition-colors">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeletePhoto(photo.id, photo.storage_path)
+                      }}
+                      className="p-2 rounded-lg bg-white/90 hover:bg-white shadow-sm transition-colors"
+                    >
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
@@ -221,7 +310,19 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
                   className="p-4 flex items-center gap-4 cursor-pointer hover:bg-surface-50 transition-colors"
                 >
                   <div className="w-20 h-20 rounded-lg bg-surface-100 flex items-center justify-center overflow-hidden">
-                    <Icon className="w-8 h-8 text-surface-400" />
+                    {photo.storage_path ? (
+                      <img
+                        src={getPhotoUrl({ storage_path: photo.storage_path })}
+                        alt={photo.description || 'Survey photo'}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = `/placeholder-photo.jpg`
+                        }}
+                      />
+                    ) : (
+                      <Icon className="w-8 h-8 text-surface-400" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-surface-900 truncate">{photo.description}</p>
@@ -235,6 +336,15 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
                     <Icon className="w-3 h-3" />
                     {category?.label}
                   </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeletePhoto(photo.id, photo.storage_path)
+                    }}
+                    className="p-2 rounded-lg hover:bg-surface-100 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
                 </div>
               )
             })}
@@ -259,10 +369,22 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
             <div className="flex">
               {/* Photo Preview */}
               <div className="flex-1 bg-surface-900 flex items-center justify-center min-h-[400px]">
-                <div className="text-center text-surface-500">
-                  <ImageIcon className="w-24 h-24 mx-auto mb-4" />
-                  <p>Photo preview would display here</p>
-                </div>
+                {selectedPhoto.storage_path ? (
+                  <img
+                    src={getPhotoUrl({ storage_path: selectedPhoto.storage_path })}
+                    alt={selectedPhoto.description || 'Survey photo'}
+                    className="w-full h-full object-contain p-4"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null
+                      e.currentTarget.src = `/placeholder-photo.jpg`
+                    }}
+                  />
+                ) : (
+                  <div className="text-center text-surface-500">
+                    <ImageIcon className="w-24 h-24 mx-auto mb-4" />
+                    <p>Photo preview would display here</p>
+                  </div>
+                )}
               </div>
 
               {/* Photo Details */}
@@ -327,14 +449,48 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
       />
 
       {/* Upload Modal */}
-      {showUploadModal && (
+      {showUploadModal && selectedFile && (
         <UploadModal
-          onClose={() => setShowUploadModal(false)}
-          onUpload={(desc) => {
-            // Would handle upload
-            console.log('Upload with description:', desc)
+          onClose={() => {
             setShowUploadModal(false)
-            setNewPhotoDesc('')
+            setSelectedFile(null)
+            setUploadError(null)
+          }}
+          onUpload={async (desc, category) => {
+            if (!selectedFile) return
+            
+            setIsUploading(true)
+            setUploadError(null)
+            
+            try {
+              const uploadedPhoto = await uploadPhoto(
+                params.projectId,
+                selectedFile,
+                category,
+                desc
+              )
+              
+              if (uploadedPhoto) {
+                setPhotos(prev => [...prev, {
+                  id: uploadedPhoto.id,
+                  file_name: uploadedPhoto.file_name,
+                  photo_category: uploadedPhoto.category,
+                  description: uploadedPhoto.description || '',
+                  created_at: uploadedPhoto.created_at,
+                  storage_path: uploadedPhoto.file_path
+                }])
+                
+                // Reset state
+                setShowUploadModal(false)
+                setSelectedFile(null)
+                setNewPhotoDesc('')
+              }
+            } catch (error) {
+              console.error('Upload failed:', error)
+              setUploadError(error instanceof Error ? error.message : 'Upload failed. Please try again.')
+            } finally {
+              setIsUploading(false)
+            }
           }}
         />
       )}
@@ -348,7 +504,7 @@ function UploadModal({
   onUpload,
 }: {
   onClose: () => void
-  onUpload: (description: string) => void
+  onUpload: (description: string, category: string) => void
 }) {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('general')
@@ -400,7 +556,7 @@ function UploadModal({
               Cancel
             </button>
             <button
-              onClick={() => onUpload(description)}
+              onClick={() => onUpload(description, category)}
               className="btn-primary flex-1 flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4" />

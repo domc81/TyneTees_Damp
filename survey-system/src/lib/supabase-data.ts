@@ -1245,3 +1245,134 @@ export async function updateSurveyProgress(
     return false
   }
 }
+
+// ============================================================================
+// Photo Management Functions
+// ============================================================================
+
+/**
+ * Upload a photo to Supabase Storage and create database record
+ */
+export async function uploadPhoto(
+  projectId: string,
+  file: File,
+  category: string,
+  description: string,
+  roomInspectionId?: string
+): Promise<Photo | null> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase not initialized')
+    return null
+  }
+
+  try {
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('File size exceeds 10MB limit')
+    }
+
+    // Validate file type and handle mobile device formats
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+    
+    // Handle mobile device formats by converting to standard formats
+    let processedFile = file
+    let contentType = file.type
+    
+    // If it's a HEIC/HEIF file from iOS, we need to handle it specially
+    if (file.type === 'image/heic' || file.type === 'image/heif') {
+      // For now, we'll reject HEIC/HEIF files since browser support is limited
+      // In a production app, you might want to convert these to JPEG using a library
+      throw new Error('HEIC/HEIF format not supported. Please use JPG, PNG, or WebP.')
+    }
+    
+    if (!validTypes.includes(file.type)) {
+      throw new Error('Invalid file type. Only JPG, PNG, and WebP are allowed.')
+    }
+
+    // Generate unique filename with proper extension
+    const fileExt = file.type === 'image/jpeg' ? 'jpg' :
+                   file.type === 'image/png' ? 'png' :
+                   file.type === 'image/webp' ? 'webp' : 'jpg'
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`
+    const storagePath = `${projectId}/${fileName}`
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('survey-photos')
+      .upload(storagePath, processedFile, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: contentType
+      })
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      throw new Error('Failed to upload photo to storage')
+    }
+
+    // Create database record
+    const { data: photoData, error: dbError } = await supabase
+      .from('photos')
+      .insert({
+        project_id: projectId,
+        room_inspection_id: roomInspectionId,
+        storage_path: storagePath,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+        category: category,
+        description: description,
+        taken_at: new Date().toISOString()
+      })
+      .select()
+
+    if (dbError) {
+      console.error('Database insert error:', dbError)
+      // Clean up storage if DB insert failed
+      await supabase.storage.from('survey-photos').remove([storagePath])
+      throw new Error('Failed to create photo record in database')
+    }
+
+    return photoData[0] as Photo
+
+  } catch (error) {
+    console.error('Photo upload failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a photo from both storage and database
+ */
+export async function deletePhoto(photoId: string, storagePath: string): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  try {
+    // Delete from database first
+    const { error: dbError } = await supabase
+      .from('photos')
+      .delete()
+      .eq('id', photoId)
+
+    if (dbError) throw dbError
+
+    // Delete from storage
+    const { error: storageError } = await supabase
+      .storage
+      .from('survey-photos')
+      .remove([storagePath])
+
+    if (storageError) {
+      console.error('Failed to delete from storage:', storageError)
+      // Photo deleted from DB but not storage - this is acceptable
+    }
+
+    return true
+  } catch (error) {
+    console.error('Photo deletion failed:', error)
+    return false
+  }
+}
