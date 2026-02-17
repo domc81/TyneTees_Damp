@@ -117,12 +117,14 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="spinner mx-auto mb-4" />
-          <p className="text-white/60">Loading dashboard...</p>
+      <ProtectedRoute>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="spinner mx-auto mb-4" />
+            <p className="text-white/60">Loading dashboard...</p>
+          </div>
         </div>
-      </div>
+      </ProtectedRoute>
     )
   }
 
