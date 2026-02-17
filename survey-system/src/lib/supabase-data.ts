@@ -161,7 +161,7 @@ export async function getCustomers(): Promise<Customer[]> {
   if (!supabase) return []
 
   const { data, error } = await supabase
-    .from('customer_details')
+    .from('customers')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -178,7 +178,7 @@ export async function getCustomer(id: string): Promise<Customer | null> {
   if (!supabase) return null
 
   const { data, error } = await supabase
-    .from('customer_details')
+    .from('customers')
     .select('*')
     .eq('id', id)
     .single()
@@ -210,7 +210,7 @@ export async function createCustomer(customerData: {
   }
 
   const { data, error } = await supabase
-    .from('customer_details')
+    .from('customers')
     .insert([{
       ...customerData,
       created_at: new Date().toISOString(),
@@ -249,7 +249,7 @@ export async function updateCustomer(
   }
 
   const { data, error } = await supabase
-    .from('customer_details')
+    .from('customers')
     .update({
       ...customerData,
       updated_at: new Date().toISOString(),
@@ -425,7 +425,7 @@ export async function getProjects(): Promise<Project[]> {
   try {
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, customer:customers(id, first_name, last_name, email, phone)')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -448,7 +448,7 @@ export async function getProject(id: string): Promise<Project | null> {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('*')
+    .select('*, customer:customers(id, first_name, last_name, email, phone)')
     .eq('id', id)
     .single()
 
@@ -467,11 +467,11 @@ export async function createProject(
   if (!supabase) return null
 
   // Generate project number
-  const { data: countData } = await supabase
+  const { count: countData } = await supabase
     .from('projects')
-    .select('count', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
 
-  const count = (countData?.count || 0) + 1
+  const count = (countData || 0) + 1
   const year = new Date().getFullYear()
   const projectNumber = `TT-${year}-${count.toString().padStart(4, '0')}`
 
@@ -512,18 +512,33 @@ export async function createProjectFromForm(data: {
   if (!supabase) return null
 
   // Generate project number
-  const { data: countData } = await supabase
+  const { count: countData } = await supabase
     .from('projects')
-    .select('count', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
 
-  const count = (countData?.count || 0) + 1
+  const count = (countData || 0) + 1
   const year = new Date().getFullYear()
   const projectNumber = `TT-${year}-${count.toString().padStart(4, '0')}`
+
+  // Fetch customer name for denormalised client_name field
+  let clientName: string | null = null
+  if (data.customer_id) {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('first_name, last_name, title')
+      .eq('id', data.customer_id)
+      .single()
+    if (customer) {
+      const titlePrefix = customer.title ? `${customer.title} ` : ''
+      clientName = `${titlePrefix}${customer.first_name} ${customer.last_name}`
+    }
+  }
 
   const { data: project, error } = await supabase
     .from('projects')
     .insert({
       customer_id: data.customer_id,
+      client_name: clientName,
       site_address: data.site_address,
       site_address_line2: data.site_address_line2 || null,
       site_city: data.site_city || null,
