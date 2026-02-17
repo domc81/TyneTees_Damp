@@ -367,8 +367,8 @@ function DetailsTab({ project, config }: { project: Project; config: typeof surv
           </div>
           <div className="p-6 space-y-4">
             <DetailRow label="Name" value={project.client_name} />
-            <DetailRow label="Email" value={project.client_email || '-'} />
-            <DetailRow label="Phone" value={project.client_phone || '-'} />
+            <DetailRow label="Email" value={project.customer?.email || '-'} />
+            <DetailRow label="Phone" value={project.customer?.phone || '-'} />
           </div>
         </div>
 
@@ -393,7 +393,7 @@ function DetailsTab({ project, config }: { project: Project; config: typeof surv
           <div className="p-6 space-y-4">
             <DetailRow label="Survey Date" value={project.survey_date ? new Date(project.survey_date).toLocaleDateString() : '-'} />
             <DetailRow label="Weather" value={project.weather_conditions || '-'} />
-            <DetailRow label="Reference" value={project.internal_reference || '-'} />
+            <DetailRow label="Reference" value={project.enquiry_id || '-'} />
           </div>
         </div>
 
