@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -12,15 +12,38 @@ import {
   Check,
   Plus,
 } from 'lucide-react'
-import { WORK_SECTIONS, getItemsBySection } from '@/lib/pricing-database'
-
-type WorkSection = (typeof WORK_SECTIONS)[keyof typeof WORK_SECTIONS]
+import { getWorkSections, getPricingItems } from '@/lib/supabase-data'
+import type { WorkSection, PricingItem } from '@/types/database.types'
 
 export default function WorkSectionsAdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [sections, setSections] = useState<WorkSection[]>([])
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const sections = Object.values(WORK_SECTIONS).sort((a, b) => a.display_order - b.display_order)
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [sectionsData, itemsData] = await Promise.all([
+          getWorkSections(),
+          getPricingItems()
+        ])
+        setSections(sectionsData.sort((a, b) => a.display_order - b.display_order))
+        setPricingItems(itemsData)
+        setError(null)
+      } catch (err) {
+        console.error('Failed to load data:', err)
+        setError('Failed to load data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -71,8 +94,8 @@ export default function WorkSectionsAdminPage() {
         {/* Sections List */}
         <div className="space-y-3">
           {sections.map((section, index) => {
-            const itemCount = getItemsBySection(section.id).length
-            const isEditing = editingId === section.id
+              const itemCount = pricingItems.filter(item => item.section_id === section.id).length
+              const isEditing = editingId === section.id
 
             return (
               <div
@@ -130,7 +153,7 @@ export default function WorkSectionsAdminPage() {
       {/* Edit Modal */}
       {editingId && (
         <SectionFormModal
-          section={WORK_SECTIONS[editingId as keyof typeof WORK_SECTIONS]}
+          section={sections.find(s => s.id === editingId)}
           onClose={() => setEditingId(null)}
           onSave={(data) => {
             console.log('Updating section:', editingId, data)
@@ -151,7 +174,7 @@ interface SectionEditFormProps {
 
 function SectionEditForm({ section, onCancel, onSave }: SectionEditFormProps) {
   const [name, setName] = useState(section.name)
-  const [description, setDescription] = useState(section.description)
+  const [description, setDescription] = useState(section.description || '')
   const [isOptional, setIsOptional] = useState(section.is_optional)
   const [displayOrder, setDisplayOrder] = useState(section.display_order)
 

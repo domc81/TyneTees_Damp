@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -17,14 +17,15 @@ import {
   Package,
 } from 'lucide-react'
 import {
-  PRICING_ITEMS,
-  WORK_SECTIONS,
-  MARKUP_CONFIG,
-  BASE_RATES,
-  calculateItemCost,
-} from '@/lib/pricing-database'
+  getPricingItems,
+  getWorkSections,
+  getMarkupConfig,
+  getBaseRates,
+} from '@/lib/supabase-data'
+import type { PricingItem, WorkSection, MarkupConfig, BaseRate } from '@/types/database.types'
 
-type PricingItem = (typeof PRICING_ITEMS)[keyof typeof PRICING_ITEMS]
+// Import calculateItemCost from pricing-database if it's still needed
+import { calculateItemCost } from '@/lib/pricing-database'
 
 const itemTypeOptions = [
   { value: 'MTL', label: 'Materials', color: 'bg-blue-100 text-blue-700' },
@@ -42,10 +43,42 @@ export default function PricingItemsAdminPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [sortField, setSortField] = useState<'name' | 'section_id' | 'material_cost'>('section_id')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([])
+  const [workSections, setWorkSections] = useState<WorkSection[]>([])
+  const [markupConfig, setMarkupConfig] = useState<MarkupConfig[]>([])
+  const [baseRates, setBaseRates] = useState<BaseRate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [itemsData, sectionsData, markupData, ratesData] = await Promise.all([
+          getPricingItems(),
+          getWorkSections(),
+          getMarkupConfig(),
+          getBaseRates()
+        ])
+        setPricingItems(itemsData)
+        setWorkSections(sectionsData)
+        setMarkupConfig(markupData)
+        setBaseRates(ratesData)
+        setError(null)
+      } catch (err) {
+        console.error('Failed to load data:', err)
+        setError('Failed to load data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   // Convert to array and filter
   const items = useMemo(() => {
-    let list = Object.values(PRICING_ITEMS) as PricingItem[]
+    let list = pricingItems
 
     // Filter
     if (searchQuery) {
@@ -67,8 +100,8 @@ export default function PricingItemsAdminPage() {
       let cmp = 0
       if (sortField === 'name') cmp = a.name.localeCompare(b.name)
       else if (sortField === 'section_id') {
-        const sectionA = WORK_SECTIONS[a.section_id as keyof typeof WORK_SECTIONS]
-        const sectionB = WORK_SECTIONS[b.section_id as keyof typeof WORK_SECTIONS]
+        const sectionA = workSections.find(s => s.id === a.section_id)
+        const sectionB = workSections.find(s => s.id === b.section_id)
         cmp = (sectionA?.display_order || 0) - (sectionB?.display_order || 0)
       }
       else if (sortField === 'material_cost') cmp = a.material_cost - b.material_cost
@@ -96,7 +129,7 @@ export default function PricingItemsAdminPage() {
 
   // Get section name
   const getSectionName = (sectionId: string) => {
-    const section = WORK_SECTIONS[sectionId as keyof typeof WORK_SECTIONS]
+    const section = workSections.find(s => s.id === sectionId)
     return section?.name || sectionId
   }
 
@@ -142,7 +175,7 @@ export default function PricingItemsAdminPage() {
             className="input-field w-auto"
           >
             <option value="all">All Sections</option>
-            {Object.values(WORK_SECTIONS)
+            {workSections
               .sort((a, b) => a.display_order - b.display_order)
               .map(section => (
                 <option key={section.id} value={section.id}>{section.name}</option>
@@ -180,16 +213,16 @@ export default function PricingItemsAdminPage() {
           <div className="flex gap-6 text-sm">
             <div>
               <span className="text-surface-500">Labor Rate:</span>
-              <span className="ml-2 font-semibold">£{BASE_RATES.labor.base_hourly_rate}/hr</span>
-              <span className="ml-1 text-surface-400">(+{BASE_RATES.labor.markup_percentage}% markup)</span>
+              <span className="ml-2 font-semibold">£{baseRates.find(r => r.category === 'labor')?.rate_value || 'N/A'}/hr</span>
+              <span className="ml-1 text-surface-400">(+{baseRates.find(r => r.category === 'labor_markup')?.rate_value || 0}% markup)</span>
             </div>
             <div>
               <span className="text-surface-500">Materials Markup:</span>
-              <span className="ml-2 font-semibold">+{MARKUP_CONFIG.MTL.percentage}%</span>
+              <span className="ml-2 font-semibold">+{markupConfig.find(m => m.item_type === 'MTL')?.percentage || 0}%</span>
             </div>
             <div>
               <span className="text-surface-500">Labor Markup:</span>
-              <span className="ml-2 font-semibold">+{MARKUP_CONFIG.LBR.percentage}%</span>
+              <span className="ml-2 font-semibold">+{markupConfig.find(m => m.item_type === 'LBR')?.percentage || 0}%</span>
             </div>
           </div>
         </div>
@@ -327,7 +360,7 @@ export default function PricingItemsAdminPage() {
       {/* Edit Modal */}
       {editingId && (
         <PricingItemFormModal
-          item={PRICING_ITEMS[editingId as keyof typeof PRICING_ITEMS]}
+          item={pricingItems.find(item => item.id === editingId)}
           onClose={() => setEditingId(null)}
           onSave={(data) => {
             console.log('Updating item:', editingId, data)
@@ -396,7 +429,7 @@ function PricingItemFormModal({ item, onClose, onSave }: PricingItemFormModalPro
                 className="input-field"
                 required
               >
-                {Object.values(WORK_SECTIONS)
+                {workSections
                   .sort((a, b) => a.display_order - b.display_order)
                   .map(section => (
                     <option key={section.id} value={section.id}>{section.name}</option>
@@ -482,7 +515,7 @@ function PricingItemFormModal({ item, onClose, onSave }: PricingItemFormModalPro
               <div>
                 <span className="text-surface-500">Labor:</span>
                 <span className="ml-2 font-semibold">
-                  £{(formData.labor_hours * BASE_RATES.labor.base_hourly_rate * 2).toFixed(2)}
+                  £{(formData.labor_hours * (baseRates.find(r => r.category === 'labor')?.rate_value || 0) * 2).toFixed(2)}
                 </span>
                 <span className="text-surface-400 text-xs ml-1">(+100%)</span>
               </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -13,17 +13,62 @@ import {
   Truck,
   Users,
 } from 'lucide-react'
-import { BASE_RATES, MARKUP_CONFIG } from '@/lib/pricing-database'
+import { getBaseRates, getMarkupConfig } from '@/lib/supabase-data'
+import type { BaseRate, MarkupConfig } from '@/types/database.types'
 
 export default function RatesAdminPage() {
-  const [laborRate, setLaborRate] = useState(BASE_RATES.labor.base_hourly_rate)
-  const [laborMarkup, setLaborMarkup] = useState(BASE_RATES.labor.markup_percentage)
-  const [contractorRate, setContractorRate] = useState(BASE_RATES.contractor.hourly_rate)
-  const [travelRate, setTravelRate] = useState(BASE_RATES.travel.hourly_rate)
-  const [vehicleCost, setVehicleCost] = useState(BASE_RATES.travel.vehicle_cost_per_mile)
+  const [laborRate, setLaborRate] = useState(0)
+  const [laborMarkup, setLaborMarkup] = useState(0)
+  const [contractorRate, setContractorRate] = useState(0)
+  const [travelRate, setTravelRate] = useState(0)
+  const [vehicleCost, setVehicleCost] = useState(0)
+  const [materialMarkup, setMaterialMarkup] = useState(0)
+  const [overheadMarkup, setOverheadMarkup] = useState(0)
+  const [initialRates, setInitialRates] = useState<BaseRate[]>([])
+  const [initialMarkups, setInitialMarkups] = useState<MarkupConfig[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [materialMarkup, setMaterialMarkup] = useState(MARKUP_CONFIG.MTL.percentage)
-  const [overheadMarkup, setOverheadMarkup] = useState(MARKUP_CONFIG.OVR.percentage)
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [ratesData, markupData] = await Promise.all([
+          getBaseRates(),
+          getMarkupConfig()
+        ])
+
+        // Set rates from baseRates data
+        const labor = ratesData.find(r => r.category === 'labor')
+        const contractor = ratesData.find(r => r.category === 'contractor')
+        const travel = ratesData.find(r => r.category === 'travel')
+
+        setLaborRate(labor?.rate_value || 0)
+        setContractorRate(contractor?.rate_value || 0)
+        setTravelRate(travel?.rate_value || 0)
+
+        // Set markups from markupConfig data
+        const material = markupData.find(m => m.item_type === 'MTL')
+        const overhead = markupData.find(m => m.item_type === 'OVR')
+
+        setMaterialMarkup(material?.percentage || 0)
+        setOverheadMarkup(overhead?.percentage || 0)
+
+        // Store initial values for reset
+        setInitialRates(ratesData)
+        setInitialMarkups(markupData)
+
+        setError(null)
+      } catch (err) {
+        console.error('Failed to load rates:', err)
+        setError('Failed to load rates. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -44,13 +89,18 @@ export default function RatesAdminPage() {
   }
 
   const handleReset = () => {
-    setLaborRate(BASE_RATES.labor.base_hourly_rate)
-    setLaborMarkup(BASE_RATES.labor.markup_percentage)
-    setContractorRate(BASE_RATES.contractor.hourly_rate)
-    setTravelRate(BASE_RATES.travel.hourly_rate)
-    setVehicleCost(BASE_RATES.travel.vehicle_cost_per_mile)
-    setMaterialMarkup(MARKUP_CONFIG.MTL.percentage)
-    setOverheadMarkup(MARKUP_CONFIG.OVR.percentage)
+    // Reset to initial loaded values
+    const labor = initialRates.find(r => r.category === 'labor')
+    const contractor = initialRates.find(r => r.category === 'contractor')
+    const travel = initialRates.find(r => r.category === 'travel')
+    const material = initialMarkups.find(m => m.item_type === 'MTL')
+    const overhead = initialMarkups.find(m => m.item_type === 'OVR')
+
+    setLaborRate(labor?.rate_value || 0)
+    setContractorRate(contractor?.rate_value || 0)
+    setTravelRate(travel?.rate_value || 0)
+    setMaterialMarkup(material?.percentage || 0)
+    setOverheadMarkup(overhead?.percentage || 0)
     setHasChanges(false)
   }
 

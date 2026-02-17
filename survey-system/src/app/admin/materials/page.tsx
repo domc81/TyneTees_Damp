@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -15,9 +15,10 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import { MATERIALS_CATALOG, type MaterialsCatalogType } from '@/lib/pricing-database'
+import { getMaterials } from '@/lib/supabase-data'
+import type { MaterialsCatalogItem } from '@/types/database.types'
 
-type MaterialEntry = MaterialsCatalogType[keyof MaterialsCatalogType]
+type MaterialEntry = MaterialsCatalogItem
 
 const categoryOptions = [
   { value: 'prep', label: 'Preparatory' },
@@ -52,10 +53,31 @@ export default function MaterialsAdminPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [sortField, setSortField] = useState<'name' | 'unit_cost' | 'category'>('name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [materialsData, setMaterialsData] = useState<MaterialEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadMaterials = async () => {
+      try {
+        setLoading(true)
+        const data = await getMaterials()
+        setMaterialsData(data)
+        setError(null)
+      } catch (err) {
+        console.error('Failed to load materials:', err)
+        setError('Failed to load materials. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadMaterials()
+  }, [])
 
   // Convert to array and filter
   const materials = useMemo(() => {
-    let items = Object.values(MATERIALS_CATALOG) as MaterialEntry[]
+    let items = materialsData
 
     // Filter
     if (searchQuery) {
@@ -244,8 +266,8 @@ export default function MaterialsAdminPage() {
                         <span className="text-sm text-surface-600">{material.supplier || '-'}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-surface-500 max-w-48 truncate" title={material.coverage}>
-                      {material.coverage}
+                    <td className="px-4 py-3 text-sm text-surface-500 max-w-48 truncate" title={material.coverage || ''}>
+                      {material.coverage || '-'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
@@ -288,7 +310,7 @@ export default function MaterialsAdminPage() {
       {/* Edit Modal */}
       {editingId && (
         <MaterialFormModal
-          material={MATERIALS_CATALOG[editingId as keyof typeof MATERIALS_CATALOG]}
+          material={materialsData.find(m => m.id === editingId)}
           onClose={() => setEditingId(null)}
           onSave={(data) => {
             console.log('Updating material:', editingId, data)

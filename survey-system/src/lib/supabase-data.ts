@@ -832,6 +832,40 @@ export async function getPricingItems(sectionId?: string): Promise<PricingItem[]
   return data || []
 }
 
+export async function getItemsBySection(sectionId: string): Promise<PricingItem[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('pricing_items')
+    .select('*')
+    .eq('section_id', sectionId)
+    .order('name')
+  if (error) { console.error('Error fetching items by section:', error); return [] }
+  return data || []
+}
+
+export async function getBaseRates(): Promise<BaseRate[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('base_rates')
+    .select('*')
+    .order('category', { ascending: true })
+  if (error) { console.error('Error fetching base rates:', error); return [] }
+  return data || []
+}
+
+export async function getMarkupConfig(): Promise<MarkupConfig[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('markup_config')
+    .select('*')
+    .order('item_type', { ascending: true })
+  if (error) { console.error('Error fetching markup config:', error); return [] }
+  return data || []
+}
+
 // ============================================================================
 // Project Costing
 // ============================================================================
