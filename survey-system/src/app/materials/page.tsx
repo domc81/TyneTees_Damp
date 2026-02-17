@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -15,7 +15,8 @@ import {
   Hammer,
   ExternalLink,
 } from 'lucide-react'
-import { MATERIALS_CATALOG, type MaterialCatalogEntry } from '@/lib/pricing-database'
+import { getMaterials } from '@/lib/supabase-data'
+import type { MaterialsCatalogItem } from '@/types/database.types'
 
 // Simple icon component wrapper
 const Icon = ({ name, className }: { name: string; className?: string }) => {
@@ -49,13 +50,24 @@ const categoryConfig: Record<string, { label: string; color: string; iconName: s
 export const dynamic = 'force-dynamic'
 
 export default function MaterialsPage() {
+  const [materials, setMaterials] = useState<MaterialsCatalogItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  // Convert materials catalog to array and sort
-  const materials = Object.values(MATERIALS_CATALOG).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getMaterials()
+        setMaterials(data)
+      } catch (err) {
+        console.error('Error loading materials:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    load()
+  }, [])
 
   // Filter materials
   const filteredMaterials = materials.filter(material => {
@@ -71,7 +83,15 @@ export default function MaterialsPage() {
     }
     acc[material.category].push(material)
     return acc
-  }, {} as Record<string, MaterialCatalogEntry[]>)
+  }, {} as Record<string, MaterialsCatalogItem[]>)
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-white/60">Loading materials...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -153,7 +173,7 @@ export default function MaterialsPage() {
   )
 }
 
-function MaterialCard({ material }: { material: MaterialCatalogEntry }) {
+function MaterialCard({ material }: { material: MaterialsCatalogItem }) {
   const [showDetails, setShowDetails] = useState(false)
 
   return (
