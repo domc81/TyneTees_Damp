@@ -496,7 +496,7 @@ export async function createProject(
 // Returns the project with generated ID and number
 export async function createProjectFromForm(data: {
   customer_id?: string
-  client_name: string
+  client_name?: string
   site_address: string
   site_address_line2?: string
   site_city?: string
