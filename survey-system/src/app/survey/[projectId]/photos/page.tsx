@@ -474,10 +474,10 @@ export default function PhotosPage({ params }: { params: { projectId: string } }
                 setPhotos(prev => [...prev, {
                   id: uploadedPhoto.id,
                   file_name: uploadedPhoto.file_name,
-                  photo_category: uploadedPhoto.category,
+                  photo_category: uploadedPhoto.photo_category || 'general',
                   description: uploadedPhoto.description || '',
                   created_at: uploadedPhoto.created_at,
-                  storage_path: uploadedPhoto.file_path
+                  storage_path: uploadedPhoto.file_path || ''
                 }])
                 
                 // Reset state
