@@ -14,6 +14,17 @@ export interface Profile {
   updated_at: string
 }
 
+export interface Surveyor {
+  id: string
+  full_name: string
+  email: string
+  phone?: string
+  qualifications?: string
+  availability: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Project {
   id: string
   project_number: string

@@ -8,12 +8,22 @@ export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+  console.log('Supabase Configuration:', { url, key: key ? '***REDACTED***' : undefined })
+
   if (!url || !key) {
     console.warn('Supabase URL or key not configured')
+    console.log('Available environment variables:', Object.keys(process.env).filter(key => key.includes('SUPABASE')))
     return null as unknown as ReturnType<typeof createBrowserClient>
   }
 
-  supabaseInstance = createBrowserClient(url, key)
+  console.log('Creating Supabase client with URL:', url)
+
+  supabaseInstance = createBrowserClient(url, key, {
+    auth: {
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  })
   return supabaseInstance
 }
 

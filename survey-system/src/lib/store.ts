@@ -757,22 +757,35 @@ function saveProjects(projects: Project[]): void {
   localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects))
 }
 
-export function createProject(data: Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at'>): Project {
-  const projects = getProjects()
-  const project: Project = {
-    ...data,
-    id: crypto.randomUUID(),
-    project_number: generateProjectNumber(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+export async function createProject(data: Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at'>): Promise<Project> {
+  try {
+    // Create project in Supabase
+    const { createProjectFromForm } = await import('@/lib/supabase-data')
+    const createdProject = await createProjectFromForm({
+      client_name: data.client_name,
+      client_email: data.client_email,
+      client_phone: data.client_phone,
+      site_address: data.site_address,
+      site_address_line2: data.site_address_line2,
+      site_city: data.site_city,
+      site_county: data.site_county,
+      site_postcode: data.site_postcode,
+      survey_type: data.survey_type,
+      status: data.status,
+      weather_conditions: data.weather_conditions,
+      survey_date: data.survey_date,
+      notes: data.notes,
+    })
+
+    if (!createdProject) {
+      throw new Error('Supabase returned null project')
+    }
+
+    return createdProject
+  } catch (error) {
+    console.error('Error in createProject:', JSON.stringify(error, null, 2))
+    throw error
   }
-  projects.push(project)
-  saveProjects(projects)
-
-  // Also save to Supabase database
-  saveProjectToSupabase(project)
-
-  return project
 }
 
 // Save project to Supabase database

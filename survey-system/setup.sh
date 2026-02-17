@@ -53,6 +53,16 @@ case $choice in
         # Run migrations against local PostgreSQL
         PGPASSWORD=postgres psql -h localhost -U postgres -d postgres \
             -f supabase/migrations/001_initial_schema.sql
+        
+        echo ""
+        echo "🔧 Running customer details migration..."
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres \
+            -f supabase/migrations/20260212000001_customer_details_table.sql
+        
+        echo ""
+        echo "🔧 Running projects customer FK migration..."
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres \
+            -f supabase/migrations/20260212000002_projects_customer_fk.sql
 
         echo ""
         echo "✅ Setup complete!"

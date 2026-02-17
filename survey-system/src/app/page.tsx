@@ -19,9 +19,13 @@ import {
   Bug,
   Wind,
   Menu,
+  LogOut,
 } from 'lucide-react'
 import { getProjects, initializeSampleData } from '@/lib/supabase-data'
 import type { Project } from '@/lib/supabase-data'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string; border: string }> = {
   damp: { icon: Droplets, color: 'text-blue-600', label: 'Damp Survey', gradient: 'from-blue-50 to-cyan-50', border: 'border-blue-200' },
@@ -36,6 +40,7 @@ const navItems = [
   { icon: Calculator, label: 'Costing', href: '/costing' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Camera, label: 'Photos', href: '/photos' },
+  { icon: Users, label: 'Customers', href: '/customers' },
   { icon: Users, label: 'Team', href: '/team' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ]
@@ -44,6 +49,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     async function loadData() {
@@ -65,6 +71,14 @@ export default function Dashboard() {
             notes: 'Demo project',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            client_email: '',
+            client_phone: '',
+            site_address_line2: '',
+            site_city: '',
+            site_county: '',
+            surveyor_id: '',
+            completion_date: '',
+            internal_reference: '',
           },
         ])
         setIsLoading(false)
@@ -93,6 +107,14 @@ export default function Dashboard() {
           notes: 'Error fallback',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          client_email: '',
+          client_phone: '',
+          site_address_line2: '',
+          site_city: '',
+          site_county: '',
+          surveyor_id: '',
+          completion_date: '',
+          internal_reference: '',
         }])
       } finally {
         setIsLoading(false)
@@ -121,7 +143,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen">
+    <ProtectedRoute>
+      <div className="min-h-screen">
       {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -168,17 +191,7 @@ export default function Dashboard() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
-              JD
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">John Doe</p>
-              <p className="text-xs text-white/50">Surveyor</p>
-            </div>
-          </div>
-        </div>
+        <UserMenu />
       </aside>
 
       {/* Main Content */}
@@ -198,10 +211,16 @@ export default function Dashboard() {
                 <p className="text-sm text-white/60">Welcome back, John</p>
               </div>
             </div>
-            <Link href="/survey/new" className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              New Survey
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/survey/new" className="btn-primary flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                New Survey
+              </Link>
+              <Link href="/customers/new" className="btn-secondary flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Create Customer
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -323,7 +342,7 @@ export default function Dashboard() {
                             {project.status.replace('_', ' ')}
                           </span>
                         </div>
-                        <p className="font-medium text-white mt-1">{project.client_name}</p>
+                        <p className="font-medium text-white mt-1">{project.client_name || 'Unknown Client'}</p>
                         <div className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
                           <MapPin className="w-3.5 h-3.5 text-white/30" />
                           <span className="truncate">{project.site_address}</span>
@@ -345,6 +364,7 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   )
 }
 
@@ -379,6 +399,37 @@ function StatCard({ label, value, change, icon: Icon, color }: {
         <div className={`p-3 rounded-xl ${colorBg[color]}`}>
           <Icon className={`w-6 h-6 ${colorIcon[color]}`} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UserMenu() {
+  const { user, signOut } = useAuth()
+  const router = useRouter()
+  
+  const handleLogout = async () => {
+    await signOut()
+    router.push('/login')
+  }
+
+  return (
+    <div className="p-4 border-t border-white/10">
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
+          {user?.email?.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">{user?.email}</p>
+          <p className="text-xs text-white/50">Surveyor</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-white/50 hover:text-white transition-colors"
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </div>
   )

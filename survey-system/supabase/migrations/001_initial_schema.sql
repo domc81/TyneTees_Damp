@@ -50,7 +50,7 @@ CREATE TABLE projects (
   site_postcode TEXT NOT NULL,
   survey_type survey_type NOT NULL,
   status project_status DEFAULT 'draft',
-  surveyor_id UUID REFERENCES profiles(id),
+  surveyor_id UUID REFERENCES auth.users(id),
   weather_conditions TEXT,
   survey_date DATE,
   completion_date DATE,

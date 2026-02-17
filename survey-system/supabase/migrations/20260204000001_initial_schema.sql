@@ -97,6 +97,9 @@ CREATE TABLE projects (
   survey_date DATE,
   weather_conditions TEXT,
 
+  -- Surveyor assignment
+  surveyor_id UUID REFERENCES auth.users(id),
+
   -- Client info (denormalized for speed)
   client_name TEXT NOT NULL,
   site_address TEXT NOT NULL,

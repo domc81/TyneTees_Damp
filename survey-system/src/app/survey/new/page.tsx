@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -20,9 +20,10 @@ import {
   Save,
   ChevronRight,
   Check,
+  Plus,
 } from 'lucide-react'
 import type { SurveyType } from '@/types/database.types'
-import { createProject } from '@/lib/store'
+import { createProjectFromForm } from '@/lib/supabase-data'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; bgColor: string; gradient: string; label: string; description: string }> = {
   damp: {
@@ -82,9 +83,7 @@ function NewSurveyContent() {
   const [step, setStep] = useState<'type' | 'details'>(initialStep)
   const [selectedType, setSelectedType] = useState<SurveyType | null>(initialType)
   const [formData, setFormData] = useState({
-    client_name: '',
-    client_email: '',
-    client_phone: '',
+    customer_id: '',
     site_address: '',
     site_address_line2: '',
     site_city: '',
@@ -96,6 +95,9 @@ function NewSurveyContent() {
     notes: '',
   })
 
+  const [customers, setCustomers] = useState<{id: string, name: string}[]>([])
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true)
+
   const handleTypeSelect = (type: SurveyType) => {
     setSelectedType(type)
     setFormData({ ...formData, survey_type: type })
@@ -106,34 +108,81 @@ function NewSurveyContent() {
     setFormData({ ...formData, [field]: value })
   }
 
+  // Load customers on component mount
+  useEffect(() => {
+    async function loadCustomers() {
+      try {
+        setIsLoadingCustomers(true)
+        // Import dynamically to avoid circular dependencies
+        const { getCustomers } = await import('@/lib/supabase-data')
+        const customerList = await getCustomers()
+        
+        // Format customers for dropdown
+        const formattedCustomers = customerList.map(customer => ({
+          id: customer.id,
+          name: `${customer.first_name} ${customer.last_name} (${customer.email})`
+        }))
+        
+        setCustomers(formattedCustomers)
+      } catch (error) {
+        console.error('Error loading customers:', error)
+      } finally {
+        setIsLoadingCustomers(false)
+      }
+    }
+
+    loadCustomers()
+  }, [])
+
+  // Handle customer selection change
+  const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    if (value === 'new') {
+      // Redirect to create new customer
+      router.push('/customers/new')
+    } else {
+      handleInputChange('customer_id', value)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate required fields
-    if (!formData.client_name || !formData.site_address || !formData.site_postcode || !formData.survey_type) {
+    if (!formData.customer_id || !formData.site_address || !formData.site_postcode || !formData.survey_type) {
       alert('Please fill in all required fields')
       return
     }
 
-    // Create the project
-    const newProject = createProject({
-      client_name: formData.client_name,
-      client_email: formData.client_email,
-      client_phone: formData.client_phone,
-      site_address: formData.site_address,
-      site_address_line2: formData.site_address_line2,
-      site_city: formData.site_city,
-      site_county: formData.site_county,
-      site_postcode: formData.site_postcode,
-      survey_type: formData.survey_type,
-      status: 'draft',
-      weather_conditions: formData.weather_conditions,
-      survey_date: formData.survey_date,
-      notes: formData.notes,
-    })
+    try {
+      // Create the project (now async)
+      const newProject = await createProjectFromForm({
+        customer_id: formData.customer_id,
+        site_address: formData.site_address,
+        site_address_line2: formData.site_address_line2,
+        site_city: formData.site_city,
+        site_county: formData.site_county,
+        site_postcode: formData.site_postcode,
+        survey_type: formData.survey_type,
+        status: 'draft',
+        weather_conditions: formData.weather_conditions,
+        survey_date: formData.survey_date,
+        notes: formData.notes,
+      })
 
-    // Redirect to the new project
-    router.push(`/projects/${newProject.id}`)
+      if (!newProject) {
+        throw new Error('Project creation returned null')
+      }
+
+      // Redirect to the new project
+      router.push(`/projects/${newProject.id}`)
+    } catch (error) {
+      console.error('Project creation failed:', error)
+      const errorMessage = error instanceof Error
+        ? error.message
+        : JSON.stringify(error, null, 2)
+      alert(`Failed to create project: ${errorMessage}`)
+    }
   }
 
   return (
@@ -226,31 +275,41 @@ function NewSurveyContent() {
               <div className="px-6 py-5 border-b border-white/10">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <User className="w-5 h-5 text-white/40" />
-                  Client Information
+                  Customer Selection
                 </h3>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  label="Client Name"
-                  required
-                  value={formData.client_name}
-                  onChange={(v) => handleInputChange('client_name', v)}
-                  placeholder="Enter client name"
-                />
-                <FormField
-                  label="Email Address"
-                  type="email"
-                  value={formData.client_email}
-                  onChange={(v) => handleInputChange('client_email', v)}
-                  placeholder="client@example.com"
-                />
-                <FormField
-                  label="Phone Number"
-                  type="tel"
-                  value={formData.client_phone}
-                  onChange={(v) => handleInputChange('client_phone', v)}
-                  placeholder="+44 1234 567890"
-                />
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-2">
+                        Select Customer
+                      </label>
+                      <select
+                        className="w-full p-3 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/50 focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition-all"
+                        value={formData.customer_id}
+                        onChange={handleCustomerChange}
+                        required
+                        disabled={isLoadingCustomers}
+                      >
+                        <option value="">Select a customer</option>
+                        <option value="new">+ Create New Customer</option>
+                        {customers.map(customer => (
+                          <option key={customer.id} value={customer.id}>{customer.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <Link
+                        href="/customers/new"
+                        className="btn-secondary flex items-center gap-2 w-full justify-center"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Customer
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

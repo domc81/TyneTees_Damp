@@ -116,6 +116,23 @@ let useMockData = false
 // Types (matching database schema)
 // ============================================================================
 
+export interface Customer {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  mobile?: string
+  address_line1: string
+  address_line2?: string
+  city: string
+  county?: string
+  postcode: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Enquiry {
   id: string
   enquiry_number: string
@@ -146,7 +163,7 @@ export interface Project {
   status: string
   survey_date: string | null
   weather_conditions: string | null
-  client_name: string
+  customer_id: string | null
   site_address: string
   site_address_line2?: string
   site_city?: string
@@ -273,6 +290,238 @@ export interface ProjectCosting {
   updated_at: string
 }
 
+export interface Surveyor {
+  id: string
+  user_id: string | null
+  full_name: string
+  email: string
+  phone: string | null
+  qualifications: string | null
+  availability: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ============================================================================
+// Customers
+// ============================================================================
+
+export async function getCustomers(): Promise<Customer[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('customer_details')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching customers:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function getCustomer(id: string): Promise<Customer | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  const { data, error } = await supabase
+    .from('customer_details')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching customer:', error)
+    return null
+  }
+
+  return data
+}
+
+export async function createCustomer(customerData: {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  mobile?: string
+  address_line1: string
+  address_line2?: string
+  city: string
+  county?: string
+  postcode: string
+  notes?: string
+}): Promise<Customer> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const { data, error } = await supabase
+    .from('customer_details')
+    .insert([{
+      ...customerData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating customer:', error)
+    throw new Error(`Failed to create customer: ${error.message}`)
+  }
+
+  return data
+}
+
+export async function updateCustomer(
+  id: string,
+  customerData: {
+    first_name?: string
+    last_name?: string
+    email?: string
+    phone?: string
+    mobile?: string
+    address_line1?: string
+    address_line2?: string
+    city?: string
+    county?: string
+    postcode?: string
+    notes?: string
+  }
+): Promise<Customer> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const { data, error } = await supabase
+    .from('customer_details')
+    .update({
+      ...customerData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating customer:', error)
+    throw new Error(`Failed to update customer: ${error.message}`)
+  }
+
+  return data
+}
+
+// ============================================================================
+// Surveyors
+// ============================================================================
+
+export async function getSurveyors(): Promise<Surveyor[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('surveyors')
+    .select('*')
+    .order('full_name')
+
+  if (error) {
+    console.error('Error fetching surveyors:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function getSurveyor(id: string): Promise<Surveyor | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  const { data, error } = await supabase
+    .from('surveyors')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching surveyor:', error)
+    return null
+  }
+
+  return data
+}
+
+export async function createSurveyor(surveyorData: {
+  full_name: string
+  email: string
+  phone?: string
+  qualifications?: string
+  availability?: boolean
+}): Promise<Surveyor> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const { data, error } = await supabase
+    .from('surveyors')
+    .insert([{
+      full_name: surveyorData.full_name,
+      email: surveyorData.email,
+      phone: surveyorData.phone || null,
+      qualifications: surveyorData.qualifications || null,
+      availability: surveyorData.availability ?? true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating surveyor:', error)
+    throw new Error(`Failed to create surveyor: ${error.message}`)
+  }
+
+  return data
+}
+
+export async function updateSurveyor(
+  id: string,
+  surveyorData: {
+    full_name?: string
+    email?: string
+    phone?: string | null
+    qualifications?: string | null
+    availability?: boolean
+  }
+): Promise<Surveyor> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const { data, error } = await supabase
+    .from('surveyors')
+    .update({
+      ...surveyorData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating surveyor:', error)
+    throw new Error(`Failed to update surveyor: ${error.message}`)
+  }
+
+  return data
+}
+
 // ============================================================================
 // Enquiries
 // ============================================================================
@@ -396,9 +645,7 @@ export async function createProject(
 // Create project from form data (simpler version for new survey form)
 // Returns the project with generated ID and number
 export async function createProjectFromForm(data: {
-  client_name: string
-  client_email?: string
-  client_phone?: string
+  customer_id: string
   site_address: string
   site_address_line2?: string
   site_city?: string
@@ -425,9 +672,7 @@ export async function createProjectFromForm(data: {
   const { data: project, error } = await supabase
     .from('projects')
     .insert({
-      client_name: data.client_name,
-      client_email: data.client_email || null,
-      client_phone: data.client_phone || null,
+      customer_id: data.customer_id,
       site_address: data.site_address,
       site_address_line2: data.site_address_line2 || null,
       site_city: data.site_city || null,
@@ -444,7 +689,8 @@ export async function createProjectFromForm(data: {
     .single()
 
   if (error) {
-    console.error('Error creating project from form:', error)
+    console.error('Error creating project from form:', JSON.stringify(error, null, 2))
+    alert(`Supabase Error: ${JSON.stringify(error, null, 2)}`)
     return null
   }
 
@@ -674,7 +920,10 @@ export async function getMaterials(category?: string): Promise<Material[]> {
 
 export async function getMaterial(id: string): Promise<Material | null> {
   const supabase = getSupabase()
-  if (!supabase) return null
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return null
+  }
 
   const { data, error } = await supabase
     .from('materials_catalog')
