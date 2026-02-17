@@ -9,6 +9,8 @@ export const surveyTypes: Record<SurveyType, { label: string; icon: string; colo
   timber: { label: 'Timber Survey', icon: '🪵', color: 'text-amber-600' },
   woodworm: { label: 'Woodworm Survey', icon: '🪲', color: 'text-amber-700' },
   condensation: { label: 'Condensation Survey', icon: '💨', color: 'text-cyan-600' },
+  structural: { label: 'Structural Survey', icon: '🏗️', color: 'text-gray-600' },
+  comprehensive: { label: 'Comprehensive Survey', icon: '📋', color: 'text-purple-600' },
 }
 
 // Generate next project number
@@ -105,8 +107,6 @@ export function initializeMockData(): void {
       id: 'demo-1',
       project_number: 'TT-2026-0001',
       client_name: 'Smith Residence',
-      client_email: 'smith@email.com',
-      client_phone: '01234 567890',
       site_address: '12 Victoria Street',
       site_city: 'Newcastle upon Tyne',
       site_county: 'Tyne and Wear',
@@ -117,7 +117,6 @@ export function initializeMockData(): void {
       weather_conditions: 'Dry',
       survey_date: '2026-02-05',
       notes: 'Rising damp to ground floor walls',
-      internal_reference: 'SMITH-001',
       created_at: '2026-02-04T10:00:00Z',
       updated_at: '2026-02-04T10:00:00Z',
     },
@@ -125,7 +124,6 @@ export function initializeMockData(): void {
       id: 'demo-2',
       project_number: 'TT-2026-0002',
       client_name: 'Johnson Property',
-      client_email: 'johnson@email.com',
       site_address: '45 Riverside Drive',
       site_city: 'Sunderland',
       site_county: 'Tyne and Wear',

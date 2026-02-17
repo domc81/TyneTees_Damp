@@ -2,6 +2,42 @@
 // Replaces localStorage with real database operations
 
 import { getSupabase } from './supabase-client'
+import type {
+  Customer,
+  Enquiry,
+  Project,
+  Surveyor,
+  SurveyRoom,
+  MoistureReading,
+  Defect,
+  Photo,
+  WorkSection,
+  MaterialsCatalogItem,
+  PricingItem,
+  ProjectCosting,
+  BaseRate,
+  MarkupConfig,
+} from '@/types/database.types'
+
+// Re-export types for backward compatibility (other files import from here)
+export type {
+  Customer,
+  Enquiry,
+  Project,
+  Surveyor,
+  SurveyRoom,
+  MoistureReading,
+  Defect,
+  Photo,
+  WorkSection,
+  PricingItem,
+  ProjectCosting,
+  BaseRate,
+  MarkupConfig,
+}
+
+// Alias for backward compatibility — some files import 'Material'
+export type Material = MaterialsCatalogItem
 
 // ============================================================================
 // Photo URL Helper
@@ -115,192 +151,6 @@ let useMockData = false
 // ============================================================================
 // Types (matching database schema)
 // ============================================================================
-
-export interface Customer {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  mobile?: string
-  address_line1: string
-  address_line2?: string
-  city: string
-  county?: string
-  postcode: string
-  notes?: string
-  created_at: string
-  updated_at: string
-}
-
-export interface Enquiry {
-  id: string
-  enquiry_number: string
-  internal_reference: string | null
-  client_name: string
-  client_email: string | null
-  client_phone: string | null
-  site_address_1: string
-  site_address_2: string | null
-  site_city: string
-  site_county: string | null
-  site_postcode: string
-  survey_type: string
-  status: string
-  source: string | null
-  enquiry_date: string
-  proposed_survey_date: string | null
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface Project {
-  id: string
-  enquiry_id: string | null
-  project_number: string
-  survey_type: string
-  status: string
-  survey_date: string | null
-  weather_conditions: string | null
-  customer_id: string | null
-  site_address: string
-  site_address_line2?: string
-  site_city?: string
-  site_postcode: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-  // Survey data (structured survey answers)
-  survey_data?: Record<string, any>
-  survey_skipped_sections?: string[]
-  survey_progress?: number
-  survey_completed?: boolean
-}
-
-export interface SurveyRoom {
-  id: string
-  project_id: string
-  name: string
-  room_type: string
-  floor_level: string
-  display_order: number
-  wall_type: string | null
-  plaster_type: string | null
-  floor_type: string | null
-  findings: string | null
-  recommendations: string | null
-  surveyor_notes: string | null
-  is_completed: boolean
-  completed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface MoistureReading {
-  id: string
-  room_id: string
-  location: string
-  reading: number
-  unit: string
-  material: string | null
-  notes: string | null
-  timestamp: string
-}
-
-export interface Defect {
-  id: string
-  room_id: string
-  defect_type: string
-  severity: string
-  location: string
-  description: string | null
-  photo_id: string | null
-  recommendation: string | null
-  created_at: string
-}
-
-export interface Photo {
-  id: string
-  project_id: string
-  room_id: string | null
-  file_path: string
-  file_name: string
-  category: string
-  description: string | null
-  created_at: string
-}
-
-export interface WorkSection {
-  id: string
-  name: string
-  description: string | null
-  is_optional: boolean
-  display_order: number
-  created_at: string
-  updated_at: string
-}
-
-export interface Material {
-  id: string
-  name: string
-  supplier: string | null
-  supplier_url: string | null
-  unit_cost: number
-  unit: string
-  coverage: string | null
-  category: string
-  default_quantity: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface PricingItem {
-  id: string
-  section_id: string
-  name: string
-  unit: string
-  material_cost: number
-  labor_hours: number
-  item_type: string
-  is_mandatory: boolean
-  markup_override: number | null
-  contractor_cost: number | null
-  created_at: string
-  updated_at: string
-}
-
-export interface ProjectCosting {
-  id: string
-  project_id: string
-  selected_items: Record<string, number>
-  selected_optional_items: string[]
-  travel_miles: number
-  notes: string | null
-  material_subtotal: number
-  labor_subtotal: number
-  optional_extras: number
-  travel_cost: number
-  subtotal: number
-  vat_amount: number
-  total_inc_vat: number
-  deposit_amount: number
-  created_at: string
-  updated_at: string
-}
-
-export interface Surveyor {
-  id: string
-  user_id: string | null
-  full_name: string
-  email: string
-  phone: string | null
-  qualifications: string | null
-  availability: boolean
-  created_at: string
-  updated_at: string
-}
 
 // ============================================================================
 // Customers
@@ -645,7 +495,8 @@ export async function createProject(
 // Create project from form data (simpler version for new survey form)
 // Returns the project with generated ID and number
 export async function createProjectFromForm(data: {
-  customer_id: string
+  customer_id?: string
+  client_name: string
   site_address: string
   site_address_line2?: string
   site_city?: string

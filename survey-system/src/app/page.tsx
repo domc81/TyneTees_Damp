@@ -71,14 +71,6 @@ export default function Dashboard() {
             notes: 'Demo project',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            client_email: '',
-            client_phone: '',
-            site_address_line2: '',
-            site_city: '',
-            site_county: '',
-            surveyor_id: '',
-            completion_date: '',
-            internal_reference: '',
           },
         ])
         setIsLoading(false)
@@ -107,14 +99,6 @@ export default function Dashboard() {
           notes: 'Error fallback',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          client_email: '',
-          client_phone: '',
-          site_address_line2: '',
-          site_city: '',
-          site_county: '',
-          surveyor_id: '',
-          completion_date: '',
-          internal_reference: '',
         }])
       } finally {
         setIsLoading(false)

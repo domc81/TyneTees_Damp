@@ -1,61 +1,42 @@
 // Complete Survey System Store with all CRUD operations
-import type { SurveyType, Project } from '@/types/database.types'
+import type { SurveyType, Project, SurveyRoom, MoistureReading, Defect } from '@/types/database.types'
 
-// ============ ROOMS ============
+// Re-export for backward compatibility
+export type { SurveyRoom, MoistureReading }
 
-export interface MoistureReading {
+// Alias — store.ts used 'DefectObservation', DB uses 'Defect'
+export type DefectObservation = Defect
+
+// ============ LOCAL STORAGE TYPES ============
+// These types are for localStorage operations and include inline arrays
+// that are not stored in the database (loaded separately)
+
+// Local storage version of Photo (uses 'category' instead of 'photo_category')
+export interface Photo {
   id: string
-  location: string
-  reading: number
-  unit: 'percentage' | 'mm'
-  material: string
-  notes?: string
-  timestamp: string
-}
-
-export interface DefectObservation {
-  id: string
-  type: string
-  severity: 1 | 2 | 3 | 4 | 5  // 1=Minor, 2=Moderate, 3=Significant, 4=Severe, 5=Critical
-  location: string
+  project_id: string
+  file_name: string
   description: string
-  photo_id?: string
-  recommendation?: string
+  category: string
+  created_at: string
 }
 
-export interface SurveyRoom {
+// Local storage version of SurveyRoom (uses 'order' instead of 'display_order')
+export interface SurveyRoomLocal {
   id: string
   project_id: string
   name: string
   room_type: string
   floor_level: string
   order: number
-
-  // Mandatory: At least one moisture reading required
-  moisture_readings: MoistureReading[]
-
-  // Mandatory: At least one photo required
-  photos: Array<{
-    id: string
-    file_name: string
-    category: string
-    description: string
-    timestamp: string
-  }>
-
-  // Defects observed
-  defects: DefectObservation[]
-
-  // Observations (mandatory for survey completeness)
   findings: string
   recommendations: string
-
-  // Additional context
+  moisture_readings: Array<{ location: string; reading: number }>
+  photos: string[]
+  defects: Array<{ type: string; severity: number; location: string; notes?: string }>
   wall_type?: string
   plaster_type?: string
   floor_type?: string
-
-  // Survey metadata
   surveyor_notes?: string
   is_completed: boolean
   completed_at?: string
@@ -63,8 +44,23 @@ export interface SurveyRoom {
   updated_at: string
 }
 
+// ============ ROOMS ============
+
+// Extended SurveyRoom with runtime data (arrays not stored as DB columns)
+export interface SurveyRoomWithData extends SurveyRoom {
+  moisture_readings: MoistureReading[]
+  photos: Array<{
+    id: string
+    file_name: string
+    category: string
+    description: string
+    timestamp: string
+  }>
+  defects: DefectObservation[]
+}
+
 // Validation helpers
-export function validateRoomSurvey(room: SurveyRoom): { isValid: boolean; errors: string[] } {
+export function validateRoomSurvey(room: SurveyRoomWithData): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
 
   if (!room.moisture_readings || room.moisture_readings.length === 0) {
@@ -762,19 +758,17 @@ export async function createProject(data: Omit<Project, 'id' | 'project_number' 
     // Create project in Supabase
     const { createProjectFromForm } = await import('@/lib/supabase-data')
     const createdProject = await createProjectFromForm({
-      client_name: data.client_name,
-      client_email: data.client_email,
-      client_phone: data.client_phone,
+      client_name: data.client_name || '',
       site_address: data.site_address,
-      site_address_line2: data.site_address_line2,
-      site_city: data.site_city,
-      site_county: data.site_county,
+      site_address_line2: data.site_address_line2 || undefined,
+      site_city: data.site_city || undefined,
+      site_county: data.site_county || undefined,
       site_postcode: data.site_postcode,
       survey_type: data.survey_type,
       status: data.status,
-      weather_conditions: data.weather_conditions,
-      survey_date: data.survey_date,
-      notes: data.notes,
+      weather_conditions: data.weather_conditions || undefined,
+      survey_date: data.survey_date || undefined,
+      notes: data.notes || undefined,
     })
 
     if (!createdProject) {
@@ -793,19 +787,17 @@ async function saveProjectToSupabase(project: Project): Promise<void> {
   try {
     const { createProjectFromForm } = await import('@/lib/supabase-data')
     await createProjectFromForm({
-      client_name: project.client_name,
-      client_email: project.client_email,
-      client_phone: project.client_phone,
+      client_name: project.client_name || '',
       site_address: project.site_address,
-      site_address_line2: project.site_address_line2,
-      site_city: project.site_city,
-      site_county: project.site_county,
+      site_address_line2: project.site_address_line2 || undefined,
+      site_city: project.site_city || undefined,
+      site_county: project.site_county || undefined,
       site_postcode: project.site_postcode,
       survey_type: project.survey_type,
       status: project.status,
-      weather_conditions: project.weather_conditions,
-      survey_date: project.survey_date,
-      notes: project.notes,
+      weather_conditions: project.weather_conditions || undefined,
+      survey_date: project.survey_date || undefined,
+      notes: project.notes || undefined,
     })
   } catch (err) {
     console.warn('Failed to save project to Supabase:', err)
@@ -998,15 +990,6 @@ export function deleteLineItem(id: string): boolean {
 }
 
 // ============ PHOTOS ============
-
-export interface Photo {
-  id: string
-  project_id: string
-  file_name: string
-  description: string
-  category: string
-  created_at: string
-}
 
 function getPhotos(): Photo[] {
   if (typeof window === 'undefined') return []
@@ -1260,7 +1243,7 @@ export function initializeSampleData(): void {
   savePhotos(photos)
 
   // Sample rooms
-  const rooms: SurveyRoom[] = [
+  const rooms: SurveyRoomLocal[] = [
     {
       id: 'room-1',
       project_id: 'proj-1',
@@ -1279,7 +1262,9 @@ export function initializeSampleData(): void {
       defects: [
         { type: 'rising_damp', severity: 4, location: 'North wall up to 1.2m', notes: 'Visible tide marks and salt crystallisation' },
       ],
+      is_completed: true,
       created_at: '2026-02-05T10:00:00Z',
+      updated_at: '2026-02-05T10:30:00Z',
     },
     {
       id: 'room-2',
@@ -1289,11 +1274,13 @@ export function initializeSampleData(): void {
       floor_level: 'ground',
       order: 2,
       findings: 'Minor damp staining to external wall. Early stage salt crystallisation.',
+      is_completed: false,
+      created_at: '2026-02-05T10:15:00Z',
+      updated_at: '2026-02-05T10:15:00Z',
       recommendations: 'Monitor and consider DPC installation.',
       moisture_readings: [{ location: 'External wall', reading: 12 }],
       photos: [],
       defects: [],
-      created_at: '2026-02-05T10:15:00Z',
     },
   ]
   localStorage.setItem('tyne-tees-rooms', JSON.stringify(rooms))

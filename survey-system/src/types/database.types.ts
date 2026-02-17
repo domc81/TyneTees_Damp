@@ -1,93 +1,284 @@
-// Database types for Tyne Tees Survey System
-// Generated from Supabase schema
+// =============================================================================
+// Tyne Tees Survey System — Canonical Type Definitions
+// Single source of truth. All other files import from here.
+// These types match the actual Supabase database schema.
+// Last verified against live DB: 17 Feb 2026
+// =============================================================================
 
-export type SurveyType = 'damp' | 'timber' | 'woodworm' | 'condensation'
-export type ProjectStatus = 'draft' | 'in_progress' | 'pending_review' | 'completed' | 'archived'
+// --- Enums (match PostgreSQL enums) ---
 
-export interface Profile {
+export type EnquiryStatus =
+  | 'new'
+  | 'assigned'
+  | 'surveyed'
+  | 'quoted'
+  | 'accepted'
+  | 'declined'
+  | 'on_hold'
+  | 'completed'
+
+export type SurveyType =
+  | 'damp'
+  | 'timber'
+  | 'woodworm'
+  | 'condensation'
+  | 'structural'
+  | 'comprehensive'
+
+export type ProjectStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'pending_review'
+  | 'completed'
+  | 'archived'
+
+export type DefectSeverity =
+  | 'minor'
+  | 'moderate'
+  | 'significant'
+  | 'severe'
+  | 'critical'
+
+export type ItemType = 'MTL' | 'LBR' | 'SUB' | 'OVR' | 'TRA'
+
+// --- Core Tables ---
+
+export interface Customer {
   id: string
+  title?: string | null
+  first_name: string
+  last_name: string
   email: string
-  full_name?: string
-  role?: 'admin' | 'surveyor' | 'office'
-  avatar_url?: string
+  phone: string
+  mobile?: string | null
+  address_line1: string
+  address_line2?: string | null
+  city: string
+  county?: string | null
+  postcode: string
+  notes?: string | null
   created_at: string
   updated_at: string
 }
 
-export interface Surveyor {
+export interface Enquiry {
   id: string
-  full_name: string
-  email: string
-  phone?: string
-  qualifications?: string
-  availability: boolean
+  enquiry_number: string
+  internal_reference?: string | null
+  client_name: string
+  client_email?: string | null
+  client_phone?: string | null
+  site_address_1: string
+  site_address_2?: string | null
+  site_city: string
+  site_county?: string | null
+  site_postcode: string
+  survey_type: SurveyType
+  status: EnquiryStatus
+  source?: string | null
+  enquiry_date: string
+  proposed_survey_date?: string | null
+  notes?: string | null
   created_at: string
   updated_at: string
 }
 
 export interface Project {
   id: string
+  enquiry_id?: string | null
   project_number: string
-  client_name: string
-  client_email?: string
-  client_phone?: string
-  site_address: string
-  site_address_line2?: string
-  site_city?: string
-  site_county?: string
-  site_postcode: string
   survey_type: SurveyType
   status: ProjectStatus
-  surveyor_id?: string
-  weather_conditions?: string
-  survey_date?: string
-  completion_date?: string
-  notes?: string
-  internal_reference?: string
+  survey_date?: string | null
+  weather_conditions?: string | null
+  surveyor_id?: string | null
+  customer_id?: string | null
+  client_name?: string | null
+  site_address: string
+  site_address_line2?: string | null
+  site_city?: string | null
+  site_county?: string | null
+  site_postcode: string
+  notes?: string | null
+  survey_data?: Record<string, any> | null
+  survey_skipped_sections?: string[] | null
+  survey_progress?: number | null
+  survey_completed?: boolean | null
   created_at: string
   updated_at: string
-  // Survey data (structured survey answers)
-  survey_data?: Record<string, any>
-  survey_skipped_sections?: string[]
-  survey_progress?: number
-  survey_completed?: boolean
-  // Joined data
-  surveyor?: Profile
-  sections?: Section[]
-  photos?: Photo[]
+  // Joined data (populated by queries with joins, not stored in DB)
+  customer?: Customer | null
+  surveyor?: Surveyor | null
+}
+
+export interface Surveyor {
+  id: string
+  user_id?: string | null
+  full_name: string
+  email: string
+  phone?: string | null
+  qualifications?: string | null
+  availability: boolean
+  created_at: string
+  updated_at: string
+}
+
+// --- Survey Tables ---
+
+export interface SurveyRoom {
+  id: string
+  project_id: string
+  name: string
+  room_type: string
+  floor_level: string
+  display_order: number
+  wall_type?: string | null
+  plaster_type?: string | null
+  floor_type?: string | null
+  findings?: string | null
+  recommendations?: string | null
+  surveyor_notes?: string | null
+  is_completed: boolean
+  completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MoistureReading {
+  id: string
+  room_id: string
+  location: string
+  reading: number
+  unit: string
+  material?: string | null
+  notes?: string | null
+  timestamp: string
+}
+
+export interface Defect {
+  id: string
+  room_id: string
+  defect_type: string
+  severity: DefectSeverity
+  location: string
+  description?: string | null
+  photo_id?: string | null
+  recommendation?: string | null
+  created_at: string
 }
 
 export interface Photo {
   id: string
   project_id: string
-  room_id?: string | null           // Optional room linkage
-  question_id?: string | null        // Link to survey question
-
-  // Storage
-  storage_path: string               // Path in Supabase Storage
-  file_path?: string | null         // DEPRECATED: Legacy base64 storage
+  room_id?: string | null
+  question_id?: string | null
+  storage_path: string
+  file_path?: string | null
   file_name: string
-  file_size?: number
-  mime_type?: string
-
-  // Metadata
-  description?: string
-  photo_category?: string           // 'survey_question', 'room', 'detail', etc
-  latitude?: number
-  longitude?: number
-  taken_at?: string
-  uploaded_by?: string
+  file_size?: number | null
+  mime_type?: string | null
+  description?: string | null
+  photo_category?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  taken_at?: string | null
+  uploaded_by?: string | null
   created_at: string
 }
 
-export interface Section {
+// --- Pricing Tables ---
+
+export interface WorkSection {
+  id: string
+  name: string
+  description?: string | null
+  is_optional: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MaterialsCatalogItem {
+  id: string
+  name: string
+  supplier?: string | null
+  supplier_url?: string | null
+  unit_cost: number
+  unit: string
+  coverage?: string | null
+  category: string
+  default_quantity: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PricingItem {
+  id: string
+  section_id: string
+  name: string
+  unit: string
+  material_cost: number
+  labor_hours: number
+  item_type: ItemType
+  is_mandatory: boolean
+  markup_override?: number | null
+  contractor_cost?: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BaseRate {
+  id: string
+  category: string
+  rate_name: string
+  rate_value: number
+  description?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MarkupConfig {
+  id: string
+  item_type: ItemType
+  percentage: number
+  name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectCosting {
   id: string
   project_id: string
-  name: string
-  display_order: number
-  markup_percentage: number
+  selected_items: Record<string, any>
+  selected_optional_items: string[]
+  travel_miles: number
+  notes?: string | null
+  material_subtotal: number
+  labor_subtotal: number
+  optional_extras: number
+  travel_cost: number
+  subtotal: number
+  vat_amount: number
+  total_inc_vat: number
+  deposit_amount: number
   created_at: string
-  line_items?: LineItem[]
+  updated_at: string
+}
+
+// --- Legacy Types (for backward compatibility) ---
+
+export interface Rate {
+  id: string
+  name: string
+  value: number
+  unit?: string
+  description?: string
+  is_active: boolean
+  effective_from?: string
+  effective_to?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface LineItem {
@@ -116,18 +307,17 @@ export interface LineItem {
   total_cost?: number
 }
 
-export interface Rate {
+export interface Section {
   id: string
+  project_id: string
   name: string
-  value: number
-  unit?: string
-  description?: string
-  is_active: boolean
-  effective_from?: string
-  effective_to?: string
+  display_order: number
+  markup_percentage: number
   created_at: string
-  updated_at: string
+  line_items?: LineItem[]
 }
+
+// --- Quotation & Report ---
 
 export interface Quotation {
   id: string
@@ -138,13 +328,13 @@ export interface Quotation {
   vat_amount: number
   total: number
   deposit_percentage: number
-  deposit_amount?: number
+  deposit_amount?: number | null
   validity_days: number
   status: string
-  sent_at?: string
-  accepted_at?: string
-  notes?: string
-  terms?: string
+  sent_at?: string | null
+  accepted_at?: string | null
+  notes?: string | null
+  terms?: string | null
   created_at: string
   updated_at: string
 }
@@ -155,59 +345,25 @@ export interface Report {
   report_type: string
   version: number
   template_name: string
-  content?: Record<string, unknown>
-  pdf_path?: string
-  generated_at?: string
-  generated_by?: string
+  content?: Record<string, unknown> | null
+  pdf_path?: string | null
+  generated_at?: string | null
+  generated_by?: string | null
   created_at: string
 }
 
-// ============================================================================
-// FORM TYPES
-// ============================================================================
+// --- Form Input Types (for creating/updating records) ---
 
-export interface ProjectFormData {
-  client_name: string
-  client_email?: string
-  client_phone?: string
-  site_address: string
-  site_address_line2?: string
-  site_city?: string
-  site_county?: string
-  site_postcode: string
-  survey_type: SurveyType
-  weather_conditions?: string
-  survey_date?: string
-  notes?: string
-  internal_reference?: string
-}
+export type CustomerInput = Omit<Customer, 'id' | 'created_at' | 'updated_at'>
+export type CustomerUpdate = Partial<CustomerInput>
 
-export interface LineItemFormData {
-  item_name: string
-  description?: string
-  category?: string
-  length?: number
-  width?: number
-  height?: number
-  quantity?: number
-  uom?: string
-  unit_rate?: number
-  waste_factor?: number
-  hours_per_unit?: number
-  is_optional?: boolean
-}
+export type ProjectInput = Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at' | 'customer' | 'surveyor'>
+export type ProjectUpdate = Partial<ProjectInput>
 
-// ============================================================================
-// API RESPONSE TYPES
-// ============================================================================
+export type SurveyorInput = Omit<Surveyor, 'id' | 'created_at' | 'updated_at'>
+export type SurveyorUpdate = Partial<SurveyorInput>
 
-export interface ProjectWithDetails extends Project {
-  sections: SectionWithItems[]
-}
-
-export interface SectionWithItems extends Section {
-  line_items: LineItem[]
-}
+// --- Cost Summary (calculated, not stored) ---
 
 export interface CostSummary {
   materials_total: number
@@ -217,14 +373,4 @@ export interface CostSummary {
   vat_amount: number
   total: number
   deposit_30_percent: number
-}
-
-// ============================================================================
-// UI STATE TYPES
-// ============================================================================
-
-export interface PhotoCaptureState {
-  isCapturing: boolean
-  selectedCategory: string
-  photos: Photo[]
 }
