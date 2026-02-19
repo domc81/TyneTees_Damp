@@ -2,7 +2,7 @@
 // Tyne Tees Survey System — Canonical Type Definitions
 // Single source of truth. All other files import from here.
 // These types match the actual Supabase database schema.
-// Last verified against live DB: 17 Feb 2026
+// Last verified against live DB: 19 Feb 2026 (post-migration)
 // =============================================================================
 
 // --- Enums (match PostgreSQL enums) ---
@@ -25,12 +25,15 @@ export type SurveyType =
   | 'structural'
   | 'comprehensive'
 
-export type ProjectStatus =
+export type SurveyStatus =
   | 'draft'
   | 'in_progress'
   | 'pending_review'
   | 'completed'
   | 'archived'
+
+/** @deprecated Use SurveyStatus instead */
+export type ProjectStatus = SurveyStatus
 
 export type DefectSeverity =
   | 'minor'
@@ -73,6 +76,7 @@ export interface Enquiry {
   site_city: string
   site_county?: string | null
   site_postcode: string
+  distance_miles?: number | null
   survey_type: SurveyType
   status: EnquiryStatus
   source?: string | null
@@ -83,12 +87,12 @@ export interface Enquiry {
   updated_at: string
 }
 
-export interface Project {
+export interface Survey {
   id: string
   enquiry_id?: string | null
   project_number: string
   survey_type: SurveyType
-  status: ProjectStatus
+  status: SurveyStatus
   survey_date?: string | null
   weather_conditions?: string | null
   surveyor_id?: string | null
@@ -104,12 +108,21 @@ export interface Project {
   survey_skipped_sections?: string[] | null
   survey_progress?: number | null
   survey_completed?: boolean | null
+  reported_problem?: string | null
+  reported_problem_override?: string | null
+  completion_pct?: number | null
+  is_complete?: boolean | null
+  submitted_at?: string | null
+  office_notes?: string | null
   created_at: string
   updated_at: string
   // Joined data (populated by queries with joins, not stored in DB)
   customer?: Customer | null
   surveyor?: Surveyor | null
 }
+
+/** @deprecated Use Survey instead */
+export type Project = Survey
 
 export interface Surveyor {
   id: string
@@ -247,9 +260,9 @@ export interface MarkupConfig {
   updated_at: string
 }
 
-export interface ProjectCosting {
+export interface SurveyCosting {
   id: string
-  project_id: string
+  survey_id: string
   selected_items: Record<string, any>
   selected_optional_items: string[]
   travel_miles: number
@@ -265,6 +278,9 @@ export interface ProjectCosting {
   created_at: string
   updated_at: string
 }
+
+/** @deprecated Use SurveyCosting instead */
+export type ProjectCosting = SurveyCosting
 
 // --- Legacy Types (for backward compatibility) ---
 
@@ -357,8 +373,13 @@ export interface Report {
 export type CustomerInput = Omit<Customer, 'id' | 'created_at' | 'updated_at'>
 export type CustomerUpdate = Partial<CustomerInput>
 
-export type ProjectInput = Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at' | 'customer' | 'surveyor'>
-export type ProjectUpdate = Partial<ProjectInput>
+export type SurveyInput = Omit<Survey, 'id' | 'project_number' | 'created_at' | 'updated_at' | 'customer' | 'surveyor'>
+export type SurveyUpdate = Partial<SurveyInput>
+
+/** @deprecated Use SurveyInput instead */
+export type ProjectInput = SurveyInput
+/** @deprecated Use SurveyUpdate instead */
+export type ProjectUpdate = SurveyUpdate
 
 export type SurveyorInput = Omit<Surveyor, 'id' | 'created_at' | 'updated_at'>
 export type SurveyorUpdate = Partial<SurveyorInput>
