@@ -1,6 +1,6 @@
 # TyneTees Damp — Project State
 **Last updated:** 2026-02-19
-**Last commit:** [current] — feat: wire wizard to Supabase — load, auto-save, room CRUD
+**Last commit:** [current] — feat: add survey-to-costing mapping engine — transforms wizard data into pricing inputs
 
 ## What This Project Is
 Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costing workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26) into a web application. MVP: Lead Gen + CRM + Survey System with automated pricing.
@@ -24,6 +24,12 @@ Tech: Next.js 14, Supabase (PostgreSQL), TypeScript, Tailwind CSS.
   - Auto-save with 2-second debounce
   - Load/save wizard data and rooms
   - Room CRUD operations
+- Mapping engine: src/lib/survey-mapping.ts
+  - Transforms wizard survey data into LineInput[] for pricing engine
+  - Aggregates room measurements across all rooms
+  - Handles all 4 survey types (damp, condensation, timber, woodworm)
+  - Auto-cascading calculations (e.g., debris bags = strip-out area × 2)
+  - Template lookup from database by section_key + line_key
 
 ## Database State
 44 costing sections, 227 line templates, 14 pricing config values, 30 material products seeded.
@@ -49,7 +55,13 @@ Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey
    - ✅ Room CRUD (saveRoom, deleteRoom, saveAllRooms)
    - ✅ Complete survey handler (marks wizard_completed = true)
    - ✅ Loading state, error handling, save indicators
-5. Mapping engine — survey_data → LineInput[] (aggregates rooms, applies costing rules)
+5. ✅ Mapping engine — COMPLETE (2026-02-19)
+   - ✅ src/lib/survey-mapping.ts
+   - ✅ Template lookup loading from DB
+   - ✅ Room data aggregation for all 4 survey types
+   - ✅ Auto-cascading calculations
+   - ✅ Additional works mapping
+   - ✅ generateCostingFromSurvey() convenience function
 6. Costing review page — auto-calculated costs, manual overrides
 7. Estimate PDF generation
 8. CF CSV export
@@ -61,6 +73,7 @@ The survey follows how a surveyor physically works: room by room. In each room t
 - CLAUDE.md — project context for Claude Code
 - src/lib/pricing-engine.ts — calculation engine (8 formula types)
 - src/lib/pricing-data.ts — pricing data loading + orchestration
+- src/lib/survey-mapping.ts — transforms wizard data into pricing inputs
 - src/lib/survey-wizard-data.ts — wizard persistence layer (load/save wizard data + rooms)
 - src/lib/supabase-data.ts — general Supabase queries
 - src/types/database.types.ts — canonical DB TypeScript types
