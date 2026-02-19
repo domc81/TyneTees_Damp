@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import WizardStepper from '@/components/wizard/WizardStepper'
 import SiteDetailsStep from '@/components/wizard/SiteDetailsStep'
 import ExternalInspectionStep from '@/components/wizard/ExternalInspectionStep'
+import RoomInspectionStep from '@/components/wizard/RoomInspectionStep'
 import {
   SurveyWizardData,
   SiteDetails,
@@ -148,10 +149,10 @@ export default function SurveyWizardPage() {
         )
       case 2:
         return (
-          <div className="glass-card p-8 text-center">
-            <h3 className="text-xl font-semibold text-white mb-2">Room Inspection</h3>
-            <p className="text-white/60">Coming soon in next build iteration</p>
-          </div>
+          <RoomInspectionStep
+            rooms={rooms}
+            onRoomsChange={setRooms}
+          />
         )
       case 3:
         return (
