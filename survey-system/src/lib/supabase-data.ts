@@ -6,8 +6,6 @@ import type {
   Customer,
   Enquiry,
   Project,
-  Survey,
-  SurveyInput,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -26,7 +24,6 @@ export type {
   Customer,
   Enquiry,
   Project,
-  Survey,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -419,7 +416,6 @@ export async function getEnquiry(id: string): Promise<Enquiry | null> {
 // ============================================================================
 
 export async function getSurveys(): Promise<Project[]> {
-export const getProjects = getSurveys
   const supabase = getSupabase()
   if (!supabase) {
     useMockData = true
@@ -496,9 +492,6 @@ export async function createSurvey(
   return data
 }
 
-// Backward-compatible alias
-export const getProjects = getSurveys
-
 // Create project from form data (simpler version for new survey form)
 // Returns the project with generated ID and number
 export async function createSurveyFromForm(data: {
@@ -570,12 +563,6 @@ export async function createSurveyFromForm(data: {
   return project
 }
 
-// Backward-compatible alias
-export const createProjectFromForm = createSurveyFromForm
-
-// Backward-compatible alias
-export const createProject = createSurvey
-
 export async function updateSurvey(
   id: string,
   updates: Partial<Project>
@@ -597,9 +584,6 @@ export async function updateSurvey(
 
   return data
 }
-
-// Backward-compatible alias
-export const updateProject = updateSurvey
 
 // ============================================================================
 // Survey Rooms
@@ -733,9 +717,6 @@ export async function getDefects(roomId: string): Promise<Defect[]> {
 // Photos
 // ============================================================================
 
-// Backward-compatible alias
-export const getProject = getSurvey
-
 export async function getSurveyPhotos(projectId: string): Promise<Photo[]> {
   const supabase = getSupabase()
   if (!supabase) return []
@@ -753,9 +734,6 @@ export async function getSurveyPhotos(projectId: string): Promise<Photo[]> {
 
   return data || []
 }
-
-// Backward-compatible alias
-export const getProjectPhotos = getSurveyPhotos
 
 // ============================================================================
 // Work Sections
@@ -968,9 +946,6 @@ export async function saveSurveyCosting(
   return data
 }
 
-// Backward-compatible alias
-export const saveProjectCosting = saveSurveyCosting
-
 // ============================================================================
 // Pricing Calculations
 // ============================================================================
@@ -1078,9 +1053,9 @@ export async function initializeSampleData(): Promise<void> {
     }
 
     // Insert sample project
-      const { data: project, error: projectError } = await supabase
-        .from('surveys')
-        .insert({
+    const { data: project, error: projectError } = await supabase
+      .from('surveys')
+      .insert({
         enquiry_id: enquiry.id,
         survey_type: 'damp',
         status: 'in_progress',
@@ -1400,7 +1375,7 @@ export async function updateSurveyProgress(
 
   try {
     const { error } = await supabase
-      .from('projects')
+      .from('surveys')
       .update({
         survey_progress: progress,
         survey_completed: isComplete,
@@ -1550,3 +1525,17 @@ export async function deletePhoto(photoId: string, storagePath: string): Promise
     return false
   }
 }
+
+// ============================================================================
+// Backward-Compatibility Aliases
+// These allow existing page files to keep importing the old function names.
+// ============================================================================
+
+export const getProjects = getSurveys
+export const getProject = getSurvey
+export const createProject = createSurvey
+export const createProjectFromForm = createSurveyFromForm
+export const updateProject = updateSurvey
+export const getProjectPhotos = getSurveyPhotos
+export const getProjectCosting = getSurveyCosting
+export const saveProjectCosting = saveSurveyCosting
