@@ -156,9 +156,8 @@ export function calcStandard(
   const materialAdjustedCost = baseUnitCost * wastageFactor * quantity
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
-  // Get labour rate (from template or override or config default)
+  // Get labour rate (from override or config default)
   const labourRate = input.overrides?.labour_rate
-    ?? template.labour_rate
     ?? config['hourly_labour_rate']
     ?? 30.63
 
@@ -234,9 +233,8 @@ export function calcCeilingCoverage(
   const materialAdjustedCost = unitsNeeded * (baseUnitCost / coverageRate * wastageFactor)
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
-  // Get labour rate
+  // Get labour rate (from override or config default)
   const labourRate = input.overrides?.labour_rate
-    ?? template.labour_rate
     ?? config['hourly_labour_rate']
     ?? 30.63
 
@@ -407,9 +405,8 @@ export function calcCompoundMaterial(
   const materialAdjustedCost = unitsNeeded * costPerUnit * wastageFactor
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
-  // Get labour rate
+  // Get labour rate (from override or config default)
   const labourRate = input.overrides?.labour_rate
-    ?? template.labour_rate
     ?? config['hourly_labour_rate']
     ?? 30.63
 
