@@ -10,6 +10,8 @@ import WizardStepper from '@/components/wizard/WizardStepper'
 import SiteDetailsStep from '@/components/wizard/SiteDetailsStep'
 import ExternalInspectionStep from '@/components/wizard/ExternalInspectionStep'
 import RoomInspectionStep from '@/components/wizard/RoomInspectionStep'
+import AdditionalWorksStep from '@/components/wizard/AdditionalWorksStep'
+import ReviewStep from '@/components/wizard/ReviewStep'
 import {
   SurveyWizardData,
   SiteDetails,
@@ -130,6 +132,19 @@ export default function SurveyWizardPage() {
     })
   }
 
+  const handleAdditionalWorksChange = (data: Partial<AdditionalWorks>) => {
+    setWizardData({
+      ...wizardData,
+      additional_works: data as AdditionalWorks,
+    })
+  }
+
+  // Compute flags for AdditionalWorksStep
+  const hasCondensation = rooms.some((r) => r.issues_identified.includes('condensation'))
+  const hasTimberOrDamp = rooms.some((r) =>
+    r.issues_identified.some((i) => i === 'damp' || i === 'timber_decay')
+  )
+
   // Render current step content
   const renderStepContent = () => {
     switch (currentStep) {
@@ -156,18 +171,15 @@ export default function SurveyWizardPage() {
         )
       case 3:
         return (
-          <div className="glass-card p-8 text-center">
-            <h3 className="text-xl font-semibold text-white mb-2">Additional Works</h3>
-            <p className="text-white/60">Coming soon in next build iteration</p>
-          </div>
+          <AdditionalWorksStep
+            data={wizardData.additional_works || {}}
+            onChange={handleAdditionalWorksChange}
+            hasCondensation={hasCondensation}
+            hasTimberOrDamp={hasTimberOrDamp}
+          />
         )
       case 4:
-        return (
-          <div className="glass-card p-8 text-center">
-            <h3 className="text-xl font-semibold text-white mb-2">Review & Submit</h3>
-            <p className="text-white/60">Coming soon in next build iteration</p>
-          </div>
-        )
+        return <ReviewStep wizardData={wizardData} rooms={rooms} />
       default:
         return null
     }
