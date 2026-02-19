@@ -6,6 +6,8 @@ import type {
   Customer,
   Enquiry,
   Project,
+  Survey,
+  SurveyInput,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -24,6 +26,7 @@ export type {
   Customer,
   Enquiry,
   Project,
+  Survey,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -415,7 +418,8 @@ export async function getEnquiry(id: string): Promise<Enquiry | null> {
 // Projects
 // ============================================================================
 
-export async function getProjects(): Promise<Project[]> {
+export async function getSurveys(): Promise<Project[]> {
+export const getProjects = getSurveys
   const supabase = getSupabase()
   if (!supabase) {
     useMockData = true
@@ -424,7 +428,7 @@ export async function getProjects(): Promise<Project[]> {
 
   try {
     const { data, error } = await supabase
-      .from('projects')
+      .from('surveys')
       .select('*, customer:customers(id, first_name, last_name, email, phone)')
       .order('created_at', { ascending: false })
 
@@ -442,12 +446,12 @@ export async function getProjects(): Promise<Project[]> {
   }
 }
 
-export async function getProject(id: string): Promise<Project | null> {
+export async function getSurvey(id: string): Promise<Project | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
   const { data, error } = await supabase
-    .from('projects')
+    .from('surveys')
     .select('*, customer:customers(id, first_name, last_name, email, phone)')
     .eq('id', id)
     .single()
@@ -460,7 +464,7 @@ export async function getProject(id: string): Promise<Project | null> {
   return data
 }
 
-export async function createProject(
+export async function createSurvey(
   project: Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at'>
 ): Promise<Project | null> {
   const supabase = getSupabase()
@@ -468,7 +472,7 @@ export async function createProject(
 
   // Generate project number
   const { count: countData } = await supabase
-    .from('projects')
+    .from('surveys')
     .select('*', { count: 'exact', head: true })
 
   const count = (countData || 0) + 1
@@ -476,7 +480,7 @@ export async function createProject(
   const projectNumber = `TT-${year}-${count.toString().padStart(4, '0')}`
 
   const { data, error } = await supabase
-    .from('projects')
+    .from('surveys')
     .insert({
       ...project,
       project_number: projectNumber,
@@ -492,9 +496,12 @@ export async function createProject(
   return data
 }
 
+// Backward-compatible alias
+export const getProjects = getSurveys
+
 // Create project from form data (simpler version for new survey form)
 // Returns the project with generated ID and number
-export async function createProjectFromForm(data: {
+export async function createSurveyFromForm(data: {
   customer_id?: string
   client_name?: string
   site_address: string
@@ -513,7 +520,7 @@ export async function createProjectFromForm(data: {
 
   // Generate project number
   const { count: countData } = await supabase
-    .from('projects')
+    .from('surveys')
     .select('*', { count: 'exact', head: true })
 
   const count = (countData || 0) + 1
@@ -535,7 +542,7 @@ export async function createProjectFromForm(data: {
   }
 
   const { data: project, error } = await supabase
-    .from('projects')
+    .from('surveys')
     .insert({
       customer_id: data.customer_id,
       client_name: clientName,
@@ -563,7 +570,13 @@ export async function createProjectFromForm(data: {
   return project
 }
 
-export async function updateProject(
+// Backward-compatible alias
+export const createProjectFromForm = createSurveyFromForm
+
+// Backward-compatible alias
+export const createProject = createSurvey
+
+export async function updateSurvey(
   id: string,
   updates: Partial<Project>
 ): Promise<Project | null> {
@@ -571,7 +584,7 @@ export async function updateProject(
   if (!supabase) return null
 
   const { data, error } = await supabase
-    .from('projects')
+    .from('surveys')
     .update(updates)
     .eq('id', id)
     .select()
@@ -584,6 +597,9 @@ export async function updateProject(
 
   return data
 }
+
+// Backward-compatible alias
+export const updateProject = updateSurvey
 
 // ============================================================================
 // Survey Rooms
@@ -717,7 +733,10 @@ export async function getDefects(roomId: string): Promise<Defect[]> {
 // Photos
 // ============================================================================
 
-export async function getProjectPhotos(projectId: string): Promise<Photo[]> {
+// Backward-compatible alias
+export const getProject = getSurvey
+
+export async function getSurveyPhotos(projectId: string): Promise<Photo[]> {
   const supabase = getSupabase()
   if (!supabase) return []
 
@@ -734,6 +753,9 @@ export async function getProjectPhotos(projectId: string): Promise<Photo[]> {
 
   return data || []
 }
+
+// Backward-compatible alias
+export const getProjectPhotos = getSurveyPhotos
 
 // ============================================================================
 // Work Sections
@@ -870,7 +892,7 @@ export async function getMarkupConfig(): Promise<MarkupConfig[]> {
 // Project Costing
 // ============================================================================
 
-export async function getProjectCosting(projectId: string): Promise<ProjectCosting | null> {
+export async function getSurveyCosting(projectId: string): Promise<ProjectCosting | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -891,7 +913,7 @@ export async function getProjectCosting(projectId: string): Promise<ProjectCosti
   return data
 }
 
-export async function saveProjectCosting(
+export async function saveSurveyCosting(
   projectId: string,
   costing: {
     selectedItems: Record<string, number>
@@ -945,6 +967,9 @@ export async function saveProjectCosting(
 
   return data
 }
+
+// Backward-compatible alias
+export const saveProjectCosting = saveSurveyCosting
 
 // ============================================================================
 // Pricing Calculations
@@ -1006,7 +1031,7 @@ export async function initializeSampleData(): Promise<void> {
   try {
     // Check if we already have data
     const { count, error: countError } = await supabase
-      .from('projects')
+      .from('surveys')
       .select('count', { count: 'exact', head: true })
 
     if (countError) {
@@ -1053,9 +1078,9 @@ export async function initializeSampleData(): Promise<void> {
     }
 
     // Insert sample project
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .insert({
+      const { data: project, error: projectError } = await supabase
+        .from('surveys')
+        .insert({
         enquiry_id: enquiry.id,
         survey_type: 'damp',
         status: 'in_progress',
@@ -1146,7 +1171,7 @@ export async function saveSurveyData(
 
   try {
     const { error } = await supabase
-      .from('projects')
+      .from('surveys')
       .update({
         survey_data: data.answers,
         survey_skipped_sections: data.skippedSections,
@@ -1191,7 +1216,7 @@ export async function loadSurveyData(projectId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('projects')
+      .from('surveys')
       .select('survey_data, survey_skipped_sections, survey_progress, survey_completed')
       .eq('id', projectId)
       .single()
