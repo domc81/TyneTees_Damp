@@ -27,14 +27,15 @@ Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey
 ## What's Next (Build Order)
 1. ✅ Survey wizard types — src/types/survey-wizard.types.ts (DONE 2026-02-19)
 2. ✅ Room-first DB migration — add issues_identified and room_data JSONB to survey_rooms (DONE 2026-02-19)
-3. 🔄 Survey wizard UI components — IN PROGRESS (2026-02-19)
+3. ✅ Survey wizard UI components — COMPLETE (2026-02-19)
    - ✅ Wizard page skeleton (src/app/survey/[projectId]/wizard/page.tsx)
    - ✅ WizardStepper component (src/components/wizard/WizardStepper.tsx)
    - ✅ SiteDetailsStep component (src/components/wizard/SiteDetailsStep.tsx)
    - ✅ ExternalInspectionStep component (src/components/wizard/ExternalInspectionStep.tsx)
-   - ⏳ RoomInspectionStep component (next)
-   - ⏳ DampFields, CondensationFields, TimberFields, WoodwormFields components (next)
-   - ⏳ AdditionalWorksStep component (next)
+   - ✅ RoomInspectionStep component (src/components/wizard/RoomInspectionStep.tsx)
+   - ✅ DampFields, CondensationFields, TimberFields, WoodwormFields components
+   - ✅ AdditionalWorksStep component (src/components/wizard/AdditionalWorksStep.tsx)
+   - ✅ ReviewStep component (src/components/wizard/ReviewStep.tsx)
 4. Survey wizard page — multi-step form with save/load
 5. Supabase persistence — wire wizard to surveys.survey_data + survey_rooms
 6. Mapping engine — survey_data → LineInput[] (aggregates rooms, applies costing rules)
