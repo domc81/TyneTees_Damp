@@ -12,6 +12,9 @@ import {
 import { Plus, Trash2, Check, Droplets, Wind, TreeDeciduous, Bug, Home, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import DampFields from './DampFields'
+import CondensationFields from './CondensationFields'
+import TimberFields from './TimberFields'
+import WoodwormFields from './WoodwormFields'
 
 interface RoomInspectionStepProps {
   rooms: SurveyRoomRow[]
@@ -393,33 +396,24 @@ export default function RoomInspectionStep({ rooms, onRoomsChange }: RoomInspect
               )}
 
               {selectedRoom.issues_identified.includes('condensation') && (
-                <div className="glass-card p-6">
-                  <h4 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                    <Wind className="w-5 h-5 text-purple-300" />
-                    Condensation Fields
-                  </h4>
-                  <p className="text-sm text-white/60">Coming soon in next build iteration</p>
-                </div>
+                <CondensationFields
+                  data={selectedRoom.room_data.condensation || {}}
+                  onChange={(data) => handleRoomDataChange('condensation', data)}
+                />
               )}
 
               {selectedRoom.issues_identified.includes('timber_decay') && (
-                <div className="glass-card p-6">
-                  <h4 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                    <TreeDeciduous className="w-5 h-5 text-amber-300" />
-                    Timber Decay Fields
-                  </h4>
-                  <p className="text-sm text-white/60">Coming soon in next build iteration</p>
-                </div>
+                <TimberFields
+                  data={selectedRoom.room_data.timber_decay || {}}
+                  onChange={(data) => handleRoomDataChange('timber_decay', data)}
+                />
               )}
 
               {selectedRoom.issues_identified.includes('woodworm') && (
-                <div className="glass-card p-6">
-                  <h4 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                    <Bug className="w-5 h-5 text-red-300" />
-                    Woodworm Fields
-                  </h4>
-                  <p className="text-sm text-white/60">Coming soon in next build iteration</p>
-                </div>
+                <WoodwormFields
+                  data={selectedRoom.room_data.woodworm || {}}
+                  onChange={(data) => handleRoomDataChange('woodworm', data)}
+                />
               )}
             </div>
           )}
