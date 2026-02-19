@@ -115,22 +115,17 @@ export default function Dashboard() {
     total: projects.length,
   }
 
-  if (isLoading) {
-    return (
-      <ProtectedRoute>
+  return (
+    <ProtectedRoute>
+      {isLoading ? (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="spinner mx-auto mb-4" />
             <p className="text-white/60">Loading dashboard...</p>
           </div>
         </div>
-      </ProtectedRoute>
-    )
-  }
-
-  return (
-    <ProtectedRoute>
-      <div className="min-h-screen">
+      ) : (
+        <div className="min-h-screen">
       {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -350,6 +345,7 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+        )}
     </ProtectedRoute>
   )
 }
