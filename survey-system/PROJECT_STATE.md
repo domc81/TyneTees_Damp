@@ -25,7 +25,7 @@ Tech: Next.js 14, Supabase (PostgreSQL), TypeScript, Tailwind CSS.
 Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey_rooms, costing_sections, costing_line_templates, pricing_config, materials_catalog, survey_costing_lines, plus survey type extension tables and output tables.
 
 ## What's Next (Build Order)
-1. Survey wizard types — src/types/survey-wizard.types.ts
+1. ✅ Survey wizard types — src/types/survey-wizard.types.ts (DONE 2026-02-19)
 2. Room-first DB migration — add issues_identified and room_data JSONB to survey_rooms
 3. Survey wizard UI components — room-by-room, issue-driven panels
 4. Survey wizard page — multi-step form with save/load
