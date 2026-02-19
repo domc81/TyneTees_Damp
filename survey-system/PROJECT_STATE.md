@@ -1,6 +1,6 @@
 # TyneTees Damp — Project State
 **Last updated:** 2026-02-19
-**Last commit:** [current] — feat: add survey-to-costing mapping engine — transforms wizard data into pricing inputs
+**Last commit:** [current] — feat: add costing review page — displays auto-calculated survey costs
 
 ## What This Project Is
 Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costing workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26) into a web application. MVP: Lead Gen + CRM + Survey System with automated pricing.
@@ -30,6 +30,13 @@ Tech: Next.js 14, Supabase (PostgreSQL), TypeScript, Tailwind CSS.
   - Handles all 4 survey types (damp, condensation, timber, woodworm)
   - Auto-cascading calculations (e.g., debris bags = strip-out area × 2)
   - Template lookup from database by section_key + line_key
+- Costing review page: src/app/survey/[projectId]/costing/page.tsx
+  - Displays auto-calculated costs from completed survey wizard
+  - Section-by-section breakdown with line items
+  - Material/labour cost separation with labour hours
+  - VAT calculation (20%)
+  - Multi-survey-type support with tab switching
+  - Read-only display (manual overrides not yet implemented)
 
 ## Database State
 44 costing sections, 227 line templates, 14 pricing config values, 30 material products seeded.
@@ -62,7 +69,15 @@ Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey
    - ✅ Auto-cascading calculations
    - ✅ Additional works mapping
    - ✅ generateCostingFromSurvey() convenience function
-6. Costing review page — auto-calculated costs, manual overrides
+6. ✅ Costing review page — COMPLETE (2026-02-19)
+   - ✅ src/app/survey/[projectId]/costing/page.tsx
+   - ✅ Auto-calculated costs display (read-only)
+   - ✅ Section-by-section breakdown
+   - ✅ Material/labour separation
+   - ✅ VAT calculation
+   - ✅ Multi-survey-type tabs
+   - ✅ Wizard navigation integration
+   - Manual overrides not yet implemented (future enhancement)
 7. Estimate PDF generation
 8. CF CSV export
 

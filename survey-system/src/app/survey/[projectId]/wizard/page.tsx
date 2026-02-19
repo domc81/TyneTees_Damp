@@ -190,8 +190,8 @@ export default function SurveyWizardPage() {
       setWizardData(completedData)
       setLastSaved(new Date())
 
-      // Redirect to survey detail page
-      router.push(`/projects/${projectId}`)
+      // Redirect to costing review page
+      router.push(`/survey/${projectId}/costing`)
     } catch (err) {
       console.error('Failed to complete survey:', err)
       setError('Failed to save survey. Please try again.')
