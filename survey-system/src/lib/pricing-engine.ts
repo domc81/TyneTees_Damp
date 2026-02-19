@@ -87,9 +87,8 @@ export interface LineResult {
 export interface LineTemplate {
   id: string
   cost_formula: 'standard' | 'ceiling_coverage' | 'dpc_injection' | 'compound_material' | 'fixed_price' | 'tiered_disposal' | 'bag_and_cart' | 'skip_hire'
-  product_key?: string | null
   base_unit_cost?: number | null
-  labour_rate?: number | null
+  labour_rate_per_unit?: number | null
   coverage_rate?: number | null
   wastage_factor?: number | null
   material_markup?: number | null
@@ -136,7 +135,7 @@ export function calcStandard(
   // Get base unit cost (from template or override)
   const baseUnitCost = input.overrides?.unit_cost
     ?? template.base_unit_cost
-    ?? (template.product_key ? materials[template.product_key] : 0)
+    ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
     ?? 0
 
   // Get wastage factor (from template or override or config default)
@@ -168,7 +167,7 @@ export function calcStandard(
     ?? 1.00
 
   // Calculate labour cost
-  const labourHours = quantity * (template.labour_rate ?? 0)
+  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
@@ -213,7 +212,7 @@ export function calcCeilingCoverage(
   // Get base unit cost
   const baseUnitCost = input.overrides?.unit_cost
     ?? template.base_unit_cost
-    ?? (template.product_key ? materials[template.product_key] : 0)
+    ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
     ?? 0
 
   // Get wastage factor
@@ -245,7 +244,7 @@ export function calcCeilingCoverage(
     ?? 1.00
 
   // Calculate labour (based on actual area, not units)
-  const labourHours = quantity * (template.labour_rate ?? 0)
+  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
@@ -416,8 +415,8 @@ export function calcCompoundMaterial(
     ?? config['default_labour_markup']
     ?? 1.00
 
-  // Calculate labour (from template labour_rate, which is hours per unit)
-  const labourHours = quantity * (template.labour_rate ?? 0)
+  // Calculate labour (from template labour_rate_per_unit, which is hours per unit)
+  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
@@ -450,7 +449,7 @@ export function calcFixedPrice(
   // Get base unit cost (flat)
   const baseUnitCost = input.overrides?.unit_cost
     ?? template.base_unit_cost
-    ?? (template.product_key ? materials[template.product_key] : 0)
+    ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
     ?? 0
 
   // Get material markup
@@ -465,7 +464,7 @@ export function calcFixedPrice(
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // Get labour hours (fixed from template)
-  const fixedLabourHours = template.labour_rate ?? 0
+  const fixedLabourHours = template.labour_rate_per_unit ?? 0
 
   // Get labour rate
   const labourRate = input.overrides?.labour_rate

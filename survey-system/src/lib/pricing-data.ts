@@ -196,9 +196,8 @@ export async function loadSectionTemplates(
       costing_line_templates (
         id,
         cost_formula,
-        product_key,
         base_unit_cost,
-        labour_rate,
+        labour_rate_per_unit,
         coverage_rate,
         wastage_factor,
         material_markup,
@@ -229,9 +228,8 @@ export async function loadSectionTemplates(
       .map((template: any) => ({
         id: template.id,
         cost_formula: template.cost_formula,
-        product_key: template.product_key,
         base_unit_cost: template.base_unit_cost,
-        labour_rate: template.labour_rate,
+        labour_rate_per_unit: template.labour_rate_per_unit,
         coverage_rate: template.coverage_rate,
         wastage_factor: template.wastage_factor,
         material_markup: template.material_markup,
