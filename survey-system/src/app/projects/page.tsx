@@ -76,9 +76,9 @@ export default function ProjectsPage() {
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
-      project.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.site_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.project_number.toLowerCase().includes(searchQuery.toLowerCase())
+      (project.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (project.site_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (project.project_number || '').toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter
     const matchesType = typeFilter === 'all' || project.survey_type === typeFilter

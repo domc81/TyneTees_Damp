@@ -1,0 +1,188 @@
+﻿Section,Section Description,Item Name,Quantity,Unit Cost,Unit,Cost Code,Markup,Markup Type,Item Type,Is Taxable,Is Optional,Assigned To,CF IGNORE - LINE VALUE,CF IGNORE - Zero value Section Validation,CF IGNORE - LINE VALUE FOR CUSTOMER SUMMARY,CF IGNORE - INCLUDE PRICE IN CUSTOMER SUMMARY
+Stripping out of items as required to proceed with works,,Remove radiators & cap valves,0.0000000000,7.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Remove socket fronts and isolate,0.0000000000,2.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Skirting board removal & set aside,0.0000000000,0.1000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Strip Wall Paper,0.0000000000,0.5000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Antinox HD Floor Protection Boards – 2.4m x 1.2m,0.0000000000,4.5760000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Remove plaster/render (Walls),0.0000000000,0.0000000000,M2,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Removal of stud walls etc (Bag & cart away),0.0000000000,0.0000000000,M2,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Plaster & stud Removal (Ceilings),0.0000000000,0.0000000000,M2,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Strip out existing timber floor (GF),0.0000000000,0.0000000000,M2,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Scrape back/clear sub floors,0.0000000000,0.0000000000,M2,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Bag up debris & cart outside ,0.0000000000,1.0000000000,Bags,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Disposal via licensed transfer agent,0.0000000000,0.0000000000,Bags,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Remove radiators & cap valves,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Remove socket fronts and isolate,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Skirting board removal & set aside,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Strip Wall Paper,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Antinox HD Floor Protection Boards – 2.4m x 1.2m,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Remove plaster/render (Walls),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Removal of stud walls etc (Bag & cart away),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Plaster & stud Removal (Ceilings),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Strip out existing timber floor (GF),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Scrape back/clear sub floors,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Bag up debris & cart outside ,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Disposal via licensed transfer agent,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Stripping out of items as required to proceed with works,,Stripping out of items as required to proceed with works - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Stripping out of items as required to proceed with works,,Stripping out of items as required to proceed with works - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Walls (Install membrane system),,DPC Installation - Traditional,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,DPC Installation - Digital,0.0000000000,0.0000000000,Each,Damp Materials,15.4000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 1mtr,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 1.2mtr,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #1,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #2,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #3,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3 - Subtotals for above 3 lines,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Membrane plugs for m2 listed,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Sealing Tape Lm,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Technoseal Lm,0.0000000000,1.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall/floor fillet joint,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Overtape Lm,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Fixing Rope Lm,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,DPC Installation - Traditional,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,DPC Installation - Digital,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 1mtr,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 1.2mtr,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #1,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #2,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3  - 2mtr #3,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall membrane CM3 - Subtotals for above 3 lines,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Membrane plugs for m2 listed,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Sealing Tape Lm,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Technoseal Lm,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Wall/floor fillet joint,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Overtape Lm,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Fixing Rope Lm,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Walls (Install membrane system),,Walls (Install membrane system) - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Walls (Install membrane system),,Walls (Install membrane system) - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Cementitious tanking system,,Dubbing out coat (sand/cement/SBR),0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,2 coat tanking slurry,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Renovating plaster,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Wall/floor fillet joint,0.0000000000,0.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Dubbing out coat (sand/cement/SBR),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,2 coat tanking slurry,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Renovating plaster,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Wall/floor fillet joint,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Cementitious tanking system,,Cementitious tanking system - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Cementitious tanking system,,Cementitious tanking system - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Floor - Liquid Resin floor Membranes ,,EP40 2 Pack resin Primer,0.0000000000,0.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,EP40 2 Pack resin top coat,0.0000000000,0.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Wall/floor fillet joint,0.0000000000,0.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Grip grit,0.0000000000,0.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Each,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,EP40 2 Pack resin Primer,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,EP40 2 Pack resin top coat,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Wall/floor fillet joint,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Grip grit,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor - Liquid Resin floor Membranes ,,Floor - Liquid Resin floor Membranes  - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Floor - Liquid Resin floor Membranes ,,Floor - Liquid Resin floor Membranes  - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Plastering & finishing,,Construct stud wall to perimeter,0.0000000000,14.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plaster boarding (inc dab/screws),0.0000000000,9.7559198543,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Skimming walls (multi finish plaster),0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Stop Bead - 3m length,0.0000000000,1.1000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Thin Coat Angle/Corner Bead - 2.4m length,0.0000000000,1.8260000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Thin Coat Angle/Corner Bead - 3m length,0.0000000000,2.7500000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,"Difficulty hours (fireplace, corners etc)",0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Construct stud wall to perimeter,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plaster boarding (inc dab/screws),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Skimming walls (multi finish plaster),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Stop Bead - 3m length,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Thin Coat Angle/Corner Bead - 2.4m length,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering Thin Coat Angle/Corner Bead - 3m length,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,"Difficulty hours (fireplace, corners etc)",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Plastering & finishing,,Plastering & finishing - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Plastering & finishing,,Plastering & finishing - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Warmline Internal Wall Insulation,,Warmline Internal Wall Insulation,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Warmline Internal Wall Insulation,,Warmline Internal Wall Insulation,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Warmline Internal Wall Insulation,,Warmline Internal Wall Insulation - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Warmline Internal Wall Insulation,,Warmline Internal Wall Insulation - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Floor Joists & Floor Decking,,"Joists, 100 x 50",0.0000000000,5.4600000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 125 x 50",0.0000000000,6.5000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 150 x 50",0.0000000000,7.7000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 175 x 50",0.0000000000,8.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 200 x 50",0.0000000000,8.9000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 225 x 50",0.0000000000,9.5000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Treat and endwrap joist,0.0000000000,3.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Wall plate 100x25,0.0000000000,4.8400000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Bower beams (pair),0.0000000000,36.0000000000,Pairs,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Flitch plates (pair),0.0000000000,42.0000000000,Pairs,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 100 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 125 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 150 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 175 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 200 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,"Joists, 225 x 50",0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Treat and endwrap joist,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Wall plate 100x25,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Bower beams (pair),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Flitch plates (pair),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Install Weyrock flooring 18mm (M2),1.0000000000,18.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,18.0000000000,DELETE,23.4000000000,No
+Floor Joists & Floor Decking,,Install Weyrock flooring 22mm (M2),1.0000000000,22.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,22.0000000000,DELETE,28.6000000000,No
+Floor Joists & Floor Decking,,Install std T&G Floorboards (M2),1.0000000000,46.3000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,46.3000000000,DELETE,60.1900000000,No
+Floor Joists & Floor Decking,,Install Victorian T&G Floorboards (M2),1.0000000000,52.8000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,52.8000000000,DELETE,68.6400000000,No
+Floor Joists & Floor Decking,,Install Engineered Flooring sheet (M2),1.0000000000,49.9900000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,49.9900000000,DELETE,64.9870000000,No
+Floor Joists & Floor Decking,,Install Structural Engineered Flooring sheet (M2) onto joists,1.0000000000,52.8000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,52.8000000000,DELETE,68.6400000000,No
+Floor Joists & Floor Decking,,Provide insulation to suspended flooring,0.0000000000,6.8000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Install Weyrock flooring 18mm (M2),0.4000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,12.2520000000,DELETE,24.5040000000,No
+Floor Joists & Floor Decking,,Install Weyrock flooring 22mm (M2),0.4250000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,13.0177500000,DELETE,26.0355000000,No
+Floor Joists & Floor Decking,,Install std T&G Floorboards (M2),0.6000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,18.3780000000,DELETE,36.7560000000,No
+Floor Joists & Floor Decking,,Install Victorian T&G Floorboards (M2),0.6000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,18.3780000000,DELETE,36.7560000000,No
+Floor Joists & Floor Decking,,Install Engineered Flooring sheet (M2),0.4000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,12.2520000000,DELETE,24.5040000000,No
+Floor Joists & Floor Decking,,Install Structural Engineered Flooring sheet (M2) onto joists,0.9000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,27.5670000000,DELETE,55.1340000000,No
+Floor Joists & Floor Decking,,Provide insulation to suspended flooring,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Floor Joists & Floor Decking,,Floor Joists & Floor Decking - Materials,1.0000000000,241.8900000000,EACH,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,241.8900000000,LEAVE,314.4570000000,Yes
+Floor Joists & Floor Decking,,Floor Joists & Floor Decking - Labour,3.3250000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,101.8447500000,LEAVE,203.6895000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Airbricks,,Clean out airbrick/fit new face,0.0000000000,16.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Lift / upgrade existing airbrick/fit new face,0.0000000000,16.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Install additional  airbrick,0.0000000000,16.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Clean out airbrick/fit new face,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Lift / upgrade existing airbrick/fit new face,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Install additional  airbrick,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Airbricks,,Airbricks - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Airbricks,,Airbricks - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Spray treatments,,Fog sub floor void with anti fungal treatment,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Spray treatments,,Difficulty hours (additional hours if required),0.0000000000,0.0000000000,Hours,Damp Materials,0.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Spray treatments,,Fog sub floor void with anti fungal treatment,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Spray treatments,,Difficulty hours (additional hours if required),0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Spray treatments,,Spray treatments - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Spray treatments,,Spray treatments - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Drains,,Aco Drain per linear meter,0.0000000000,8.0000000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Drains,,French Drain per linear meter,0.0000000000,2.4100000000,LM,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Drains,,Aco Drain per linear meter,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Drains,,French Drain per linear meter,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Drains,,Drains - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,Yes,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Drains,,Drains - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,Yes,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+External Wall - Aquaban Water Repellent Treatments,,Aquaban water repellent system,0.0000000000,0.0000000000,M2,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+External Wall - Aquaban Water Repellent Treatments,,Aquaban water repellent system,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+External Wall - Aquaban Water Repellent Treatments,,External Wall - Aquaban Water Repellent Treatments - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,Yes,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+External Wall - Aquaban Water Repellent Treatments,,External Wall - Aquaban Water Repellent Treatments - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,Yes,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Asbestos Testing,,Asbestos Testing,0.0000000000,30.0000000000,Each,Damp Materials,30.0000000000,%,MTL,Yes,No,Preservation Shop,0.0000000000,DELETE,0.0000000000,No
+Asbestos Testing,,Asbestos Testing,0.0000000000,30.6300000000,Hours,Damp Labour,100.0000000000,%,LBR,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Asbestos Testing,,Asbestos Testing - Materials,1.0000000000,0.0000000000,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,Yes,Preservation Shop,0.0000000000,DELETE,0.0000000000,Yes
+Asbestos Testing,,Asbestos Testing - Labour,0.0000000000,#DIV/0!,Hours,Damp Labour,#DIV/0!,%,LBR,Yes,Yes,,0.0000000000,DELETE,0.0000000000,Yes
+,,,,,,,,,,,,,,DELETE,,
+Project Specific Overheads,,Skips,0.0000000000,270.0000000000,Each,Waste Removal,30.0000000000,%,Other,Yes,No,,0.0000000000,DELETE,0.0000000000,No
+Project Specific Overheads,,Vehicle Costs (Fuel),#DIV/0!,0.5000000000,Miles,Travel Costs,0.0000000000,%,Other,Yes,No,,#DIV/0!,DELETE,#DIV/0!,No
+Project Specific Overheads,,Travel Costs for Tradesmen,#DIV/0!,30.6300000000,Hours,Travel Costs,0.0000000000,%,LBR,Yes,No,,#DIV/0!,DELETE,#DIV/0!,No
+Project Specific Overheads,"(May cover any or all of the following: Covers Health & Safety, Tooling Equipment, Access Equipment, Specialist Equipment, Waste Removal & Disposal, Project Management Administration etc.)",Project Specific Overheads - Materials,1.0000000000,#DIV/0!,EACH,Damp Materials,#DIV/0!,%,MTL,Yes,No,Preservation Shop,#DIV/0!,#DIV/0!,#DIV/0!,Yes
+Project Specific Overheads,"(May cover any or all of the following: Covers Health & Safety, Tooling Equipment, Access Equipment, Specialist Equipment, Waste Removal & Disposal, Project Management Administration etc.)",Project Specific Overheads - Labour,#DIV/0!,30.6300000000,Hours,Damp Labour,0.0000000000,%,LBR,Yes,No,,#DIV/0!,#DIV/0!,#DIV/0!,Yes

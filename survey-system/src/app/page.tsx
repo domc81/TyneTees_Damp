@@ -36,7 +36,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; l
 
 const navItems = [
   { icon: Home, label: 'Dashboard', href: '/' },
-  { icon: ClipboardList, label: 'Projects', href: '/projects' },
+  { icon: ClipboardList, label: 'Surveys', href: '/projects' },
   { icon: Calculator, label: 'Costing', href: '/costing' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Camera, label: 'Photos', href: '/photos' },
