@@ -1,6 +1,6 @@
 # TyneTees Damp — Project State
 **Last updated:** 2026-02-19
-**Last commit:** fa41f61 — fix: align pricing engine with actual DB schema
+**Last commit:** [current] — feat: wire wizard to Supabase — load, auto-save, room CRUD
 
 ## What This Project Is
 Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costing workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26) into a web application. MVP: Lead Gen + CRM + Survey System with automated pricing.
@@ -19,6 +19,11 @@ Tech: Next.js 14, Supabase (PostgreSQL), TypeScript, Tailwind CSS.
 - Pricing engine: src/lib/pricing-engine.ts (8 formula types, tested and working)
 - Pricing data layer: src/lib/pricing-data.ts (Supabase loader + orchestration)
 - Pricing test page: src/app/admin/pricing-test/page.tsx
+- Survey wizard: complete 5-step room-first UI with Supabase persistence
+  - Wizard data layer: src/lib/survey-wizard-data.ts
+  - Auto-save with 2-second debounce
+  - Load/save wizard data and rooms
+  - Room CRUD operations
 
 ## Database State
 44 costing sections, 227 line templates, 14 pricing config values, 30 material products seeded.
@@ -36,12 +41,18 @@ Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey
    - ✅ DampFields, CondensationFields, TimberFields, WoodwormFields components
    - ✅ AdditionalWorksStep component (src/components/wizard/AdditionalWorksStep.tsx)
    - ✅ ReviewStep component (src/components/wizard/ReviewStep.tsx)
-4. Survey wizard page — multi-step form with save/load
-5. Supabase persistence — wire wizard to surveys.survey_data + survey_rooms
-6. Mapping engine — survey_data → LineInput[] (aggregates rooms, applies costing rules)
-7. Costing review page — auto-calculated costs, manual overrides
-8. Estimate PDF generation
-9. CF CSV export
+4. ✅ Survey wizard persistence — COMPLETE (2026-02-19)
+   - ✅ Wizard data layer: src/lib/survey-wizard-data.ts
+   - ✅ Load wizard data on mount (loadWizardData)
+   - ✅ Auto-save with 2-second debounce
+   - ✅ Save wizard data (saveWizardData)
+   - ✅ Room CRUD (saveRoom, deleteRoom, saveAllRooms)
+   - ✅ Complete survey handler (marks wizard_completed = true)
+   - ✅ Loading state, error handling, save indicators
+5. Mapping engine — survey_data → LineInput[] (aggregates rooms, applies costing rules)
+6. Costing review page — auto-calculated costs, manual overrides
+7. Estimate PDF generation
+8. CF CSV export
 
 ## Architecture Decision: Room-First Survey
 The survey follows how a surveyor physically works: room by room. In each room they select what issues they find (Damp, Condensation, Timber Decay, Woodworm). Only relevant measurement fields appear. A single room can have multiple issue types. The mapping engine aggregates all room data across the property to generate costing line items.
@@ -49,6 +60,8 @@ The survey follows how a surveyor physically works: room by room. In each room t
 ## Key Files
 - CLAUDE.md — project context for Claude Code
 - src/lib/pricing-engine.ts — calculation engine (8 formula types)
-- src/lib/pricing-data.ts — data loading + orchestration
-- src/lib/supabase-data.ts — all Supabase queries
+- src/lib/pricing-data.ts — pricing data loading + orchestration
+- src/lib/survey-wizard-data.ts — wizard persistence layer (load/save wizard data + rooms)
+- src/lib/supabase-data.ts — general Supabase queries
 - src/types/database.types.ts — canonical DB TypeScript types
+- src/types/survey-wizard.types.ts — wizard data model types

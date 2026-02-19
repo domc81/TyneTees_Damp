@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Save, Clock } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Clock, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import WizardStepper from '@/components/wizard/WizardStepper'
@@ -19,6 +19,11 @@ import {
   AdditionalWorks,
   SurveyRoomRow,
 } from '@/types/survey-wizard.types'
+import {
+  loadWizardData,
+  saveWizardData,
+  saveAllRooms,
+} from '@/lib/survey-wizard-data'
 
 const WIZARD_STEPS = [
   { label: 'Site Details', description: 'Property & inspection info' },
@@ -37,6 +42,8 @@ export default function SurveyWizardPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Survey data state
   const [wizardData, setWizardData] = useState<SurveyWizardData>({
@@ -46,28 +53,77 @@ export default function SurveyWizardPage() {
 
   const [rooms, setRooms] = useState<SurveyRoomRow[]>([])
 
-  // Load existing survey data (placeholder for now)
+  // Debounce timer ref
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Load existing survey data from Supabase
   useEffect(() => {
-    // TODO: Load from Supabase in next iteration
-    console.log('Loading survey data for project:', projectId)
+    async function loadData() {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const { wizardData: loadedWizardData, rooms: loadedRooms } =
+          await loadWizardData(projectId)
+
+        setWizardData(loadedWizardData)
+        setRooms(loadedRooms)
+        setCurrentStep(loadedWizardData.wizard_step || 0)
+      } catch (err) {
+        console.error('Failed to load wizard data:', err)
+        setError('Failed to load survey data. Please refresh the page.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
   }, [projectId])
 
-  // Auto-save function (stub for now)
-  const handleAutoSave = async () => {
+  // Auto-save function with actual Supabase calls
+  const handleAutoSave = useCallback(async () => {
+    if (isSaving) return // Prevent concurrent saves
+
     setIsSaving(true)
-    console.log('Auto-saving wizard data:', {
-      projectId,
-      wizardData,
-      rooms,
-    })
+    setError(null)
 
-    // TODO: Save to Supabase in next iteration
-    // For now, just simulate a delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      // Save wizard data (property-level)
+      await saveWizardData(projectId, wizardData)
 
-    setLastSaved(new Date())
-    setIsSaving(false)
-  }
+      // Save all rooms (batch operation)
+      const updatedRooms = await saveAllRooms(projectId, rooms)
+      setRooms(updatedRooms) // Update with DB-assigned IDs
+
+      setLastSaved(new Date())
+      console.log('Auto-save completed successfully')
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+      setError('Failed to save changes. Your data may not be saved.')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [projectId, wizardData, rooms, isSaving])
+
+  // Debounced auto-save (2 seconds)
+  const triggerDebouncedSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+
+    saveTimerRef.current = setTimeout(() => {
+      handleAutoSave()
+    }, 2000)
+  }, [handleAutoSave])
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+    }
+  }, [])
 
   // Step validation
   const canProceedToNextStep = () => {
@@ -99,8 +155,9 @@ export default function SurveyWizardPage() {
     if (canProceedToNextStep() && currentStep < WIZARD_STEPS.length - 1) {
       const nextStep = currentStep + 1
       setCurrentStep(nextStep)
-      setWizardData({ ...wizardData, wizard_step: nextStep })
-      handleAutoSave()
+      const updatedData = { ...wizardData, wizard_step: nextStep }
+      setWizardData(updatedData)
+      handleAutoSave() // Save immediately on navigation
     }
   }
 
@@ -108,21 +165,47 @@ export default function SurveyWizardPage() {
     if (currentStep > 0) {
       const prevStep = currentStep - 1
       setCurrentStep(prevStep)
-      setWizardData({ ...wizardData, wizard_step: prevStep })
+      const updatedData = { ...wizardData, wizard_step: prevStep }
+      setWizardData(updatedData)
     }
   }
 
   const handleStepClick = (stepIndex: number) => {
     setCurrentStep(stepIndex)
-    setWizardData({ ...wizardData, wizard_step: stepIndex })
+    const updatedData = { ...wizardData, wizard_step: stepIndex }
+    setWizardData(updatedData)
   }
 
-  // Data update handlers
+  // Final submission handler
+  const handleCompleteSurvey = async () => {
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      // Save everything first
+      const completedData = { ...wizardData, wizard_completed: true }
+      await saveWizardData(projectId, completedData)
+      await saveAllRooms(projectId, rooms)
+
+      setWizardData(completedData)
+      setLastSaved(new Date())
+
+      // Redirect to survey detail page
+      router.push(`/projects/${projectId}`)
+    } catch (err) {
+      console.error('Failed to complete survey:', err)
+      setError('Failed to save survey. Please try again.')
+      setIsSaving(false)
+    }
+  }
+
+  // Data update handlers (with debounced auto-save)
   const handleSiteDetailsChange = (data: Partial<SiteDetails>) => {
     setWizardData({
       ...wizardData,
       site_details: data as SiteDetails,
     })
+    triggerDebouncedSave()
   }
 
   const handleExternalInspectionChange = (data: Partial<ExternalInspection>) => {
@@ -130,6 +213,7 @@ export default function SurveyWizardPage() {
       ...wizardData,
       external_inspection: data as ExternalInspection,
     })
+    triggerDebouncedSave()
   }
 
   const handleAdditionalWorksChange = (data: Partial<AdditionalWorks>) => {
@@ -137,6 +221,13 @@ export default function SurveyWizardPage() {
       ...wizardData,
       additional_works: data as AdditionalWorks,
     })
+    triggerDebouncedSave()
+  }
+
+  // Room update handler (with debounced auto-save)
+  const handleRoomsChange = (updatedRooms: SurveyRoomRow[]) => {
+    setRooms(updatedRooms)
+    triggerDebouncedSave()
   }
 
   // Compute flags for AdditionalWorksStep
@@ -166,7 +257,7 @@ export default function SurveyWizardPage() {
         return (
           <RoomInspectionStep
             rooms={rooms}
-            onRoomsChange={setRooms}
+            onRoomsChange={handleRoomsChange}
           />
         )
       case 3:
@@ -183,6 +274,18 @@ export default function SurveyWizardPage() {
       default:
         return null
     }
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-brand-300 animate-spin mx-auto mb-4" />
+          <p className="text-white/70">Loading survey data...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -212,7 +315,11 @@ export default function SurveyWizardPage() {
               disabled={isSaving}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
             >
-              <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse' : ''}`} />
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               <span className="hidden sm:inline text-sm text-white/70">
                 {isSaving ? 'Saving...' : lastSaved ? 'Saved' : 'Save'}
               </span>
@@ -220,10 +327,18 @@ export default function SurveyWizardPage() {
           </div>
 
           {/* Last saved timestamp */}
-          {lastSaved && (
+          {lastSaved && !error && (
             <div className="flex items-center justify-center gap-2 mt-3 text-xs text-white/50">
               <Clock className="w-3 h-3" />
               Last saved at {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
+
+          {/* Error message */}
+          {error && (
+            <div className="flex items-center justify-center gap-2 mt-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-400/30">
+              <AlertCircle className="w-4 h-4 text-red-300" />
+              <span className="text-sm text-red-300">{error}</span>
             </div>
           )}
         </div>
@@ -271,12 +386,11 @@ export default function SurveyWizardPage() {
           ) : (
             <Button
               variant="primary"
-              onClick={() => {
-                console.log('Submit wizard')
-                // TODO: Final submission logic
-              }}
-              disabled={!canProceedToNextStep()}
+              onClick={handleCompleteSurvey}
+              disabled={!canProceedToNextStep() || isSaving}
+              className="flex items-center gap-2"
             >
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
               Complete Survey
             </Button>
           )}
