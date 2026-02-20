@@ -258,16 +258,20 @@ export async function uploadSurveyPhoto(
       .single()
 
     if (fetchError) {
+      console.error('Failed to load survey for photo metadata:', fetchError)
+      // Rollback: delete uploaded file
+      await supabase.storage.from('survey-photos').remove([uploadData.path])
       throw new Error(`Failed to load survey: ${fetchError.message}`)
     }
 
     // Step 9: Add photo to survey_data.photos array
     const surveyData = survey.survey_data || {}
-    const photos = surveyData.photos || []
+    const photos = Array.isArray(surveyData.photos) ? surveyData.photos : []
     photos.push(newPhoto)
 
     // Step 10: Update survey_data with new photos array
-    const { error: updateError } = await supabase
+    console.log(`Saving photo metadata for ${photoId}...`)
+    const { data: updateData, error: updateError } = await supabase
       .from('surveys')
       .update({
         survey_data: {
@@ -276,11 +280,21 @@ export async function uploadSurveyPhoto(
         },
       })
       .eq('id', surveyId)
+      .select()
 
     if (updateError) {
+      console.error('Failed to save photo metadata:', updateError)
       // Rollback: delete uploaded file
       await supabase.storage.from('survey-photos').remove([uploadData.path])
       throw new Error(`Failed to save photo metadata: ${updateError.message}`)
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.error('Survey update returned no data - metadata may not have been saved')
+      // Don't rollback here as the update might have succeeded
+      // This is a warning scenario
+    } else {
+      console.log('Photo metadata saved successfully:', photoId)
     }
 
     console.log('Photo uploaded successfully:', photoId)
@@ -294,6 +308,7 @@ export async function uploadSurveyPhoto(
 /**
  * Load all photos for a survey
  * Returns photos sorted by taken_at (newest first)
+ * If metadata is missing, attempts to reconstruct from storage files
  */
 export async function loadSurveyPhotos(surveyId: string): Promise<SurveyPhoto[]> {
   const supabase = getSupabase()
@@ -312,7 +327,27 @@ export async function loadSurveyPhotos(surveyId: string): Promise<SurveyPhoto[]>
       throw new Error(`Failed to load survey: ${error.message}`)
     }
 
-    const photos = survey?.survey_data?.photos || []
+    let photos = survey?.survey_data?.photos || []
+
+    // If no metadata exists, try to reconstruct from storage
+    if (photos.length === 0) {
+      console.log('No photo metadata found, attempting recovery from storage...')
+      photos = await recoverPhotosFromStorage(surveyId)
+
+      // If photos were recovered, save them back to survey_data
+      if (photos.length > 0) {
+        console.log(`Recovered ${photos.length} photos, saving metadata...`)
+        await supabase
+          .from('surveys')
+          .update({
+            survey_data: {
+              ...(survey?.survey_data || {}),
+              photos,
+            },
+          })
+          .eq('id', surveyId)
+      }
+    }
 
     // Sort by taken_at descending (newest first)
     return photos.sort((a: SurveyPhoto, b: SurveyPhoto) => {
@@ -320,6 +355,94 @@ export async function loadSurveyPhotos(surveyId: string): Promise<SurveyPhoto[]>
     })
   } catch (error) {
     console.error('Failed to load photos:', error)
+    return []
+  }
+}
+
+/**
+ * Recover photo metadata from storage files when metadata is missing
+ * This is a recovery mechanism for photos uploaded before the bug fix
+ */
+async function recoverPhotosFromStorage(surveyId: string): Promise<SurveyPhoto[]> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    return []
+  }
+
+  try {
+    // List all folders (steps) in the survey directory
+    const { data: folders, error: foldersError } = await supabase.storage
+      .from('survey-photos')
+      .list(surveyId, {
+        limit: 100,
+      })
+
+    if (foldersError) {
+      console.error('Failed to list storage folders:', foldersError)
+      return []
+    }
+
+    const recoveredPhotos: SurveyPhoto[] = []
+
+    // Iterate through each folder (step)
+    for (const folder of folders || []) {
+      // List files in this step folder
+      const { data: files, error: filesError } = await supabase.storage
+        .from('survey-photos')
+        .list(`${surveyId}/${folder.name}`, {
+          limit: 100,
+          sortBy: { column: 'created_at', order: 'desc' },
+        })
+
+      if (filesError || !files) {
+        console.error(`Failed to list files in ${folder.name}:`, filesError)
+        continue
+      }
+
+      for (const file of files) {
+        // Skip non-image files
+        if (!file.name.endsWith('.jpg') && !file.name.endsWith('.jpeg')) {
+          continue
+        }
+
+        const step = folder.name as any
+        const fileName = file.name
+
+        // Extract timestamp from filename (format: {timestamp}-{randomId}.jpg)
+        const timestampMatch = fileName.match(/^(\d+)-/)
+        const timestamp = timestampMatch ? parseInt(timestampMatch[1]) : Date.now()
+
+        // Infer category from step
+        let category = 'general'
+        if (step === 'site_details') category = 'building_exterior'
+        if (step === 'external_inspection') category = 'building_defect'
+        if (step === 'room_inspection') category = 'damp_evidence'
+
+        // Create photo metadata
+        const photo: SurveyPhoto = {
+          id: `photo_${timestamp}_recovered`,
+          survey_id: surveyId,
+          step,
+          category,
+          description: `Recovered photo from ${step.replace('_', ' ')}`,
+          storage_path: `${surveyId}/${folder.name}/${fileName}`,
+          file_name: fileName,
+          file_size: file.metadata?.size || 0,
+          mime_type: 'image/jpeg',
+          width: 1920, // Default assumption
+          height: 1080, // Default assumption
+          taken_at: new Date(timestamp).toISOString(),
+          created_at: file.created_at || new Date(timestamp).toISOString(),
+        }
+
+        recoveredPhotos.push(photo)
+      }
+    }
+
+    console.log(`Recovered ${recoveredPhotos.length} photos from storage`)
+    return recoveredPhotos
+  } catch (error) {
+    console.error('Photo recovery failed:', error)
     return []
   }
 }
