@@ -85,9 +85,12 @@ survey-system/
 │   │   ├── cost-calculator.ts      # LEGACY — replaced by pricing-engine.ts
 │   │   └── pricing-database.ts     # LEGACY — replaced by pricing-data.ts
 │   └── types/
-│       └── database.types.ts       # Canonical DB TypeScript types
+│       ├── database.types.ts       # Canonical DB TypeScript types
+│       ├── survey-wizard.types.ts  # Wizard data model types
+│       ├── survey-report.types.ts  # Report template & generated report types
+│       └── survey-photo.types.ts   # Photo capture & storage types
 ├── supabase/
-│   └── migrations/                 # 22 SQL migrations (see Database State)
+│   └── migrations/                 # 24 SQL migrations (see Database State)
 └── docs/
     ├── SURVEY_PLATFORM_SPECIFICATION.md
     ├── DATABASE_MIGRATION_PLAN.md
@@ -101,10 +104,10 @@ survey-system/
 
 ## Database State
 
-### Migrations (22 files, in order)
+### Migrations (24 files, in order)
 
 001_complete_schema.sql, 001_initial_schema.sql, then timestamped:
-20260204000001 through 20260218000011 covering: initial schema, survey_data columns, photo storage, customer details, surveyors, RLS policies, rename projects→surveys, survey type extensions, new costing engine schema, survey outputs, and seed data (costing sections, line templates ×4, pricing config, material catalogue).
+20260204000001 through 20260220000002 covering: initial schema, survey_data columns, photo storage, customer details, surveyors, RLS policies, rename projects→surveys, survey type extensions, new costing engine schema, survey outputs, seed data (costing sections, line templates ×4, pricing config, material catalogue), room-first wizard, report templates + seed default templates.
 
 ### Active Tables
 
@@ -131,6 +134,10 @@ survey-system/
 - `materials_catalog` — 30 products with costs, coverage rates
 - `survey_costing_lines` — per-survey calculated costs (populated at calc time)
 - `costing_section_adjustments` — per-section price adjustment %
+
+**Report System:**
+- `report_templates` — report template definitions (one default per survey type, sections + settings as JSONB)
+- `survey_reports` — generated report instances (status: draft → generated → reviewed → finalised)
 
 **Survey Outputs (schema exists, not yet used):**
 - `survey_customer_summary`, `survey_overheads`, `survey_caf1`, `survey_subcontractor_costs`
@@ -217,10 +224,15 @@ npm run lint         # Run ESLint
 - **Pricing engine** — `src/lib/pricing-engine.ts` (8 formula types, tested working)
 - **Pricing data layer** — `src/lib/pricing-data.ts` (Supabase loading + orchestration)
 - **Pricing test page** — `src/app/admin/pricing-test/page.tsx` (end-to-end verified)
+- **Survey wizard** — complete 5-step room-first UI with Supabase persistence
+- **Mapping engine** — `src/lib/survey-mapping.ts` (transforms wizard data into pricing inputs)
+- **Costing review page** — `src/app/survey/[projectId]/costing/page.tsx` (auto-calculated costs)
+- **Report data model** — `src/types/survey-report.types.ts` (template + generated report types)
+- **Report templates** — 4 default templates seeded from workbook analysis (damp, condensation, timber, woodworm)
 
 ## What's Next (Build Order)
 
-See PROJECT_STATE.md for the current build queue. Next up: survey wizard types, then DB migration, then wizard UI.
+See PROJECT_STATE.md for the current build queue. Next up: report generation engine, then report review UI, then PDF rendering.
 
 ## Reference Documents
 

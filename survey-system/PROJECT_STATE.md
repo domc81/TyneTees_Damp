@@ -1,6 +1,6 @@
 # TyneTees Damp — Project State
-**Last updated:** 2026-02-19
-**Last commit:** [current] — feat: add costing review page — displays auto-calculated survey costs
+**Last updated:** 2026-02-20
+**Last commit:** [current] — feat: add report data model, templates table, and seed default report templates from workbooks
 
 ## What This Project Is
 Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costing workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26) into a web application. MVP: Lead Gen + CRM + Survey System with automated pricing.
@@ -37,10 +37,23 @@ Tech: Next.js 14, Supabase (PostgreSQL), TypeScript, Tailwind CSS.
   - VAT calculation (20%)
   - Multi-survey-type support with tab switching
   - Read-only display (manual overrides not yet implemented)
+- Report data model: src/types/survey-report.types.ts
+  - ReportTemplate, ReportTemplateSection, BoilerplateVariant types
+  - SurveyReport, ReportSection types (generated report instances)
+  - ReportSettings (per-template configuration)
+  - Content sources: template, survey_data, llm_generated, surveyor_input, costing_data, mixed
+  - Report statuses: draft → generated → reviewed → finalised
+- Report templates: 4 default templates seeded (one per survey type)
+  - Damp: 16 sections with boilerplate from workbook (DPC, airbricks, room findings, etc.)
+  - Condensation: 12 sections (PIV proposals, humidity findings, mould treatment)
+  - Timber: 17 sections (room-by-room ceiling/walls/floors, treatment schedules for dry rot/wet rot/weevil)
+  - Woodworm: 13 sections (species identification, fogging treatment methodology, exclusion zone)
+  - All boilerplate text extracted from actual workbook analysis and completed report PDFs
+  - Conditional variants for show/hide logic based on survey data
 
 ## Database State
-44 costing sections, 227 line templates, 14 pricing config values, 30 material products seeded.
-Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey_rooms, costing_sections, costing_line_templates, pricing_config, materials_catalog, survey_costing_lines, plus survey type extension tables and output tables.
+44 costing sections, 227 line templates, 14 pricing config values, 30 material products, 4 report templates seeded.
+Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey_rooms, costing_sections, costing_line_templates, pricing_config, materials_catalog, survey_costing_lines, report_templates, survey_reports, plus survey type extension tables and output tables.
 
 ## What's Next (Build Order)
 1. ✅ Survey wizard types — src/types/survey-wizard.types.ts (DONE 2026-02-19)
@@ -78,8 +91,15 @@ Tables: enquiries, customers, surveyors, surveys (renamed from projects), survey
    - ✅ Multi-survey-type tabs
    - ✅ Wizard navigation integration
    - Manual overrides not yet implemented (future enhancement)
-7. Estimate PDF generation
-8. CF CSV export
+7. ✅ Report data model & templates — COMPLETE (2026-02-20)
+   - ✅ src/types/survey-report.types.ts (full type definitions)
+   - ✅ report_templates table + survey_reports table (migration applied)
+   - ✅ 4 default templates seeded from workbook analysis + completed PDFs
+   - ✅ Database types updated in database.types.ts
+8. Report generation engine (transforms survey data + template → report sections)
+9. Report review UI (surveyor edits LLM-generated sections before finalising)
+10. PDF rendering (generates downloadable PDF from finalised report)
+11. CF CSV export
 
 ## Architecture Decision: Room-First Survey
 The survey follows how a surveyor physically works: room by room. In each room they select what issues they find (Damp, Condensation, Timber Decay, Woodworm). Only relevant measurement fields appear. A single room can have multiple issue types. The mapping engine aggregates all room data across the property to generate costing line items.
@@ -93,3 +113,5 @@ The survey follows how a surveyor physically works: room by room. In each room t
 - src/lib/supabase-data.ts — general Supabase queries
 - src/types/database.types.ts — canonical DB TypeScript types
 - src/types/survey-wizard.types.ts — wizard data model types
+- src/types/survey-report.types.ts — report template & generated report types
+- src/types/survey-photo.types.ts — photo capture & storage types

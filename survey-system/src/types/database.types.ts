@@ -355,6 +355,7 @@ export interface Quotation {
   updated_at: string
 }
 
+/** @deprecated Use ReportTemplate + SurveyReport from survey-report.types.ts instead */
 export interface Report {
   id: string
   project_id: string
@@ -366,6 +367,35 @@ export interface Report {
   generated_at?: string | null
   generated_by?: string | null
   created_at: string
+}
+
+// --- Report Templates & Generated Reports (new model) ---
+// Full type definitions in src/types/survey-report.types.ts
+// These DB-level types match the report_templates and survey_reports tables.
+
+export interface DbReportTemplate {
+  id: string
+  name: string
+  survey_type: string
+  version: number
+  sections: Record<string, unknown>[] // JSONB — typed as ReportTemplateSection[] in survey-report.types.ts
+  settings: Record<string, unknown>   // JSONB — typed as ReportSettings in survey-report.types.ts
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DbSurveyReport {
+  id: string
+  survey_id: string
+  template_id: string
+  status: 'draft' | 'generated' | 'reviewed' | 'finalised'
+  sections: Record<string, unknown>[] // JSONB — typed as ReportSection[] in survey-report.types.ts
+  generated_at?: string | null
+  reviewed_by?: string | null
+  finalised_at?: string | null
+  created_at: string
+  updated_at: string
 }
 
 // --- Form Input Types (for creating/updating records) ---
