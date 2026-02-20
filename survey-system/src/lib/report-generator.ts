@@ -795,37 +795,20 @@ async function generateSection(
       break
   }
 
-  // Generate sub-sections if present
-  if (templateSection.sub_sections) {
-    section.sub_sections = []
-    for (const subTemplate of templateSection.sub_sections) {
-      const subSection = await generateSection(
-        subTemplate,
-        wizardData,
-        rooms,
-        photos,
-        costingResults,
-        conditions,
-        customerData,
-        surveyorData
-      )
-      section.sub_sections.push(subSection)
-    }
-  }
-
   // Generate per-room sub-sections if template has repeats_per: "room"
+  // IMPORTANT: When repeats_per is set, SKIP template sub-sections (like Walls, Proposal, Floors)
+  // because we're generating dynamic room-specific content instead
   if (templateSection.repeats_per === 'room' && rooms.length > 0) {
-    section.sub_sections = section.sub_sections || []
+    section.sub_sections = []
 
     for (const room of rooms) {
-      // Create a room sub-section
-      // Note: LLM content will be generated for parent section, room subsections only show structured data
+      // Create a room sub-section - minimal content, photos are the main content
       const roomSection: ReportSection = {
         key: `room_${room.id}`,
         title: room.name,
         type: 'findings',
-        content: generateRoomContent(room, wizardData), // Structured data only
-        content_source: 'survey_data', // Not mixed - avoid duplicate boilerplate
+        content: generateRoomContent(room, wizardData), // Minimal room identifier
+        content_source: 'survey_data',
         is_edited: false,
         data: {
           room_name: room.name,
@@ -843,7 +826,27 @@ async function generateSection(
       )
       roomSection.photos = roomPhotos.map((p) => p.id)
 
-      section.sub_sections.push(roomSection)
+      // Only add room sub-section if there are photos (otherwise LLM narrative in parent is sufficient)
+      if (roomSection.photos.length > 0) {
+        section.sub_sections.push(roomSection)
+      }
+    }
+  }
+  // Generate template sub-sections ONLY if repeats_per is NOT set
+  else if (templateSection.sub_sections) {
+    section.sub_sections = []
+    for (const subTemplate of templateSection.sub_sections) {
+      const subSection = await generateSection(
+        subTemplate,
+        wizardData,
+        rooms,
+        photos,
+        costingResults,
+        conditions,
+        customerData,
+        surveyorData
+      )
+      section.sub_sections.push(subSection)
     }
   }
 
@@ -851,95 +854,14 @@ async function generateSection(
 }
 
 /**
- * Generate narrative content for a room based on its data
- * Returns plain text without markdown for PDF rendering
+ * Generate minimal room header content
+ * Room details are now in the LLM narrative in the parent section
+ * Sub-sections exist only to hold photos
  */
 function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData): string {
-  const lines: string[] = []
-
-  // Room heading (plain text, no markdown)
-  lines.push(`Room: ${room.name}`)
-  if (room.room_type) {
-    lines.push(`Type: ${room.room_type.replace(/_/g, ' ')}`)
-  }
-  if (room.floor_level) {
-    lines.push(`Floor: ${room.floor_level}`)
-  }
-
-  if (room.issues_identified && room.issues_identified.length > 0) {
-    lines.push('')
-    lines.push(`Issues Identified: ${room.issues_identified.join(', ')}`)
-  }
-
-  // Extract room-specific findings
-  if (room.room_data) {
-    const roomData = room.room_data as any
-
-    // Damp findings
-    if (roomData.damp) {
-      lines.push('')
-      lines.push('Damp Findings:')
-      if (roomData.damp.walls && Array.isArray(roomData.damp.walls)) {
-        for (const wall of roomData.damp.walls) {
-          const area = wall.area || (wall.length * wall.height)
-          lines.push(`- ${wall.name}: ${wall.length}m × ${wall.height}m = ${area.toFixed(1)}m²`)
-          if (wall.moisture_readings && wall.moisture_readings.length > 0) {
-            lines.push(`  Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
-          }
-        }
-      }
-      if (roomData.damp.wall_treatment) {
-        lines.push(`Treatment: ${roomData.damp.wall_treatment.replace(/_/g, ' ')}`)
-      }
-      if (roomData.damp.dpc_required) {
-        lines.push('DPC required: Yes')
-      }
-    }
-
-    // Condensation findings
-    if (roomData.condensation) {
-      lines.push('')
-      lines.push('Condensation Findings:')
-      if (roomData.condensation.condensation_on_windows) {
-        lines.push('- Condensation noted on windows')
-      }
-      if (roomData.condensation.black_mould_present) {
-        lines.push('- Black mould present')
-      }
-      if (roomData.condensation.humidity_reading) {
-        lines.push(`- Humidity: ${roomData.condensation.humidity_reading}%`)
-      }
-      if (roomData.condensation.fan_count && roomData.condensation.fan_count > 0) {
-        lines.push(`- Extraction fans recommended: ${roomData.condensation.fan_count}`)
-      }
-    }
-
-    // Timber findings
-    if (roomData.timber_decay) {
-      lines.push('')
-      lines.push('Timber Findings:')
-      if (roomData.timber_decay.fungal_findings && Array.isArray(roomData.timber_decay.fungal_findings)) {
-        lines.push(`- Fungal findings: ${roomData.timber_decay.fungal_findings.join(', ')}`)
-      }
-      if (roomData.timber_decay.sub_floor_ventilation) {
-        lines.push(`- Sub-floor ventilation: ${roomData.timber_decay.sub_floor_ventilation}`)
-      }
-    }
-
-    // Woodworm findings
-    if (roomData.woodworm) {
-      lines.push('')
-      lines.push('Woodworm Findings:')
-      if (roomData.woodworm.infestation_status) {
-        lines.push(`- Infestation: ${roomData.woodworm.infestation_status}`)
-      }
-      if (roomData.woodworm.species_identified) {
-        lines.push(`- Species: ${roomData.woodworm.species_identified}`)
-      }
-    }
-  }
-
-  return lines.join('\n')
+  // Return minimal plain text room identifier
+  // This appears as a sub-section heading in the PDF with photos below
+  return `${room.room_type ? room.room_type.replace(/_/g, ' ') + ' on ' : ''}${room.floor_level || 'unknown'} floor`
 }
 
 // =============================================================================
