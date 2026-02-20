@@ -194,6 +194,7 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 - `src/components/pricing-calculator.tsx` and `src/app/admin/pricing-items/page.tsx` use LEGACY static pricing data — do not extend these
 - Local Supabase runs on Docker — connection details in `.env.local`
 - `survey-wizard.types.ts` will be the canonical type file for wizard data — always import wizard types from there
+- Database migrations are NOT auto-applied. After pulling new migration files, run: `PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/migrations/<filename>.sql` to apply them.
 
 ## Build & Dev Commands
 
