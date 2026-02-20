@@ -451,16 +451,16 @@ function populateDataSection(
         const dampData = room.room_data.damp as any
         if (dampData.walls && Array.isArray(dampData.walls)) {
           for (const wall of dampData.walls) {
-            const treatment = wall.treatment === 'membrane' ? 'Cavity drain membrane system' :
-                            wall.treatment === 'injection' ? 'Chemical DPC injection' :
-                            wall.treatment === 'tanking' ? 'Cementitious tanking system' :
-                            wall.treatment || 'Treatment to be specified'
+            const treatment = dampData.wall_treatment === 'membrane' ? 'Cavity drain membrane system' :
+                            dampData.wall_treatment === 'injection' ? 'Chemical DPC injection' :
+                            dampData.wall_treatment === 'tanking' ? 'Cementitious tanking system' :
+                            dampData.wall_treatment || 'Treatment to be specified'
 
             const area = wall.area || (wall.length * wall.height)
 
             roomsSummary.push({
               room_name: room.name,
-              floor_level: room.floor_level || 'Unknown',
+              floor_level: formatFloorLevel(room.floor_level),
               issue: 'Rising damp',
               treatment: treatment,
               total_area: `${area.toFixed(1)}m²`
@@ -505,10 +505,23 @@ function populateDataSection(
 
   // Extract data fields from wizard data
   if (section.data_fields) {
+    // Field aliases map template field names to wizard field names
+    const fieldAliases: Record<string, string> = {
+      'construction': 'construction_type',
+      'build_year': 'approx_build_year',
+    }
+
     for (const field of section.data_fields) {
+      // FIX 3: Skip reported_defect for survey_context (already in boilerplate)
+      if (section.key === 'survey_context' && field === 'reported_defect') {
+        continue
+      }
+
+      const actualField = fieldAliases[field] || field
+
       // Site details
-      if (wizardData.site_details && field in wizardData.site_details) {
-        data[field] = (wizardData.site_details as any)[field]
+      if (wizardData.site_details && actualField in wizardData.site_details) {
+        data[field] = (wizardData.site_details as any)[actualField]
       }
 
       // External inspection
@@ -516,6 +529,11 @@ function populateDataSection(
         wizardData.external_inspection &&
         field in wizardData.external_inspection
       ) {
+        // FIX 4: Skip building_defects for external_inspection (already in boilerplate)
+        if (section.key === 'external_inspection' && field === 'building_defects') {
+          continue
+        }
+
         let value = (wizardData.external_inspection as any)[field]
 
         // Format building defects as readable labels
@@ -585,9 +603,9 @@ function buildRoomLLMContext(
       contextParts.push(`Affected walls:`)
       for (const wall of damp.walls) {
         const area = wall.area || (wall.length * wall.height)
-        const treatmentLabel = wall.treatment === 'membrane' ? 'cavity drain membrane system' :
-                              wall.treatment === 'injection' ? 'chemical DPC injection' :
-                              wall.treatment === 'tanking' ? 'cementitious tanking system' : wall.treatment
+        const treatmentLabel = damp.wall_treatment === 'membrane' ? 'cavity drain membrane system' :
+                              damp.wall_treatment === 'injection' ? 'chemical DPC injection' :
+                              damp.wall_treatment === 'tanking' ? 'cementitious tanking system' : damp.wall_treatment
 
         const wallParts = [
           `${wall.name || 'Wall'}`,
@@ -713,7 +731,8 @@ function buildLLMContext(
     const treatmentsByRoom: Record<string, string[]> = {}
 
     rooms.forEach(r => {
-      const walls = (r.room_data?.damp as any)?.walls
+      const dampData = r.room_data?.damp as any
+      const walls = dampData?.walls
       if (walls && walls.length > 0) {
         dampRooms.push(r.name)
         totalDampWalls += walls.length
@@ -723,10 +742,10 @@ function buildLLMContext(
           const area = w.area || (w.length * w.height)
           totalDampArea += area
 
-          if (w.treatment) {
-            const treatmentLabel = w.treatment === 'membrane' ? 'membrane system' :
-                                  w.treatment === 'injection' ? 'chemical DPC injection' :
-                                  w.treatment === 'tanking' ? 'tanking system' : w.treatment
+          if (dampData.wall_treatment) {
+            const treatmentLabel = dampData.wall_treatment === 'membrane' ? 'membrane system' :
+                                  dampData.wall_treatment === 'injection' ? 'chemical DPC injection' :
+                                  dampData.wall_treatment === 'tanking' ? 'tanking system' : dampData.wall_treatment
             roomTreatments.add(treatmentLabel)
           }
         })
@@ -959,10 +978,10 @@ async function generateSection(
           const area = wall.area || (length * height)
 
           // Map treatment codes to display labels
-          const treatmentLabel = wall.treatment === 'membrane' ? 'Cavity drain membrane system' :
-                                wall.treatment === 'injection' ? 'Chemical DPC injection' :
-                                wall.treatment === 'tanking' ? 'Cementitious tanking system' :
-                                wall.treatment || 'Treatment to be specified'
+          const treatmentLabel = dampData.wall_treatment === 'membrane' ? 'Cavity drain membrane system' :
+                                dampData.wall_treatment === 'injection' ? 'Chemical DPC injection' :
+                                dampData.wall_treatment === 'tanking' ? 'Cementitious tanking system' :
+                                dampData.wall_treatment || 'Treatment to be specified'
 
           const wallData: any = {
             wall_position: wall.name || wall.wall_position || 'Wall',
