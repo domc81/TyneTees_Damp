@@ -56,6 +56,19 @@ export default function SurveyWizardPage() {
   // Debounce timer ref
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Refs to always hold the latest state (fixes stale closure bug)
+  const roomsRef = useRef<SurveyRoomRow[]>(rooms)
+  const wizardDataRef = useRef<SurveyWizardData>(wizardData)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    roomsRef.current = rooms
+  }, [rooms])
+
+  useEffect(() => {
+    wizardDataRef.current = wizardData
+  }, [wizardData])
+
   // Load existing survey data from Supabase
   useEffect(() => {
     async function loadData() {
@@ -88,12 +101,20 @@ export default function SurveyWizardPage() {
     setError(null)
 
     try {
-      // Save wizard data (property-level)
-      await saveWizardData(projectId, wizardData)
+      // Save wizard data (property-level) - read from ref to get latest value
+      await saveWizardData(projectId, wizardDataRef.current)
 
-      // Save all rooms (batch operation)
-      const updatedRooms = await saveAllRooms(projectId, rooms)
-      setRooms(updatedRooms) // Update with DB-assigned IDs
+      // Save all rooms (batch operation) - read from ref to get latest value
+      const updatedRooms = await saveAllRooms(projectId, roomsRef.current)
+
+      // Only update IDs that changed (temp → DB), preserve any new rooms added during save
+      setRooms(prev => prev.map(room => {
+        if (room.id.startsWith('room-')) {
+          const saved = updatedRooms.find(r => r.name === room.name && r.display_order === room.display_order)
+          return saved ? { ...room, id: saved.id, survey_id: saved.survey_id, created_at: saved.created_at, updated_at: saved.updated_at } : room
+        }
+        return room
+      }))
 
       setLastSaved(new Date())
       console.log('Auto-save completed successfully')
@@ -103,7 +124,7 @@ export default function SurveyWizardPage() {
     } finally {
       setIsSaving(false)
     }
-  }, [projectId, wizardData, rooms, isSaving])
+  }, [projectId, isSaving])
 
   // Debounced auto-save (2 seconds)
   const triggerDebouncedSave = useCallback(() => {
