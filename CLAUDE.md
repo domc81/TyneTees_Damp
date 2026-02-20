@@ -232,10 +232,12 @@ npm run lint         # Run ESLint
 - **Report generation service** — `src/lib/report-generator.ts` (boilerplate selection, data population, LLM narrative via OpenRouter)
 - **Report API** — `src/app/api/generate-report/route.ts` (LLM narrative generation with Llama 3.1 70B)
 - **Report data layer** — `src/lib/report-data.ts` (CRUD operations for survey_reports table)
+- **Report editor UI** — `src/app/survey/[projectId]/report/page.tsx` (section review, inline editing, status workflow)
+- **PDF renderer** — `src/lib/report-pdf-renderer.tsx` + `src/app/api/report-pdf/route.ts` (professional PDF generation)
 
 ## What's Next (Build Order)
 
-Next up: report review UI, then PDF rendering.
+The survey platform MVP is now feature-complete. Remaining work: testing, refinement, and deployment preparation.
 
 ## Reference Documents
 
