@@ -390,8 +390,8 @@ function populateDataSection(
     data.site_postcode = customerData.postcode
   }
 
-  // === SURVEYOR DATA (for signature section) ===
-  if (surveyorData && section.key === 'surveyor_signature') {
+  // === SURVEYOR DATA (for signature and profile sections) ===
+  if (surveyorData && (section.key === 'surveyor_signature' || section.key === 'surveyor_profile')) {
     data.surveyor_name = `${surveyorData.first_name} ${surveyorData.last_name}`
     if (surveyorData.qualifications) {
       data.surveyor_credentials = surveyorData.qualifications
@@ -399,6 +399,22 @@ function populateDataSection(
     if (surveyorData.job_title) {
       data.surveyor_title = surveyorData.job_title
     }
+    // Additional profile fields
+    if (section.key === 'surveyor_profile') {
+      // Experience field (if available in surveyor data)
+      if ((surveyorData as any).years_experience) {
+        data.surveyor_experience = `${(surveyorData as any).years_experience} years in the industry`
+      }
+      // Photo field (if available)
+      if ((surveyorData as any).photo_url) {
+        data.surveyor_photo = (surveyorData as any).photo_url
+      }
+    }
+  }
+
+  // If no surveyor data for profile section, set placeholder
+  if (!surveyorData && section.key === 'surveyor_profile') {
+    data.surveyor_name = 'Surveyor details to be confirmed'
   }
 
   // Extract data fields from wizard data
@@ -484,7 +500,7 @@ function buildLLMContext(
   }
 
   // Section-specific context
-  if (sectionKey === 'room_findings' || sectionKey === 'internal_inspection') {
+  if (sectionKey === 'room_findings') {
     // Room-by-room findings
     if (rooms.length > 0) {
       contextParts.push(`\nRooms inspected: ${rooms.length} (${rooms.map(r => r.name).join(', ')}).`)
@@ -806,10 +822,22 @@ async function generateSection(
 
     case 'mixed':
       // Combine boilerplate + data
-      const boilerplateText = selectBoilerplate(
+      let boilerplateText = selectBoilerplate(
         templateSection.boilerplate_variants,
         conditions
       )
+
+      // Replace placeholders in boilerplate text (e.g., {reported_defect})
+      if (boilerplateText && section.data) {
+        // Replace {reported_defect} placeholder
+        if (section.data.reported_defect) {
+          boilerplateText = boilerplateText.replace(
+            '{reported_defect}',
+            String(section.data.reported_defect)
+          )
+        }
+      }
+
       const dataText = formatDataAsText(section.data)
       section.content = [boilerplateText, dataText].filter(Boolean).join('\n\n')
       break
@@ -823,6 +851,18 @@ async function generateSection(
       // Leave empty for surveyor to fill
       section.content = ''
       break
+  }
+
+  // Add non-destructive inspection note prefix for room_findings section
+  if (templateSection.key === 'room_findings' && templateSection.repeats_per === 'room') {
+    const nonDestructiveNote = 'Note: This was a non-destructive inspection. All findings are based on visual assessment, electronic moisture meter readings, digital laser thermometer readings and tactile examination of accessible surfaces. No opening up works were carried out.'
+
+    // Prepend note to content
+    if (section.content) {
+      section.content = `${nonDestructiveNote}\n\n${section.content}`
+    } else {
+      section.content = nonDestructiveNote
+    }
   }
 
   // Generate per-room sub-sections if template has repeats_per: "room"
