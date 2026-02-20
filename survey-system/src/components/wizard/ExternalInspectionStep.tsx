@@ -7,14 +7,20 @@ import {
   BUILDING_DEFECTS,
   DefectUrgency,
 } from '@/types/survey-wizard.types'
-import { Home, AlertTriangle, CheckSquare, Square, FileText } from 'lucide-react'
+import { Home, AlertTriangle, CheckSquare, Square, FileText, Camera } from 'lucide-react'
+import PhotoCapture from './PhotoCapture'
+import { filterPhotos } from '@/lib/survey-photo-service'
+import type { SurveyPhoto } from '@/types/survey-photo.types'
 
 interface ExternalInspectionStepProps {
   data: Partial<ExternalInspection>
   onChange: (data: Partial<ExternalInspection>) => void
+  surveyId: string
+  photos: SurveyPhoto[]
+  onPhotosChange: () => void
 }
 
-export default function ExternalInspectionStep({ data, onChange }: ExternalInspectionStepProps) {
+export default function ExternalInspectionStep({ data, onChange, surveyId, photos, onPhotosChange }: ExternalInspectionStepProps) {
   const handleChange = (field: keyof ExternalInspection, value: any) => {
     onChange({ ...data, [field]: value })
   }
@@ -33,6 +39,9 @@ export default function ExternalInspectionStep({ data, onChange }: ExternalInspe
 
   const hasDefects = data.building_defects_found === true
   const hasSelectedDefects = (data.building_defects || []).length > 0
+
+  // Filter photos for this step
+  const externalPhotos = filterPhotos(photos, { step: 'external_inspection' })
 
   return (
     <div className="space-y-6">
@@ -162,6 +171,54 @@ export default function ExternalInspectionStep({ data, onChange }: ExternalInspe
             </div>
           )}
         </div>
+      </div>
+
+      {/* Building Defect Photos */}
+      {hasDefects && (
+        <div className="glass-card p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2 rounded-lg bg-brand-500/20">
+              <Camera className="w-5 h-5 text-brand-300" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Defect Evidence Photos</h3>
+              <p className="text-sm text-white/60">Visual evidence of defects found</p>
+            </div>
+          </div>
+
+          <PhotoCapture
+            surveyId={surveyId}
+            step="external_inspection"
+            category="building_defect"
+            label="Building Defect Evidence"
+            maxPhotos={10}
+            existingPhotos={filterPhotos(externalPhotos, { category: 'building_defect' })}
+            onPhotosChange={onPhotosChange}
+          />
+        </div>
+      )}
+
+      {/* External General Photos */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg bg-brand-500/20">
+            <Camera className="w-5 h-5 text-brand-300" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">General External Photos</h3>
+            <p className="text-sm text-white/60">Additional external observations</p>
+          </div>
+        </div>
+
+        <PhotoCapture
+          surveyId={surveyId}
+          step="external_inspection"
+          category="general"
+          label="General External"
+          maxPhotos={5}
+          existingPhotos={filterPhotos(externalPhotos, { category: 'general' })}
+          onPhotosChange={onPhotosChange}
+        />
       </div>
 
       {/* Specific Concerns */}

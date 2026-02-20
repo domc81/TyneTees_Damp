@@ -24,6 +24,8 @@ import {
   saveWizardData,
   saveAllRooms,
 } from '@/lib/survey-wizard-data'
+import { loadSurveyPhotos } from '@/lib/survey-photo-service'
+import type { SurveyPhoto } from '@/types/survey-photo.types'
 
 const WIZARD_STEPS = [
   { label: 'Site Details', description: 'Property & inspection info' },
@@ -52,6 +54,7 @@ export default function SurveyWizardPage() {
   })
 
   const [rooms, setRooms] = useState<SurveyRoomRow[]>([])
+  const [photos, setPhotos] = useState<SurveyPhoto[]>([])
 
   // Debounce timer ref
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -82,6 +85,10 @@ export default function SurveyWizardPage() {
         setWizardData(loadedWizardData)
         setRooms(loadedRooms)
         setCurrentStep(loadedWizardData.wizard_step || 0)
+
+        // Load photos
+        const loadedPhotos = await loadSurveyPhotos(projectId)
+        setPhotos(loadedPhotos)
       } catch (err) {
         console.error('Failed to load wizard data:', err)
         setError('Failed to load survey data. Please refresh the page.')
@@ -251,6 +258,16 @@ export default function SurveyWizardPage() {
     triggerDebouncedSave()
   }
 
+  // Photos change handler (reload from DB)
+  const handlePhotosChange = useCallback(async () => {
+    try {
+      const loadedPhotos = await loadSurveyPhotos(projectId)
+      setPhotos(loadedPhotos)
+    } catch (err) {
+      console.error('Failed to reload photos:', err)
+    }
+  }, [projectId])
+
   // Compute flags for AdditionalWorksStep
   const hasCondensation = rooms.some((r) => r.issues_identified.includes('condensation'))
   const hasTimberOrDamp = rooms.some((r) =>
@@ -265,6 +282,9 @@ export default function SurveyWizardPage() {
           <SiteDetailsStep
             data={wizardData.site_details || {}}
             onChange={handleSiteDetailsChange}
+            surveyId={projectId}
+            photos={photos}
+            onPhotosChange={handlePhotosChange}
           />
         )
       case 1:
@@ -272,6 +292,9 @@ export default function SurveyWizardPage() {
           <ExternalInspectionStep
             data={wizardData.external_inspection || {}}
             onChange={handleExternalInspectionChange}
+            surveyId={projectId}
+            photos={photos}
+            onPhotosChange={handlePhotosChange}
           />
         )
       case 2:
@@ -279,6 +302,9 @@ export default function SurveyWizardPage() {
           <RoomInspectionStep
             rooms={rooms}
             onRoomsChange={handleRoomsChange}
+            surveyId={projectId}
+            photos={photos}
+            onPhotosChange={handlePhotosChange}
           />
         )
       case 3:
