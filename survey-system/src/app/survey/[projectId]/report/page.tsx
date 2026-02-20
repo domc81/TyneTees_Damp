@@ -40,6 +40,28 @@ import type {
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 import { getSupabase } from '@/lib/supabase-client'
 
+// Section categories
+const REVIEWABLE_SECTIONS = new Set([
+  'external_inspection',
+  'dpc_findings',
+  'sub_floor_ventilation',
+  'room_findings',
+  'summary_of_works',
+  'surveyor_comments',
+  'surveyor_profile',
+  'sketch_plan',
+])
+
+const AUTOMATIC_SECTIONS = new Set([
+  'cover',
+  'about_us',
+  'survey_context',
+  'property',
+  'ancillary_items',
+  'extent_of_survey',
+  'payment_terms',
+])
+
 // Status badge colors
 const STATUS_COLORS: Record<ReportStatus, { bg: string; text: string; border: string }> = {
   draft: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-400/30' },
@@ -77,6 +99,8 @@ export default function ReportEditorPage() {
   const [activeSectionKey, setActiveSectionKey] = useState<string>('')
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false)
+  const [showAllSections, setShowAllSections] = useState(false)
+  const [standardSectionsExpanded, setStandardSectionsExpanded] = useState(false)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -96,7 +120,13 @@ export default function ReportEditorPage() {
 
       if (existingReport) {
         setReport(existingReport)
-        if (existingReport.sections.length > 0) {
+        // Set active section to first reviewable section
+        const firstReviewable = existingReport.sections.find((s) =>
+          REVIEWABLE_SECTIONS.has(s.key)
+        )
+        if (firstReviewable) {
+          setActiveSectionKey(firstReviewable.key)
+        } else if (existingReport.sections.length > 0) {
           setActiveSectionKey(existingReport.sections[0].key)
         }
         setIsLoading(false)
@@ -134,7 +164,13 @@ export default function ReportEditorPage() {
     try {
       const newReport = await generateReport(projectId)
       setReport(newReport)
-      if (newReport.sections.length > 0) {
+      // Set active section to first reviewable section
+      const firstReviewable = newReport.sections.find((s) =>
+        REVIEWABLE_SECTIONS.has(s.key)
+      )
+      if (firstReviewable) {
+        setActiveSectionKey(firstReviewable.key)
+      } else if (newReport.sections.length > 0) {
         setActiveSectionKey(newReport.sections[0].key)
       }
     } catch (err) {
@@ -407,10 +443,25 @@ export default function ReportEditorPage() {
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <Card className="glass border-white/10 sticky top-24">
               <div className="p-4 border-b border-white/10">
-                <h3 className="text-sm font-semibold text-white">Sections</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-white">Sections</h3>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showAllSections}
+                    onChange={(e) => setShowAllSections(e.target.checked)}
+                    className="rounded border-white/20 bg-white/5 text-brand-500 focus:ring-brand-500/50"
+                  />
+                  <span className="text-xs text-white/60">Show all sections</span>
+                </label>
               </div>
               <nav className="p-2 space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
-                {report.sections.map((section) => {
+                {report.sections
+                  .filter((section) =>
+                    showAllSections ? true : REVIEWABLE_SECTIONS.has(section.key)
+                  )
+                  .map((section) => {
                   const isActive = section.key === activeSectionKey
                   const isEmpty = !section.content ||
                     section.content === 'Content not available.' ||
@@ -457,31 +508,85 @@ export default function ReportEditorPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 space-y-6">
-            {report.sections.map((section) => (
-              <SectionCard
-                key={section.key}
-                section={section}
-                report={report}
-                photos={photos}
-                isEditing={editingSection === section.key}
-                editContent={editContent}
-                savingSection={savingSection}
-                regeneratingSection={regeneratingSection}
-                showOriginal={showOriginal[section.key] || false}
-                isCollapsed={collapsedSections[section.key] || false}
-                isFinalised={isFinalised}
-                onEdit={() => handleEditSection(section)}
-                onSave={() => handleSaveSection(section.key)}
-                onCancel={() => setEditingSection(null)}
-                onEditContentChange={setEditContent}
-                onRegenerate={() => handleRegenerateSection(section.key)}
-                onToggleOriginal={() =>
-                  setShowOriginal((prev) => ({ ...prev, [section.key]: !prev[section.key] }))
-                }
-                onToggleCollapse={() => toggleSectionCollapse(section.key)}
-                setSectionRef={(el) => (sectionRefs.current[section.key] = el)}
-              />
-            ))}
+            {/* Reviewable Sections */}
+            {report.sections
+              .filter((section) => REVIEWABLE_SECTIONS.has(section.key))
+              .map((section) => (
+                <SectionCard
+                  key={section.key}
+                  section={section}
+                  report={report}
+                  photos={photos}
+                  isEditing={editingSection === section.key}
+                  editContent={editContent}
+                  savingSection={savingSection}
+                  regeneratingSection={regeneratingSection}
+                  showOriginal={showOriginal[section.key] || false}
+                  isCollapsed={collapsedSections[section.key] || false}
+                  isFinalised={isFinalised}
+                  onEdit={() => handleEditSection(section)}
+                  onSave={() => handleSaveSection(section.key)}
+                  onCancel={() => setEditingSection(null)}
+                  onEditContentChange={setEditContent}
+                  onRegenerate={() => handleRegenerateSection(section.key)}
+                  onToggleOriginal={() =>
+                    setShowOriginal((prev) => ({ ...prev, [section.key]: !prev[section.key] }))
+                  }
+                  onToggleCollapse={() => toggleSectionCollapse(section.key)}
+                  setSectionRef={(el) => (sectionRefs.current[section.key] = el)}
+                />
+              ))}
+
+            {/* Standard Sections Accordion */}
+            {report.sections.filter((s) => AUTOMATIC_SECTIONS.has(s.key)).length > 0 && (
+              <Card className="glass border-white/10 overflow-hidden">
+                <button
+                  onClick={() => setStandardSectionsExpanded(!standardSectionsExpanded)}
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-white/60">
+                      Standard Report Sections
+                    </h3>
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-400">
+                      {report.sections.filter((s) => AUTOMATIC_SECTIONS.has(s.key)).length}
+                    </span>
+                  </div>
+                  {standardSectionsExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-white/50" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-white/50" />
+                  )}
+                </button>
+
+                {standardSectionsExpanded && (
+                  <div className="border-t border-white/10 bg-white/5">
+                    <div className="p-6 space-y-4">
+                      {report.sections
+                        .filter((section) => AUTOMATIC_SECTIONS.has(section.key))
+                        .map((section) => (
+                          <div
+                            key={section.key}
+                            className="p-4 rounded-lg bg-white/5 border border-white/5"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-semibold text-white/70">
+                                {section.title}
+                              </h4>
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-400">
+                                Standard
+                              </span>
+                            </div>
+                            <div className="text-xs text-white/40 leading-relaxed line-clamp-3">
+                              {section.content.substring(0, 200)}...
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         </div>
       </div>
