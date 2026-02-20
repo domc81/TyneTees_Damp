@@ -13,7 +13,9 @@ import type {
 import type {
   SurveyWizardData,
   SurveyRoomRow,
+  BuildingDefect,
 } from '@/types/survey-wizard.types'
+import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 import { loadWizardData } from './survey-wizard-data'
 import { loadSurveyPhotos, getPhotoUrl } from './survey-photo-service'
@@ -336,6 +338,26 @@ export function selectBoilerplate(
 }
 
 // =============================================================================
+// Data Formatting Helpers
+// =============================================================================
+
+/**
+ * Get human-readable label for a building defect key
+ */
+function getDefectLabel(defectKey: string): string {
+  const defect = BUILDING_DEFECTS.find((d) => d.value === defectKey)
+  return defect?.label || defectKey.replace(/_/g, ' ')
+}
+
+/**
+ * Format building defects array as readable labels
+ */
+function formatDefects(defects: string[] | undefined): string[] {
+  if (!defects || defects.length === 0) return []
+  return defects.map((d) => getDefectLabel(d))
+}
+
+// =============================================================================
 // Data Population
 // =============================================================================
 
@@ -347,10 +369,37 @@ function populateDataSection(
   wizardData: SurveyWizardData,
   rooms: SurveyRoomRow[],
   photos: SurveyPhoto[],
-  costingResults: any
+  costingResults: any,
+  customerData?: any,
+  surveyorData?: any
 ): Partial<ReportSection> {
   const data: Record<string, unknown> = {}
   const sectionPhotos: string[] = []
+
+  // === CUSTOMER DATA (for cover section) ===
+  if (customerData && section.key === 'cover') {
+    data.client_name = `${customerData.first_name} ${customerData.last_name}`
+    data.site_address = customerData.address_line1
+    if (customerData.address_line2) {
+      data.site_address_line2 = customerData.address_line2
+    }
+    data.site_city = customerData.city
+    if (customerData.county) {
+      data.site_county = customerData.county
+    }
+    data.site_postcode = customerData.postcode
+  }
+
+  // === SURVEYOR DATA (for signature section) ===
+  if (surveyorData && section.key === 'surveyor_signature') {
+    data.surveyor_name = `${surveyorData.first_name} ${surveyorData.last_name}`
+    if (surveyorData.qualifications) {
+      data.surveyor_credentials = surveyorData.qualifications
+    }
+    if (surveyorData.job_title) {
+      data.surveyor_title = surveyorData.job_title
+    }
+  }
 
   // Extract data fields from wizard data
   if (section.data_fields) {
@@ -365,7 +414,14 @@ function populateDataSection(
         wizardData.external_inspection &&
         field in wizardData.external_inspection
       ) {
-        data[field] = (wizardData.external_inspection as any)[field]
+        let value = (wizardData.external_inspection as any)[field]
+
+        // Format building defects as readable labels
+        if (field === 'building_defects' && Array.isArray(value)) {
+          value = formatDefects(value)
+        }
+
+        data[field] = value
       }
 
       // Additional works
@@ -414,7 +470,9 @@ async function generateSection(
   rooms: SurveyRoomRow[],
   photos: SurveyPhoto[],
   costingResults: any,
-  conditions: Record<string, boolean>
+  conditions: Record<string, boolean>,
+  customerData?: any,
+  surveyorData?: any
 ): Promise<ReportSection> {
   const section: ReportSection = {
     key: templateSection.key,
@@ -433,7 +491,9 @@ async function generateSection(
     wizardData,
     rooms,
     photos,
-    costingResults
+    costingResults,
+    customerData,
+    surveyorData
   )
   section.data = dataPopulation.data || {}
   section.photos = dataPopulation.photos || []
@@ -456,7 +516,8 @@ async function generateSection(
 
     case 'llm_generated':
       // Will be generated via API call (placeholder for now)
-      section.content = '[LLM content to be generated]'
+      // Use a surveyor-friendly placeholder that won't show "Content not available" in PDF
+      section.content = 'To be completed by surveyor during review.'
       break
 
     case 'mixed':
@@ -490,13 +551,131 @@ async function generateSection(
         rooms,
         photos,
         costingResults,
-        conditions
+        conditions,
+        customerData,
+        surveyorData
       )
       section.sub_sections.push(subSection)
     }
   }
 
+  // Generate per-room sub-sections if template has repeats_per: "room"
+  if (templateSection.repeats_per === 'room' && rooms.length > 0) {
+    section.sub_sections = section.sub_sections || []
+
+    for (const room of rooms) {
+      // Create a room sub-section
+      const roomSection: ReportSection = {
+        key: `room_${room.id}`,
+        title: room.name,
+        type: 'findings',
+        content: generateRoomContent(room, wizardData),
+        content_source: 'mixed',
+        is_edited: false,
+        data: {
+          room_name: room.name,
+          room_type: room.room_type,
+          floor_level: room.floor_level,
+          issues_identified: room.issues_identified,
+          room_data: room.room_data,
+        },
+        photos: [],
+      }
+
+      // Match photos for this room
+      const roomPhotos = photos.filter(
+        (p) => p.room_id === room.id || p.category?.includes(room.name.toLowerCase())
+      )
+      roomSection.photos = roomPhotos.map((p) => p.id)
+
+      section.sub_sections.push(roomSection)
+    }
+  }
+
   return section
+}
+
+/**
+ * Generate narrative content for a room based on its data
+ */
+function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData): string {
+  const lines: string[] = []
+
+  lines.push(`**Room:** ${room.name}`)
+  if (room.room_type) {
+    lines.push(`**Type:** ${room.room_type.replace(/_/g, ' ')}`)
+  }
+  if (room.floor_level) {
+    lines.push(`**Floor:** ${room.floor_level}`)
+  }
+
+  if (room.issues_identified && room.issues_identified.length > 0) {
+    lines.push('')
+    lines.push(`**Issues Identified:** ${room.issues_identified.join(', ')}`)
+  }
+
+  // Extract room-specific findings
+  if (room.room_data) {
+    const roomData = room.room_data as any
+
+    // Damp findings
+    if (roomData.damp) {
+      lines.push('')
+      lines.push('**Damp Findings:**')
+      if (roomData.damp.walls && Array.isArray(roomData.damp.walls)) {
+        for (const wall of roomData.damp.walls) {
+          lines.push(`- ${wall.name}: Length ${wall.length}m, Height ${wall.height}m`)
+          if (wall.moisture_readings && wall.moisture_readings.length > 0) {
+            lines.push(`  Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
+          }
+        }
+      }
+      if (roomData.damp.wall_treatment) {
+        lines.push(`- Treatment: ${roomData.damp.wall_treatment.replace(/_/g, ' ')}`)
+      }
+    }
+
+    // Condensation findings
+    if (roomData.condensation) {
+      lines.push('')
+      lines.push('**Condensation Findings:**')
+      if (roomData.condensation.condensation_on_windows) {
+        lines.push('- Condensation noted on windows')
+      }
+      if (roomData.condensation.black_mould_present) {
+        lines.push('- Black mould present')
+      }
+      if (roomData.condensation.humidity_reading) {
+        lines.push(`- Humidity: ${roomData.condensation.humidity_reading}%`)
+      }
+    }
+
+    // Timber findings
+    if (roomData.timber_decay) {
+      lines.push('')
+      lines.push('**Timber Findings:**')
+      if (roomData.timber_decay.fungal_findings && Array.isArray(roomData.timber_decay.fungal_findings)) {
+        lines.push(`- Fungal findings: ${roomData.timber_decay.fungal_findings.join(', ')}`)
+      }
+      if (roomData.timber_decay.sub_floor_ventilation) {
+        lines.push(`- Sub-floor ventilation: ${roomData.timber_decay.sub_floor_ventilation}`)
+      }
+    }
+
+    // Woodworm findings
+    if (roomData.woodworm) {
+      lines.push('')
+      lines.push('**Woodworm Findings:**')
+      if (roomData.woodworm.infestation_status) {
+        lines.push(`- Infestation: ${roomData.woodworm.infestation_status}`)
+      }
+      if (roomData.woodworm.species_identified) {
+        lines.push(`- Species: ${roomData.woodworm.species_identified}`)
+      }
+    }
+  }
+
+  return lines.join('\n')
 }
 
 // =============================================================================
@@ -609,6 +788,28 @@ export async function generateReport(
   // Load photos
   const photos = await loadSurveyPhotos(surveyId)
 
+  // Load customer data
+  let customerData = null
+  if (survey.customer_id) {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', survey.customer_id)
+      .single()
+    customerData = customer
+  }
+
+  // Load surveyor data (if assigned)
+  let surveyorData = null
+  if (survey.surveyor_id) {
+    const { data: surveyor } = await supabase
+      .from('surveyors')
+      .select('*')
+      .eq('id', survey.surveyor_id)
+      .single()
+    surveyorData = surveyor
+  }
+
   // Load template
   const surveyType = survey.survey_type || 'damp'
   const template = await loadDefaultTemplate(surveyType)
@@ -641,7 +842,9 @@ export async function generateReport(
       rooms,
       photos,
       costingResults[surveyType], // Use costing for matching survey type
-      conditions
+      conditions,
+      customerData,
+      surveyorData
     )
     reportSections.push(section)
   }
@@ -724,6 +927,12 @@ export async function regenerateSection(
   }
 
   // Load survey data
+  const { data: survey } = await supabase
+    .from('surveys')
+    .select('*')
+    .eq('id', report.survey_id)
+    .single()
+
   const { wizardData, rooms } = await loadWizardData(report.survey_id)
   const photos = await loadSurveyPhotos(report.survey_id)
   const costingResults = await generateCostingFromSurvey(
@@ -731,6 +940,28 @@ export async function regenerateSection(
     wizardData,
     rooms
   )
+
+  // Load customer data
+  let customerData = null
+  if (survey?.customer_id) {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', survey.customer_id)
+      .single()
+    customerData = customer
+  }
+
+  // Load surveyor data
+  let surveyorData = null
+  if (survey?.surveyor_id) {
+    const { data: surveyor } = await supabase
+      .from('surveyors')
+      .select('*')
+      .eq('id', survey.surveyor_id)
+      .single()
+    surveyorData = surveyor
+  }
 
   const conditions = evaluateConditions(wizardData, rooms)
 
@@ -741,7 +972,9 @@ export async function regenerateSection(
     rooms,
     photos,
     costingResults[template.survey_type],
-    conditions
+    conditions,
+    customerData,
+    surveyorData
   )
 
   // Update report in database

@@ -570,8 +570,16 @@ function TextSection({
 
 // Text content with paragraph handling
 function TextContent({ content }: { content: string }) {
-  if (!content || content === '[LLM content to be generated]') {
+  if (!content) {
     return <Text style={styles.paragraph}>Content not available.</Text>
+  }
+
+  // Don't render placeholder text as "Content not available"
+  if (
+    content === '[LLM content to be generated]' ||
+    content === 'To be completed by surveyor during review.'
+  ) {
+    return <Text style={styles.paragraph}>{content}</Text>
   }
 
   const paragraphs = content.split('\n\n').filter(Boolean)
