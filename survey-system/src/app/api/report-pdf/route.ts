@@ -5,10 +5,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
+import { createClient } from '@supabase/supabase-js'
 import { ReportPDFDocument } from '@/lib/report-pdf-renderer'
-import { loadReport } from '@/lib/report-data'
-import { getSupabase } from '@/lib/supabase-client'
-import type { ReportSettings } from '@/types/survey-report.types'
+import type { ReportSettings, SurveyReport } from '@/types/survey-report.types'
 
 /**
  * GET /api/report-pdf?reportId=xxx
@@ -61,17 +60,30 @@ export async function GET(request: NextRequest) {
  * Main PDF generation logic
  */
 async function generatePDF(reportId: string): Promise<Buffer> {
+  // Create server-side Supabase client with service role key (bypasses RLS)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
+
   // Step 1: Load the report
-  const report = await loadReport(reportId)
-  if (!report) {
+  const { data: report, error: reportError } = await supabase
+    .from('survey_reports')
+    .select('*')
+    .eq('id', reportId)
+    .single()
+
+  if (reportError || !report) {
     throw new Error(`Report not found: ${reportId}`)
   }
 
   // Step 2: Load the template to get settings
-  const supabase = getSupabase()
-  if (!supabase) {
-    throw new Error('Supabase client not available')
-  }
 
   const { data: template, error: templateError } = await supabase
     .from('report_templates')
