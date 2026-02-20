@@ -350,6 +350,24 @@ function getDefectLabel(defectKey: string): string {
 }
 
 /**
+ * Format floor level for display
+ */
+function formatFloorLevel(floorLevel: string | undefined): string {
+  if (!floorLevel) return 'Unknown Floor'
+
+  const floorMap: Record<string, string> = {
+    ground: 'Ground Floor',
+    first: 'First Floor',
+    second: 'Second Floor',
+    third: 'Third Floor',
+    basement: 'Basement',
+    loft: 'Loft Space',
+  }
+
+  return floorMap[floorLevel.toLowerCase()] || floorLevel
+}
+
+/**
  * Format building defects array as readable labels
  */
 function formatDefects(defects: string[] | undefined): string[] {
@@ -879,8 +897,9 @@ async function generateSection(
         }
       }
 
-      const dataText = formatDataAsText(section.data)
-      section.content = [boilerplateText, dataText].filter(Boolean).join('\n\n')
+      // For 'mixed' content, boilerplate with placeholders handles data integration
+      // Don't append formatDataAsText as it causes duplicate content
+      section.content = boilerplateText
       break
 
     case 'costing_data':
@@ -967,14 +986,14 @@ async function generateSection(
       // Create a room sub-section with structured data
       const roomSection: ReportSection = {
         key: `room_${room.id}`,
-        title: `${room.name} — ${room.floor_level || 'Unknown Floor'}`,
+        title: `${room.name} — ${formatFloorLevel(room.floor_level)}`,
         type: 'room_finding',
         content: '', // Will be filled by LLM
         content_source: 'llm_generated',
         is_edited: false,
         data: {
           room_name: room.name,
-          floor_level: room.floor_level || 'Unknown',
+          floor_level: formatFloorLevel(room.floor_level),
           issues: room.issues_identified || [],
           walls: walls,
           floor_treatment: dampData.floor_treatment ? dampData.floor_treatment.replace(/_/g, ' ') : undefined,

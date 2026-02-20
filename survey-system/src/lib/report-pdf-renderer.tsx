@@ -780,10 +780,14 @@ function RoomFindingsSection({
                       key={idx}
                       style={idx === (roomSection.data.walls as any[]).length - 1 ? styles.tableRowLast : styles.tableRow}
                     >
-                      <Text style={[styles.tableCell, { flex: 1 }]}>{wall.wall}</Text>
-                      <Text style={[styles.tableCell, { flex: 1.5 }]}>{wall.treatment_area}</Text>
+                      <Text style={[styles.tableCell, { flex: 1 }]}>{wall.wall_position}</Text>
+                      <Text style={[styles.tableCell, { flex: 1.5 }]}>
+                        {wall.treatment_area_length}m × {wall.treatment_area_height}m ({wall.treatment_area_m2}m²)
+                      </Text>
                       <Text style={[styles.tableCellBold, { flex: 1.5 }]}>{wall.treatment_type}</Text>
-                      <Text style={[styles.tableCell, { flex: 1 }]}>{wall.moisture_reading}%</Text>
+                      <Text style={[styles.tableCell, { flex: 1 }]}>
+                        {wall.moisture_reading || '—'}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -812,7 +816,7 @@ function RoomFindingsSection({
 // Summary of Proposed Works — table format
 function SummaryOfWorksSection({ section }: { section: ReportSection }) {
   const data = section.data || {}
-  const rooms = data.rooms_summary as any[] || []
+  const rooms = data.rooms as any[] || []
   const additionalWorks = data.additional_works as any[] || []
 
   return (
@@ -836,10 +840,10 @@ function SummaryOfWorksSection({ section }: { section: ReportSection }) {
               key={idx}
               style={idx === rooms.length - 1 && additionalWorks.length === 0 ? styles.tableRowLast : styles.tableRow}
             >
-              <Text style={[styles.tableCell, { flex: 1 }]}>{room.room}</Text>
+              <Text style={[styles.tableCell, { flex: 1 }]}>{room.room_name}</Text>
               <Text style={[styles.tableCell, { flex: 1 }]}>{room.issue}</Text>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{room.proposed_treatment}</Text>
-              <Text style={[styles.tableCell, { flex: 0.8 }]}>{room.area}</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{room.treatment}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{room.total_area}</Text>
             </View>
           ))}
         </View>
