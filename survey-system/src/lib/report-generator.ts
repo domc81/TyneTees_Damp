@@ -627,9 +627,14 @@ export async function generateReport(
   // Evaluate conditions
   const conditions = evaluateConditions(wizardData, rooms)
 
-  // Generate all sections
+  // Generate all sections (exclude proposals section - that's for future schedule of works feature)
   const reportSections: ReportSection[] = []
   for (const templateSection of template.sections) {
+    // Skip proposals section - Schedule of Works is a separate future feature
+    if (templateSection.type === 'proposals') {
+      continue
+    }
+
     const section = await generateSection(
       templateSection,
       wizardData,
