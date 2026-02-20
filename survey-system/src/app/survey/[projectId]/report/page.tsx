@@ -412,7 +412,11 @@ export default function ReportEditorPage() {
               <nav className="p-2 space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
                 {report.sections.map((section) => {
                   const isActive = section.key === activeSectionKey
-                  const hasContent = section.content.length > 0
+                  const isEmpty = !section.content ||
+                    section.content === 'Content not available.' ||
+                    section.content === 'To be completed by surveyor during review.' ||
+                    section.content === '[LLM content to be generated]'
+                  const hasContent = section.content.length > 0 && !isEmpty
                   const isEdited = section.is_edited
 
                   return (
@@ -423,6 +427,8 @@ export default function ReportEditorPage() {
                         w-full text-left px-3 py-2 rounded-lg transition-all text-sm
                         ${isActive
                           ? 'bg-brand-500/20 text-brand-300 border border-brand-400/30'
+                          : isEmpty
+                          ? 'text-white/40 hover:text-white/60 hover:bg-white/5'
                           : 'text-white/70 hover:text-white hover:bg-white/5'
                         }
                       `}
@@ -433,7 +439,9 @@ export default function ReportEditorPage() {
                           {isEdited && (
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Edited" />
                           )}
-                          {hasContent ? (
+                          {isEmpty ? (
+                            <span className="text-xs text-white/30">Empty</span>
+                          ) : hasContent ? (
                             <Check className="w-3 h-3 text-green-400" />
                           ) : (
                             <Clock className="w-3 h-3 text-white/30" />
@@ -531,14 +539,24 @@ function SectionCard({
   const isRegenerating = regeneratingSection === section.key
   const canRegenerate = section.content_source === 'llm_generated' && !isFinalised
 
+  const isEmpty = !section.content ||
+    section.content === 'Content not available.' ||
+    section.content === 'To be completed by surveyor during review.' ||
+    section.content === '[LLM content to be generated]'
+
   return (
-    <Card ref={setSectionRef} className="glass border-white/10 overflow-hidden">
+    <Card ref={setSectionRef} className={`glass border-white/10 overflow-hidden ${isEmpty ? 'opacity-60' : ''}`}>
       {/* Section Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-white/5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-lg font-semibold text-white">{section.title}</h2>
+              {isEmpty && (
+                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-400/30">
+                  Empty
+                </span>
+              )}
               <button
                 onClick={onToggleCollapse}
                 className="p-1 rounded hover:bg-white/10 transition-colors"
@@ -807,10 +825,17 @@ function DataSection({ data }: { data: Record<string, unknown> }) {
 
 // Text content renderer (handles paragraphs)
 function TextContent({ content }: { content: string }) {
-  if (!content || content === '[LLM content to be generated]') {
+  if (!content || content === '[LLM content to be generated]' ||
+      content === 'To be completed by surveyor during review.' ||
+      content === 'Content not available.') {
     return (
-      <div className="text-center py-8 text-white/30 italic">
-        Content will be generated or filled by surveyor
+      <div className="text-center py-8 px-4 rounded-lg bg-white/5 border-2 border-dashed border-white/10">
+        <Clock className="w-8 h-8 text-white/20 mx-auto mb-2" />
+        <p className="text-white/30 italic text-sm">
+          {content === 'To be completed by surveyor during review.'
+            ? 'Content will be completed during review'
+            : 'Content will be generated or filled by surveyor'}
+        </p>
       </div>
     )
   }

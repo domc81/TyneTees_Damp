@@ -407,19 +407,85 @@ function renderContentPages(
   // Skip cover section (already rendered)
   const contentSections = report.sections.filter((s) => s.key !== 'cover')
 
-  // Render each section
-  for (const section of contentSections) {
+  // Filter out empty sections (don't render them at all)
+  const nonEmptySections = contentSections.filter((section) => !isSectionEmpty(section))
+
+  // Group sections for page layout - major sections get own page, minor sections flow together
+  const majorSectionKeys = ['property', 'external_inspection', 'room_findings', 'internal_inspection', 'surveyor_comments']
+
+  let currentPageSections: typeof nonEmptySections = []
+
+  for (let i = 0; i < nonEmptySections.length; i++) {
+    const section = nonEmptySections[i]
+    const isMajorSection = majorSectionKeys.includes(section.key)
+
+    // Start new page for major sections or if current page has content
+    if (isMajorSection || currentPageSections.length === 0) {
+      // Render accumulated minor sections first
+      if (currentPageSections.length > 0) {
+        pages.push(
+          <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
+            <PageHeader settings={settings} />
+            {currentPageSections.map(s => (
+              <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
+            ))}
+            <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
+          </Page>
+        )
+        currentPageNumber++
+        currentPageSections = []
+      }
+
+      // Major section gets its own page
+      if (isMajorSection) {
+        pages.push(
+          <Page key={section.key} size="A4" style={styles.page}>
+            <PageHeader settings={settings} />
+            <SectionContent section={section} photoUrls={photoUrls} settings={settings} />
+            <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
+          </Page>
+        )
+        currentPageNumber++
+      } else {
+        currentPageSections.push(section)
+      }
+    } else {
+      // Accumulate minor sections
+      currentPageSections.push(section)
+    }
+  }
+
+  // Render any remaining minor sections
+  if (currentPageSections.length > 0) {
     pages.push(
-      <Page key={section.key} size="A4" style={styles.page}>
+      <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
         <PageHeader settings={settings} />
-        <SectionContent section={section} photoUrls={photoUrls} settings={settings} />
+        {currentPageSections.map(s => (
+          <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
+        ))}
         <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
       </Page>
     )
-    currentPageNumber++
   }
 
   return pages
+}
+
+/**
+ * Check if a section is empty or has only placeholder content
+ */
+function isSectionEmpty(section: ReportSection): boolean {
+  if (!section.content || section.content.trim() === '') {
+    return true
+  }
+
+  const placeholderTexts = [
+    'Content not available.',
+    'To be completed by surveyor during review.',
+    '[LLM content to be generated]',
+  ]
+
+  return placeholderTexts.includes(section.content.trim())
 }
 
 // =============================================================================
@@ -451,14 +517,16 @@ function SectionContent({
       {section.type === 'sketch' && <SketchSection section={section} photoUrls={photoUrls} />}
       {section.type === 'treatment' && <TextSection section={section} photoUrls={photoUrls} />}
 
-      {/* Render sub-sections */}
+      {/* Render sub-sections (skip empty ones) */}
       {section.sub_sections &&
-        section.sub_sections.map((subSection) => (
-          <View key={subSection.key}>
-            <Text style={styles.subSectionTitle}>{subSection.title}</Text>
-            <TextContent content={subSection.content} />
-          </View>
-        ))}
+        section.sub_sections
+          .filter((sub) => !isSectionEmpty(sub)) // Skip empty sub-sections
+          .map((subSection) => (
+            <View key={subSection.key}>
+              <Text style={styles.subSectionTitle}>{subSection.title}</Text>
+              <TextContent content={subSection.content} />
+            </View>
+          ))}
     </View>
   )
 }
@@ -571,15 +639,7 @@ function TextSection({
 // Text content with paragraph handling
 function TextContent({ content }: { content: string }) {
   if (!content) {
-    return <Text style={styles.paragraph}>Content not available.</Text>
-  }
-
-  // Don't render placeholder text as "Content not available"
-  if (
-    content === '[LLM content to be generated]' ||
-    content === 'To be completed by surveyor during review.'
-  ) {
-    return <Text style={styles.paragraph}>{content}</Text>
+    return null // Empty sections are filtered out, but safety check
   }
 
   const paragraphs = content.split('\n\n').filter(Boolean)
@@ -669,11 +729,14 @@ function SignatureSection({
       <Text style={styles.signatureText}>
         Report produced under the guidance of {settings.company_name} by:
       </Text>
-      {data.surveyor_name && (
-        <Text style={styles.signatureName}>{data.surveyor_name as string}</Text>
-      )}
+      <Text style={styles.signatureName}>
+        {(data.surveyor_name as string) || 'Surveyor name to be confirmed'}
+      </Text>
       {data.surveyor_credentials && (
         <Text style={styles.signatureText}>{data.surveyor_credentials as string}</Text>
+      )}
+      {data.surveyor_title && (
+        <Text style={styles.signatureText}>{data.surveyor_title as string}</Text>
       )}
     </View>
   )

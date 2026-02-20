@@ -614,7 +614,7 @@ function buildLLMContext(
   }
 
   if (sectionKey === 'surveyor_comments') {
-    // Overall summary context
+    // Overall survey summary context with specific measurements
     const allIssues = new Set<string>()
     rooms.forEach(r => r.issues_identified?.forEach(i => allIssues.add(i)))
 
@@ -624,31 +624,74 @@ function buildLLMContext(
       contextParts.push(`- Issues found: ${Array.from(allIssues).join(', ')}`)
     }
 
-    // Total affected areas
-    const totalDampWalls = rooms.reduce((sum, r) => {
+    // Detailed damp measurements
+    let totalDampArea = 0
+    let totalDampWalls = 0
+    const dampRooms: string[] = []
+    rooms.forEach(r => {
       const walls = (r.room_data?.damp as any)?.walls
-      return sum + (walls ? walls.length : 0)
-    }, 0)
+      if (walls && walls.length > 0) {
+        dampRooms.push(r.name)
+        totalDampWalls += walls.length
+        walls.forEach((w: any) => {
+          const area = w.area || (w.length * w.height)
+          totalDampArea += area
+        })
+      }
+    })
+
     if (totalDampWalls > 0) {
-      contextParts.push(`- Total damp walls: ${totalDampWalls}`)
+      contextParts.push(`\nDamp findings:`)
+      contextParts.push(`- Affected rooms: ${dampRooms.join(', ')}`)
+      contextParts.push(`- Total affected walls: ${totalDampWalls}`)
+      contextParts.push(`- Total affected area: ${totalDampArea.toFixed(1)}m²`)
+
+      // DPC requirements
+      const dpcRequired = rooms.some(r => r.room_data?.damp?.dpc_required)
+      if (dpcRequired) {
+        contextParts.push(`- DPC system required`)
+      }
+
+      // Treatment types
+      const treatments = new Set<string>()
+      rooms.forEach(r => {
+        if (r.room_data?.damp?.wall_treatment) {
+          treatments.add((r.room_data.damp as any).wall_treatment)
+        }
+      })
+      if (treatments.size > 0) {
+        contextParts.push(`- Recommended treatments: ${Array.from(treatments).map(t => t.replace(/_/g, ' ')).join(', ')}`)
+      }
     }
 
-    // External issues
-    if (wizardData.external_inspection?.building_defects_found) {
-      contextParts.push(`- External defects noted`)
+    // External defects with details
+    if (wizardData.external_inspection?.building_defects_found && wizardData.external_inspection.building_defects) {
+      contextParts.push(`\nExternal defects: ${wizardData.external_inspection.building_defects.map(d => getDefectLabel(d)).join(', ')}`)
+      if (wizardData.external_inspection.wall_tie_concern) {
+        contextParts.push(`- Wall tie concern flagged`)
+      }
+      if (wizardData.external_inspection.cracking_concern) {
+        contextParts.push(`- Structural cracking concern`)
+      }
     }
 
-    // Additional works
+    // Additional works with measurements
     if (wizardData.additional_works) {
       const aw = wizardData.additional_works
       const works = []
-      if (aw.aco_drain_length) works.push('ACO drain')
-      if (aw.french_drain_length) works.push('French drain')
+      if (aw.aco_drain_length) works.push(`ACO drain (${aw.aco_drain_length}m)`)
+      if (aw.french_drain_length) works.push(`French drain (${aw.french_drain_length}m)`)
       if (aw.piv_count) works.push(`${aw.piv_count} PIV unit(s)`)
+      if (aw.airbrick_clean_count) works.push(`${aw.airbrick_clean_count} airbricks to clean`)
+      if (aw.airbrick_upgrade_count) works.push(`${aw.airbrick_upgrade_count} airbricks to upgrade`)
+      if (aw.airbrick_new_count) works.push(`${aw.airbrick_new_count} new airbricks`)
       if (works.length > 0) {
-        contextParts.push(`- Additional works: ${works.join(', ')}`)
+        contextParts.push(`\nAdditional works: ${works.join(', ')}`)
       }
     }
+
+    // Include total costing if available
+    contextParts.push(`\nIMPORTANT: Reference specific room names, wall measurements (e.g., "Left wall: 3m × 2m = 6m²"), and treatment recommendations in your narrative. Do not write generic advice. Every statement should relate to specific findings from this survey.`)
   }
 
   if (sectionKey === 'summary') {
@@ -776,12 +819,13 @@ async function generateSection(
 
     for (const room of rooms) {
       // Create a room sub-section
+      // Note: LLM content will be generated for parent section, room subsections only show structured data
       const roomSection: ReportSection = {
         key: `room_${room.id}`,
         title: room.name,
         type: 'findings',
-        content: generateRoomContent(room, wizardData),
-        content_source: 'mixed',
+        content: generateRoomContent(room, wizardData), // Structured data only
+        content_source: 'survey_data', // Not mixed - avoid duplicate boilerplate
         is_edited: false,
         data: {
           room_name: room.name,
@@ -808,21 +852,23 @@ async function generateSection(
 
 /**
  * Generate narrative content for a room based on its data
+ * Returns plain text without markdown for PDF rendering
  */
 function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData): string {
   const lines: string[] = []
 
-  lines.push(`**Room:** ${room.name}`)
+  // Room heading (plain text, no markdown)
+  lines.push(`Room: ${room.name}`)
   if (room.room_type) {
-    lines.push(`**Type:** ${room.room_type.replace(/_/g, ' ')}`)
+    lines.push(`Type: ${room.room_type.replace(/_/g, ' ')}`)
   }
   if (room.floor_level) {
-    lines.push(`**Floor:** ${room.floor_level}`)
+    lines.push(`Floor: ${room.floor_level}`)
   }
 
   if (room.issues_identified && room.issues_identified.length > 0) {
     lines.push('')
-    lines.push(`**Issues Identified:** ${room.issues_identified.join(', ')}`)
+    lines.push(`Issues Identified: ${room.issues_identified.join(', ')}`)
   }
 
   // Extract room-specific findings
@@ -832,24 +878,28 @@ function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData):
     // Damp findings
     if (roomData.damp) {
       lines.push('')
-      lines.push('**Damp Findings:**')
+      lines.push('Damp Findings:')
       if (roomData.damp.walls && Array.isArray(roomData.damp.walls)) {
         for (const wall of roomData.damp.walls) {
-          lines.push(`- ${wall.name}: Length ${wall.length}m, Height ${wall.height}m`)
+          const area = wall.area || (wall.length * wall.height)
+          lines.push(`- ${wall.name}: ${wall.length}m × ${wall.height}m = ${area.toFixed(1)}m²`)
           if (wall.moisture_readings && wall.moisture_readings.length > 0) {
             lines.push(`  Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
           }
         }
       }
       if (roomData.damp.wall_treatment) {
-        lines.push(`- Treatment: ${roomData.damp.wall_treatment.replace(/_/g, ' ')}`)
+        lines.push(`Treatment: ${roomData.damp.wall_treatment.replace(/_/g, ' ')}`)
+      }
+      if (roomData.damp.dpc_required) {
+        lines.push('DPC required: Yes')
       }
     }
 
     // Condensation findings
     if (roomData.condensation) {
       lines.push('')
-      lines.push('**Condensation Findings:**')
+      lines.push('Condensation Findings:')
       if (roomData.condensation.condensation_on_windows) {
         lines.push('- Condensation noted on windows')
       }
@@ -859,12 +909,15 @@ function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData):
       if (roomData.condensation.humidity_reading) {
         lines.push(`- Humidity: ${roomData.condensation.humidity_reading}%`)
       }
+      if (roomData.condensation.fan_count && roomData.condensation.fan_count > 0) {
+        lines.push(`- Extraction fans recommended: ${roomData.condensation.fan_count}`)
+      }
     }
 
     // Timber findings
     if (roomData.timber_decay) {
       lines.push('')
-      lines.push('**Timber Findings:**')
+      lines.push('Timber Findings:')
       if (roomData.timber_decay.fungal_findings && Array.isArray(roomData.timber_decay.fungal_findings)) {
         lines.push(`- Fungal findings: ${roomData.timber_decay.fungal_findings.join(', ')}`)
       }
@@ -876,7 +929,7 @@ function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData):
     // Woodworm findings
     if (roomData.woodworm) {
       lines.push('')
-      lines.push('**Woodworm Findings:**')
+      lines.push('Woodworm Findings:')
       if (roomData.woodworm.infestation_status) {
         lines.push(`- Infestation: ${roomData.woodworm.infestation_status}`)
       }
@@ -1019,6 +1072,16 @@ export async function generateReport(
       .eq('id', survey.surveyor_id)
       .single()
     surveyorData = surveyor
+  }
+
+  // Fallback: try to get surveyor name from survey_data if no surveyor assigned
+  if (!surveyorData && wizardData.site_details?.surveyor_name) {
+    surveyorData = {
+      first_name: wizardData.site_details.surveyor_name,
+      last_name: '',
+      qualifications: null,
+      job_title: 'Surveyor',
+    }
   }
 
   // Load template
