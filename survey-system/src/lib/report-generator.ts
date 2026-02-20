@@ -458,6 +458,217 @@ function populateDataSection(
 }
 
 // =============================================================================
+// LLM Context Building
+// =============================================================================
+
+/**
+ * Build rich context string for LLM generation
+ */
+function buildLLMContext(
+  sectionKey: string,
+  wizardData: SurveyWizardData,
+  rooms: SurveyRoomRow[],
+  photos: SurveyPhoto[]
+): string {
+  const contextParts: string[] = []
+
+  // Basic property context (always include)
+  if (wizardData.site_details) {
+    const sd = wizardData.site_details
+    contextParts.push(
+      `Property: ${sd.property_type || 'Unknown'}, ${sd.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd.approx_build_year || 'Unknown year'}.`
+    )
+    if (sd.reported_defect) {
+      contextParts.push(`Reported problem: ${sd.reported_defect}.`)
+    }
+  }
+
+  // Section-specific context
+  if (sectionKey === 'room_findings' || sectionKey === 'internal_inspection') {
+    // Room-by-room findings
+    if (rooms.length > 0) {
+      contextParts.push(`\nRooms inspected: ${rooms.length} (${rooms.map(r => r.name).join(', ')}).`)
+
+      for (const room of rooms) {
+        contextParts.push(`\n=== ${room.name} (${room.floor_level || 'Unknown floor'}) ===`)
+
+        if (room.issues_identified && room.issues_identified.length > 0) {
+          contextParts.push(`Issues: ${room.issues_identified.join(', ')}`)
+
+          // Damp data
+          if (room.room_data?.damp) {
+            const damp = room.room_data.damp as any
+            if (damp.walls && Array.isArray(damp.walls)) {
+              contextParts.push(`Damp findings: ${damp.walls.length} affected wall(s).`)
+              for (const wall of damp.walls) {
+                const wallInfo = []
+                wallInfo.push(`${wall.name || 'Wall'}: length ${wall.length || 0}m, height ${wall.height || 0}m, area ${wall.area || 0}m²`)
+                if (wall.has_skirting) wallInfo.push('Skirting present')
+                if (wall.treatment) wallInfo.push(`Treatment: ${wall.treatment}`)
+                if (wall.moisture_readings && wall.moisture_readings.length > 0) {
+                  wallInfo.push(`Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
+                }
+                contextParts.push(`- ${wallInfo.join('. ')}.`)
+              }
+            }
+            if (damp.dpc_required) contextParts.push(`DPC required: yes.`)
+            if (damp.floor_treatment) {
+              contextParts.push(`Floor treatment: ${damp.floor_treatment.replace(/_/g, ' ')}.`)
+            }
+          }
+
+          // Condensation data
+          if (room.room_data?.condensation) {
+            const cond = room.room_data.condensation as any
+            const condInfo = []
+            if (cond.condensation_on_windows) condInfo.push('condensation on windows')
+            if (cond.black_mould_present) condInfo.push('black mould present')
+            if (cond.humidity_reading) condInfo.push(`humidity ${cond.humidity_reading}%`)
+            if (cond.fan_count) condInfo.push(`${cond.fan_count} fan(s) needed`)
+            if (condInfo.length > 0) {
+              contextParts.push(`Condensation findings: ${condInfo.join(', ')}.`)
+            }
+          }
+
+          // Timber data
+          if (room.room_data?.timber_decay) {
+            const timber = room.room_data.timber_decay as any
+            if (timber.fungal_findings && timber.fungal_findings.length > 0) {
+              contextParts.push(`Timber findings: ${timber.fungal_findings.join(', ')}.`)
+            }
+            if (timber.sub_floor_ventilation) {
+              contextParts.push(`Sub-floor ventilation: ${timber.sub_floor_ventilation}.`)
+            }
+          }
+
+          // Woodworm data
+          if (room.room_data?.woodworm) {
+            const ww = room.room_data.woodworm as any
+            if (ww.infestation_status) {
+              contextParts.push(`Woodworm: ${ww.infestation_status} infestation.`)
+            }
+            if (ww.species_identified) {
+              contextParts.push(`Species: ${ww.species_identified}.`)
+            }
+          }
+        }
+
+        // Photo context
+        const roomPhotos = photos.filter(p => p.room_id === room.id)
+        if (roomPhotos.length > 0) {
+          contextParts.push(`Photos taken: ${roomPhotos.length} (${roomPhotos.map(p => p.category || 'general').join(', ')})`)
+        }
+      }
+    }
+  }
+
+  if (sectionKey === 'external_inspection') {
+    // External findings
+    if (wizardData.external_inspection) {
+      const ext = wizardData.external_inspection
+      if (ext.building_defects_found && ext.building_defects && ext.building_defects.length > 0) {
+        contextParts.push(`\nExternal defects noted: ${ext.building_defects.map(d => getDefectLabel(d)).join(', ')}.`)
+      }
+      if (ext.wall_tie_concern) {
+        contextParts.push(`Wall tie concern flagged.`)
+      }
+      if (ext.cracking_concern) {
+        contextParts.push(`Cracking concern flagged.`)
+      }
+    }
+  }
+
+  if (sectionKey === 'dpc_findings') {
+    // DPC-specific context
+    const dampRooms = rooms.filter(r => r.issues_identified?.includes('damp'))
+    if (dampRooms.length > 0) {
+      contextParts.push(`\n${dampRooms.length} room(s) with damp issues requiring DPC work.`)
+      for (const room of dampRooms) {
+        if (room.room_data?.damp?.dpc_required) {
+          contextParts.push(`${room.name}: DPC required.`)
+        }
+      }
+    }
+  }
+
+  if (sectionKey === 'sub_floor_ventilation') {
+    // Airbrick data
+    if (wizardData.additional_works) {
+      const aw = wizardData.additional_works
+      if (aw.airbrick_clean_count || aw.airbrick_upgrade_count || aw.airbrick_new_count) {
+        contextParts.push(`\nAirbrick work: ${aw.airbrick_clean_count || 0} to clean, ${aw.airbrick_upgrade_count || 0} to upgrade, ${aw.airbrick_new_count || 0} new.`)
+      }
+    }
+  }
+
+  if (sectionKey === 'causes') {
+    // Condensation causes
+    const condensationRooms = rooms.filter(r => r.issues_identified?.includes('condensation'))
+    if (condensationRooms.length > 0) {
+      contextParts.push(`\n${condensationRooms.length} room(s) with condensation issues.`)
+      const hasBlackMould = condensationRooms.some(r => r.room_data?.condensation?.black_mould_present)
+      const avgHumidity = condensationRooms.reduce((sum, r) => sum + (r.room_data?.condensation?.humidity_reading || 0), 0) / condensationRooms.length
+      if (hasBlackMould) contextParts.push(`Black mould present.`)
+      if (avgHumidity > 0) contextParts.push(`Average humidity: ${avgHumidity.toFixed(1)}%.`)
+    }
+  }
+
+  if (sectionKey === 'surveyor_comments') {
+    // Overall summary context
+    const allIssues = new Set<string>()
+    rooms.forEach(r => r.issues_identified?.forEach(i => allIssues.add(i)))
+
+    contextParts.push(`\nOverall survey summary:`)
+    contextParts.push(`- ${rooms.length} room(s) inspected`)
+    if (allIssues.size > 0) {
+      contextParts.push(`- Issues found: ${Array.from(allIssues).join(', ')}`)
+    }
+
+    // Total affected areas
+    const totalDampWalls = rooms.reduce((sum, r) => {
+      const walls = (r.room_data?.damp as any)?.walls
+      return sum + (walls ? walls.length : 0)
+    }, 0)
+    if (totalDampWalls > 0) {
+      contextParts.push(`- Total damp walls: ${totalDampWalls}`)
+    }
+
+    // External issues
+    if (wizardData.external_inspection?.building_defects_found) {
+      contextParts.push(`- External defects noted`)
+    }
+
+    // Additional works
+    if (wizardData.additional_works) {
+      const aw = wizardData.additional_works
+      const works = []
+      if (aw.aco_drain_length) works.push('ACO drain')
+      if (aw.french_drain_length) works.push('French drain')
+      if (aw.piv_count) works.push(`${aw.piv_count} PIV unit(s)`)
+      if (works.length > 0) {
+        contextParts.push(`- Additional works: ${works.join(', ')}`)
+      }
+    }
+  }
+
+  if (sectionKey === 'summary') {
+    // Timber summary
+    const timberRooms = rooms.filter(r => r.issues_identified?.includes('timber_decay'))
+    const woodwormRooms = rooms.filter(r => r.issues_identified?.includes('woodworm'))
+
+    contextParts.push(`\nTimber survey summary:`)
+    contextParts.push(`- ${timberRooms.length} room(s) with timber decay`)
+    contextParts.push(`- ${woodwormRooms.length} room(s) with woodworm`)
+
+    for (const room of [...timberRooms, ...woodwormRooms]) {
+      contextParts.push(`${room.name}: ${room.issues_identified?.join(', ')}`)
+    }
+  }
+
+  return contextParts.join('\n')
+}
+
+// =============================================================================
 // Section Generation
 // =============================================================================
 
@@ -830,6 +1041,12 @@ export async function generateReport(
 
   // Generate all sections (exclude proposals section - that's for future schedule of works feature)
   const reportSections: ReportSection[] = []
+  const sectionsNeedingLLM: Array<{
+    section: ReportSection
+    prompt: string
+    context: string
+  }> = []
+
   for (const templateSection of template.sections) {
     // Skip proposals section - Schedule of Works is a separate future feature
     if (templateSection.type === 'proposals') {
@@ -847,6 +1064,84 @@ export async function generateReport(
       surveyorData
     )
     reportSections.push(section)
+
+    // Collect sections that need LLM generation
+    if (
+      (templateSection.content_source === 'llm_generated' ||
+        templateSection.content_source === 'mixed') &&
+      templateSection.llm_prompt_hint
+    ) {
+      sectionsNeedingLLM.push({
+        section,
+        prompt: templateSection.llm_prompt_hint,
+        context: buildLLMContext(
+          templateSection.key,
+          wizardData,
+          rooms,
+          photos
+        ),
+      })
+    }
+  }
+
+  // Generate LLM content for collected sections
+  if (sectionsNeedingLLM.length > 0) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const response = await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          surveyId,
+          sections: sectionsNeedingLLM.map((s) => ({
+            key: s.section.key,
+            prompt: s.prompt,
+            context: s.context,
+          })),
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const generatedSections = result.sections as Array<{
+          key: string
+          content: string
+          error?: string
+        }>
+
+        // Update sections with LLM-generated content
+        for (const generated of generatedSections) {
+          const reportSection = reportSections.find(
+            (s) => s.key === generated.key
+          )
+          if (reportSection) {
+            if (generated.error) {
+              console.error(
+                `LLM generation failed for section ${generated.key}: ${generated.error}`
+              )
+              // Keep placeholder text
+            } else {
+              // For mixed content, append LLM text to existing content
+              if (reportSection.content_source === 'mixed' && reportSection.content) {
+                reportSection.content = [reportSection.content, generated.content]
+                  .filter(Boolean)
+                  .join('\n\n')
+              } else {
+                reportSection.content = generated.content
+              }
+            }
+          }
+        }
+      } else {
+        console.error('LLM API call failed:', response.statusText)
+        // Sections keep their placeholder text
+      }
+    } catch (error) {
+      console.error('Error calling LLM API:', error)
+      // Sections keep their placeholder text
+    }
   }
 
   // Create report record
@@ -976,6 +1271,57 @@ export async function regenerateSection(
     customerData,
     surveyorData
   )
+
+  // Generate LLM content if needed
+  if (
+    (templateSection.content_source === 'llm_generated' ||
+      templateSection.content_source === 'mixed') &&
+    templateSection.llm_prompt_hint
+  ) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const response = await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          surveyId: report.survey_id,
+          sections: [
+            {
+              key: newSection.key,
+              prompt: templateSection.llm_prompt_hint,
+              context: buildLLMContext(
+                templateSection.key,
+                wizardData,
+                rooms,
+                await loadSurveyPhotos(report.survey_id)
+              ),
+            },
+          ],
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const generated = result.sections[0]
+
+        if (generated && !generated.error) {
+          // For mixed content, append LLM text to existing content
+          if (newSection.content_source === 'mixed' && newSection.content) {
+            newSection.content = [newSection.content, generated.content]
+              .filter(Boolean)
+              .join('\n\n')
+          } else {
+            newSection.content = generated.content
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error regenerating LLM content:', error)
+      // Keep placeholder text
+    }
+  }
 
   // Update report in database
   const updatedSections = (report.sections as any[]).map((s) =>

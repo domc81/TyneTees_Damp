@@ -135,7 +135,7 @@ Generate the narrative content for this section now. Output ONLY the report text
         'X-Title': 'Tyne Tees Survey System',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.1-70b-instruct',
+        model: 'meta-llama/llama-3.3-70b-instruct',
         messages: [
           {
             role: 'system',
