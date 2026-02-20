@@ -209,8 +209,9 @@ export function calcCeilingCoverage(
   // Calculate units needed (round UP)
   const unitsNeeded = Math.ceil(quantity / coverageRate)
 
-  // Get base unit cost
+  // Get base unit cost (check formula_params for cost_per_coverage_unit first)
   const baseUnitCost = input.overrides?.unit_cost
+    ?? template.formula_params?.cost_per_coverage_unit
     ?? template.base_unit_cost
     ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
     ?? 0
@@ -632,7 +633,7 @@ export function calcSkipHire(
   materials: MaterialLookup
 ): LineResult {
   // Get skip hire cost from config
-  const skipCost = config['skip_hire_8yd'] ?? 0
+  const skipCost = config['skip_hire_8yd_cost'] ?? 0
 
   // Get material markup
   const materialMarkup = input.overrides?.material_markup
