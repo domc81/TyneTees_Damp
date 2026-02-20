@@ -99,6 +99,11 @@ export default function ReportEditorPage() {
         if (existingReport.sections.length > 0) {
           setActiveSectionKey(existingReport.sections[0].key)
         }
+        setIsLoading(false)
+      } else {
+        // No report exists - auto-generate it
+        setIsLoading(false)
+        await handleGenerateReport()
       }
 
       // Load photos
@@ -117,7 +122,6 @@ export default function ReportEditorPage() {
     } catch (err) {
       console.error('Error loading report:', err)
       setError(err instanceof Error ? err.message : 'Failed to load report')
-    } finally {
       setIsLoading(false)
     }
   }
@@ -270,13 +274,15 @@ export default function ReportEditorPage() {
     setCollapsedSections((prev) => ({ ...prev, [sectionKey]: !prev[sectionKey] }))
   }
 
-  // Loading state
-  if (isLoading) {
+  // Loading or generating state
+  if (isLoading || isGenerating) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-brand-300 animate-spin mx-auto mb-4" />
-          <p className="text-white/70">Loading report...</p>
+          <p className="text-white/70">
+            {isGenerating ? 'Generating report...' : 'Loading report...'}
+          </p>
         </div>
       </div>
     )
@@ -288,13 +294,14 @@ export default function ReportEditorPage() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <Card className="max-w-md w-full p-8 text-center glass border-red-400/30">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Error Loading Report</h2>
+          <h2 className="text-xl font-semibold text-white mb-2">Error Generating Report</h2>
           <p className="text-white/70 mb-6">{error}</p>
           <div className="flex gap-3 justify-center">
-            <Button variant="ghost" onClick={() => router.push(`/survey/${projectId}/wizard`)}>
-              Back to Wizard
+            <Button variant="ghost" onClick={() => router.push(`/survey/${projectId}/costing`)}>
+              Back to Costing
             </Button>
-            <Button variant="primary" onClick={loadReportData}>
+            <Button variant="primary" onClick={handleGenerateReport}>
+              <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
           </div>
@@ -303,39 +310,9 @@ export default function ReportEditorPage() {
     )
   }
 
-  // No report - show generate button
+  // Safety check - should not reach here without a report
   if (!report) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <Card className="max-w-md w-full p-8 text-center glass border-white/10">
-          <FileText className="w-16 h-16 text-brand-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Generate Survey Report</h2>
-          <p className="text-white/70 mb-6">
-            Generate a professional survey report from the completed wizard data. This will create boilerplate
-            sections, populate data fields, and generate narrative content.
-          </p>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleGenerateReport}
-            disabled={isGenerating}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Generating Report...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Generate Report
-              </>
-            )}
-          </Button>
-        </Card>
-      </div>
-    )
+    return null
   }
 
   const isFinalised = report.status === 'finalised'
