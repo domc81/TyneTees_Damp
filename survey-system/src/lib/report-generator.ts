@@ -417,6 +417,74 @@ function populateDataSection(
     data.surveyor_name = 'Surveyor details to be confirmed'
   }
 
+  // === SUMMARY OF PROPOSED WORKS ===
+  if (section.key === 'summary_of_works') {
+    // Build structured data from all rooms
+    const roomsSummary: Array<{
+      room_name: string
+      floor_level: string
+      issue: string
+      treatment: string
+      total_area: string
+    }> = []
+
+    for (const room of rooms) {
+      if (room.issues_identified?.includes('damp') && room.room_data?.damp) {
+        const dampData = room.room_data.damp as any
+        if (dampData.walls && Array.isArray(dampData.walls)) {
+          for (const wall of dampData.walls) {
+            const treatment = wall.treatment === 'membrane' ? 'Cavity drain membrane system' :
+                            wall.treatment === 'injection' ? 'Chemical DPC injection' :
+                            wall.treatment === 'tanking' ? 'Cementitious tanking system' :
+                            wall.treatment || 'Treatment to be specified'
+
+            const area = wall.area || (wall.length * wall.height)
+
+            roomsSummary.push({
+              room_name: room.name,
+              floor_level: room.floor_level || 'Unknown',
+              issue: 'Rising damp',
+              treatment: treatment,
+              total_area: `${area.toFixed(1)}m²`
+            })
+          }
+        }
+      }
+    }
+
+    data.rooms = roomsSummary
+
+    // Extract additional works from costing data
+    const additionalWorks: Array<{ description: string; area: string }> = []
+
+    if (costingResults && costingResults.lines) {
+      for (const line of costingResults.lines) {
+        // Include items that aren't direct wall treatments
+        const isAdditionalWork =
+          line.description?.toLowerCase().includes('airbrick') ||
+          line.description?.toLowerCase().includes('plaster') ||
+          line.description?.toLowerCase().includes('skip') ||
+          line.description?.toLowerCase().includes('skim') ||
+          line.description?.toLowerCase().includes('rubbish') ||
+          line.description?.toLowerCase().includes('drain')
+
+        if (isAdditionalWork) {
+          additionalWorks.push({
+            description: line.description || 'Additional work',
+            area: line.quantity ? `${line.quantity}${line.unit || ''}` : ''
+          })
+        }
+      }
+    }
+
+    data.additional_works = additionalWorks
+
+    return {
+      data,
+      photos: sectionPhotos,
+    }
+  }
+
   // Extract data fields from wizard data
   if (section.data_fields) {
     for (const field of section.data_fields) {
@@ -478,6 +546,62 @@ function populateDataSection(
 // =============================================================================
 
 /**
+ * Build context string for a single room's LLM generation
+ */
+function buildRoomLLMContext(
+  room: SurveyRoomRow,
+  photos: SurveyPhoto[]
+): string {
+  const contextParts: string[] = []
+
+  contextParts.push(`Room: ${room.name}, ${room.floor_level || 'Unknown floor'}`)
+
+  if (room.issues_identified && room.issues_identified.length > 0) {
+    contextParts.push(`Issues: ${room.issues_identified.join(', ')}`)
+  }
+
+  // Damp data
+  if (room.room_data?.damp) {
+    const damp = room.room_data.damp as any
+    if (damp.walls && Array.isArray(damp.walls)) {
+      contextParts.push(`Affected walls:`)
+      for (const wall of damp.walls) {
+        const area = wall.area || (wall.length * wall.height)
+        const treatmentLabel = wall.treatment === 'membrane' ? 'cavity drain membrane system' :
+                              wall.treatment === 'injection' ? 'chemical DPC injection' :
+                              wall.treatment === 'tanking' ? 'cementitious tanking system' : wall.treatment
+
+        const wallParts = [
+          `${wall.name || 'Wall'}`,
+          `treatment area ${wall.length || 0}m × ${wall.height || 0}m (${area.toFixed(1)}m²)`,
+          `treatment: ${treatmentLabel}`
+        ]
+
+        if (wall.moisture_readings && wall.moisture_readings.length > 0) {
+          const maxReading = Math.max(...wall.moisture_readings)
+          wallParts.push(`moisture reading: ${maxReading}% W/W`)
+        }
+
+        contextParts.push(`- ${wallParts.join(', ')}`)
+      }
+    }
+
+    if (damp.floor_treatment) {
+      contextParts.push(`Floor treatment: ${damp.floor_treatment.replace(/_/g, ' ')}`)
+    }
+
+    if (damp.dpc_required) {
+      contextParts.push(`DPC injection required: yes`)
+    }
+  }
+
+  contextParts.push('')
+  contextParts.push('Write 1-2 paragraphs describing the findings in this room and the recommended treatment. Be specific about locations, measurements and treatment types. End with a clear statement of what works are proposed.')
+
+  return contextParts.join('\n')
+}
+
+/**
  * Build rich context string for LLM generation
  */
 function buildLLMContext(
@@ -500,95 +624,7 @@ function buildLLMContext(
   }
 
   // Section-specific context
-  if (sectionKey === 'room_findings') {
-    // Room-by-room findings
-    if (rooms.length > 0) {
-      contextParts.push(`\nRooms inspected: ${rooms.length} (${rooms.map(r => r.name).join(', ')}).`)
-
-      for (const room of rooms) {
-        contextParts.push(`\n=== ${room.name} (${room.floor_level || 'Unknown floor'}) ===`)
-
-        if (room.issues_identified && room.issues_identified.length > 0) {
-          contextParts.push(`Issues: ${room.issues_identified.join(', ')}`)
-
-          // Damp data
-          if (room.room_data?.damp) {
-            const damp = room.room_data.damp as any
-            if (damp.walls && Array.isArray(damp.walls)) {
-              contextParts.push(`Damp findings: ${damp.walls.length} affected wall(s).`)
-              for (const wall of damp.walls) {
-                // Calculate area if not provided
-                const calculatedArea = wall.area || (wall.length * wall.height)
-                const wallInfo = []
-
-                // Explicitly label as affected treatment area
-                wallInfo.push(`${wall.name || 'Wall'}: Affected treatment area measuring ${wall.length || 0}m length × ${wall.height || 0}m height (${calculatedArea.toFixed(1)}m²)`)
-
-                // Treatment is CRITICAL - include it prominently
-                if (wall.treatment) {
-                  const treatmentLabel = wall.treatment === 'membrane' ? 'membrane system' :
-                                        wall.treatment === 'injection' ? 'chemical DPC injection' :
-                                        wall.treatment === 'tanking' ? 'tanking system' : wall.treatment
-                  wallInfo.push(`Treatment specified: ${treatmentLabel}`)
-                }
-
-                if (wall.has_skirting) wallInfo.push('Skirting present')
-                if (wall.moisture_readings && wall.moisture_readings.length > 0) {
-                  wallInfo.push(`Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
-                }
-                contextParts.push(`- ${wallInfo.join('. ')}.`)
-              }
-            }
-            if (damp.dpc_required) contextParts.push(`DPC required: yes.`)
-            if (damp.floor_treatment) {
-              contextParts.push(`Floor treatment: ${damp.floor_treatment.replace(/_/g, ' ')}.`)
-            }
-          }
-
-          // Condensation data
-          if (room.room_data?.condensation) {
-            const cond = room.room_data.condensation as any
-            const condInfo = []
-            if (cond.condensation_on_windows) condInfo.push('condensation on windows')
-            if (cond.black_mould_present) condInfo.push('black mould present')
-            if (cond.humidity_reading) condInfo.push(`humidity ${cond.humidity_reading}%`)
-            if (cond.fan_count) condInfo.push(`${cond.fan_count} fan(s) needed`)
-            if (condInfo.length > 0) {
-              contextParts.push(`Condensation findings: ${condInfo.join(', ')}.`)
-            }
-          }
-
-          // Timber data
-          if (room.room_data?.timber_decay) {
-            const timber = room.room_data.timber_decay as any
-            if (timber.fungal_findings && timber.fungal_findings.length > 0) {
-              contextParts.push(`Timber findings: ${timber.fungal_findings.join(', ')}.`)
-            }
-            if (timber.sub_floor_ventilation) {
-              contextParts.push(`Sub-floor ventilation: ${timber.sub_floor_ventilation}.`)
-            }
-          }
-
-          // Woodworm data
-          if (room.room_data?.woodworm) {
-            const ww = room.room_data.woodworm as any
-            if (ww.infestation_status) {
-              contextParts.push(`Woodworm: ${ww.infestation_status} infestation.`)
-            }
-            if (ww.species_identified) {
-              contextParts.push(`Species: ${ww.species_identified}.`)
-            }
-          }
-        }
-
-        // Photo context
-        const roomPhotos = photos.filter(p => p.room_id === room.id)
-        if (roomPhotos.length > 0) {
-          contextParts.push(`Photos taken: ${roomPhotos.length} (${roomPhotos.map(p => p.category || 'general').join(', ')})`)
-        }
-      }
-    }
-  }
+  // NOTE: room_findings now handled per-room, not in bulk
 
   if (sectionKey === 'external_inspection') {
     // External findings
@@ -810,8 +846,13 @@ async function generateSection(
 
     case 'survey_data':
       // Auto-populated from data
-      // Format data into readable text
-      section.content = formatDataAsText(section.data)
+      // Special handling for summary_of_works section
+      if (templateSection.key === 'summary_of_works') {
+        section.content = 'Based on our inspection, we propose the following remedial works:'
+      } else {
+        // Format data into readable text
+        section.content = formatDataAsText(section.data)
+      }
       break
 
     case 'llm_generated':
@@ -872,20 +913,73 @@ async function generateSection(
     section.sub_sections = []
 
     for (const room of rooms) {
-      // Create a room sub-section - minimal content, photos are the main content
+      // Only process rooms with damp issues
+      if (!room.issues_identified?.includes('damp')) {
+        continue
+      }
+
+      const dampData = room.room_data?.damp as any
+      if (!dampData) {
+        continue
+      }
+
+      // Build structured wall data for table rendering
+      const walls: Array<{
+        wall_position: string
+        treatment_area_length: string
+        treatment_area_height: string
+        treatment_area_m2: string
+        treatment_type: string
+        moisture_reading?: string
+      }> = []
+
+      if (dampData.walls && Array.isArray(dampData.walls)) {
+        for (const wall of dampData.walls) {
+          const length = wall.length || 0
+          const height = wall.height || 0
+          const area = wall.area || (length * height)
+
+          // Map treatment codes to display labels
+          const treatmentLabel = wall.treatment === 'membrane' ? 'Cavity drain membrane system' :
+                                wall.treatment === 'injection' ? 'Chemical DPC injection' :
+                                wall.treatment === 'tanking' ? 'Cementitious tanking system' :
+                                wall.treatment || 'Treatment to be specified'
+
+          const wallData: any = {
+            wall_position: wall.name || wall.wall_position || 'Wall',
+            treatment_area_length: length.toString(),
+            treatment_area_height: height.toString(),
+            treatment_area_m2: area > 0 ? area.toFixed(1) : '0',
+            treatment_type: treatmentLabel,
+          }
+
+          // Only include moisture_reading if it exists
+          if (wall.moisture_readings && wall.moisture_readings.length > 0) {
+            // Use the highest reading
+            const maxReading = Math.max(...wall.moisture_readings)
+            wallData.moisture_reading = `${maxReading}% W/W`
+          }
+
+          walls.push(wallData)
+        }
+      }
+
+      // Create a room sub-section with structured data
       const roomSection: ReportSection = {
         key: `room_${room.id}`,
-        title: room.name,
-        type: 'findings',
-        content: generateRoomContent(room, wizardData), // Minimal room identifier
-        content_source: 'survey_data',
+        title: `${room.name} — ${room.floor_level || 'Unknown Floor'}`,
+        type: 'room_finding',
+        content: '', // Will be filled by LLM
+        content_source: 'llm_generated',
         is_edited: false,
         data: {
           room_name: room.name,
-          room_type: room.room_type,
-          floor_level: room.floor_level,
-          issues_identified: room.issues_identified,
-          room_data: room.room_data,
+          floor_level: room.floor_level || 'Unknown',
+          issues: room.issues_identified || [],
+          walls: walls,
+          floor_treatment: dampData.floor_treatment ? dampData.floor_treatment.replace(/_/g, ' ') : undefined,
+          dpc_required: dampData.dpc_required || false,
+          additional_notes: dampData.additional_notes || '',
         },
         photos: [],
       }
@@ -896,10 +990,7 @@ async function generateSection(
       )
       roomSection.photos = roomPhotos.map((p) => p.id)
 
-      // Only add room sub-section if there are photos (otherwise LLM narrative in parent is sufficient)
-      if (roomSection.photos.length > 0) {
-        section.sub_sections.push(roomSection)
-      }
+      section.sub_sections.push(roomSection)
     }
   }
   // Generate template sub-sections ONLY if repeats_per is NOT set
@@ -1096,8 +1187,8 @@ export async function generateReport(
 
   // Generate all sections (exclude proposals section - that's for future schedule of works feature)
   const reportSections: ReportSection[] = []
-  const sectionsNeedingLLM: Array<{
-    section: ReportSection
+  const llmRequests: Array<{
+    key: string // unique key to identify this request (section key or room_<roomId>)
     prompt: string
     context: string
   }> = []
@@ -1120,27 +1211,43 @@ export async function generateReport(
     )
     reportSections.push(section)
 
-    // Collect sections that need LLM generation
+    // Collect LLM requests
     if (
       (templateSection.content_source === 'llm_generated' ||
         templateSection.content_source === 'mixed') &&
       templateSection.llm_prompt_hint
     ) {
-      sectionsNeedingLLM.push({
-        section,
-        prompt: templateSection.llm_prompt_hint,
-        context: buildLLMContext(
-          templateSection.key,
-          wizardData,
-          rooms,
-          photos
-        ),
-      })
+      // For room_findings section, collect one request per room sub-section
+      if (templateSection.key === 'room_findings' && section.sub_sections) {
+        for (const roomSubSection of section.sub_sections) {
+          // Find the corresponding room data
+          const room = rooms.find(r => `room_${r.id}` === roomSubSection.key)
+          if (room) {
+            llmRequests.push({
+              key: roomSubSection.key,
+              prompt: templateSection.llm_prompt_hint,
+              context: buildRoomLLMContext(room, photos),
+            })
+          }
+        }
+      } else {
+        // For other sections, one request per section
+        llmRequests.push({
+          key: section.key,
+          prompt: templateSection.llm_prompt_hint,
+          context: buildLLMContext(
+            templateSection.key,
+            wizardData,
+            rooms,
+            photos
+          ),
+        })
+      }
     }
   }
 
-  // Generate LLM content for collected sections
-  if (sectionsNeedingLLM.length > 0) {
+  // Generate LLM content for all collected requests (batched in single API call)
+  if (llmRequests.length > 0) {
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
       const response = await fetch(`${siteUrl}/api/generate-report`, {
@@ -1150,41 +1257,57 @@ export async function generateReport(
         },
         body: JSON.stringify({
           surveyId,
-          sections: sectionsNeedingLLM.map((s) => ({
-            key: s.section.key,
-            prompt: s.prompt,
-            context: s.context,
-          })),
+          sections: llmRequests,
         }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        const generatedSections = result.sections as Array<{
+        const generatedContent = result.sections as Array<{
           key: string
           content: string
           error?: string
         }>
 
-        // Update sections with LLM-generated content
-        for (const generated of generatedSections) {
-          const reportSection = reportSections.find(
-            (s) => s.key === generated.key
-          )
-          if (reportSection) {
-            if (generated.error) {
-              console.error(
-                `LLM generation failed for section ${generated.key}: ${generated.error}`
+        // Map LLM responses back to sections/sub-sections
+        for (const generated of generatedContent) {
+          // Check if this is a room sub-section
+          if (generated.key.startsWith('room_')) {
+            // Find the parent room_findings section
+            const roomFindingsSection = reportSections.find(s => s.key === 'room_findings')
+            if (roomFindingsSection?.sub_sections) {
+              const roomSubSection = roomFindingsSection.sub_sections.find(
+                sub => sub.key === generated.key
               )
-              // Keep placeholder text
-            } else {
-              // For mixed content, append LLM text to existing content
-              if (reportSection.content_source === 'mixed' && reportSection.content) {
-                reportSection.content = [reportSection.content, generated.content]
-                  .filter(Boolean)
-                  .join('\n\n')
+              if (roomSubSection) {
+                if (generated.error) {
+                  console.error(
+                    `LLM generation failed for room ${generated.key}: ${generated.error}`
+                  )
+                  roomSubSection.content = 'Content generation failed. Please review manually.'
+                } else {
+                  roomSubSection.content = generated.content
+                }
+              }
+            }
+          } else {
+            // This is a section-level LLM generation
+            const reportSection = reportSections.find(s => s.key === generated.key)
+            if (reportSection) {
+              if (generated.error) {
+                console.error(
+                  `LLM generation failed for section ${generated.key}: ${generated.error}`
+                )
+                // Keep placeholder text
               } else {
-                reportSection.content = generated.content
+                // For mixed content, append LLM text to existing content
+                if (reportSection.content_source === 'mixed' && reportSection.content) {
+                  reportSection.content = [reportSection.content, generated.content]
+                    .filter(Boolean)
+                    .join('\n\n')
+                } else {
+                  reportSection.content = generated.content
+                }
               }
             }
           }
