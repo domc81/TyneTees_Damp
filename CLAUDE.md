@@ -229,10 +229,13 @@ npm run lint         # Run ESLint
 - **Costing review page** — `src/app/survey/[projectId]/costing/page.tsx` (auto-calculated costs)
 - **Report data model** — `src/types/survey-report.types.ts` (template + generated report types)
 - **Report templates** — 4 default templates seeded from workbook analysis (damp, condensation, timber, woodworm)
+- **Report generation service** — `src/lib/report-generator.ts` (boilerplate selection, data population, LLM narrative via OpenRouter)
+- **Report API** — `src/app/api/generate-report/route.ts` (LLM narrative generation with Llama 3.1 70B)
+- **Report data layer** — `src/lib/report-data.ts` (CRUD operations for survey_reports table)
 
 ## What's Next (Build Order)
 
-See PROJECT_STATE.md for the current build queue. Next up: report generation engine, then report review UI, then PDF rendering.
+Next up: report review UI, then PDF rendering.
 
 ## Reference Documents
 
