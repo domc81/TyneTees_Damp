@@ -17,7 +17,7 @@ import {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-  { icon: ClipboardList, label: 'Projects', href: '/projects' },
+  { icon: ClipboardList, label: 'Surveys', href: '/projects' },
   { icon: Calculator, label: 'Costing', href: '/costing' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Package, label: 'Materials', href: '/materials' },

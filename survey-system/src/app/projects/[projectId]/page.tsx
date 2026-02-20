@@ -44,10 +44,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; b
 
 const tabs = [
   { id: 'details', label: 'Details', icon: User },
-  { id: 'survey', label: 'Survey', icon: ClipboardList },
-  { id: 'inspection', label: 'Rooms', icon: Home },
-  { id: 'wizard', label: 'Survey Wizard', icon: ClipboardList },
-  { id: 'photos', label: 'Photos', icon: Camera, count: true },
+  { id: 'survey', label: 'Overview', icon: ClipboardList },
   { id: 'costing', label: 'Costing', icon: Calculator, count: true },
   { id: 'materials', label: 'Materials', icon: Package },
   { id: 'report', label: 'Quote', icon: FileText },
@@ -60,6 +57,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [isLoading, setIsLoading] = useState(true)
   const [photos, setPhotos] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [wizardCompleted, setWizardCompleted] = useState(false)
 
   useEffect(() => {
     async function loadProject() {
@@ -72,6 +70,8 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
           // Load photos for this project
           const projectPhotos = await getSupabaseProjectPhotos(data.id)
           setPhotos(projectPhotos)
+          // Load wizard_completed status
+          setWizardCompleted(data.wizard_completed || false)
         }
       } catch (err) {
         console.error('Error loading project:', err)
@@ -185,66 +185,10 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
           <div className="flex gap-6">
             {tabs.map((tab) => {
               const Icon = tab.icon
-
-              // For survey tab, use Link instead of button (goes to structured survey)
-              if (tab.id === 'survey') {
-                return (
-                  <Link
-                    key={tab.id}
-                    href={`/projects/${project.id}/survey`}
-                    className={`flex items-center gap-2 py-4 border-b-2 transition-colors
-                               ${activeTab === tab.id
-                                 ? 'border-brand-600 text-brand-600'
-                                 : 'border-transparent text-surface-500 hover:text-surface-700'}`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                  </Link>
-                )
-              }
-
-              // For inspection tab, use Link instead of button
-              if (tab.id === 'inspection') {
-                return (
-                  <Link
-                    key={tab.id}
-                    href={`/survey/${project.id}/inspection`}
-                    className={`flex items-center gap-2 py-4 border-b-2 transition-colors
-                               ${activeTab === tab.id
-                                 ? 'border-brand-600 text-brand-600'
-                                 : 'border-transparent text-surface-500 hover:text-surface-700'}`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                  </Link>
-                )
-              }
-
-              // Survey Wizard tab (new - primary action)
-              if (tab.id === 'wizard') {
-                return (
-                  <Link
-                    key={tab.id}
-                    href={`/survey/${project.id}/wizard`}
-                    className={`flex items-center gap-2 py-4 border-b-2 transition-colors font-medium
-                               ${activeTab === tab.id
-                                 ? 'border-brand-600 text-brand-600'
-                                 : 'border-transparent text-brand-600 hover:text-brand-700'}`}
-                  >
-                    <ClipboardList className="w-4 h-4" />
-                    <span>Survey Wizard</span>
-                    <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-semibold">
-                      NEW
-                    </span>
-                  </Link>
-                )
-              }
-
               const count = tab.count === true
-                ? tab.id === 'photos' ? photos.length
-                : tab.id === 'costing' ? sections.length
+                ? tab.id === 'costing' ? sections.length
                 : 0
-              : null
+                : null
 
               return (
                 <button
@@ -277,72 +221,82 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
 
         {activeTab === 'survey' && (
           <div className="max-w-4xl">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-surface-900">Structured Survey</h2>
-                <p className="text-surface-500">Complete the detailed inspection questionnaire</p>
-              </div>
-              <Link href={`/projects/${project.id}/survey`} className="btn-primary flex items-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                Open Survey Form
-              </Link>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-surface-900">Survey Overview</h2>
+              <p className="text-surface-500">Survey status and progress</p>
             </div>
 
-            <div className="section-card">
-              <div className="section-card-header">
-                <h3 className="font-semibold text-surface-900">Survey Sections</h3>
-              </div>
-              <div className="p-6 grid grid-cols-2 gap-4">
-                <Link
-                  href={`/projects/${project.id}/survey`}
-                  className="p-4 rounded-xl border border-surface-200 hover:border-brand-300 hover:bg-brand-50 transition-colors"
-                >
-                  <Thermometer className="w-6 h-6 text-brand-600 mb-2" />
-                  <h4 className="font-semibold text-surface-900">Header & Property Details</h4>
-                  <p className="text-sm text-surface-500">Client info, weather, property type</p>
-                </Link>
-                <Link
-                  href={`/projects/${project.id}/survey`}
-                  className="p-4 rounded-xl border border-surface-200 hover:border-brand-300 hover:bg-brand-50 transition-colors"
-                >
-                  <Building className="w-6 h-6 text-brand-600 mb-2" />
-                  <h4 className="font-semibold text-surface-900">External Inspection</h4>
-                  <p className="text-sm text-surface-500">Building defects, DPC, ventilation</p>
-                </Link>
-                <Link
-                  href={`/projects/${project.id}/survey`}
-                  className="p-4 rounded-xl border border-surface-200 hover:border-brand-300 hover:bg-brand-50 transition-colors"
-                >
-                  <Home className="w-6 h-6 text-brand-600 mb-2" />
-                  <h4 className="font-semibold text-surface-900">Internal Inspection</h4>
-                  <p className="text-sm text-surface-500">Floors, walls, solid floors</p>
-                </Link>
-                <Link
-                  href={`/projects/${project.id}/survey`}
-                  className="p-4 rounded-xl border border-surface-200 hover:border-brand-300 hover:bg-brand-50 transition-colors"
-                >
-                  <FileText className="w-6 h-6 text-brand-600 mb-2" />
-                  <h4 className="font-semibold text-surface-900">Report Generation</h4>
-                  <p className="text-sm text-surface-500">Auto-generate from survey answers</p>
-                </Link>
+            {/* Survey Status Card */}
+            <div className="section-card p-8 bg-gradient-to-br from-brand-500/10 to-brand-600/5 border-brand-400/30 mb-6">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="text-2xl font-bold text-surface-900">
+                      {wizardCompleted ? 'Survey Complete' : 'Survey Not Started'}
+                    </h3>
+                    {wizardCompleted && (
+                      <span className="badge bg-green-100 text-green-700">
+                        <Check className="w-4 h-4 mr-1" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-surface-600 mb-4">
+                    {wizardCompleted
+                      ? 'Your survey is complete. View or edit survey details, or proceed to costing and quote generation.'
+                      : 'Start the room-by-room survey wizard to record findings, capture photos, and automatically generate costing.'}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      href={`/survey/${project.id}/wizard`}
+                      className="btn-primary flex items-center gap-2 px-6 py-3 text-base"
+                    >
+                      <ClipboardList className="w-5 h-5" />
+                      {wizardCompleted ? 'Edit Survey' : 'Start Survey Wizard'}
+                    </Link>
+                    {wizardCompleted && (
+                      <Link
+                        href={`/survey/${project.id}/costing`}
+                        className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
+                      >
+                        <Calculator className="w-5 h-5" />
+                        View Costing
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="hidden lg:block">
+                  <div className="w-32 h-32 rounded-2xl bg-brand-100 flex items-center justify-center">
+                    <ClipboardList className="w-16 h-16 text-brand-600" />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <p className="text-sm text-amber-800">
-                <strong>Note:</strong> Complete the structured survey questionnaire for a comprehensive report.
-                The survey follows the standard Tyne Tees inspection process.
-              </p>
+            {/* Survey Info */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="section-card">
+                <div className="section-card-header">
+                  <h3 className="font-semibold text-surface-900">Survey Details</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <DetailRow label="Client" value={project.client_name} />
+                  <DetailRow label="Site Address" value={project.site_address} />
+                  <DetailRow label="Survey Type" value={config.label} />
+                  <DetailRow label="Survey Date" value={project.survey_date ? new Date(project.survey_date).toLocaleDateString() : '-'} />
+                </div>
+              </div>
+
+              <div className="section-card">
+                <div className="section-card-header">
+                  <h3 className="font-semibold text-surface-900">Reported Problem</h3>
+                </div>
+                <div className="p-6">
+                  <p className="text-surface-600">{project.notes || 'No problem description provided.'}</p>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'inspection' && (
-          <InspectionTab projectId={project.id} />
-        )}
-
-        {activeTab === 'photos' && (
-          <PhotosTab photos={photos} projectId={project.id} />
         )}
 
         {activeTab === 'costing' && (
@@ -441,77 +395,6 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ============ PHOTOS TAB ============
-function PhotosTab({ photos, projectId }: { photos: ReturnType<typeof getProjectPhotos>; projectId: string }) {
-  const [showUpload, setShowUpload] = useState(false)
-
-  return (
-    <div className="max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-surface-900">Site Photos</h2>
-          <p className="text-surface-500">Photos taken during survey</p>
-        </div>
-        <button onClick={() => setShowUpload(true)} className="btn-primary flex items-center gap-2">
-          <Camera className="w-4 h-4" />
-          Add Photo
-        </button>
-      </div>
-
-      {photos.length === 0 ? (
-        <div className="empty-state">
-          <Camera className="empty-state-icon" />
-          <p className="empty-state-title">No photos yet</p>
-          <p className="empty-state-description">Capture photos during your survey to document findings</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-4 gap-4">
-          {photos.map((photo) => {
-            const photoUrl = getPhotoUrl(photo)
-            return (
-              <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-surface-100 group relative">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt={photo.description || 'Survey photo'}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to placeholder on error
-                      e.currentTarget.style.display = 'none'
-                      const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                      if (fallback) fallback.classList.remove('hidden')
-                    }}
-                  />
-                ) : null}
-                <div
-                  className={`w-full h-full flex items-center justify-center text-surface-400 ${photoUrl ? 'hidden' : ''}`}
-                >
-                  <Camera className="w-12 h-12" />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-sm font-medium text-white truncate">
-                    {photo.description || 'No description'}
-                  </p>
-                  <p className="text-xs text-white/80">
-                    {photo.created_at ? new Date(photo.created_at).toLocaleDateString() : ''}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-          {/* Add more photo slot */}
-          <button
-            onClick={() => setShowUpload(true)}
-            className="aspect-square rounded-xl border-2 border-dashed border-surface-300 flex flex-col items-center justify-center gap-2 hover:border-brand-400 hover:bg-brand-50 transition-colors"
-          >
-            <Plus className="w-8 h-8 text-surface-400" />
-            <span className="text-sm text-surface-500">Add Photo</span>
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ============ COSTING TAB ============
 function CostingTab({
@@ -602,250 +485,6 @@ function CostingTab({
   )
 }
 
-// ============ INSPECTION TAB ============
-function InspectionTab({ projectId }: { projectId: string }) {
-  const [rooms, setRooms] = useState<SurveyRoom[]>([])
-  const [expandedRoom, setExpandedRoom] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [pendingSave, setPendingSave] = useState(false)
-
-  // Load rooms from Supabase
-  useEffect(() => {
-    async function loadRooms() {
-      try {
-        setIsLoading(true)
-        const data = await getSurveyRooms(projectId)
-        setRooms(data)
-      } catch (err) {
-        console.error('Error loading rooms:', err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadRooms()
-  }, [projectId])
-
-  // Auto-save function
-  const saveRoom = async (room: SurveyRoom) => {
-    try {
-      if (room.id.startsWith('local-')) {
-        // New room - create it
-        const created = await createSurveyRoom({
-          project_id: projectId,
-          name: room.name,
-          room_type: room.room_type,
-          floor_level: room.floor_level,
-          findings: room.findings || '',
-          recommendations: room.recommendations || '',
-        })
-        if (created) {
-          setRooms(prev => prev.map(r => r.id === room.id ? created : r))
-        }
-      } else {
-        // Existing room - update it
-        await updateSurveyRoom(room.id, {
-          name: room.name,
-          room_type: room.room_type,
-          floor_level: room.floor_level,
-          findings: room.findings || '',
-          recommendations: room.recommendations || '',
-        })
-      }
-    } catch (err) {
-      console.error('Error saving room:', err)
-    }
-  }
-
-  const handleAddRoom = async () => {
-    const newRoom: SurveyRoom = {
-      id: `local-${Date.now()}`,
-      project_id: projectId,
-      name: 'New Room',
-      room_type: 'living_room',
-      floor_level: 'ground',
-      display_order: rooms.length + 1,
-      findings: '',
-      recommendations: '',
-      is_completed: false,
-      created_at: new Date().toISOString(),
-    }
-    setRooms(prev => [...prev, newRoom])
-    // Save immediately
-    const created = await createSurveyRoom({
-      project_id: projectId,
-      name: newRoom.name,
-      room_type: newRoom.room_type,
-      floor_level: newRoom.floor_level,
-      findings: '',
-      recommendations: '',
-    })
-    if (created) {
-      setRooms(prev => prev.map(r => r.id === newRoom.id ? created : r))
-    }
-  }
-
-  const handleDeleteRoom = async (id: string) => {
-    if (!confirm('Delete this room?')) return
-    setRooms(prev => prev.filter(r => r.id !== id))
-    // Delete from Supabase if not a local ID
-    if (!id.startsWith('local-')) {
-      try {
-        const { error } = await supabase
-          .from('survey_rooms')
-          .delete()
-          .eq('id', id)
-        if (error) console.error('Error deleting room:', error)
-      } catch (err) {
-        console.error('Error deleting room:', err)
-      }
-    }
-  }
-
-  const handleRoomChange = async (roomId: string, updates: Partial<SurveyRoom>) => {
-    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r))
-    const room = rooms.find(r => r.id === roomId)
-    if (room) {
-      await saveRoom({ ...room, ...updates })
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="spinner" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-surface-900">Room Inspection</h2>
-          <p className="text-surface-500">Record findings for each room</p>
-        </div>
-        <button onClick={handleAddRoom} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Room
-        </button>
-      </div>
-
-      {rooms.length === 0 ? (
-        <div className="empty-state">
-          <Home className="empty-state-icon" />
-          <p className="empty-state-title">No rooms added yet</p>
-          <p className="empty-state-description">Start your survey by adding rooms</p>
-          <button onClick={handleAddRoom} className="btn-primary mt-4">
-            Add First Room
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {rooms.map((room, index) => (
-            <div key={room.id} className="section-card">
-              <button
-                onClick={() => setExpandedRoom(expandedRoom === room.id ? null : room.id)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-sm">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <h4 className="font-semibold text-surface-900">{room.name}</h4>
-                    <p className="text-sm text-surface-500">
-                      {room.room_type?.replace('_', ' ')} • {room.floor_level?.replace('_', ' ')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {room.findings && (
-                    <span className="badge badge-amber">Findings recorded</span>
-                  )}
-                  <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${expandedRoom === room.id ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-
-              {expandedRoom === room.id && (
-                <div className="border-t border-surface-100 px-6 py-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="input-label">Room Name</label>
-                      <input
-                        type="text"
-                        value={room.name}
-                        onChange={(e) => handleRoomChange(room.id, { name: e.target.value })}
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="input-label">Room Type</label>
-                      <select
-                        value={room.room_type}
-                        onChange={(e) => handleRoomChange(room.id, { room_type: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="living_room">Living Room</option>
-                        <option value="bedroom">Bedroom</option>
-                        <option value="kitchen">Kitchen</option>
-                        <option value="bathroom">Bathroom</option>
-                        <option value="hallway">Hallway</option>
-                        <option value="basement">Basement</option>
-                        <option value="loft">Loft</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="input-label">Floor Level</label>
-                    <select
-                      value={room.floor_level}
-                      onChange={(e) => handleRoomChange(room.id, { floor_level: e.target.value })}
-                      className="input-field"
-                    >
-                      <option value="ground">Ground Floor</option>
-                      <option value="first">First Floor</option>
-                      <option value="second">Second Floor</option>
-                      <option value="basement">Basement</option>
-                      <option value="attic">Attic</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="input-label">Findings / Observations</label>
-                    <textarea
-                      value={room.findings || ''}
-                      onChange={(e) => handleRoomChange(room.id, { findings: e.target.value })}
-                      className="input-field resize-none"
-                      rows={3}
-                      placeholder="Describe what was found..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="input-label">Recommendations</label>
-                    <textarea
-                      value={room.recommendations || ''}
-                      onChange={(e) => handleRoomChange(room.id, { recommendations: e.target.value })}
-                      className="input-field resize-none"
-                      rows={3}
-                      placeholder="Recommended works..."
-                    />
-                  </div>
-
-                  <button onClick={() => handleDeleteRoom(room.id)} className="btn-ghost text-red-600 flex items-center gap-2">
-                    <Trash2 className="w-4 h-4" />
-                    Delete Room
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ============ REPORT TAB ============
 function ReportTab({
