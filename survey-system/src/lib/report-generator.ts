@@ -501,10 +501,22 @@ function buildLLMContext(
             if (damp.walls && Array.isArray(damp.walls)) {
               contextParts.push(`Damp findings: ${damp.walls.length} affected wall(s).`)
               for (const wall of damp.walls) {
+                // Calculate area if not provided
+                const calculatedArea = wall.area || (wall.length * wall.height)
                 const wallInfo = []
-                wallInfo.push(`${wall.name || 'Wall'}: length ${wall.length || 0}m, height ${wall.height || 0}m, area ${wall.area || 0}m²`)
+
+                // Explicitly label as affected treatment area
+                wallInfo.push(`${wall.name || 'Wall'}: Affected treatment area measuring ${wall.length || 0}m length × ${wall.height || 0}m height (${calculatedArea.toFixed(1)}m²)`)
+
+                // Treatment is CRITICAL - include it prominently
+                if (wall.treatment) {
+                  const treatmentLabel = wall.treatment === 'membrane' ? 'membrane system' :
+                                        wall.treatment === 'injection' ? 'chemical DPC injection' :
+                                        wall.treatment === 'tanking' ? 'tanking system' : wall.treatment
+                  wallInfo.push(`Treatment specified: ${treatmentLabel}`)
+                }
+
                 if (wall.has_skirting) wallInfo.push('Skirting present')
-                if (wall.treatment) wallInfo.push(`Treatment: ${wall.treatment}`)
                 if (wall.moisture_readings && wall.moisture_readings.length > 0) {
                   wallInfo.push(`Moisture readings: ${wall.moisture_readings.join('%, ')}%`)
                 }
@@ -624,27 +636,42 @@ function buildLLMContext(
       contextParts.push(`- Issues found: ${Array.from(allIssues).join(', ')}`)
     }
 
-    // Detailed damp measurements
+    // Detailed damp measurements with treatment details
     let totalDampArea = 0
     let totalDampWalls = 0
     const dampRooms: string[] = []
+    const treatmentsByRoom: Record<string, string[]> = {}
+
     rooms.forEach(r => {
       const walls = (r.room_data?.damp as any)?.walls
       if (walls && walls.length > 0) {
         dampRooms.push(r.name)
         totalDampWalls += walls.length
+
+        const roomTreatments = new Set<string>()
         walls.forEach((w: any) => {
           const area = w.area || (w.length * w.height)
           totalDampArea += area
+
+          if (w.treatment) {
+            const treatmentLabel = w.treatment === 'membrane' ? 'membrane system' :
+                                  w.treatment === 'injection' ? 'chemical DPC injection' :
+                                  w.treatment === 'tanking' ? 'tanking system' : w.treatment
+            roomTreatments.add(treatmentLabel)
+          }
         })
+
+        if (roomTreatments.size > 0) {
+          treatmentsByRoom[r.name] = Array.from(roomTreatments)
+        }
       }
     })
 
     if (totalDampWalls > 0) {
       contextParts.push(`\nDamp findings:`)
       contextParts.push(`- Affected rooms: ${dampRooms.join(', ')}`)
-      contextParts.push(`- Total affected walls: ${totalDampWalls}`)
-      contextParts.push(`- Total affected area: ${totalDampArea.toFixed(1)}m²`)
+      contextParts.push(`- Total affected walls requiring treatment: ${totalDampWalls}`)
+      contextParts.push(`- Total affected area requiring treatment: ${totalDampArea.toFixed(1)}m²`)
 
       // DPC requirements
       const dpcRequired = rooms.some(r => r.room_data?.damp?.dpc_required)
@@ -652,15 +679,12 @@ function buildLLMContext(
         contextParts.push(`- DPC system required`)
       }
 
-      // Treatment types
-      const treatments = new Set<string>()
-      rooms.forEach(r => {
-        if (r.room_data?.damp?.wall_treatment) {
-          treatments.add((r.room_data.damp as any).wall_treatment)
+      // Treatment types specified per room
+      if (Object.keys(treatmentsByRoom).length > 0) {
+        contextParts.push(`\nTreatment works specified by room:`)
+        for (const [roomName, treatments] of Object.entries(treatmentsByRoom)) {
+          contextParts.push(`- ${roomName}: ${treatments.join(', ')}`)
         }
-      })
-      if (treatments.size > 0) {
-        contextParts.push(`- Recommended treatments: ${Array.from(treatments).map(t => t.replace(/_/g, ' ')).join(', ')}`)
       }
     }
 
@@ -690,8 +714,14 @@ function buildLLMContext(
       }
     }
 
-    // Include total costing if available
-    contextParts.push(`\nIMPORTANT: Reference specific room names, wall measurements (e.g., "Left wall: 3m × 2m = 6m²"), and treatment recommendations in your narrative. Do not write generic advice. Every statement should relate to specific findings from this survey.`)
+    // Critical instructions for surveyor comments
+    contextParts.push(`\nIMPORTANT INSTRUCTIONS:`)
+    contextParts.push(`- Summarise the key findings and recommended treatment works`)
+    contextParts.push(`- Reference specific rooms and measurements (e.g., "In the Living Room, the left wall measuring 3m × 2m requires...")`)
+    contextParts.push(`- State the treatment that has been specified (membrane system, DPC injection, etc.) — do NOT suggest the customer "consider" options`)
+    contextParts.push(`- Wall measurements represent AFFECTED AREAS requiring treatment, not full wall dimensions`)
+    contextParts.push(`- Write with authority and confidence — you are the expert surveyor`)
+    contextParts.push(`- Do not write generic advice — every statement must relate to specific findings from THIS survey`)
   }
 
   if (sectionKey === 'summary') {
