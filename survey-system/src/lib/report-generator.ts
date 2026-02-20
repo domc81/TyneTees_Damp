@@ -1,34 +1,30 @@
 // =============================================================================
-// Report Generator — Populates report templates with survey data
-// Orchestrates boilerplate selection, data population, and LLM narrative generation
+// Report Generator — Direct, explicit section builder
+// No templates, no condition engine, no field aliasing.
+// Each section is built with clear field mappings.
+// LLM used only for surveyor_comments summary.
 // =============================================================================
 
 import type {
   ReportTemplate,
-  ReportTemplateSection,
   ReportSection,
   SurveyReport,
-  BoilerplateVariant,
+  ContentSource,
+  ReportSectionType,
 } from '@/types/survey-report.types'
 import type {
   SurveyWizardData,
   SurveyRoomRow,
-  BuildingDefect,
 } from '@/types/survey-wizard.types'
 import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
-import type { SurveyPhoto } from '@/types/survey-photo.types'
 import { loadWizardData } from './survey-wizard-data'
-import { loadSurveyPhotos, getPhotoUrl } from './survey-photo-service'
-import { generateCostingFromSurvey } from './survey-mapping'
+import { loadSurveyPhotos } from './survey-photo-service'
 import { getSupabase } from './supabase-client'
 
 // =============================================================================
-// Template Loading
+// Template Loading (kept — used for template_id on report record)
 // =============================================================================
 
-/**
- * Load the default report template for a survey type
- */
 export async function loadDefaultTemplate(
   surveyType: string
 ): Promise<ReportTemplate | null> {
@@ -53,305 +49,68 @@ export async function loadDefaultTemplate(
 }
 
 // =============================================================================
-// Condition Evaluation — Maps survey data to boilerplate condition keys
+// Boilerplate Constants
 // =============================================================================
 
-/**
- * Evaluate all condition keys used in boilerplate variants
- * Returns a flat Record<string, boolean> mapping condition keys to true/false
- */
-export function evaluateConditions(
-  wizardData: SurveyWizardData,
-  rooms: SurveyRoomRow[]
-): Record<string, boolean> {
-  const conditions: Record<string, boolean> = {}
+const ABOUT_US_TEXT = `Tyne Tees Damp Proofing Ltd is a specialist remedial contractor serving residential and commercial clients across the North East of England, including Tyneside, Wearside, Northumberland and County Durham. Our team has been working in the damp proofing industry since 1987.
 
-  // Always-true condition
-  conditions.always = true
+We specialise in the diagnosis and treatment of rising damp, penetrating damp, condensation, timber decay (dry rot and wet rot), woodworm infestation and basement waterproofing. Our surveyors are trained to correctly differentiate between the causes of damp — ensuring accurate diagnosis and effective treatment first time.
 
-  // === EXTERNAL INSPECTION CONDITIONS ===
-  const ext = wizardData.external_inspection
+Qualifications & Standards
 
-  conditions.no_defects = !ext?.building_defects_found
-  conditions.defects_found = ext?.building_defects_found === true
-  conditions.defects_warning_cause = ext?.building_defects_found === true
-  conditions.defects_warning_general = ext?.building_defects_found === true
-  conditions.wall_tie_concern = ext?.wall_tie_concern === true
-  conditions.cracking_concern = ext?.cracking_concern === true
+Our surveyors hold the Certificated Surveyor in Remedial Treatments (CSRT) qualification and are Associate members of the Institute of Specialist Surveyors and Engineers (A.Inst.SSE). All survey and treatment works are carried out using only BBA-approved products and in accordance with current industry best practice.
 
-  // Building defect types (for condensation reports)
-  conditions.see_damp_report = false // Set manually if damp report exists
+Guarantees
 
-  // === PROPERTY TYPE CONDITIONS ===
-  conditions.flat_lease_warning =
-    wizardData.site_details?.property_type === 'flat'
+We offer 25-year company and insurance-backed guarantees for damp proofing and timber treatment works above external ground level. All guarantees cover both materials and labour. Our membrane products carry a 25-year manufacturer's product guarantee. Insurance-backed guarantees are issued through the Westminster Protected Guarantee scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.
 
-  // === DPC CONDITIONS ===
-  const hasDpcRequired = rooms.some(
-    (r) => r.room_data?.damp?.dpc_required === true
-  )
-  conditions.has_dpc_evidence = hasDpcRequired
-  conditions.dpc_required = hasDpcRequired
-  conditions.dpc_original_exists = false // Requires surveyor input
-  conditions.dpc_chemical_exists = false // Requires surveyor input
-  conditions.dpc_not_visible = false // Requires surveyor input
-  conditions.dpc_previous_work = false // Requires surveyor input
-  conditions.dpc_check_guarantee = false // Requires surveyor input
-  conditions.dpc_proposal = hasDpcRequired
+Our Track Record
 
-  // === GROUND LEVEL CONDITIONS ===
-  const additionalWorks = wizardData.additional_works
-  conditions.no_ground_issues =
-    !additionalWorks?.aco_drain_length && !additionalWorks?.french_drain_length
-  conditions.high_ground_levels =
-    additionalWorks?.aco_drain_length! > 0 ||
-    additionalWorks?.french_drain_length! > 0
-  conditions.ground_falling_towards = false // Requires surveyor judgment
-  conditions.ground_recommendation =
-    conditions.high_ground_levels || conditions.ground_falling_towards
-  conditions.aco_drain_recommended = additionalWorks?.aco_drain_length! > 0
-  conditions.french_drain_recommended =
-    additionalWorks?.french_drain_length! > 0
-  conditions.lower_ground_levels = conditions.high_ground_levels
+We maintain a 100% success rate on all damp and timber treatments, with no guarantee claims to date.`
 
-  // === AIRBRICK CONDITIONS ===
-  const hasAirbrickWork =
-    additionalWorks?.airbrick_clean_count! > 0 ||
-    additionalWorks?.airbrick_upgrade_count! > 0 ||
-    additionalWorks?.airbrick_new_count! > 0
+function buildSurveyContextText(reportedDefect: string): string {
+  return `In accordance with your instructions, we carried out a specific defects inspection of the above property for the following reported problem:
 
-  conditions.no_airbricks = !hasAirbrickWork
-  conditions.airbricks_not_inspectable = false // Requires surveyor input
-  conditions.airbricks_present = hasAirbrickWork
-  conditions.ventilation_sufficient = false // Requires moisture readings
-  conditions.ventilation_insufficient = hasAirbrickWork
-  conditions.airbricks_blocked = additionalWorks?.airbrick_clean_count! > 0
-  conditions.airbricks_too_low = additionalWorks?.airbrick_upgrade_count! > 0
-  conditions.proposal_remove_clean = additionalWorks?.airbrick_clean_count! > 0
-  conditions.proposal_upgrade = additionalWorks?.airbrick_upgrade_count! > 0
-  conditions.proposal_install_new = additionalWorks?.airbrick_new_count! > 0
-  conditions.proposal_benefit = hasAirbrickWork
-  conditions.proposal_lift = additionalWorks?.airbrick_upgrade_count! > 0
-  conditions.lift_benefit = additionalWorks?.airbrick_upgrade_count! > 0
-  conditions.no_works_required = !hasAirbrickWork
+Reported defect: ${reportedDefect || 'As instructed by client.'}
 
-  // === CONDENSATION CONDITIONS ===
-  const condensationRooms = rooms.filter((r) =>
-    r.issues_identified?.includes('condensation')
-  )
-  const hasCondensation = condensationRooms.length > 0
+Orientation
 
-  conditions.condensation_on_windows = condensationRooms.some(
-    (r) => r.room_data?.condensation?.condensation_on_windows === true
-  )
-  conditions.low_temp_dew_points = hasCondensation // Generic assumption
-  conditions.black_mould = condensationRooms.some(
-    (r) => r.room_data?.condensation?.black_mould_present === true
-  )
-  conditions.lack_ventilation = hasCondensation
-  conditions.poor_insulation =
-    wizardData.site_details?.construction_type === 'solid_brick'
-  conditions.humidity_reading = condensationRooms.some(
-    (r) => r.room_data?.condensation?.humidity_reading !== undefined
-  )
+The terms left, right, front and rear are used as viewed from the outside of the building, facing the front elevation.
 
-  // Condensation causes
-  conditions.cause_ventilation = hasCondensation
-  conditions.cause_insulation = conditions.poor_insulation
-  conditions.cause_dampness = rooms.some((r) =>
-    r.issues_identified?.includes('damp')
-  )
-  conditions.cause_elevated_humidity = hasCondensation
-  conditions.cause_insufficient_extraction = hasCondensation
+Scope of Inspection
 
-  // PIV/Fan conditions
-  const pivCount = additionalWorks?.piv_count || 0
-  const fanCount = condensationRooms.reduce(
-    (sum, r) => sum + (r.room_data?.condensation?.fan_count || 0),
-    0
-  )
+This inspection was limited to identifying evidence of the problems listed above within the areas indicated to us at the time of our visit. Any areas not referred to in this report were not inspected and are not covered by our findings or estimate.
 
-  conditions.piv_selected = pivCount > 0
-  conditions.piv_loft_heated =
-    pivCount > 0 && additionalWorks?.piv_type === 'nuaire_drimaster_eco'
-  conditions.piv_loft_unheated =
-    pivCount > 0 && additionalWorks?.piv_type === 'nuaire_drimaster_2000'
-  conditions.piv_loft_diffusor = pivCount > 0
-  conditions.fans_humidistat = fanCount > 0
-  conditions.fans_upgrade = fanCount > 0
-  conditions.electrical_fittings = pivCount > 0 || fanCount > 0
-  conditions.mould_treatment = conditions.black_mould
-  conditions.asbestos_test = additionalWorks?.asbestos_test_count! > 0
-  conditions.electrical_not_current = false // Requires surveyor judgment
+Where treatment has been recommended, this is on the understanding that the specified area has not previously been treated under an existing guarantee, unless otherwise stated.
 
-  // === TIMBER/WOODWORM CONDITIONS ===
-  const timberRooms = rooms.filter((r) =>
-    r.issues_identified?.includes('timber_decay')
-  )
-  const woodwormRooms = rooms.filter((r) =>
-    r.issues_identified?.includes('woodworm')
-  )
+Abbreviations
 
-  const hasFungalFindings = timberRooms.some(
-    (r) => r.room_data?.timber_decay?.fungal_findings?.length! > 0
-  )
-  const hasWoodworm = woodwormRooms.length > 0
-
-  conditions.issue_woodworm = hasWoodworm || hasFungalFindings
-  conditions.issue_wet_rot = timberRooms.some(
-    (r) => r.room_data?.timber_decay?.fungal_findings?.includes('wet_rot')
-  )
-  conditions.issue_dry_rot = timberRooms.some(
-    (r) => r.room_data?.timber_decay?.fungal_findings?.includes('dry_rot')
-  )
-  conditions.issue_woodboring_weevil = false // Specific finding
-  conditions.issue_high_moisture = timberRooms.some(
-    (r) => r.room_data?.timber_decay?.sub_floor_ventilation === 'inadequate'
-  )
-
-  conditions.fogging_proposal = hasFungalFindings
-  conditions.timbers_at_risk_intro = hasFungalFindings
-
-  // Room-level conditions (used in repeating sections)
-  conditions.no_timber_defects = timberRooms.length === 0
-  conditions.timber_defects_found = timberRooms.length > 0
-  conditions.timber_defects_found_with_report = false // Separate report attached
-
-  // Woodworm specific
-  conditions.no_damage = woodwormRooms.length === 0
-  conditions.historic_attack = woodwormRooms.some(
-    (r) => r.room_data?.woodworm?.infestation_status === 'historic'
-  )
-  conditions.active_infestation = woodwormRooms.some(
-    (r) => r.room_data?.woodworm?.infestation_status === 'active'
-  )
-  conditions.infestation_areas_intro = hasWoodworm
-
-  // Proposals
-  conditions.no_treatment =
-    woodwormRooms.length === 0 && timberRooms.length === 0
-  conditions.treatment_header = hasWoodworm || hasFungalFindings
-  conditions.proposal_discrete_openings = hasWoodworm
-  conditions.proposal_fogging = hasWoodworm
-  conditions.proposal_dry_rot = conditions.issue_dry_rot
-  conditions.proposal_wet_rot = conditions.issue_wet_rot
-  conditions.proposal_wet_rot_weevil = conditions.issue_woodboring_weevil
-  conditions.proposal_woodworm = hasWoodworm
-
-  // Treatment schedules
-  conditions.woodworm_treatment = hasWoodworm
-  conditions.dry_rot_treatment = conditions.issue_dry_rot
-  conditions.wet_rot_treatment = conditions.issue_wet_rot
-  conditions.wet_rot_weevil_treatment = conditions.issue_woodboring_weevil
-
-  // === INTERNAL INSPECTION (DAMP) ===
-  const dampRooms = rooms.filter((r) => r.issues_identified?.includes('damp'))
-
-  conditions.non_destructive_notice = true // Always shown for damp
-  conditions.damp_timber_risk = dampRooms.length > 0
-  conditions.destructive_permission_template = dampRooms.length > 0
-  conditions.no_permission_negotiate = false // User choice
-  conditions.no_permission_arrange_later = false // User choice
-
-  // Wall inspections
-  conditions.inspection_method = dampRooms.length > 0
-  conditions.plaster_degradation = dampRooms.some((r) =>
-    r.room_data?.damp?.walls?.some((w: any) => w.has_wallpaper || w.moisture_readings?.length > 0)
-  )
-  conditions.defect_shadow_bands = false // Requires surveyor observation
-  conditions.defect_salting = false // Requires surveyor observation
-  conditions.defect_loss_of_key = false // Requires surveyor observation
-  conditions.no_plaster_degradation = !conditions.plaster_degradation
-  conditions.walls_not_inspectable = false // Requires surveyor input
-
-  // Proposals (walls)
-  conditions.proposal_header = dampRooms.length > 0
-  conditions.proposal_remove_radiators = dampRooms.some((r) =>
-    r.room_data?.damp?.walls?.some((w: any) => (w.radiator_count || 0) > 0)
-  )
-  conditions.proposal_remove_sockets = dampRooms.some((r) =>
-    r.room_data?.damp?.walls?.some((w: any) => (w.socket_count || 0) > 0)
-  )
-  conditions.proposal_remove_skirting = dampRooms.some((r) =>
-    r.room_data?.damp?.walls?.some((w: any) => (w.skirting_length || 0) > 0)
-  )
-  conditions.proposal_strip_plaster = conditions.plaster_degradation
-  conditions.proposal_strip_wallpaper = dampRooms.some((r) =>
-    r.room_data?.damp?.walls?.some((w: any) => w.has_wallpaper === true)
-  )
-  conditions.proposal_install_dpc_system = hasDpcRequired
-  conditions.proposal_fillet_seal = dampRooms.some(
-    (r) => r.room_data?.damp?.wall_treatment === 'membrane'
-  )
-  conditions.proposal_debris_disposal = dampRooms.length > 0
-
-  // Floor conditions
-  conditions.timber_floors_heading = dampRooms.some(
-    (r) => r.room_data?.damp?.floor_treatment !== undefined
-  )
-  conditions.solid_floors_excluded = true // Generic notice
-  conditions.solid_floor_damp_found = dampRooms.some(
-    (r) => r.room_data?.damp?.floor_treatment === 'resin_membrane'
-  )
-  conditions.solid_floor_proposal = conditions.solid_floor_damp_found
-
-  // Obstructions
-  conditions.non_accessible = false // Requires surveyor input
-  conditions.obstruction_polished_floor = false
-  conditions.obstruction_laminate = false
-  conditions.obstruction_carpet = false
-  conditions.obstruction_ceramic = false
-  conditions.obstruction_furniture = false
-
-  return conditions
+DPC — Damp Proof Course · DPM — Damp Proof Membrane · USCC — Under Separate Contract and Costs · ACMs — Asbestos Containing Materials · W/W — Water Weight`
 }
 
-// =============================================================================
-// Boilerplate Selection
-// =============================================================================
+const ANCILLARY_TEXT = `Our estimate does not include the removal or replacement of floor coverings, furnishings, furniture, stored items in roof voids, or any other items that may obstruct the works.
 
-/**
- * Select the appropriate boilerplate text based on conditions
- * Returns the text of the first matching variant, or empty string if none match
- */
-export function selectBoilerplate(
-  variants: BoilerplateVariant[] | undefined,
-  conditions: Record<string, boolean>
-): string {
-  if (!variants || variants.length === 0) {
-    return ''
-  }
+Please arrange for rooms to be cleared of anything delicate or of value before our arrival on site. We are happy to roll back and loosely relay carpets where possible.
 
-  for (const variant of variants) {
-    // Special case: "always" condition always matches
-    if (variant.condition === 'always') {
-      return variant.text
-    }
+Any time spent clearing areas to enable work to proceed will be charged at our standard day rates and added to your final account, unless otherwise agreed in writing.`
 
-    // Check if condition is true
-    if (conditions[variant.condition] === true) {
-      return variant.text
-    }
-  }
+const EXTENT_TEXT = `We have reported on the areas inspected in accordance with your instructions. If you believe any areas have been omitted or that we have misinterpreted your requirements, please contact us immediately.
 
-  return ''
-}
+Our findings relate to conditions evident at the time of inspection. We are not commenting on the general risk of dampness, fungal decay or any other defect not visible during our visit, or that may develop in the future.`
+
+const PAYMENT_TEXT = `An initial payment of 30% of the contract value is required before works commence. This covers the cost of ordering materials specific to your project and securing a date in our installation schedule.
+
+The remaining balance is due within 7 days of completion.`
 
 // =============================================================================
-// Data Formatting Helpers
+// Helper Functions
 // =============================================================================
 
-/**
- * Get human-readable label for a building defect key
- */
 function getDefectLabel(defectKey: string): string {
   const defect = BUILDING_DEFECTS.find((d) => d.value === defectKey)
   return defect?.label || defectKey.replace(/_/g, ' ')
 }
 
-/**
- * Format floor level for display
- */
 function formatFloorLevel(floorLevel: string | undefined): string {
   if (!floorLevel) return 'Unknown Floor'
 
@@ -367,787 +126,47 @@ function formatFloorLevel(floorLevel: string | undefined): string {
   return floorMap[floorLevel.toLowerCase()] || floorLevel
 }
 
-/**
- * Format building defects array as readable labels
- */
-function formatDefects(defects: string[] | undefined): string[] {
-  if (!defects || defects.length === 0) return []
-  return defects.map((d) => getDefectLabel(d))
+function getTreatmentLabel(code: string | undefined): string {
+  if (!code) return 'Treatment to be specified'
+  const map: Record<string, string> = {
+    membrane: 'Cavity drain membrane system',
+    injection: 'Chemical DPC injection',
+    tanking: 'Cementitious tanking system',
+  }
+  return map[code] || code.replace(/_/g, ' ')
 }
 
 // =============================================================================
-// Data Population
+// Section Builder Helper
 // =============================================================================
 
-/**
- * Populate a data section with structured survey data
- */
-function populateDataSection(
-  section: ReportTemplateSection,
-  wizardData: SurveyWizardData,
-  rooms: SurveyRoomRow[],
-  photos: SurveyPhoto[],
-  costingResults: any,
-  customerData?: any,
-  surveyorData?: any
-): Partial<ReportSection> {
-  const data: Record<string, unknown> = {}
-  const sectionPhotos: string[] = []
-
-  // === CUSTOMER DATA (for cover section) ===
-  if (customerData && section.key === 'cover') {
-    data.client_name = `${customerData.first_name} ${customerData.last_name}`
-    data.site_address = customerData.address_line1
-    if (customerData.address_line2) {
-      data.site_address_line2 = customerData.address_line2
-    }
-    data.site_city = customerData.city
-    if (customerData.county) {
-      data.site_county = customerData.county
-    }
-    data.site_postcode = customerData.postcode
-  }
-
-  // === SURVEYOR DATA (for signature and profile sections) ===
-  if (surveyorData && (section.key === 'surveyor_signature' || section.key === 'surveyor_profile')) {
-    data.surveyor_name = `${surveyorData.first_name} ${surveyorData.last_name}`
-    if (surveyorData.qualifications) {
-      data.surveyor_credentials = surveyorData.qualifications
-    }
-    if (surveyorData.job_title) {
-      data.surveyor_title = surveyorData.job_title
-    }
-    // Additional profile fields
-    if (section.key === 'surveyor_profile') {
-      // Experience field (if available in surveyor data)
-      if ((surveyorData as any).years_experience) {
-        data.surveyor_experience = `${(surveyorData as any).years_experience} years in the industry`
-      }
-      // Photo field (if available)
-      if ((surveyorData as any).photo_url) {
-        data.surveyor_photo = (surveyorData as any).photo_url
-      }
-    }
-  }
-
-  // If no surveyor data for profile section, set placeholder
-  if (!surveyorData && section.key === 'surveyor_profile') {
-    data.surveyor_name = 'Surveyor details to be confirmed'
-  }
-
-  // === SUMMARY OF PROPOSED WORKS ===
-  if (section.key === 'summary_of_works') {
-    // Build structured data from all rooms
-    const roomsSummary: Array<{
-      room_name: string
-      floor_level: string
-      issue: string
-      treatment: string
-      total_area: string
-    }> = []
-
-    for (const room of rooms) {
-      if (room.issues_identified?.includes('damp') && room.room_data?.damp) {
-        const dampData = room.room_data.damp as any
-        if (dampData.walls && Array.isArray(dampData.walls)) {
-          for (const wall of dampData.walls) {
-            const treatment = dampData.wall_treatment === 'membrane' ? 'Cavity drain membrane system' :
-                            dampData.wall_treatment === 'injection' ? 'Chemical DPC injection' :
-                            dampData.wall_treatment === 'tanking' ? 'Cementitious tanking system' :
-                            dampData.wall_treatment || 'Treatment to be specified'
-
-            const area = wall.area || (wall.length * wall.height)
-
-            roomsSummary.push({
-              room_name: room.name,
-              floor_level: formatFloorLevel(room.floor_level),
-              issue: 'Rising damp',
-              treatment: treatment,
-              total_area: `${area.toFixed(1)}m²`
-            })
-          }
-        }
-      }
-    }
-
-    data.rooms = roomsSummary
-
-    // Extract additional works from costing data
-    const additionalWorks: Array<{ description: string; area: string }> = []
-
-    if (costingResults && costingResults.lines) {
-      for (const line of costingResults.lines) {
-        // Include items that aren't direct wall treatments
-        const isAdditionalWork =
-          line.description?.toLowerCase().includes('airbrick') ||
-          line.description?.toLowerCase().includes('plaster') ||
-          line.description?.toLowerCase().includes('skip') ||
-          line.description?.toLowerCase().includes('skim') ||
-          line.description?.toLowerCase().includes('rubbish') ||
-          line.description?.toLowerCase().includes('drain')
-
-        if (isAdditionalWork) {
-          additionalWorks.push({
-            description: line.description || 'Additional work',
-            area: line.quantity ? `${line.quantity}${line.unit || ''}` : ''
-          })
-        }
-      }
-    }
-
-    data.additional_works = additionalWorks
-
-    return {
-      data,
-      photos: sectionPhotos,
-    }
-  }
-
-  // Extract data fields from wizard data
-  if (section.data_fields) {
-    // Field aliases map template field names to wizard field names
-    const fieldAliases: Record<string, string> = {
-      'construction': 'construction_type',
-      'build_year': 'approx_build_year',
-    }
-
-    for (const field of section.data_fields) {
-      // FIX 3: Skip reported_defect for survey_context (already in boilerplate)
-      if (section.key === 'survey_context' && field === 'reported_defect') {
-        continue
-      }
-
-      const actualField = fieldAliases[field] || field
-
-      // Site details
-      if (wizardData.site_details && actualField in wizardData.site_details) {
-        data[field] = (wizardData.site_details as any)[actualField]
-      }
-
-      // External inspection
-      if (
-        wizardData.external_inspection &&
-        field in wizardData.external_inspection
-      ) {
-        // FIX 4: Skip building_defects for external_inspection (already in boilerplate)
-        if (section.key === 'external_inspection' && field === 'building_defects') {
-          continue
-        }
-
-        let value = (wizardData.external_inspection as any)[field]
-
-        // Format building defects as readable labels
-        if (field === 'building_defects' && Array.isArray(value)) {
-          value = formatDefects(value)
-        }
-
-        data[field] = value
-      }
-
-      // Additional works
-      if (wizardData.additional_works && field in wizardData.additional_works) {
-        data[field] = (wizardData.additional_works as any)[field]
-      }
-
-      // Room-level data (aggregate)
-      if (field === 'rooms') {
-        data[field] = rooms
-      }
-    }
-  }
-
-  // Match photos to section
-  if (section.photo_categories) {
-    for (const category of section.photo_categories) {
-      const matchingPhotos = photos.filter((p) => p.category === category)
-      sectionPhotos.push(...matchingPhotos.map((p) => p.id))
-    }
-  }
-
-  // Costing data (for proposals section)
-  if (section.content_source === 'costing_data' && costingResults) {
-    data.costing_sections = costingResults.sections || []
-    data.costing_lines = costingResults.lines || []
-    data.total_cost = costingResults.totalCost || 0
-  }
-
+function buildSection(
+  key: string,
+  title: string,
+  type: ReportSectionType,
+  contentSource: ContentSource,
+  content: string,
+  data: Record<string, unknown> = {},
+  sectionPhotos: string[] = [],
+  subSections?: ReportSection[]
+): ReportSection {
   return {
+    key,
+    title,
+    type,
+    content,
+    content_source: contentSource,
+    is_edited: false,
     data,
     photos: sectionPhotos,
+    sub_sections: subSections,
   }
 }
 
 // =============================================================================
-// LLM Context Building
+// Main Report Generation — Direct Field Mapping
 // =============================================================================
 
-/**
- * Build context string for a single room's LLM generation
- */
-function buildRoomLLMContext(
-  room: SurveyRoomRow,
-  photos: SurveyPhoto[]
-): string {
-  const contextParts: string[] = []
-
-  contextParts.push(`Room: ${room.name}, ${room.floor_level || 'Unknown floor'}`)
-
-  if (room.issues_identified && room.issues_identified.length > 0) {
-    contextParts.push(`Issues: ${room.issues_identified.join(', ')}`)
-  }
-
-  // Damp data
-  if (room.room_data?.damp) {
-    const damp = room.room_data.damp as any
-    if (damp.walls && Array.isArray(damp.walls)) {
-      contextParts.push(`Affected walls:`)
-      for (const wall of damp.walls) {
-        const area = wall.area || (wall.length * wall.height)
-        const treatmentLabel = damp.wall_treatment === 'membrane' ? 'cavity drain membrane system' :
-                              damp.wall_treatment === 'injection' ? 'chemical DPC injection' :
-                              damp.wall_treatment === 'tanking' ? 'cementitious tanking system' : damp.wall_treatment
-
-        const wallParts = [
-          `${wall.name || 'Wall'}`,
-          `treatment area ${wall.length || 0}m × ${wall.height || 0}m (${area.toFixed(1)}m²)`,
-          `treatment: ${treatmentLabel}`
-        ]
-
-        if (wall.moisture_readings && wall.moisture_readings.length > 0) {
-          const maxReading = Math.max(...wall.moisture_readings)
-          wallParts.push(`moisture reading: ${maxReading}% W/W`)
-        }
-
-        contextParts.push(`- ${wallParts.join(', ')}`)
-      }
-    }
-
-    if (damp.floor_treatment) {
-      contextParts.push(`Floor treatment: ${damp.floor_treatment.replace(/_/g, ' ')}`)
-    }
-
-    if (damp.dpc_required) {
-      contextParts.push(`DPC injection required: yes`)
-    }
-  }
-
-  contextParts.push('')
-  contextParts.push('Write 1-2 paragraphs describing the findings in this room and the recommended treatment. Be specific about locations, measurements and treatment types. End with a clear statement of what works are proposed.')
-
-  return contextParts.join('\n')
-}
-
-/**
- * Build rich context string for LLM generation
- */
-function buildLLMContext(
-  sectionKey: string,
-  wizardData: SurveyWizardData,
-  rooms: SurveyRoomRow[],
-  photos: SurveyPhoto[]
-): string {
-  const contextParts: string[] = []
-
-  // Basic property context (always include)
-  if (wizardData.site_details) {
-    const sd = wizardData.site_details
-    contextParts.push(
-      `Property: ${sd.property_type || 'Unknown'}, ${sd.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd.approx_build_year || 'Unknown year'}.`
-    )
-    if (sd.reported_defect) {
-      contextParts.push(`Reported problem: ${sd.reported_defect}.`)
-    }
-  }
-
-  // Section-specific context
-  // NOTE: room_findings now handled per-room, not in bulk
-
-  if (sectionKey === 'external_inspection') {
-    // External findings
-    if (wizardData.external_inspection) {
-      const ext = wizardData.external_inspection
-      if (ext.building_defects_found && ext.building_defects && ext.building_defects.length > 0) {
-        contextParts.push(`\nExternal defects noted: ${ext.building_defects.map(d => getDefectLabel(d)).join(', ')}.`)
-      }
-      if (ext.wall_tie_concern) {
-        contextParts.push(`Wall tie concern flagged.`)
-      }
-      if (ext.cracking_concern) {
-        contextParts.push(`Cracking concern flagged.`)
-      }
-    }
-  }
-
-  if (sectionKey === 'dpc_findings') {
-    // DPC-specific context
-    const dampRooms = rooms.filter(r => r.issues_identified?.includes('damp'))
-    if (dampRooms.length > 0) {
-      contextParts.push(`\n${dampRooms.length} room(s) with damp issues requiring DPC work.`)
-      for (const room of dampRooms) {
-        if (room.room_data?.damp?.dpc_required) {
-          contextParts.push(`${room.name}: DPC required.`)
-        }
-      }
-    }
-  }
-
-  if (sectionKey === 'sub_floor_ventilation') {
-    // Airbrick data
-    if (wizardData.additional_works) {
-      const aw = wizardData.additional_works
-      if (aw.airbrick_clean_count || aw.airbrick_upgrade_count || aw.airbrick_new_count) {
-        contextParts.push(`\nAirbrick work: ${aw.airbrick_clean_count || 0} to clean, ${aw.airbrick_upgrade_count || 0} to upgrade, ${aw.airbrick_new_count || 0} new.`)
-      }
-    }
-  }
-
-  if (sectionKey === 'causes') {
-    // Condensation causes
-    const condensationRooms = rooms.filter(r => r.issues_identified?.includes('condensation'))
-    if (condensationRooms.length > 0) {
-      contextParts.push(`\n${condensationRooms.length} room(s) with condensation issues.`)
-      const hasBlackMould = condensationRooms.some(r => r.room_data?.condensation?.black_mould_present)
-      const avgHumidity = condensationRooms.reduce((sum, r) => sum + (r.room_data?.condensation?.humidity_reading || 0), 0) / condensationRooms.length
-      if (hasBlackMould) contextParts.push(`Black mould present.`)
-      if (avgHumidity > 0) contextParts.push(`Average humidity: ${avgHumidity.toFixed(1)}%.`)
-    }
-  }
-
-  if (sectionKey === 'surveyor_comments') {
-    // Overall survey summary context with specific measurements
-    const allIssues = new Set<string>()
-    rooms.forEach(r => r.issues_identified?.forEach(i => allIssues.add(i)))
-
-    contextParts.push(`\nOverall survey summary:`)
-    contextParts.push(`- ${rooms.length} room(s) inspected`)
-    if (allIssues.size > 0) {
-      contextParts.push(`- Issues found: ${Array.from(allIssues).join(', ')}`)
-    }
-
-    // Detailed damp measurements with treatment details
-    let totalDampArea = 0
-    let totalDampWalls = 0
-    const dampRooms: string[] = []
-    const treatmentsByRoom: Record<string, string[]> = {}
-
-    rooms.forEach(r => {
-      const dampData = r.room_data?.damp as any
-      const walls = dampData?.walls
-      if (walls && walls.length > 0) {
-        dampRooms.push(r.name)
-        totalDampWalls += walls.length
-
-        const roomTreatments = new Set<string>()
-        walls.forEach((w: any) => {
-          const area = w.area || (w.length * w.height)
-          totalDampArea += area
-
-          if (dampData.wall_treatment) {
-            const treatmentLabel = dampData.wall_treatment === 'membrane' ? 'membrane system' :
-                                  dampData.wall_treatment === 'injection' ? 'chemical DPC injection' :
-                                  dampData.wall_treatment === 'tanking' ? 'tanking system' : dampData.wall_treatment
-            roomTreatments.add(treatmentLabel)
-          }
-        })
-
-        if (roomTreatments.size > 0) {
-          treatmentsByRoom[r.name] = Array.from(roomTreatments)
-        }
-      }
-    })
-
-    if (totalDampWalls > 0) {
-      contextParts.push(`\nDamp findings:`)
-      contextParts.push(`- Affected rooms: ${dampRooms.join(', ')}`)
-      contextParts.push(`- Total affected walls requiring treatment: ${totalDampWalls}`)
-      contextParts.push(`- Total affected area requiring treatment: ${totalDampArea.toFixed(1)}m²`)
-
-      // DPC requirements
-      const dpcRequired = rooms.some(r => r.room_data?.damp?.dpc_required)
-      if (dpcRequired) {
-        contextParts.push(`- DPC system required`)
-      }
-
-      // Treatment types specified per room
-      if (Object.keys(treatmentsByRoom).length > 0) {
-        contextParts.push(`\nTreatment works specified by room:`)
-        for (const [roomName, treatments] of Object.entries(treatmentsByRoom)) {
-          contextParts.push(`- ${roomName}: ${treatments.join(', ')}`)
-        }
-      }
-    }
-
-    // External defects with details
-    if (wizardData.external_inspection?.building_defects_found && wizardData.external_inspection.building_defects) {
-      contextParts.push(`\nExternal defects: ${wizardData.external_inspection.building_defects.map(d => getDefectLabel(d)).join(', ')}`)
-      if (wizardData.external_inspection.wall_tie_concern) {
-        contextParts.push(`- Wall tie concern flagged`)
-      }
-      if (wizardData.external_inspection.cracking_concern) {
-        contextParts.push(`- Structural cracking concern`)
-      }
-    }
-
-    // Additional works with measurements
-    if (wizardData.additional_works) {
-      const aw = wizardData.additional_works
-      const works = []
-      if (aw.aco_drain_length) works.push(`ACO drain (${aw.aco_drain_length}m)`)
-      if (aw.french_drain_length) works.push(`French drain (${aw.french_drain_length}m)`)
-      if (aw.piv_count) works.push(`${aw.piv_count} PIV unit(s)`)
-      if (aw.airbrick_clean_count) works.push(`${aw.airbrick_clean_count} airbricks to clean`)
-      if (aw.airbrick_upgrade_count) works.push(`${aw.airbrick_upgrade_count} airbricks to upgrade`)
-      if (aw.airbrick_new_count) works.push(`${aw.airbrick_new_count} new airbricks`)
-      if (works.length > 0) {
-        contextParts.push(`\nAdditional works: ${works.join(', ')}`)
-      }
-    }
-
-    // Critical instructions for surveyor comments
-    contextParts.push(`\nIMPORTANT INSTRUCTIONS:`)
-    contextParts.push(`- Summarise the key findings and recommended treatment works`)
-    contextParts.push(`- Reference specific rooms and measurements (e.g., "In the Living Room, the left wall measuring 3m × 2m requires...")`)
-    contextParts.push(`- State the treatment that has been specified (membrane system, DPC injection, etc.) — do NOT suggest the customer "consider" options`)
-    contextParts.push(`- Wall measurements represent AFFECTED AREAS requiring treatment, not full wall dimensions`)
-    contextParts.push(`- Write with authority and confidence — you are the expert surveyor`)
-    contextParts.push(`- Do not write generic advice — every statement must relate to specific findings from THIS survey`)
-  }
-
-  if (sectionKey === 'summary') {
-    // Timber summary
-    const timberRooms = rooms.filter(r => r.issues_identified?.includes('timber_decay'))
-    const woodwormRooms = rooms.filter(r => r.issues_identified?.includes('woodworm'))
-
-    contextParts.push(`\nTimber survey summary:`)
-    contextParts.push(`- ${timberRooms.length} room(s) with timber decay`)
-    contextParts.push(`- ${woodwormRooms.length} room(s) with woodworm`)
-
-    for (const room of [...timberRooms, ...woodwormRooms]) {
-      contextParts.push(`${room.name}: ${room.issues_identified?.join(', ')}`)
-    }
-  }
-
-  return contextParts.join('\n')
-}
-
-// =============================================================================
-// Section Generation
-// =============================================================================
-
-/**
- * Generate a single report section
- */
-async function generateSection(
-  templateSection: ReportTemplateSection,
-  wizardData: SurveyWizardData,
-  rooms: SurveyRoomRow[],
-  photos: SurveyPhoto[],
-  costingResults: any,
-  conditions: Record<string, boolean>,
-  customerData?: any,
-  surveyorData?: any
-): Promise<ReportSection> {
-  const section: ReportSection = {
-    key: templateSection.key,
-    title: templateSection.title,
-    type: templateSection.type,
-    content: '',
-    content_source: templateSection.content_source,
-    is_edited: false,
-    data: {},
-    photos: [],
-  }
-
-  // Populate data fields and photos
-  const dataPopulation = populateDataSection(
-    templateSection,
-    wizardData,
-    rooms,
-    photos,
-    costingResults,
-    customerData,
-    surveyorData
-  )
-  section.data = dataPopulation.data || {}
-  section.photos = dataPopulation.photos || []
-
-  // Generate content based on source
-  switch (templateSection.content_source) {
-    case 'template':
-      // Pure boilerplate
-      section.content = selectBoilerplate(
-        templateSection.boilerplate_variants,
-        conditions
-      )
-      break
-
-    case 'survey_data':
-      // Auto-populated from data
-      // Special handling for summary_of_works section
-      if (templateSection.key === 'summary_of_works') {
-        section.content = 'Based on our inspection, we propose the following remedial works:'
-      } else {
-        // Format data into readable text
-        section.content = formatDataAsText(section.data)
-      }
-      break
-
-    case 'llm_generated':
-      // Will be generated via API call (placeholder for now)
-      // Use a surveyor-friendly placeholder that won't show "Content not available" in PDF
-      section.content = 'To be completed by surveyor during review.'
-      break
-
-    case 'mixed':
-      // Combine boilerplate + data
-      let boilerplateText = selectBoilerplate(
-        templateSection.boilerplate_variants,
-        conditions
-      )
-
-      // Replace placeholders in boilerplate text (e.g., {reported_defect})
-      if (boilerplateText && section.data) {
-        // Replace {reported_defect} placeholder
-        if (section.data.reported_defect) {
-          boilerplateText = boilerplateText.replace(
-            '{reported_defect}',
-            String(section.data.reported_defect)
-          )
-        }
-      }
-
-      // For 'mixed' content, boilerplate with placeholders handles data integration
-      // Don't append formatDataAsText as it causes duplicate content
-      section.content = boilerplateText
-      break
-
-    case 'costing_data':
-      // Format costing results as schedule of works
-      section.content = formatCostingAsSchedule(costingResults)
-      break
-
-    case 'surveyor_input':
-      // Leave empty for surveyor to fill
-      section.content = ''
-      break
-  }
-
-  // Add non-destructive inspection note prefix for room_findings section
-  if (templateSection.key === 'room_findings' && templateSection.repeats_per === 'room') {
-    const nonDestructiveNote = 'Note: This was a non-destructive inspection. All findings are based on visual assessment, electronic moisture meter readings, digital laser thermometer readings and tactile examination of accessible surfaces. No opening up works were carried out.'
-
-    // Prepend note to content
-    if (section.content) {
-      section.content = `${nonDestructiveNote}\n\n${section.content}`
-    } else {
-      section.content = nonDestructiveNote
-    }
-  }
-
-  // Generate per-room sub-sections if template has repeats_per: "room"
-  // IMPORTANT: When repeats_per is set, SKIP template sub-sections (like Walls, Proposal, Floors)
-  // because we're generating dynamic room-specific content instead
-  if (templateSection.repeats_per === 'room' && rooms.length > 0) {
-    section.sub_sections = []
-
-    for (const room of rooms) {
-      // Only process rooms with damp issues
-      if (!room.issues_identified?.includes('damp')) {
-        continue
-      }
-
-      const dampData = room.room_data?.damp as any
-      if (!dampData) {
-        continue
-      }
-
-      // Build structured wall data for table rendering
-      const walls: Array<{
-        wall_position: string
-        treatment_area_length: string
-        treatment_area_height: string
-        treatment_area_m2: string
-        treatment_type: string
-        moisture_reading?: string
-      }> = []
-
-      if (dampData.walls && Array.isArray(dampData.walls)) {
-        for (const wall of dampData.walls) {
-          const length = wall.length || 0
-          const height = wall.height || 0
-          const area = wall.area || (length * height)
-
-          // Map treatment codes to display labels
-          const treatmentLabel = dampData.wall_treatment === 'membrane' ? 'Cavity drain membrane system' :
-                                dampData.wall_treatment === 'injection' ? 'Chemical DPC injection' :
-                                dampData.wall_treatment === 'tanking' ? 'Cementitious tanking system' :
-                                dampData.wall_treatment || 'Treatment to be specified'
-
-          const wallData: any = {
-            wall_position: wall.name || wall.wall_position || 'Wall',
-            treatment_area_length: length.toString(),
-            treatment_area_height: height.toString(),
-            treatment_area_m2: area > 0 ? area.toFixed(1) : '0',
-            treatment_type: treatmentLabel,
-          }
-
-          // Only include moisture_reading if it exists
-          if (wall.moisture_readings && wall.moisture_readings.length > 0) {
-            // Use the highest reading
-            const maxReading = Math.max(...wall.moisture_readings)
-            wallData.moisture_reading = `${maxReading}% W/W`
-          }
-
-          walls.push(wallData)
-        }
-      }
-
-      // Create a room sub-section with structured data
-      const roomSection: ReportSection = {
-        key: `room_${room.id}`,
-        title: `${room.name} — ${formatFloorLevel(room.floor_level)}`,
-        type: 'room_finding',
-        content: '', // Will be filled by LLM
-        content_source: 'llm_generated',
-        is_edited: false,
-        data: {
-          room_name: room.name,
-          floor_level: formatFloorLevel(room.floor_level),
-          issues: room.issues_identified || [],
-          walls: walls,
-          floor_treatment: dampData.floor_treatment ? dampData.floor_treatment.replace(/_/g, ' ') : undefined,
-          dpc_required: dampData.dpc_required || false,
-          additional_notes: dampData.additional_notes || '',
-        },
-        photos: [],
-      }
-
-      // Match photos for this room
-      const roomPhotos = photos.filter(
-        (p) => p.room_id === room.id || p.category?.includes(room.name.toLowerCase())
-      )
-      roomSection.photos = roomPhotos.map((p) => p.id)
-
-      section.sub_sections.push(roomSection)
-    }
-  }
-  // Generate template sub-sections ONLY if repeats_per is NOT set
-  else if (templateSection.sub_sections) {
-    section.sub_sections = []
-    for (const subTemplate of templateSection.sub_sections) {
-      const subSection = await generateSection(
-        subTemplate,
-        wizardData,
-        rooms,
-        photos,
-        costingResults,
-        conditions,
-        customerData,
-        surveyorData
-      )
-      section.sub_sections.push(subSection)
-    }
-  }
-
-  return section
-}
-
-/**
- * Generate minimal room header content
- * Room details are now in the LLM narrative in the parent section
- * Sub-sections exist only to hold photos
- */
-function generateRoomContent(room: SurveyRoomRow, wizardData: SurveyWizardData): string {
-  // Return minimal plain text room identifier
-  // This appears as a sub-section heading in the PDF with photos below
-  return `${room.room_type ? room.room_type.replace(/_/g, ' ') + ' on ' : ''}${room.floor_level || 'unknown'} floor`
-}
-
-// =============================================================================
-// Formatting Helpers
-// =============================================================================
-
-/**
- * Format structured data as readable text
- */
-function formatDataAsText(data: Record<string, unknown>): string {
-  const lines: string[] = []
-
-  for (const [key, value] of Object.entries(data)) {
-    if (value === null || value === undefined) continue
-
-    // Format based on type
-    if (typeof value === 'string' || typeof value === 'number') {
-      lines.push(`${formatLabel(key)}: ${value}`)
-    } else if (Array.isArray(value)) {
-      if (value.length > 0) {
-        lines.push(`${formatLabel(key)}:`)
-        value.forEach((item) => {
-          lines.push(`  - ${item}`)
-        })
-      }
-    } else if (typeof value === 'object') {
-      // Nested object
-      lines.push(`${formatLabel(key)}:`)
-      lines.push(formatDataAsText(value as Record<string, unknown>))
-    }
-  }
-
-  return lines.join('\n')
-}
-
-/**
- * Format camelCase/snake_case keys as readable labels
- */
-function formatLabel(key: string): string {
-  return key
-    .replace(/_/g, ' ')
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (str) => str.toUpperCase())
-    .trim()
-}
-
-/**
- * Format costing results as schedule of works
- */
-function formatCostingAsSchedule(costingResults: any): string {
-  if (!costingResults || !costingResults.sections) {
-    return 'No costing data available.'
-  }
-
-  const lines: string[] = []
-
-  for (const section of costingResults.sections) {
-    lines.push(`\n## ${section.name}`)
-    lines.push('')
-
-    if (section.lines && section.lines.length > 0) {
-      for (const line of section.lines) {
-        lines.push(
-          `- ${line.description}: £${line.totalCost?.toFixed(2) || '0.00'}`
-        )
-      }
-    }
-
-    if (section.subtotal) {
-      lines.push(`\n**Section Total: £${section.subtotal.toFixed(2)}**`)
-    }
-  }
-
-  if (costingResults.totalCost) {
-    lines.push(`\n\n**Total Cost: £${costingResults.totalCost.toFixed(2)}**`)
-  }
-
-  return lines.join('\n')
-}
-
-// =============================================================================
-// Main Report Generation
-// =============================================================================
-
-/**
- * Generate a complete report for a survey
- */
 export async function generateReport(
   surveyId: string
 ): Promise<SurveyReport> {
@@ -1156,7 +175,7 @@ export async function generateReport(
     throw new Error('Supabase client not available')
   }
 
-  // Load survey data
+  // 1. LOAD ALL DATA
   const { data: survey, error: surveyError } = await supabase
     .from('surveys')
     .select('*')
@@ -1167,213 +186,608 @@ export async function generateReport(
     throw new Error(`Failed to load survey: ${surveyError?.message}`)
   }
 
-  // Load wizard data and rooms
   const { wizardData, rooms } = await loadWizardData(surveyId)
+  const sd = wizardData.site_details
+  const ext = wizardData.external_inspection
+  const aw = wizardData.additional_works
 
-  // Load photos
-  const photos = await loadSurveyPhotos(surveyId)
-
-  // Load customer data
-  let customerData = null
+  let customer: any = null
   if (survey.customer_id) {
-    const { data: customer } = await supabase
+    const { data } = await supabase
       .from('customers')
       .select('*')
       .eq('id', survey.customer_id)
       .single()
-    customerData = customer
+    customer = data
   }
 
-  // Load surveyor data (if assigned)
-  let surveyorData = null
+  let surveyor: any = null
   if (survey.surveyor_id) {
-    const { data: surveyor } = await supabase
+    const { data } = await supabase
       .from('surveyors')
       .select('*')
       .eq('id', survey.surveyor_id)
       .single()
-    surveyorData = surveyor
+    surveyor = data
   }
 
-  // Fallback: try to get surveyor name from survey_data if no surveyor assigned
-  if (!surveyorData && wizardData.site_details?.surveyor_name) {
-    surveyorData = {
-      first_name: wizardData.site_details.surveyor_name,
+  // Fallback surveyor from wizard data
+  if (!surveyor && sd?.surveyor_name) {
+    surveyor = {
+      first_name: sd.surveyor_name,
       last_name: '',
       qualifications: null,
       job_title: 'Surveyor',
     }
   }
 
-  // Load template
-  const surveyType = survey.survey_type || 'damp'
-  const template = await loadDefaultTemplate(surveyType)
+  const photos = await loadSurveyPhotos(surveyId)
 
-  if (!template) {
-    throw new Error(`No template found for survey type: ${surveyType}`)
-  }
-
-  // Generate costing
-  const costingResults = await generateCostingFromSurvey(
-    surveyId,
-    wizardData,
-    rooms
+  // Filter rooms by issue type
+  const dampRooms = rooms.filter((r) => r.issues_identified?.includes('damp'))
+  const condensationRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('condensation')
+  )
+  const timberRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('timber_decay')
+  )
+  const woodwormRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('woodworm')
   )
 
-  // Evaluate conditions
-  const conditions = evaluateConditions(wizardData, rooms)
+  // Load template ID for report record
+  const surveyType = survey.survey_type || 'damp'
+  const template = await loadDefaultTemplate(surveyType)
+  const templateId = template?.id || 'no-template'
 
-  // Generate all sections (exclude proposals section - that's for future schedule of works feature)
-  const reportSections: ReportSection[] = []
-  const llmRequests: Array<{
-    key: string // unique key to identify this request (section key or room_<roomId>)
-    prompt: string
-    context: string
-  }> = []
+  // 2. BUILD SECTIONS
+  const sections: ReportSection[] = []
 
-  for (const templateSection of template.sections) {
-    // Skip proposals section - Schedule of Works is a separate future feature
-    if (templateSection.type === 'proposals') {
-      continue
+  // --- COVER ---
+  sections.push(
+    buildSection('cover', 'Survey Report', 'cover', 'survey_data', 'Cover page', {
+      client_name: customer
+        ? `${customer.first_name} ${customer.last_name}`
+        : 'Client name not available',
+      site_address: customer?.address_line1 || '',
+      site_address_line2: customer?.address_line2 || '',
+      site_city: customer?.city || '',
+      site_county: customer?.county || '',
+      site_postcode: customer?.postcode || '',
+      inspection_date: sd?.inspection_date || '',
+      weather_conditions: sd?.weather_conditions || '',
+      temperature_c: sd?.temperature_c || '',
+    })
+  )
+
+  // --- ABOUT US ---
+  sections.push(
+    buildSection(
+      'about_us',
+      'About Tyne Tees Damp Proofing Ltd',
+      'boilerplate',
+      'template',
+      ABOUT_US_TEXT
+    )
+  )
+
+  // --- THE SURVEY ---
+  sections.push(
+    buildSection(
+      'survey_context',
+      'The Survey',
+      'boilerplate',
+      'template',
+      buildSurveyContextText(sd?.reported_defect || '')
+    )
+  )
+
+  // --- THE PROPERTY ---
+  const propertyPhotos = photos
+    .filter(
+      (p) =>
+        p.category === 'site_details' ||
+        p.category === 'street_view' ||
+        p.category === 'property_front'
+    )
+    .map((p) => p.id)
+
+  sections.push(
+    buildSection(
+      'property',
+      'The Property',
+      'property',
+      'survey_data',
+      'Property details',
+      {
+        property_type: sd?.property_type || '',
+        construction_type: sd?.construction_type || '',
+        approx_build_year: sd?.approx_build_year || '',
+      },
+      propertyPhotos
+    )
+  )
+
+  // --- EXTERNAL INSPECTION ---
+  const extSubSections: ReportSection[] = []
+  let extContent = ''
+
+  if (ext) {
+    if (ext.building_defects_found && ext.building_defects?.length > 0) {
+      const defectLabels = ext.building_defects.map((d) => getDefectLabel(d))
+      extSubSections.push(
+        buildSection(
+          'building_defects',
+          'Building Defects',
+          'findings',
+          'survey_data',
+          `We noted the following building defects:\n\n${defectLabels.map((d) => ` - ${d}`).join('\n')}`
+        )
+      )
+    } else {
+      extContent =
+        'No significant building defects were noted during our external inspection.'
     }
 
-    const section = await generateSection(
-      templateSection,
-      wizardData,
-      rooms,
-      photos,
-      costingResults[surveyType], // Use costing for matching survey type
-      conditions,
-      customerData,
-      surveyorData
-    )
-    reportSections.push(section)
+    if (ext.wall_tie_concern) {
+      extSubSections.push(
+        buildSection(
+          'wall_ties',
+          'Wall Ties',
+          'findings',
+          'survey_data',
+          'Our surveyor noted lateral cracks within the render/mortar beds, this is often a sign of decayed wall ties. We would recommend a wall tie survey be carried out by a specialist contractor to determine whether remedial wall tie replacement is required.'
+        )
+      )
+    }
 
-    // Collect LLM requests
-    if (
-      (templateSection.content_source === 'llm_generated' ||
-        templateSection.content_source === 'mixed') &&
-      templateSection.llm_prompt_hint
-    ) {
-      // For room_findings section, collect one request per room sub-section
-      if (templateSection.key === 'room_findings' && section.sub_sections) {
-        for (const roomSubSection of section.sub_sections) {
-          // Find the corresponding room data
-          const room = rooms.find(r => `room_${r.id}` === roomSubSection.key)
-          if (room) {
-            llmRequests.push({
-              key: roomSubSection.key,
-              prompt: templateSection.llm_prompt_hint,
-              context: buildRoomLLMContext(room, photos),
-            })
-          }
-        }
-      } else {
-        // For other sections, one request per section
-        llmRequests.push({
-          key: section.key,
-          prompt: templateSection.llm_prompt_hint,
-          context: buildLLMContext(
-            templateSection.key,
-            wizardData,
-            rooms,
-            photos
-          ),
-        })
-      }
+    if (ext.cracking_concern) {
+      extSubSections.push(
+        buildSection(
+          'cracking',
+          'Cracking To Walls',
+          'findings',
+          'survey_data',
+          'Our surveyor noted lateral/stepped cracks within the render/mortar beds, this is often a sign of movement within the structure of a building. We would recommend further investigation by a structural engineer to determine the cause and extent of any movement.'
+        )
+      )
+    }
+
+    const hasGroundIssues = (aw?.aco_drain_length || 0) > 0 || (aw?.french_drain_length || 0) > 0
+    if (hasGroundIssues) {
+      extSubSections.push(
+        buildSection(
+          'ground_levels',
+          'External Ground Levels',
+          'findings',
+          'survey_data',
+          'External ground levels were found to be at or above the level of the internal floor, which can contribute to damp ingress. We recommend the installation of drainage to reduce ground water levels adjacent to the property.'
+        )
+      )
+    } else {
+      extSubSections.push(
+        buildSection(
+          'ground_levels',
+          'External Ground Levels',
+          'findings',
+          'survey_data',
+          'There were no apparent ground level issues.'
+        )
+      )
     }
   }
 
-  // Generate LLM content for all collected requests (batched in single API call)
-  if (llmRequests.length > 0) {
+  // If no external inspection data at all, set a default
+  if (!extContent && extSubSections.length === 0) {
+    extContent = 'External inspection details to be completed.'
+  }
+  // If we have sub-sections but no top-level content, set a pass-through
+  if (!extContent && extSubSections.length > 0) {
+    extContent = 'See findings below.'
+  }
+
+  const extPhotos = photos
+    .filter(
+      (p) =>
+        p.category === 'external_inspection' ||
+        p.category === 'building_defect'
+    )
+    .map((p) => p.id)
+
+  sections.push(
+    buildSection(
+      'external_inspection',
+      'External Inspection',
+      'findings',
+      'survey_data',
+      extContent,
+      {},
+      extPhotos,
+      extSubSections
+    )
+  )
+
+  // --- DPC FINDINGS ---
+  const hasDpcRequired = dampRooms.some(
+    (r) => r.room_data?.damp?.dpc_required === true
+  )
+  let dpcContent = ''
+  if (hasDpcRequired) {
+    dpcContent =
+      'Based on our inspection findings, we recommend the installation of a new chemical damp proof course to the affected areas. This will be carried out using BBA-approved DPC injection cream applied to the mortar course at a minimum of 150mm above external ground level.'
+  } else if (dampRooms.length > 0) {
+    dpcContent =
+      'Our inspection did not identify a requirement for a new damp proof course at this time. The existing DPC appears to be functioning adequately.'
+  }
+  // If no damp rooms, dpcContent stays empty and section will be hidden by isSectionEmpty
+
+  sections.push(
+    buildSection(
+      'dpc_findings',
+      'Damp Proof Course',
+      'findings',
+      'survey_data',
+      dpcContent
+    )
+  )
+
+  // --- SUB FLOOR VENTILATION ---
+  const totalAirbricks =
+    (aw?.airbrick_clean_count || 0) +
+    (aw?.airbrick_upgrade_count || 0) +
+    (aw?.airbrick_new_count || 0)
+
+  let ventContent = ''
+  if (totalAirbricks > 0) {
+    ventContent = `The sub floor voids were ventilated by ${totalAirbricks} airbrick(s). Additional airbricks may be required to ensure adequate ventilation to the sub floor void.`
+  } else if (dampRooms.length > 0) {
+    ventContent =
+      'There were no airbricks installed. We recommend the installation of airbricks to provide adequate ventilation to the sub floor void, which will help to reduce the risk of timber decay and dampness.'
+  }
+
+  sections.push(
+    buildSection(
+      'sub_floor_ventilation',
+      'Sub Floor Ventilation',
+      'findings',
+      'survey_data',
+      ventContent
+    )
+  )
+
+  // --- INTERNAL INSPECTION / ROOM FINDINGS ---
+  const roomSubSections: ReportSection[] = []
+  const llmContextParts: string[] = []
+
+  for (const room of rooms) {
+    if (!room.issues_identified || room.issues_identified.length === 0) continue
+
+    const dampData = room.room_data?.damp as any
+    const roomTitle = `${room.name} — ${formatFloorLevel(room.floor_level)}`
+
+    // Use surveyor's observation text if available
+    let roomContent = room.findings || ''
+    if (!roomContent && dampData) {
+      roomContent = `Inspection of this room identified ${room.issues_identified.join(', ')} issues requiring attention.`
+    }
+    if (!roomContent) {
+      roomContent = `${room.issues_identified.join(', ')} issues identified.`
+    }
+
+    // Build wall table data (for damp rooms)
+    const walls: any[] = []
+    if (dampData?.walls && Array.isArray(dampData.walls)) {
+      const treatmentCode = dampData.wall_treatment
+      for (const wall of dampData.walls) {
+        const length = wall.length || 0
+        const height = wall.height || 0
+        const area = length * height
+
+        const wallEntry: any = {
+          wall_position: wall.name || wall.wall_position || 'Wall',
+          treatment_area_length: length.toString(),
+          treatment_area_height: height.toString(),
+          treatment_area_m2: area > 0 ? area.toFixed(1) : '0',
+          treatment_type: getTreatmentLabel(treatmentCode),
+        }
+
+        // Handle moisture readings (array of MoistureReading objects)
+        if (
+          wall.moisture_readings &&
+          Array.isArray(wall.moisture_readings) &&
+          wall.moisture_readings.length > 0
+        ) {
+          const readings = wall.moisture_readings.map((r: any) =>
+            typeof r === 'number' ? r : r.reading || 0
+          )
+          const maxReading = Math.max(...readings)
+          if (maxReading > 0) {
+            wallEntry.moisture_reading = `${maxReading}% W/W`
+          }
+        }
+
+        walls.push(wallEntry)
+      }
+    }
+
+    // Match photos to room
+    const roomPhotos = photos
+      .filter(
+        (p) =>
+          p.room_id === room.id ||
+          p.category === 'room_inspection' ||
+          p.category === 'damp_evidence'
+      )
+      .map((p) => p.id)
+
+    roomSubSections.push(
+      buildSection(
+        `room_${room.id}`,
+        roomTitle,
+        'findings' as ReportSectionType,
+        'survey_data',
+        roomContent,
+        {
+          room_name: room.name,
+          floor_level: formatFloorLevel(room.floor_level),
+          issues: room.issues_identified,
+          walls: walls,
+        },
+        roomPhotos
+      )
+    )
+
+    // Build context for surveyor summary LLM call
+    const contextLines = [
+      `Room: ${room.name} (${formatFloorLevel(room.floor_level)})`,
+      `Issues: ${room.issues_identified.join(', ')}`,
+    ]
+    if (room.findings) {
+      contextLines.push(`Surveyor observation: ${room.findings}`)
+    }
+    if (walls.length > 0) {
+      for (const w of walls) {
+        contextLines.push(
+          `- ${w.wall_position}: ${w.treatment_area_length}m × ${w.treatment_area_height}m (${w.treatment_area_m2}m²), Treatment: ${w.treatment_type}`
+        )
+      }
+    }
+    llmContextParts.push(contextLines.join('\n'))
+  }
+
+  // The non-destructive note is hardcoded in the PDF renderer,
+  // but we need non-empty content to pass the isSectionEmpty filter
+  const roomFindingsContent =
+    roomSubSections.length > 0
+      ? 'Note: This was a non-destructive inspection. All findings are based on visual assessment, electronic moisture meter readings, digital laser thermometer readings and tactile examination of accessible surfaces.'
+      : ''
+
+  sections.push(
+    buildSection(
+      'room_findings',
+      'Internal Inspection',
+      'findings',
+      'survey_data',
+      roomFindingsContent,
+      {},
+      [],
+      roomSubSections
+    )
+  )
+
+  // --- SUMMARY OF PROPOSED WORKS ---
+  const worksSummary: any[] = []
+  for (const room of rooms) {
+    if (!room.issues_identified?.includes('damp')) continue
+    const dampData = room.room_data?.damp as any
+    if (!dampData?.walls) continue
+
+    const treatmentCode = dampData.wall_treatment
+    let totalArea = 0
+    for (const wall of dampData.walls) {
+      totalArea += (wall.length || 0) * (wall.height || 0)
+    }
+
+    worksSummary.push({
+      room_name: room.name,
+      floor_level: formatFloorLevel(room.floor_level),
+      issue: 'Rising damp',
+      treatment: getTreatmentLabel(treatmentCode),
+      total_area: `${totalArea.toFixed(1)}m²`,
+    })
+
+    if (room.issues_identified?.includes('condensation')) {
+      worksSummary.push({
+        room_name: room.name,
+        floor_level: formatFloorLevel(room.floor_level),
+        issue: 'Condensation',
+        treatment: 'Ventilation improvement',
+        total_area: '—',
+      })
+    }
+  }
+
+  const additionalWorks: string[] = []
+  if (aw?.piv_count && aw.piv_count > 0) {
+    additionalWorks.push(
+      `Installation of ${aw.piv_count} PIV unit(s) for ventilation`
+    )
+  }
+  if (totalAirbricks > 0) {
+    additionalWorks.push(`Installation of ${totalAirbricks} airbrick(s)`)
+  }
+  if (dampRooms.length > 0) {
+    additionalWorks.push('Multi-finish plaster skim to treated walls')
+    additionalWorks.push('Disposal of waste materials')
+  }
+
+  sections.push(
+    buildSection(
+      'summary_of_works',
+      'Summary of Proposed Works',
+      'data',
+      'survey_data',
+      'Based on our inspection, we propose the following remedial works:',
+      {
+        rooms: worksSummary,
+        additional_works: additionalWorks,
+      }
+    )
+  )
+
+  // --- SURVEYOR COMMENTS (LLM generated) ---
+  let surveyorComments = ''
+  if (llmContextParts.length > 0) {
+    const llmContext = [
+      `Property: ${sd?.property_type || 'Unknown'}, ${sd?.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd?.approx_build_year || 'unknown year'}.`,
+      `Total rooms inspected: ${rooms.filter((r) => r.issues_identified?.length).length}`,
+      `Total affected rooms: ${dampRooms.length} with damp, ${condensationRooms.length} with condensation, ${timberRooms.length} with timber decay, ${woodwormRooms.length} with woodworm.`,
+      '',
+      'Room-by-room findings:',
+      ...llmContextParts,
+      '',
+      ext?.building_defects_found
+        ? `External defects: ${ext.building_defects.map((d) => getDefectLabel(d)).join(', ')}`
+        : 'No external defects noted.',
+      ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
+      ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
+    ]
+      .filter(Boolean)
+      .join('\n')
+
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
       const response = await fetch(`${siteUrl}/api/generate-report`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           surveyId,
-          sections: llmRequests,
+          sections: [
+            {
+              key: 'surveyor_comments',
+              prompt:
+                'Write 2-3 paragraphs summarising the overall survey findings. Reference specific rooms, measurements and treatments by name. State the most urgent priorities. State what treatment works have been specified — do NOT suggest the customer consider options. Be specific and authoritative.',
+              context: llmContext,
+            },
+          ],
         }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        const generatedContent = result.sections as Array<{
+        const generated = result.sections as Array<{
           key: string
           content: string
           error?: string
         }>
-
-        // Map LLM responses back to sections/sub-sections
-        for (const generated of generatedContent) {
-          // Check if this is a room sub-section
-          if (generated.key.startsWith('room_')) {
-            // Find the parent room_findings section
-            const roomFindingsSection = reportSections.find(s => s.key === 'room_findings')
-            if (roomFindingsSection?.sub_sections) {
-              const roomSubSection = roomFindingsSection.sub_sections.find(
-                sub => sub.key === generated.key
-              )
-              if (roomSubSection) {
-                if (generated.error) {
-                  console.error(
-                    `LLM generation failed for room ${generated.key}: ${generated.error}`
-                  )
-                  roomSubSection.content = 'Content generation failed. Please review manually.'
-                } else {
-                  roomSubSection.content = generated.content
-                }
-              }
-            }
-          } else {
-            // This is a section-level LLM generation
-            const reportSection = reportSections.find(s => s.key === generated.key)
-            if (reportSection) {
-              if (generated.error) {
-                console.error(
-                  `LLM generation failed for section ${generated.key}: ${generated.error}`
-                )
-                // Keep placeholder text
-              } else {
-                // For mixed content, append LLM text to existing content
-                if (reportSection.content_source === 'mixed' && reportSection.content) {
-                  reportSection.content = [reportSection.content, generated.content]
-                    .filter(Boolean)
-                    .join('\n\n')
-                } else {
-                  reportSection.content = generated.content
-                }
-              }
-            }
-          }
+        const match = generated?.find((s) => s.key === 'surveyor_comments')
+        if (match && !match.error) {
+          surveyorComments = match.content
         }
-      } else {
-        console.error('LLM API call failed:', response.statusText)
-        // Sections keep their placeholder text
       }
-    } catch (error) {
-      console.error('Error calling LLM API:', error)
-      // Sections keep their placeholder text
+    } catch (err) {
+      console.error('LLM call failed for surveyor comments:', err)
     }
   }
 
-  // Create report record
+  if (!surveyorComments) {
+    surveyorComments = 'Surveyor comments to be added during review.'
+  }
+
+  sections.push(
+    buildSection(
+      'surveyor_comments',
+      'Surveyor Comments',
+      'findings',
+      'llm_generated',
+      surveyorComments
+    )
+  )
+
+  // --- CLOSING SECTIONS ---
+  sections.push(
+    buildSection(
+      'ancillary_items',
+      'Ancillary Items',
+      'boilerplate',
+      'template',
+      ANCILLARY_TEXT
+    )
+  )
+
+  sections.push(
+    buildSection(
+      'extent_of_survey',
+      'Extent of Survey',
+      'boilerplate',
+      'template',
+      EXTENT_TEXT
+    )
+  )
+
+  sections.push(
+    buildSection(
+      'payment_terms',
+      'Payment Terms',
+      'boilerplate',
+      'template',
+      PAYMENT_TEXT
+    )
+  )
+
+  // --- SURVEYOR PROFILE ---
+  const surveyorName = surveyor
+    ? `${surveyor.first_name} ${surveyor.last_name}`
+    : 'Surveyor details to be confirmed'
+
+  sections.push(
+    buildSection(
+      'surveyor_profile',
+      'Your Surveyor',
+      'signature',
+      'survey_data',
+      surveyorName,
+      {
+        surveyor_name: surveyorName,
+        surveyor_title: surveyor?.job_title || '',
+        surveyor_credentials: surveyor?.qualifications || '',
+      }
+    )
+  )
+
+  // --- SKETCH PLAN ---
+  const sketchPhotos = photos
+    .filter((p) => p.category === 'sketch_plan')
+    .map((p) => p.id)
+
+  sections.push(
+    buildSection(
+      'sketch_plan',
+      'Sketch Plan',
+      'sketch',
+      'surveyor_input',
+      sketchPhotos.length === 0
+        ? 'Sketch plan to be provided by surveyor'
+        : 'Sketch plan attached.',
+      {},
+      sketchPhotos
+    )
+  )
+
+  // 3. SAVE REPORT TO DATABASE
   const reportId = crypto.randomUUID()
   const report: SurveyReport = {
     id: reportId,
     survey_id: surveyId,
-    template_id: template.id,
+    template_id: templateId,
     status: 'generated',
-    sections: reportSections,
+    sections,
     generated_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
 
-  // Save to database
   const { error: insertError } = await supabase
     .from('survey_reports')
     .insert({
@@ -1394,9 +808,10 @@ export async function generateReport(
   return report
 }
 
-/**
- * Regenerate a single section (useful for LLM retries)
- */
+// =============================================================================
+// Regenerate Section — Re-runs LLM for surveyor_comments
+// =============================================================================
+
 export async function regenerateSection(
   reportId: string,
   sectionKey: string
@@ -1417,130 +832,124 @@ export async function regenerateSection(
     throw new Error(`Failed to load report: ${reportError?.message}`)
   }
 
-  // Load template
-  const { data: template, error: templateError } = await supabase
-    .from('report_templates')
-    .select('*')
-    .eq('id', report.template_id)
-    .single()
-
-  if (templateError || !template) {
-    throw new Error(`Failed to load template: ${templateError?.message}`)
-  }
-
-  // Find section template
-  const templateSection = (template.sections as any[]).find(
+  // Find current section in the report
+  const currentSection = (report.sections as ReportSection[]).find(
     (s) => s.key === sectionKey
   )
-
-  if (!templateSection) {
+  if (!currentSection) {
     throw new Error(`Section not found: ${sectionKey}`)
   }
 
-  // Load survey data
-  const { data: survey } = await supabase
-    .from('surveys')
-    .select('*')
-    .eq('id', report.survey_id)
-    .single()
+  // Only surveyor_comments supports LLM regeneration
+  if (sectionKey !== 'surveyor_comments') {
+    return currentSection
+  }
 
+  // Load survey data for context
   const { wizardData, rooms } = await loadWizardData(report.survey_id)
-  const photos = await loadSurveyPhotos(report.survey_id)
-  const costingResults = await generateCostingFromSurvey(
-    report.survey_id,
-    wizardData,
-    rooms
+  const sd = wizardData.site_details
+  const ext = wizardData.external_inspection
+
+  const dampRooms = rooms.filter((r) => r.issues_identified?.includes('damp'))
+  const condensationRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('condensation')
+  )
+  const timberRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('timber_decay')
+  )
+  const woodwormRooms = rooms.filter((r) =>
+    r.issues_identified?.includes('woodworm')
   )
 
-  // Load customer data
-  let customerData = null
-  if (survey?.customer_id) {
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', survey.customer_id)
-      .single()
-    customerData = customer
-  }
+  // Build LLM context
+  const llmContextParts: string[] = []
+  for (const room of rooms) {
+    if (!room.issues_identified || room.issues_identified.length === 0) continue
 
-  // Load surveyor data
-  let surveyorData = null
-  if (survey?.surveyor_id) {
-    const { data: surveyor } = await supabase
-      .from('surveyors')
-      .select('*')
-      .eq('id', survey.surveyor_id)
-      .single()
-    surveyorData = surveyor
-  }
-
-  const conditions = evaluateConditions(wizardData, rooms)
-
-  // Regenerate section
-  const newSection = await generateSection(
-    templateSection,
-    wizardData,
-    rooms,
-    photos,
-    costingResults[template.survey_type],
-    conditions,
-    customerData,
-    surveyorData
-  )
-
-  // Generate LLM content if needed
-  if (
-    (templateSection.content_source === 'llm_generated' ||
-      templateSection.content_source === 'mixed') &&
-    templateSection.llm_prompt_hint
-  ) {
-    try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const response = await fetch(`${siteUrl}/api/generate-report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          surveyId: report.survey_id,
-          sections: [
-            {
-              key: newSection.key,
-              prompt: templateSection.llm_prompt_hint,
-              context: buildLLMContext(
-                templateSection.key,
-                wizardData,
-                rooms,
-                await loadSurveyPhotos(report.survey_id)
-              ),
-            },
-          ],
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        const generated = result.sections[0]
-
-        if (generated && !generated.error) {
-          // For mixed content, append LLM text to existing content
-          if (newSection.content_source === 'mixed' && newSection.content) {
-            newSection.content = [newSection.content, generated.content]
-              .filter(Boolean)
-              .join('\n\n')
-          } else {
-            newSection.content = generated.content
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error regenerating LLM content:', error)
-      // Keep placeholder text
+    const dampData = room.room_data?.damp as any
+    const lines = [
+      `Room: ${room.name} (${formatFloorLevel(room.floor_level)})`,
+      `Issues: ${room.issues_identified.join(', ')}`,
+    ]
+    if (room.findings) {
+      lines.push(`Surveyor observation: ${room.findings}`)
     }
+    if (dampData?.walls && Array.isArray(dampData.walls)) {
+      const treatmentCode = dampData.wall_treatment
+      for (const wall of dampData.walls) {
+        const length = wall.length || 0
+        const height = wall.height || 0
+        const area = length * height
+        lines.push(
+          `- ${wall.name || 'Wall'}: ${length}m × ${height}m (${area.toFixed(1)}m²), Treatment: ${getTreatmentLabel(treatmentCode)}`
+        )
+      }
+    }
+    llmContextParts.push(lines.join('\n'))
+  }
+
+  const llmContext = [
+    `Property: ${sd?.property_type || 'Unknown'}, ${sd?.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd?.approx_build_year || 'unknown year'}.`,
+    `Total affected rooms: ${dampRooms.length} with damp, ${condensationRooms.length} with condensation, ${timberRooms.length} with timber decay, ${woodwormRooms.length} with woodworm.`,
+    '',
+    'Room-by-room findings:',
+    ...llmContextParts,
+    '',
+    ext?.building_defects_found
+      ? `External defects: ${ext.building_defects.map((d) => getDefectLabel(d)).join(', ')}`
+      : 'No external defects noted.',
+    ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
+    ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  let newContent = 'Surveyor comments to be added during review.'
+
+  try {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const response = await fetch(`${siteUrl}/api/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        surveyId: report.survey_id,
+        sections: [
+          {
+            key: 'surveyor_comments',
+            prompt:
+              'Write 2-3 paragraphs summarising the overall survey findings. Reference specific rooms, measurements and treatments by name. State the most urgent priorities. State what treatment works have been specified — do NOT suggest the customer consider options. Be specific and authoritative.',
+            context: llmContext,
+          },
+        ],
+      }),
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      const generated = result.sections as Array<{
+        key: string
+        content: string
+        error?: string
+      }>
+      const match = generated?.find((s) => s.key === 'surveyor_comments')
+      if (match && !match.error) {
+        newContent = match.content
+      }
+    }
+  } catch (err) {
+    console.error('Error regenerating surveyor comments:', err)
+  }
+
+  // Build updated section
+  const newSection: ReportSection = {
+    ...currentSection,
+    content: newContent,
+    is_edited: false,
   }
 
   // Update report in database
-  const updatedSections = (report.sections as any[]).map((s) =>
+  const updatedSections = (report.sections as ReportSection[]).map((s) =>
     s.key === sectionKey ? newSection : s
   )
 
