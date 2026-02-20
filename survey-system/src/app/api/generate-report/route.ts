@@ -111,11 +111,30 @@ DATA INTERPRETATION RULES — CRITICAL:
 - NEVER use phrases like "was recorded as 0" or "suggests an error" or "was not specified" or "was not recorded"
 - If area is 0 or missing, calculate it yourself from length × height, or simply omit the area figure
 
+FABRICATION PREVENTION — CRITICAL:
+- ONLY reference measurements, readings, and findings that are explicitly provided in the SURVEY DATA CONTEXT below
+- If moisture readings are not provided in the context, DO NOT mention moisture readings at all — not even to say they "confirmed" dampness
+- If plaster condition is not mentioned in the context, DO NOT comment on plaster condition
+- If a data point is absent from the context, it does not exist — do not infer, assume, or fabricate it
+- Every factual claim in your text must trace directly to a specific data point in the context provided
+
 TREATMENT REFERENCES:
 - When treatment type is "membrane", write: "installation of a cavity drain membrane system"
 - When treatment type is "injection", write: "injection of a chemical damp proof course"
 - When treatment type is "tanking", write: "application of a cementitious tanking system"
 - Always state the specific treatment — never suggest the customer "consider" options. The surveyor has already determined what is needed.
+
+ROOM FINDINGS STRUCTURE:
+- Paragraph 1: Describe what was found — which wall(s), the treatment area measurements, and any recorded readings
+- Paragraph 2: State the recommended treatment clearly: "We recommend [specific treatment] to the affected area"
+- Do not add a third paragraph
+- Do not suggest further inspection or additional investigation — the survey is complete and the treatment has been determined
+
+SURVEYOR COMMENTS STRUCTURE:
+- Paragraph 1: Overall summary of findings across all rooms
+- Paragraph 2: The recommended works programme and any external defects that should be addressed
+- Paragraph 3 (optional): Any practical advice relevant to the specific property
+- Do not recommend the homeowner consult other specialists — this company provides the full service
 
 STRUCTURAL RULES:
 - Maximum 2 paragraphs per room finding section
@@ -167,7 +186,7 @@ Generate the narrative content for this section now. Output ONLY the report text
             content: userPrompt,
           },
         ],
-        temperature: 0.3, // Precision and consistency over creativity
+        temperature: 0.2, // Maximum precision and consistency, minimal creativity
         max_tokens: 1000, // ~2-4 paragraphs
         top_p: 0.9,
       }),
