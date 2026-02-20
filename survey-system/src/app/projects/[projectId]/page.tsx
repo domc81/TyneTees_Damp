@@ -46,6 +46,7 @@ const tabs = [
   { id: 'details', label: 'Details', icon: User },
   { id: 'survey', label: 'Survey', icon: ClipboardList },
   { id: 'inspection', label: 'Rooms', icon: Home },
+  { id: 'wizard', label: 'Survey Wizard', icon: ClipboardList },
   { id: 'photos', label: 'Photos', icon: Camera, count: true },
   { id: 'costing', label: 'Costing', icon: Calculator, count: true },
   { id: 'materials', label: 'Materials', icon: Package },
@@ -215,6 +216,26 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                   >
                     <Icon className="w-4 h-4" />
                     <span>{tab.label}</span>
+                  </Link>
+                )
+              }
+
+              // Survey Wizard tab (new - primary action)
+              if (tab.id === 'wizard') {
+                return (
+                  <Link
+                    key={tab.id}
+                    href={`/survey/${project.id}/wizard`}
+                    className={`flex items-center gap-2 py-4 border-b-2 transition-colors font-medium
+                               ${activeTab === tab.id
+                                 ? 'border-brand-600 text-brand-600'
+                                 : 'border-transparent text-brand-600 hover:text-brand-700'}`}
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    <span>Survey Wizard</span>
+                    <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-semibold">
+                      NEW
+                    </span>
                   </Link>
                 )
               }

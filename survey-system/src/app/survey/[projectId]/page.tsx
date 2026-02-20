@@ -17,6 +17,8 @@ import {
   Bug,
   Shield,
   FileText,
+  Calculator,
+  ClipboardList,
 } from 'lucide-react'
 
 // Defect types based on the Excel system
@@ -167,6 +169,48 @@ export default function SurveyInspectionPage({ params }: { params: { projectId: 
 
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
+          {/* Survey Wizard Entry Point */}
+          <div className="mb-8">
+            <div className="section-card p-8 bg-gradient-to-br from-brand-500/10 to-brand-600/5 border-brand-400/30">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-surface-900 mb-2">
+                    {/* TODO: Load wizard_completed from Supabase */}
+                    {false ? 'Survey Complete' : 'Start Room-by-Room Survey'}
+                  </h2>
+                  <p className="text-surface-600 mb-4">
+                    {false
+                      ? 'Your survey is complete. View or edit details, or proceed to costing.'
+                      : 'Use the new survey wizard to record findings room by room with automated costing.'}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      href={`/survey/${project.id}/wizard`}
+                      className="btn-primary flex items-center gap-2 px-6 py-3 text-base"
+                    >
+                      <FileText className="w-5 h-5" />
+                      {false ? 'View/Edit Survey' : 'Start Survey Wizard'}
+                    </Link>
+                    {false && (
+                      <Link
+                        href={`/survey/${project.id}/costing`}
+                        className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
+                      >
+                        <Calculator className="w-5 h-5" />
+                        View Costing
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="hidden lg:block">
+                  <div className="w-32 h-32 rounded-2xl bg-brand-100 flex items-center justify-center">
+                    <ClipboardList className="w-16 h-16 text-brand-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Summary Cards */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             <SummaryCard title="Rooms Surveyed" value={`${rooms.length}`} subtitle="Completed" />
