@@ -458,6 +458,7 @@ function renderContentPages(
 
   // Define which sections get their own page vs which flow together
   const newPageBefore = [
+    'property',
     'external_inspection',
     'room_findings',
     'summary_of_works',
