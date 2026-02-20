@@ -1,7 +1,8 @@
 // =============================================================================
 // Report PDF Renderer — Professional customer-facing PDF generation
 // Uses @react-pdf/renderer for server-side PDF generation
-// Matches the style of existing survey report PDFs
+// Matches the redesigned damp report structure (v2)
+// Section rendering driven by section.key for precise layout control
 // =============================================================================
 
 import React from 'react'
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 8,
     textAlign: 'center',
+    marginTop: 40,
   },
   coverSubtitle: {
     fontSize: 14,
@@ -89,6 +91,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
   coverText: {
     fontSize: 10,
@@ -105,8 +108,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 0,
+    marginBottom: 12,
     textTransform: 'uppercase',
   },
   subSectionTitle: {
@@ -123,16 +126,19 @@ const styles = StyleSheet.create({
     textAlign: 'justify',
     lineHeight: 1.6,
   },
-  // Badge styles
-  badge: {
-    display: 'inline-block',
-    padding: '3pt 8pt',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    fontSize: 8,
-    fontWeight: 'bold',
-    borderRadius: 3,
-    marginLeft: 8,
+  paragraphSmall: {
+    fontSize: 9,
+    color: '#1f2937',
+    marginBottom: 8,
+    textAlign: 'justify',
+    lineHeight: 1.5,
+  },
+  paragraphItalic: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginBottom: 8,
+    fontStyle: 'italic',
+    lineHeight: 1.5,
   },
   // Photo grid
   photoGrid: {
@@ -158,23 +164,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  // Data table
-  table: {
+  // Data table (property details)
+  propertyTable: {
     marginTop: 8,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 4,
   },
-  tableRow: {
+  propertyTableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     padding: 8,
   },
-  tableCell: {
-    flex: 1,
-    fontSize: 9,
+  propertyTableRowLast: {
+    flexDirection: 'row',
+    padding: 8,
   },
   tableCellLabel: {
     flex: 1,
@@ -184,6 +190,46 @@ const styles = StyleSheet.create({
   tableCellValue: {
     flex: 1,
     fontSize: 9,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  // Treatment table (room findings)
+  treatmentTable: {
+    marginTop: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#e5e7eb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    padding: 6,
+  },
+  tableHeaderCell: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    padding: 6,
+  },
+  tableRowLast: {
+    flexDirection: 'row',
+    padding: 6,
+  },
+  tableCell: {
+    fontSize: 9,
+    color: '#1f2937',
+  },
+  tableCellBold: {
+    fontSize: 9,
+    color: '#1f2937',
     fontWeight: 'bold',
   },
   // List styles
@@ -204,39 +250,46 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#1f2937',
   },
-  // Cost summary
-  costSummary: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#dbeafe',
-    borderRadius: 4,
-    borderLeft: '4pt solid #1a56db',
+  // Surveyor profile
+  surveyorContainer: {
+    alignItems: 'center',
+    marginTop: 20,
   },
-  costLabel: {
+  surveyorIntro: {
     fontSize: 10,
-    color: '#1e40af',
-    marginBottom: 4,
-  },
-  costValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e40af',
-  },
-  // Signature
-  signature: {
-    marginTop: 24,
-    paddingTop: 12,
-    borderTop: '1pt solid #e5e7eb',
-  },
-  signatureText: {
-    fontSize: 9,
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  signatureName: {
-    fontSize: 11,
+  surveyorPhoto: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 16,
+    objectFit: 'cover',
+  },
+  surveyorName: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+    marginBottom: 4,
+  },
+  surveyorTitle: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginBottom: 2,
+  },
+  surveyorCredentials: {
+    fontSize: 10,
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  surveyorExperience: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: 400,
   },
   // Sketch placeholder
   sketchPlaceholder: {
@@ -251,6 +304,11 @@ const styles = StyleSheet.create({
   sketchText: {
     fontSize: 10,
     color: '#9ca3af',
+  },
+  sketchImage: {
+    width: '100%',
+    maxHeight: 500,
+    objectFit: 'contain',
   },
 })
 
@@ -338,16 +396,10 @@ function CoverPage({
       <View style={styles.coverSection}>
         <Text style={styles.coverHeading}>Client Name And Site Details</Text>
         {coverData.client_name && (
-          <View>
-            <Text style={styles.coverLabel}>Client Name</Text>
-            <Text style={styles.coverText}>{coverData.client_name as string}</Text>
-          </View>
+          <Text style={styles.coverText}>{coverData.client_name as string}</Text>
         )}
         {coverData.site_address && (
-          <View>
-            <Text style={styles.coverLabel}>Site Address</Text>
-            <Text style={styles.coverText}>{coverData.site_address as string}</Text>
-          </View>
+          <Text style={styles.coverText}>{coverData.site_address as string}</Text>
         )}
         {coverData.site_city && (
           <Text style={styles.coverText}>
@@ -363,12 +415,6 @@ function CoverPage({
       {/* Survey Details */}
       <View style={styles.coverSection}>
         <Text style={styles.coverHeading}>Survey Details</Text>
-        {coverData.internal_reference && (
-          <View>
-            <Text style={styles.coverLabel}>Internal Reference</Text>
-            <Text style={styles.coverText}>{coverData.internal_reference as string}</Text>
-          </View>
-        )}
         {coverData.inspection_date && (
           <View>
             <Text style={styles.coverLabel}>Inspection Date</Text>
@@ -392,7 +438,7 @@ function CoverPage({
 }
 
 // =============================================================================
-// Content Rendering
+// Content Rendering — Section-key-driven layout
 // =============================================================================
 
 function renderContentPages(
@@ -407,26 +453,77 @@ function renderContentPages(
   // Skip cover section (already rendered)
   const contentSections = report.sections.filter((s) => s.key !== 'cover')
 
-  // Filter out empty sections (don't render them at all)
+  // Filter out empty sections
   const nonEmptySections = contentSections.filter((section) => !isSectionEmpty(section))
 
-  // Group sections for page layout - major sections get own page, minor sections flow together
-  const majorSectionKeys = ['property', 'external_inspection', 'room_findings', 'internal_inspection', 'surveyor_comments']
+  // Define which sections get their own page vs which flow together
+  const newPageBefore = [
+    'external_inspection',
+    'room_findings',
+    'summary_of_works',
+    'surveyor_profile',
+    'sketch_plan',
+  ]
+
+  // Group closing sections to flow together
+  const closingSections = ['ancillary_items', 'extent_of_survey', 'payment_terms']
 
   let currentPageSections: typeof nonEmptySections = []
+  let inClosingGroup = false
 
   for (let i = 0; i < nonEmptySections.length; i++) {
     const section = nonEmptySections[i]
-    const isMajorSection = majorSectionKeys.includes(section.key)
+    const needsNewPage = newPageBefore.includes(section.key)
+    const isClosingSection = closingSections.includes(section.key)
 
-    // Start new page for major sections or if current page has content
-    if (isMajorSection || currentPageSections.length === 0) {
-      // Render accumulated minor sections first
+    // Check if entering closing group
+    if (isClosingSection && !inClosingGroup) {
+      // Render accumulated sections first
       if (currentPageSections.length > 0) {
         pages.push(
           <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
             <PageHeader settings={settings} />
-            {currentPageSections.map(s => (
+            {currentPageSections.map((s) => (
+              <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
+            ))}
+            <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
+          </Page>
+        )
+        currentPageNumber++
+        currentPageSections = []
+      }
+      inClosingGroup = true
+    }
+
+    // Handle closing sections group
+    if (inClosingGroup && isClosingSection) {
+      currentPageSections.push(section)
+      // If last closing section, render the page
+      if (section.key === 'payment_terms' || i === nonEmptySections.length - 1) {
+        pages.push(
+          <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
+            <PageHeader settings={settings} />
+            {currentPageSections.map((s) => (
+              <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
+            ))}
+            <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
+          </Page>
+        )
+        currentPageNumber++
+        currentPageSections = []
+        inClosingGroup = false
+      }
+      continue
+    }
+
+    // Handle sections that need new pages
+    if (needsNewPage) {
+      // Render accumulated sections first
+      if (currentPageSections.length > 0) {
+        pages.push(
+          <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
+            <PageHeader settings={settings} />
+            {currentPageSections.map((s) => (
               <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
             ))}
             <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
@@ -436,31 +533,27 @@ function renderContentPages(
         currentPageSections = []
       }
 
-      // Major section gets its own page
-      if (isMajorSection) {
-        pages.push(
-          <Page key={section.key} size="A4" style={styles.page}>
-            <PageHeader settings={settings} />
-            <SectionContent section={section} photoUrls={photoUrls} settings={settings} />
-            <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
-          </Page>
-        )
-        currentPageNumber++
-      } else {
-        currentPageSections.push(section)
-      }
+      // Render this section on its own page
+      pages.push(
+        <Page key={section.key} size="A4" style={styles.page}>
+          <PageHeader settings={settings} />
+          <SectionContent section={section} photoUrls={photoUrls} settings={settings} />
+          <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
+        </Page>
+      )
+      currentPageNumber++
     } else {
-      // Accumulate minor sections
+      // Accumulate sections that flow together
       currentPageSections.push(section)
     }
   }
 
-  // Render any remaining minor sections
+  // Render any remaining sections
   if (currentPageSections.length > 0) {
     pages.push(
       <Page key={`page-${currentPageNumber}`} size="A4" style={styles.page}>
         <PageHeader settings={settings} />
-        {currentPageSections.map(s => (
+        {currentPageSections.map((s) => (
           <SectionContent key={s.key} section={s} photoUrls={photoUrls} settings={settings} />
         ))}
         <PageFooter pageNumber={currentPageNumber} totalPages={totalPages} />
@@ -471,25 +564,8 @@ function renderContentPages(
   return pages
 }
 
-/**
- * Check if a section is empty or has only placeholder content
- */
-function isSectionEmpty(section: ReportSection): boolean {
-  if (!section.content || section.content.trim() === '') {
-    return true
-  }
-
-  const placeholderTexts = [
-    'Content not available.',
-    'To be completed by surveyor during review.',
-    '[LLM content to be generated]',
-  ]
-
-  return placeholderTexts.includes(section.content.trim())
-}
-
 // =============================================================================
-// Section Content Renderer
+// Section Content Renderer — Key-driven rendering
 // =============================================================================
 
 function SectionContent({
@@ -501,37 +577,66 @@ function SectionContent({
   photoUrls: Record<string, string>
   settings: ReportSettings
 }) {
+  // Render based on section key (not type)
+  switch (section.key) {
+    case 'about_us':
+      return <AboutUsSection section={section} />
+    case 'survey_context':
+      return <SurveyContextSection section={section} />
+    case 'property':
+      return <PropertySection section={section} photoUrls={photoUrls} />
+    case 'external_inspection':
+      return <ExternalInspectionSection section={section} photoUrls={photoUrls} />
+    case 'dpc_findings':
+    case 'sub_floor_ventilation':
+    case 'surveyor_comments':
+      return <TextSection section={section} photoUrls={photoUrls} />
+    case 'room_findings':
+      return <RoomFindingsSection section={section} photoUrls={photoUrls} />
+    case 'summary_of_works':
+      return <SummaryOfWorksSection section={section} />
+    case 'ancillary_items':
+    case 'extent_of_survey':
+    case 'payment_terms':
+      return <BoilerplateSection section={section} />
+    case 'surveyor_profile':
+      return <SurveyorProfileSection section={section} photoUrls={photoUrls} settings={settings} />
+    case 'sketch_plan':
+      return <SketchSection section={section} photoUrls={photoUrls} />
+    default:
+      return <TextSection section={section} photoUrls={photoUrls} />
+  }
+}
+
+// =============================================================================
+// Section-Specific Renderers
+// =============================================================================
+
+// About Us — detect sub-headings in text
+function AboutUsSection({ section }: { section: ReportSection }) {
+  const subHeadingKeywords = ['Qualifications & Standards', 'Guarantees', 'Our Track Record']
+
   return (
     <View>
       <Text style={styles.sectionTitle}>{section.title}</Text>
-
-      {/* Render based on section type */}
-      {section.type === 'property' && <PropertySection section={section} photoUrls={photoUrls} />}
-      {section.type === 'data' && <DataSection section={section} />}
-      {(section.type === 'findings' ||
-        section.type === 'boilerplate' ||
-        section.type === 'closing') && <TextSection section={section} photoUrls={photoUrls} />}
-      {section.type === 'proposals' && <ProposalsSection section={section} />}
-      {section.type === 'photos' && <PhotoSection section={section} photoUrls={photoUrls} />}
-      {section.type === 'signature' && <SignatureSection section={section} settings={settings} />}
-      {section.type === 'sketch' && <SketchSection section={section} photoUrls={photoUrls} />}
-      {section.type === 'treatment' && <TextSection section={section} photoUrls={photoUrls} />}
-
-      {/* Render sub-sections (skip empty ones) */}
-      {section.sub_sections &&
-        section.sub_sections
-          .filter((sub) => !isSectionEmpty(sub)) // Skip empty sub-sections
-          .map((subSection) => (
-            <View key={subSection.key}>
-              <Text style={styles.subSectionTitle}>{subSection.title}</Text>
-              <TextContent content={subSection.content} />
-            </View>
-          ))}
+      {renderTextWithSubHeadings(section.content, subHeadingKeywords)}
     </View>
   )
 }
 
-// Property section with photos
+// Survey Context — detect sub-headings
+function SurveyContextSection({ section }: { section: ReportSection }) {
+  const subHeadingKeywords = ['Orientation', 'Scope of Inspection', 'Abbreviations']
+
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      {renderTextWithSubHeadings(section.content, subHeadingKeywords, true)}
+    </View>
+  )
+}
+
+// Property section with table and photos
 function PropertySection({
   section,
   photoUrls,
@@ -543,10 +648,12 @@ function PropertySection({
 
   return (
     <View>
-      {/* Property details */}
-      <View style={styles.table}>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+
+      {/* Property details table */}
+      <View style={styles.propertyTable}>
         {data.property_type && (
-          <View style={styles.tableRow}>
+          <View style={data.construction_type || data.approx_build_year ? styles.propertyTableRow : styles.propertyTableRowLast}>
             <Text style={styles.tableCellLabel}>Property Type</Text>
             <Text style={styles.tableCellValue}>
               {(data.property_type as string).replace(/_/g, ' ').toUpperCase()}
@@ -554,7 +661,7 @@ function PropertySection({
           </View>
         )}
         {data.construction_type && (
-          <View style={styles.tableRow}>
+          <View style={data.approx_build_year ? styles.propertyTableRow : styles.propertyTableRowLast}>
             <Text style={styles.tableCellLabel}>Construction</Text>
             <Text style={styles.tableCellValue}>
               {(data.construction_type as string).replace(/_/g, ' ').toUpperCase()}
@@ -562,7 +669,7 @@ function PropertySection({
           </View>
         )}
         {data.approx_build_year && (
-          <View style={styles.tableRow}>
+          <View style={styles.propertyTableRowLast}>
             <Text style={styles.tableCellLabel}>Approx. Build Year</Text>
             <Text style={styles.tableCellValue}>{data.approx_build_year as string}</Text>
           </View>
@@ -587,26 +694,186 @@ function PropertySection({
   )
 }
 
-// Data section with table
-function DataSection({ section }: { section: ReportSection }) {
-  const data = section.data || {}
-
+// External Inspection with sub-sections
+function ExternalInspectionSection({
+  section,
+  photoUrls,
+}: {
+  section: ReportSection
+  photoUrls: Record<string, string>
+}) {
   return (
-    <View style={styles.table}>
-      {Object.entries(data).map(([key, value]) => {
-        if (value === null || value === undefined) return null
-        return (
-          <View key={key} style={styles.tableRow}>
-            <Text style={styles.tableCellLabel}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
-            <Text style={styles.tableCellValue}>{String(value)}</Text>
-          </View>
-        )
-      })}
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <TextContent content={section.content} />
+
+      {/* Photos */}
+      {section.photos.length > 0 && (
+        <View style={styles.photoGrid}>
+          {section.photos.map((photoId) => {
+            const url = photoUrls[photoId]
+            if (!url) return null
+            return (
+              <View key={photoId} style={styles.photoContainer}>
+                <Image src={url} style={styles.photo} />
+              </View>
+            )
+          })}
+        </View>
+      )}
+
+      {/* Sub-sections */}
+      {section.sub_sections &&
+        section.sub_sections
+          .filter((sub) => !isSectionEmpty(sub))
+          .map((subSection) => (
+            <View key={subSection.key}>
+              <Text style={styles.subSectionTitle}>{subSection.title}</Text>
+              <TextContent content={subSection.content} />
+            </View>
+          ))}
     </View>
   )
 }
 
-// Text section (findings, boilerplate, closing)
+// Room Findings — per-room narrative + table
+function RoomFindingsSection({
+  section,
+  photoUrls,
+}: {
+  section: ReportSection
+  photoUrls: Record<string, string>
+}) {
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+
+      {/* Inspection note */}
+      <Text style={styles.paragraphItalic}>
+        Note: This was a non-destructive inspection. All findings are based on visual assessment,
+        electronic moisture meter readings, digital laser thermometer readings and tactile
+        examination of accessible surfaces. No opening up works were carried out.
+      </Text>
+
+      {/* Room sub-sections */}
+      {section.sub_sections &&
+        section.sub_sections
+          .filter((sub) => !isSectionEmpty(sub))
+          .map((roomSection) => (
+            <View key={roomSection.key} style={{ marginTop: 16 }}>
+              <Text style={styles.subSectionTitle}>{roomSection.title}</Text>
+
+              {/* LLM narrative */}
+              <TextContent content={roomSection.content} />
+
+              {/* Affected areas table */}
+              {roomSection.data.walls && Array.isArray(roomSection.data.walls) && roomSection.data.walls.length > 0 && (
+                <View style={styles.treatmentTable}>
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Wall</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Treatment Area</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Treatment Type</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Moisture Reading</Text>
+                  </View>
+                  {(roomSection.data.walls as any[]).map((wall, idx) => (
+                    <View
+                      key={idx}
+                      style={idx === (roomSection.data.walls as any[]).length - 1 ? styles.tableRowLast : styles.tableRow}
+                    >
+                      <Text style={[styles.tableCell, { flex: 1 }]}>{wall.wall}</Text>
+                      <Text style={[styles.tableCell, { flex: 1.5 }]}>{wall.treatment_area}</Text>
+                      <Text style={[styles.tableCellBold, { flex: 1.5 }]}>{wall.treatment_type}</Text>
+                      <Text style={[styles.tableCell, { flex: 1 }]}>{wall.moisture_reading}%</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Room photos */}
+              {roomSection.photos.length > 0 && (
+                <View style={styles.photoGrid}>
+                  {roomSection.photos.map((photoId) => {
+                    const url = photoUrls[photoId]
+                    if (!url) return null
+                    return (
+                      <View key={photoId} style={styles.photoContainer}>
+                        <Image src={url} style={styles.photo} />
+                      </View>
+                    )
+                  })}
+                </View>
+              )}
+            </View>
+          ))}
+    </View>
+  )
+}
+
+// Summary of Proposed Works — table format
+function SummaryOfWorksSection({ section }: { section: ReportSection }) {
+  const data = section.data || {}
+  const rooms = data.rooms_summary as any[] || []
+  const additionalWorks = data.additional_works as any[] || []
+
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <Text style={styles.paragraph}>
+        Based on our inspection, we propose the following remedial works:
+      </Text>
+
+      {/* Rooms summary table */}
+      {rooms.length > 0 && (
+        <View style={styles.treatmentTable}>
+          <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Room</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Issue</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Proposed Treatment</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>Area</Text>
+          </View>
+          {rooms.map((room, idx) => (
+            <View
+              key={idx}
+              style={idx === rooms.length - 1 && additionalWorks.length === 0 ? styles.tableRowLast : styles.tableRow}
+            >
+              <Text style={[styles.tableCell, { flex: 1 }]}>{room.room}</Text>
+              <Text style={[styles.tableCell, { flex: 1 }]}>{room.issue}</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{room.proposed_treatment}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{room.area}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Additional works */}
+      {additionalWorks.length > 0 && (
+        <View style={{ marginTop: 12 }}>
+          <Text style={styles.subSectionTitle}>Additional Works</Text>
+          <View style={styles.bulletList}>
+            {additionalWorks.map((work, idx) => (
+              <View key={idx} style={styles.bulletItem}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bulletText}>{work.description || work}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+    </View>
+  )
+}
+
+// Boilerplate sections (ancillary items, extent, payment)
+function BoilerplateSection({ section }: { section: ReportSection }) {
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <TextContent content={section.content} />
+    </View>
+  )
+}
+
+// Text section with photos
 function TextSection({
   section,
   photoUrls,
@@ -616,6 +883,7 @@ function TextSection({
 }) {
   return (
     <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
       <TextContent content={section.content} />
 
       {/* Photos below text */}
@@ -636,18 +904,117 @@ function TextSection({
   )
 }
 
-// Text content with paragraph handling
-function TextContent({ content }: { content: string }) {
-  if (!content) {
-    return null // Empty sections are filtered out, but safety check
-  }
+// Surveyor profile with photo
+function SurveyorProfileSection({
+  section,
+  photoUrls,
+  settings,
+}: {
+  section: ReportSection
+  photoUrls: Record<string, string>
+  settings: ReportSettings
+}) {
+  const data = section.data || {}
+  const surveyorPhotoId = section.photos[0]
+  const surveyorPhotoUrl = surveyorPhotoId ? photoUrls[surveyorPhotoId] : null
+
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <View style={styles.surveyorContainer}>
+        <Text style={styles.surveyorIntro}>
+          Report produced under the guidance of {settings.company_name} by:
+        </Text>
+
+        {/* Surveyor photo */}
+        {surveyorPhotoUrl && (
+          <Image src={surveyorPhotoUrl} style={styles.surveyorPhoto} />
+        )}
+
+        {/* Surveyor details */}
+        <Text style={styles.surveyorName}>
+          {(data.surveyor_name as string) || 'Surveyor name to be confirmed'}
+        </Text>
+        {data.surveyor_title && (
+          <Text style={styles.surveyorTitle}>{data.surveyor_title as string}</Text>
+        )}
+        {data.surveyor_credentials && (
+          <Text style={styles.surveyorCredentials}>{data.surveyor_credentials as string}</Text>
+        )}
+        {data.surveyor_experience && (
+          <Text style={styles.surveyorExperience}>{data.surveyor_experience as string}</Text>
+        )}
+      </View>
+    </View>
+  )
+}
+
+// Sketch section
+function SketchSection({
+  section,
+  photoUrls,
+}: {
+  section: ReportSection
+  photoUrls: Record<string, string>
+}) {
+  const sketchPhotoId = section.photos[0]
+  const sketchUrl = sketchPhotoId ? photoUrls[sketchPhotoId] : null
+
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+
+      {sketchUrl ? (
+        <Image src={sketchUrl} style={styles.sketchImage} />
+      ) : (
+        <View style={styles.sketchPlaceholder}>
+          <Text style={styles.sketchText}>Sketch plan to be provided by surveyor</Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
+// =============================================================================
+// Text Rendering Helpers
+// =============================================================================
+
+// Render text with sub-heading detection
+function renderTextWithSubHeadings(
+  content: string,
+  subHeadingKeywords: string[],
+  hasAbbreviations: boolean = false
+) {
+  if (!content) return null
 
   const paragraphs = content.split('\n\n').filter(Boolean)
 
   return (
     <View>
       {paragraphs.map((para, idx) => {
-        // Check if it's a bullet point (starts with - or •)
+        // Check if this paragraph is a sub-heading
+        const isSubHeading = subHeadingKeywords.some((keyword) =>
+          para.trim().startsWith(keyword)
+        )
+
+        if (isSubHeading) {
+          return (
+            <Text key={idx} style={styles.subSectionTitle}>
+              {para.trim()}
+            </Text>
+          )
+        }
+
+        // Check if this is the abbreviations paragraph (contains ·)
+        if (hasAbbreviations && para.includes('·')) {
+          return (
+            <Text key={idx} style={styles.paragraphSmall}>
+              {para}
+            </Text>
+          )
+        }
+
+        // Check for bullet points
         if (para.startsWith('- ') || para.startsWith('• ')) {
           const items = para.split('\n').filter(Boolean)
           return (
@@ -672,96 +1039,36 @@ function TextContent({ content }: { content: string }) {
   )
 }
 
-// Proposals section (schedule of works)
-function ProposalsSection({ section }: { section: ReportSection }) {
+// Standard text content rendering
+function TextContent({ content }: { content: string }) {
+  if (!content) return null
+
+  const paragraphs = content.split('\n\n').filter(Boolean)
+
   return (
     <View>
-      <TextContent content={section.content} />
+      {paragraphs.map((para, idx) => {
+        // Check for bullet points
+        if (para.startsWith('- ') || para.startsWith('• ')) {
+          const items = para.split('\n').filter(Boolean)
+          return (
+            <View key={idx} style={styles.bulletList}>
+              {items.map((item, itemIdx) => (
+                <View key={itemIdx} style={styles.bulletItem}>
+                  <Text style={styles.bullet}>•</Text>
+                  <Text style={styles.bulletText}>{item.replace(/^[•\-]\s*/, '')}</Text>
+                </View>
+              ))}
+            </View>
+          )
+        }
 
-      {/* Cost summary if available */}
-      {section.data.total_cost && (
-        <View style={styles.costSummary}>
-          <Text style={styles.costLabel}>Total Estimated Cost</Text>
-          <Text style={styles.costValue}>
-            £{(section.data.total_cost as number).toFixed(2)}
-          </Text>
-        </View>
-      )}
-    </View>
-  )
-}
-
-// Photo section (photo grid only)
-function PhotoSection({
-  section,
-  photoUrls,
-}: {
-  section: ReportSection
-  photoUrls: Record<string, string>
-}) {
-  return (
-    <View style={styles.photoGrid}>
-      {section.photos.map((photoId) => {
-        const url = photoUrls[photoId]
-        if (!url) return null
         return (
-          <View key={photoId} style={styles.photoContainer}>
-            <Image src={url} style={styles.photo} />
-          </View>
+          <Text key={idx} style={styles.paragraph}>
+            {para}
+          </Text>
         )
       })}
-    </View>
-  )
-}
-
-// Signature section
-function SignatureSection({
-  section,
-  settings,
-}: {
-  section: ReportSection
-  settings: ReportSettings
-}) {
-  const data = section.data || {}
-
-  return (
-    <View style={styles.signature}>
-      <Text style={styles.signatureText}>
-        Report produced under the guidance of {settings.company_name} by:
-      </Text>
-      <Text style={styles.signatureName}>
-        {(data.surveyor_name as string) || 'Surveyor name to be confirmed'}
-      </Text>
-      {data.surveyor_credentials && (
-        <Text style={styles.signatureText}>{data.surveyor_credentials as string}</Text>
-      )}
-      {data.surveyor_title && (
-        <Text style={styles.signatureText}>{data.surveyor_title as string}</Text>
-      )}
-    </View>
-  )
-}
-
-// Sketch section
-function SketchSection({
-  section,
-  photoUrls,
-}: {
-  section: ReportSection
-  photoUrls: Record<string, string>
-}) {
-  // Check if sketch photo exists
-  if (section.photos.length > 0) {
-    const sketchUrl = photoUrls[section.photos[0]]
-    if (sketchUrl) {
-      return <Image src={sketchUrl} style={{ width: '100%', maxHeight: 400 }} />
-    }
-  }
-
-  // Placeholder if no sketch
-  return (
-    <View style={styles.sketchPlaceholder}>
-      <Text style={styles.sketchText}>Sketch plan to be provided by surveyor</Text>
     </View>
   )
 }
@@ -770,8 +1077,22 @@ function SketchSection({
 // Helpers
 // =============================================================================
 
+function isSectionEmpty(section: ReportSection): boolean {
+  if (!section.content || section.content.trim() === '') {
+    return true
+  }
+
+  const placeholderTexts = [
+    'Content not available.',
+    'To be completed by surveyor during review.',
+    '[LLM content to be generated]',
+  ]
+
+  return placeholderTexts.includes(section.content.trim())
+}
+
 function calculateTotalPages(report: SurveyReport): number {
-  // Cover page + content sections (rough estimate)
+  // Rough estimate: cover + content sections
   // In practice, @react-pdf/renderer calculates this automatically
   return Math.max(1 + report.sections.length, 10)
 }
