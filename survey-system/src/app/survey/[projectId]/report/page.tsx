@@ -76,6 +76,7 @@ export default function ReportEditorPage() {
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({})
   const [activeSectionKey, setActiveSectionKey] = useState<string>('')
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -222,6 +223,39 @@ export default function ReportEditorPage() {
     }
   }
 
+  // Download PDF
+  async function handleDownloadPDF() {
+    if (!report) return
+
+    setIsDownloadingPDF(true)
+
+    try {
+      const response = await fetch(`/api/report-pdf?reportId=${report.id}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob()
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `SURVEY-REPORT-${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error('Error downloading PDF:', err)
+      alert('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsDownloadingPDF(false)
+    }
+  }
+
   // Scroll to section
   function scrollToSection(sectionKey: string) {
     const ref = sectionRefs.current[sectionKey]
@@ -305,6 +339,7 @@ export default function ReportEditorPage() {
   }
 
   const isFinalised = report.status === 'finalised'
+  const canDownloadPDF = report.status === 'reviewed' || report.status === 'finalised'
   const statusColors = STATUS_COLORS[report.status]
 
   return (
@@ -330,9 +365,24 @@ export default function ReportEditorPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled className="hidden sm:flex">
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadPDF}
+                disabled={!canDownloadPDF || isDownloadingPDF}
+                className="hidden sm:flex"
+              >
+                {isDownloadingPDF ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
               </Button>
             </div>
           </div>
