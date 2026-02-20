@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   SurveyRoomRow,
   RoomData,
@@ -9,8 +9,9 @@ import {
   ISSUE_TYPE_COLOURS,
   FLOOR_LEVELS,
 } from '@/types/survey-wizard.types'
-import { Plus, Trash2, Check, Droplets, Wind, TreeDeciduous, Bug, Home, X, Camera } from 'lucide-react'
+import { Plus, Trash2, Check, Droplets, Wind, TreeDeciduous, Bug, Home, X, Camera, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import AudioRecorder from './AudioRecorder'
 import DampFields from './DampFields'
 import CondensationFields from './CondensationFields'
 import TimberFields from './TimberFields'
@@ -56,11 +57,80 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
   const [showAddRoom, setShowAddRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [newRoomFloor, setNewRoomFloor] = useState<string>('ground')
+  const [isPolishing, setIsPolishing] = useState(false)
+  const [polishError, setPolishError] = useState<string | null>(null)
+  const [wasPolished, setWasPolished] = useState(false)
+
+  // Reset polish state when selected room changes
+  useEffect(() => {
+    setIsPolishing(false)
+    setPolishError(null)
+    setWasPolished(false)
+  }, [selectedRoomId])
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId)
 
   // Filter photos for the current room
   const roomPhotos = selectedRoom ? filterPhotos(photos, { step: 'room_inspection', room_id: selectedRoom.id }) : []
+
+  // Update fields on the selected room
+  const updateSelectedRoom = (updates: Partial<typeof selectedRoom>) => {
+    if (!selectedRoom) return
+    const updatedRooms = rooms.map((r) =>
+      r.id === selectedRoomId ? { ...r, ...updates } : r
+    )
+    onRoomsChange(updatedRooms)
+  }
+
+  // Handle transcription from audio recorder
+  const handleTranscription = (text: string) => {
+    if (!selectedRoom) return
+    const currentFindings = selectedRoom.findings || ''
+    const newFindings = currentFindings ? `${currentFindings} ${text}` : text
+    const currentNotes = selectedRoom.surveyor_notes || ''
+    const newNotes = currentNotes ? `${currentNotes}\n${text}` : text
+    updateSelectedRoom({ findings: newFindings, surveyor_notes: newNotes })
+    setWasPolished(false)
+  }
+
+  // Polish observations with AI
+  const handlePolish = async () => {
+    if (!selectedRoom || !selectedRoom.findings?.trim()) return
+    setIsPolishing(true)
+    setPolishError(null)
+
+    const rawText = selectedRoom.findings
+
+    try {
+      const response = await fetch('/api/polish-observation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: rawText }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Polish failed')
+      }
+
+      const result = await response.json()
+      updateSelectedRoom({ findings: result.polished, surveyor_notes: rawText })
+      setWasPolished(true)
+    } catch (err) {
+      console.error('Polish error:', err)
+      setPolishError(err instanceof Error ? err.message : 'Failed to polish text')
+      setTimeout(() => setPolishError(null), 5000)
+    } finally {
+      setIsPolishing(false)
+    }
+  }
+
+  // Undo polish — restore from surveyor_notes
+  const handleUndoPolish = () => {
+    if (!selectedRoom || !selectedRoom.surveyor_notes) return
+    updateSelectedRoom({ findings: selectedRoom.surveyor_notes })
+    setWasPolished(false)
+  }
 
   // Add new room
   const handleAddRoom = () => {
@@ -385,6 +455,69 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
                 }
               )}
             </div>
+          </div>
+
+          {/* Room Observations */}
+          <div className="glass-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-brand-500/20">
+                <FileText className="w-5 h-5 text-brand-300" />
+              </div>
+              <div>
+                <h4 className="text-base font-semibold text-white">Room Observations</h4>
+                <p className="text-sm text-white/60">Describe what you see in this room — all issues, all observations.</p>
+              </div>
+            </div>
+
+            <textarea
+              value={selectedRoom.findings || ''}
+              onChange={(e) => {
+                updateSelectedRoom({ findings: e.target.value })
+                setWasPolished(false)
+              }}
+              placeholder="Tap record to describe what you see, or type your observations here..."
+              rows={4}
+              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 resize-none focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20 text-sm mb-4"
+            />
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <AudioRecorder
+                  onTranscriptionComplete={handleTranscription}
+                  disabled={isPolishing}
+                />
+              </div>
+              <button
+                onClick={handlePolish}
+                disabled={!selectedRoom.findings?.trim() || isPolishing}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white/90"
+              >
+                {isPolishing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <span>✨</span>
+                )}
+                {isPolishing ? 'Polishing...' : 'Polish'}
+              </button>
+            </div>
+
+            {wasPolished && (
+              <div className="flex items-center gap-3 mt-3 text-sm">
+                <span className="text-brand-300">✨ Polished</span>
+                <button
+                  onClick={handleUndoPolish}
+                  className="text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors"
+                >
+                  Undo
+                </button>
+              </div>
+            )}
+
+            {polishError && (
+              <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+                {polishError}
+              </div>
+            )}
           </div>
 
           {/* Issue-specific fields */}

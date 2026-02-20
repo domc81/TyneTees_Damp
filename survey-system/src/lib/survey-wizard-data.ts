@@ -77,6 +77,7 @@ export async function loadWizardData(
       issues_identified: row.issues_identified || [],
       room_data: row.room_data || {},
       findings: row.findings,
+      surveyor_notes: row.surveyor_notes,
       recommendations: row.recommendations,
       is_completed: row.is_completed || false,
       created_at: row.created_at,
@@ -175,6 +176,7 @@ export async function saveRoom(
           issues_identified: room.issues_identified,
           room_data: room.room_data as any,
           findings: room.findings || null,
+          surveyor_notes: room.surveyor_notes || null,
           recommendations: room.recommendations || null,
           is_completed: room.is_completed,
         })
@@ -205,6 +207,7 @@ export async function saveRoom(
           issues_identified: room.issues_identified,
           room_data: room.room_data as any,
           findings: room.findings || null,
+          surveyor_notes: room.surveyor_notes || null,
           recommendations: room.recommendations || null,
           is_completed: room.is_completed,
           updated_at: new Date().toISOString(),

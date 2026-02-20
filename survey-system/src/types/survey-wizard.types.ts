@@ -122,7 +122,8 @@ export interface SurveyRoomRow {
   display_order: number
   issues_identified: IssueType[] // Multi-select (can be empty)
   room_data: RoomData // JSONB keyed by issue type
-  findings?: string | null // Generated summary
+  findings?: string | null // Surveyor's room observation — report-ready text (polished or raw)
+  surveyor_notes?: string | null // Raw voice transcript — preserved as audit trail
   recommendations?: string | null // Generated recommendations
   is_completed: boolean
   created_at?: string
