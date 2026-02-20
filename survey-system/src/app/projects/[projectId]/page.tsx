@@ -58,6 +58,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [photos, setPhotos] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [wizardCompleted, setWizardCompleted] = useState(false)
+  const [reportStatus, setReportStatus] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadProject() {
@@ -72,6 +73,20 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
           setPhotos(projectPhotos)
           // Load wizard_completed status
           setWizardCompleted(data.wizard_completed || false)
+          // Load report status
+          const supabase = getSupabase()
+          if (supabase) {
+            const { data: report } = await supabase
+              .from('survey_reports')
+              .select('status')
+              .eq('survey_id', data.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+            if (report) {
+              setReportStatus(report.status)
+            }
+          }
         }
       } catch (err) {
         console.error('Error loading project:', err)
@@ -255,13 +270,22 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                       {wizardCompleted ? 'Edit Survey' : 'Start Survey Wizard'}
                     </Link>
                     {wizardCompleted && (
-                      <Link
-                        href={`/survey/${project.id}/costing`}
-                        className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
-                      >
-                        <Calculator className="w-5 h-5" />
-                        View Costing
-                      </Link>
+                      <>
+                        <Link
+                          href={`/survey/${project.id}/costing`}
+                          className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
+                        >
+                          <Calculator className="w-5 h-5" />
+                          View Costing
+                        </Link>
+                        <Link
+                          href={`/survey/${project.id}/report`}
+                          className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
+                        >
+                          <FileText className="w-5 h-5" />
+                          {reportStatus ? 'View Report' : 'Generate Report'}
+                        </Link>
+                      </>
                     )}
                   </div>
                 </div>
@@ -284,6 +308,18 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                   <DetailRow label="Site Address" value={project.site_address} />
                   <DetailRow label="Survey Type" value={config.label} />
                   <DetailRow label="Survey Date" value={project.survey_date ? new Date(project.survey_date).toLocaleDateString() : '-'} />
+                  {reportStatus && (
+                    <DetailRow label="Report Status" value={
+                      <span className={`badge ${
+                        reportStatus === 'draft' ? 'badge-gray' :
+                        reportStatus === 'generated' ? 'badge-blue' :
+                        reportStatus === 'reviewed' ? 'badge-amber' :
+                        reportStatus === 'finalised' ? 'badge-green' : ''
+                      }`}>
+                        {reportStatus}
+                      </span>
+                    } />
+                  )}
                 </div>
               </div>
 
@@ -386,11 +422,15 @@ function DetailsTab({ project, config }: { project: Project; config: typeof surv
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
     <div>
       <p className="text-sm text-surface-500">{label}</p>
-      <p className="font-medium text-surface-900">{value}</p>
+      {typeof value === 'string' ? (
+        <p className="font-medium text-surface-900">{value}</p>
+      ) : (
+        <div>{value}</div>
+      )}
     </div>
   )
 }

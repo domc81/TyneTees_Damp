@@ -369,6 +369,13 @@ export default function CostingReviewPage() {
             Back to Wizard
           </Button>
           <Button
+            variant="secondary"
+            onClick={() => router.push(`/survey/${projectId}/report`)}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
+          <Button
             variant="primary"
             onClick={() => router.push(`/projects/${projectId}`)}
           >
