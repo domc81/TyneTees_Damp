@@ -1,6 +1,6 @@
 // =============================================================================
 // Report Generation API Route — LLM Narrative Generation via OpenRouter
-// Generates professional survey narrative sections using Llama 3.1 70B
+// Generates professional survey narrative sections using Grok 4.1 Fast
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -177,7 +177,7 @@ Generate the narrative content for this section now. Output ONLY the report text
         'X-Title': 'Tyne Tees Survey System',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct',
+        model: 'x-ai/grok-4.1-fast',
         messages: [
           {
             role: 'system',

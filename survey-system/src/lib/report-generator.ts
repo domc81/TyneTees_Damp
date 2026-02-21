@@ -283,14 +283,11 @@ export async function generateReport(
   )
 
   // --- THE PROPERTY ---
-  const propertyPhotos = photos
-    .filter(
-      (p) =>
-        p.category === 'site_details' ||
-        p.category === 'street_view' ||
-        p.category === 'property_front'
-    )
-    .map((p) => p.id)
+  // Get the first street view photo from the site_details step
+  const streetViewPhoto = photos.find(
+    (p) => p.step === 'site_details' && (p.category === 'street_view' || p.category === 'building_exterior')
+  )
+  const propertyPhotos = streetViewPhoto ? [streetViewPhoto.id] : []
 
   sections.push(
     buildSection(

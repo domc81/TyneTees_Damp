@@ -677,18 +677,23 @@ function PropertySection({
         )}
       </View>
 
-      {/* Property photos */}
+      {/* Property photo - single large centered street view */}
       {section.photos.length > 0 && (
-        <View style={styles.photoGrid}>
-          {section.photos.map((photoId) => {
-            const url = photoUrls[photoId]
+        <View style={{ marginTop: 16, alignItems: 'center' }}>
+          {(() => {
+            const url = photoUrls[section.photos[0]]
             if (!url) return null
             return (
-              <View key={photoId} style={styles.photoContainer}>
-                <Image src={url} style={styles.photo} />
-              </View>
+              <Image
+                src={url}
+                style={{
+                  width: 350,
+                  height: 250,
+                  objectFit: 'cover',
+                }}
+              />
             )
-          })}
+          })()}
         </View>
       )}
     </View>

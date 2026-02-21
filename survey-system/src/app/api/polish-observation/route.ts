@@ -66,7 +66,7 @@ RULES:
           'X-Title': 'Tyne Tees Survey System',
         },
         body: JSON.stringify({
-          model: 'meta-llama/llama-3.3-70b-instruct',
+          model: 'x-ai/grok-4.1-fast',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
