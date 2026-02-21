@@ -104,6 +104,8 @@ export default function ReportEditorPage() {
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // Ref to prevent concurrent generation from StrictMode double-render
+  const isGeneratingRef = useRef(false)
 
   // Load report on mount
   useEffect(() => {
@@ -133,7 +135,10 @@ export default function ReportEditorPage() {
       } else {
         // No report exists - auto-generate it
         setIsLoading(false)
-        await handleGenerateReport()
+        if (!isGeneratingRef.current) {
+          isGeneratingRef.current = true
+          await handleGenerateReport()
+        }
       }
 
       // Load photos
@@ -178,6 +183,7 @@ export default function ReportEditorPage() {
       setError(err instanceof Error ? err.message : 'Failed to generate report')
     } finally {
       setIsGenerating(false)
+      isGeneratingRef.current = false
     }
   }
 
