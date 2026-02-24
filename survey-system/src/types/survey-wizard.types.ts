@@ -103,6 +103,7 @@ export type DefectUrgency =
 // =============================================================================
 
 export interface RoomData {
+  rh_reading?: number | null  // Ambient relative humidity % for the room (room-level, not issue-specific)
   damp?: DampRoomData
   condensation?: CondensationRoomData
   timber_decay?: TimberRoomData

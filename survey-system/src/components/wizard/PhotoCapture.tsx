@@ -19,6 +19,7 @@ interface PhotoCaptureProps {
   maxPhotos?: number
   existingPhotos: SurveyPhoto[]
   onPhotosChange: (photos: SurveyPhoto[]) => void
+  autoDescription?: string  // If set, skip the description modal and use this string automatically
 }
 
 export default function PhotoCapture({
@@ -31,6 +32,7 @@ export default function PhotoCapture({
   maxPhotos = 5,
   existingPhotos,
   onPhotosChange,
+  autoDescription,
 }: PhotoCaptureProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -43,6 +45,44 @@ export default function PhotoCapture({
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const canAddMore = existingPhotos.length < maxPhotos
+
+  const performUpload = async (file: File, desc: string) => {
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    try {
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 10, 90))
+      }, 200)
+
+      const capture: PhotoCaptureType = {
+        file,
+        category,
+        description: desc || `${label} photo`,
+        step,
+        room_id: roomId,
+      }
+
+      const newPhoto = await uploadSurveyPhoto(surveyId, capture)
+
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+
+      onPhotosChange([...existingPhotos, newPhoto])
+
+      setTimeout(() => {
+        setIsUploading(false)
+        setUploadProgress(0)
+        setPendingFile(null)
+        setDescription('')
+      }, 500)
+    } catch (err) {
+      console.error('Upload failed:', err)
+      setError(err instanceof Error ? err.message : 'Upload failed')
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
 
   const handleFileSelect = (file: File) => {
     // Validate file type
@@ -58,11 +98,17 @@ export default function PhotoCapture({
       return
     }
 
-    // Show description modal
-    setPendingFile(file)
-    setDescription('')
-    setShowDescriptionModal(true)
-    setError(null)
+    if (autoDescription !== undefined) {
+      // Skip description modal — upload immediately with the auto-generated description
+      setError(null)
+      performUpload(file, autoDescription)
+    } else {
+      // Show description modal
+      setPendingFile(file)
+      setDescription('')
+      setShowDescriptionModal(true)
+      setError(null)
+    }
   }
 
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,46 +135,8 @@ export default function PhotoCapture({
 
   const handleUploadWithDescription = async () => {
     if (!pendingFile) return
-
-    setIsUploading(true)
-    setUploadProgress(0)
     setShowDescriptionModal(false)
-
-    try {
-      // Simulate progress for UI feedback
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => Math.min(prev + 10, 90))
-      }, 200)
-
-      const capture: PhotoCaptureType = {
-        file: pendingFile,
-        category,
-        description: description || `${label} photo`,
-        step,
-        room_id: roomId,
-      }
-
-      const newPhoto = await uploadSurveyPhoto(surveyId, capture)
-
-      clearInterval(progressInterval)
-      setUploadProgress(100)
-
-      // Add to existing photos
-      onPhotosChange([...existingPhotos, newPhoto])
-
-      // Reset state
-      setTimeout(() => {
-        setIsUploading(false)
-        setUploadProgress(0)
-        setPendingFile(null)
-        setDescription('')
-      }, 500)
-    } catch (err) {
-      console.error('Upload failed:', err)
-      setError(err instanceof Error ? err.message : 'Upload failed')
-      setIsUploading(false)
-      setUploadProgress(0)
-    }
+    await performUpload(pendingFile, description)
   }
 
   const handleDeletePhoto = async (photo: SurveyPhoto) => {

@@ -9,7 +9,7 @@ import {
   ISSUE_TYPE_COLOURS,
   FLOOR_LEVELS,
 } from '@/types/survey-wizard.types'
-import { Plus, Trash2, Check, Droplets, Wind, TreeDeciduous, Bug, Home, X, Camera, Loader2, FileText } from 'lucide-react'
+import { Plus, Trash2, Check, Droplets, Wind, TreeDeciduous, Bug, Home, X, Camera, Loader2, FileText, Thermometer, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AudioRecorder from './AudioRecorder'
 import DampFields from './DampFields'
@@ -49,6 +49,16 @@ const QUICK_ROOM_NAMES = [
   'Utility Room',
   'Landing',
 ]
+
+function formatIssueLabel(issue: string): string {
+  const labels: Record<string, string> = {
+    damp: 'Rising Damp',
+    condensation: 'Condensation',
+    timber_decay: 'Timber Decay',
+    woodworm: 'Woodworm',
+  }
+  return labels[issue] || issue
+}
 
 export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, photos, onPhotosChange }: RoomInspectionStepProps) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(
@@ -408,6 +418,68 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
             </div>
           </div>
 
+          {/* Room ID Photo + RH Reading */}
+          <div className="glass-card p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Room ID Photo */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-brand-500/20">
+                    <Camera className="w-5 h-5 text-brand-300" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-semibold text-white">Room Photo</h4>
+                    <p className="text-sm text-white/60">Photograph the room for identification</p>
+                  </div>
+                </div>
+                <PhotoCapture
+                  surveyId={surveyId}
+                  step="room_inspection"
+                  roomId={selectedRoom.id}
+                  category="room_id"
+                  label="Room ID"
+                  maxPhotos={1}
+                  existingPhotos={filterPhotos(roomPhotos, { category: 'room_id' })}
+                  onPhotosChange={onPhotosChange}
+                  autoDescription={`${selectedRoom.name} — ${FLOOR_LEVELS.find((l) => l.value === selectedRoom.floor_level)?.label || selectedRoom.floor_level}`}
+                />
+              </div>
+
+              {/* RH Reading */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-brand-500/20">
+                    <Thermometer className="w-5 h-5 text-brand-300" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-semibold text-white">Relative Humidity</h4>
+                    <p className="text-sm text-white/60">Optional — record the ambient humidity</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    placeholder="e.g., 65"
+                    value={selectedRoom.room_data.rh_reading ?? ''}
+                    onChange={(e) =>
+                      updateSelectedRoom({
+                        room_data: {
+                          ...selectedRoom.room_data,
+                          rh_reading: e.target.value ? Number(e.target.value) : null,
+                        },
+                      })
+                    }
+                    className="input-field text-sm flex-1"
+                  />
+                  <span className="text-sm text-white/60 whitespace-nowrap">% RH</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Issue selector */}
           <div className="glass-card p-6">
             <div className="mb-4">
@@ -520,6 +592,43 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
             )}
           </div>
 
+          {/* Defect Evidence Photos — shown when at least one issue is selected */}
+          {selectedRoom.issues_identified.length > 0 && (
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 rounded-lg bg-brand-500/20">
+                  <Camera className="w-5 h-5 text-brand-300" />
+                </div>
+                <div>
+                  <h4 className="text-base font-semibold text-white">Defect Evidence Photos</h4>
+                  <p className="text-sm text-white/60">Photograph each defect identified in this room</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-brand-500/10 border border-brand-500/30 p-4 mb-5 flex items-start gap-3">
+                <Info className="w-4 h-4 text-brand-300 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-white/80">
+                  Photograph each defect identified in this room. For each photo, describe the location and defect visible — e.g., &apos;Left wall below window — rising damp staining to 1m height&apos; or &apos;Rear wall ceiling junction — black mould growth&apos;. Clear descriptions strengthen the evidence in your report.
+                </p>
+              </div>
+
+              <PhotoCapture
+                surveyId={surveyId}
+                step="room_inspection"
+                roomId={selectedRoom.id}
+                category="defect_evidence"
+                label="Defect Evidence"
+                maxPhotos={15}
+                existingPhotos={filterPhotos(roomPhotos, { category: 'defect_evidence' })}
+                onPhotosChange={onPhotosChange}
+              />
+
+              <p className="text-xs text-white/50 mt-3">
+                Issues to document: {selectedRoom.issues_identified.map(formatIssueLabel).join(', ')}
+              </p>
+            </div>
+          )}
+
           {/* Issue-specific fields */}
           {selectedRoom.issues_identified.length === 0 ? (
             <div className="glass-card p-8 text-center">
@@ -531,147 +640,32 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
           ) : (
             <div className="space-y-6">
               {selectedRoom.issues_identified.includes('damp') && (
-                <>
-                  <DampFields
-                    data={selectedRoom.room_data.damp || {}}
-                    onChange={(data) => handleRoomDataChange('damp', data)}
-                  />
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="p-2 rounded-lg bg-blue-500/20">
-                        <Camera className="w-5 h-5 text-blue-300" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-semibold text-white">Damp Evidence Photos</h4>
-                        <p className="text-sm text-white/60">Visual evidence of damp issues</p>
-                      </div>
-                    </div>
-                    <PhotoCapture
-                      surveyId={surveyId}
-                      step="room_inspection"
-                      roomId={selectedRoom.id}
-                      category="damp_evidence"
-                      label="Damp Evidence"
-                      maxPhotos={10}
-                      existingPhotos={filterPhotos(roomPhotos, { category: 'damp_evidence' })}
-                      onPhotosChange={onPhotosChange}
-                    />
-                  </div>
-                </>
+                <DampFields
+                  data={selectedRoom.room_data.damp || {}}
+                  onChange={(data) => handleRoomDataChange('damp', data)}
+                />
               )}
 
               {selectedRoom.issues_identified.includes('condensation') && (
-                <>
-                  <CondensationFields
-                    data={selectedRoom.room_data.condensation || {}}
-                    onChange={(data) => handleRoomDataChange('condensation', data)}
-                  />
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="p-2 rounded-lg bg-purple-500/20">
-                        <Camera className="w-5 h-5 text-purple-300" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-semibold text-white">Condensation Evidence Photos</h4>
-                        <p className="text-sm text-white/60">Mould, condensation patterns</p>
-                      </div>
-                    </div>
-                    <PhotoCapture
-                      surveyId={surveyId}
-                      step="room_inspection"
-                      roomId={selectedRoom.id}
-                      category="condensation_evidence"
-                      label="Condensation Evidence"
-                      maxPhotos={5}
-                      existingPhotos={filterPhotos(roomPhotos, { category: 'condensation_evidence' })}
-                      onPhotosChange={onPhotosChange}
-                    />
-                  </div>
-                </>
+                <CondensationFields
+                  data={selectedRoom.room_data.condensation || {}}
+                  onChange={(data) => handleRoomDataChange('condensation', data)}
+                />
               )}
 
               {selectedRoom.issues_identified.includes('timber_decay') && (
-                <>
-                  <TimberFields
-                    data={selectedRoom.room_data.timber_decay || {}}
-                    onChange={(data) => handleRoomDataChange('timber_decay', data)}
-                  />
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="p-2 rounded-lg bg-amber-500/20">
-                        <Camera className="w-5 h-5 text-amber-300" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-semibold text-white">Timber Damage Photos</h4>
-                        <p className="text-sm text-white/60">Rot, decay, structural issues</p>
-                      </div>
-                    </div>
-                    <PhotoCapture
-                      surveyId={surveyId}
-                      step="room_inspection"
-                      roomId={selectedRoom.id}
-                      category="timber_evidence"
-                      label="Timber Evidence"
-                      maxPhotos={10}
-                      existingPhotos={filterPhotos(roomPhotos, { category: 'timber_evidence' })}
-                      onPhotosChange={onPhotosChange}
-                    />
-                  </div>
-                </>
+                <TimberFields
+                  data={selectedRoom.room_data.timber_decay || {}}
+                  onChange={(data) => handleRoomDataChange('timber_decay', data)}
+                />
               )}
 
               {selectedRoom.issues_identified.includes('woodworm') && (
-                <>
-                  <WoodwormFields
-                    data={selectedRoom.room_data.woodworm || {}}
-                    onChange={(data) => handleRoomDataChange('woodworm', data)}
-                  />
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="p-2 rounded-lg bg-red-500/20">
-                        <Camera className="w-5 h-5 text-red-300" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-semibold text-white">Woodworm Evidence Photos</h4>
-                        <p className="text-sm text-white/60">Flight holes, frass, damage</p>
-                      </div>
-                    </div>
-                    <PhotoCapture
-                      surveyId={surveyId}
-                      step="room_inspection"
-                      roomId={selectedRoom.id}
-                      category="woodworm_evidence"
-                      label="Woodworm Evidence"
-                      maxPhotos={5}
-                      existingPhotos={filterPhotos(roomPhotos, { category: 'woodworm_evidence' })}
-                      onPhotosChange={onPhotosChange}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* General Room Photos (always shown) */}
-              <div className="glass-card p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 rounded-lg bg-brand-500/20">
-                    <Camera className="w-5 h-5 text-brand-300" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-semibold text-white">General Room Photos</h4>
-                    <p className="text-sm text-white/60">Overall room views</p>
-                  </div>
-                </div>
-                <PhotoCapture
-                  surveyId={surveyId}
-                  step="room_inspection"
-                  roomId={selectedRoom.id}
-                  category="room_general"
-                  label="General Room"
-                  maxPhotos={5}
-                  existingPhotos={filterPhotos(roomPhotos, { category: 'room_general' })}
-                  onPhotosChange={onPhotosChange}
+                <WoodwormFields
+                  data={selectedRoom.room_data.woodworm || {}}
+                  onChange={(data) => handleRoomDataChange('woodworm', data)}
                 />
-              </div>
+              )}
             </div>
           )}
         </div>
