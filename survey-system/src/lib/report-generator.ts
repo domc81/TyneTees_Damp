@@ -135,6 +135,18 @@ function getTreatmentLabel(code: string | undefined): string {
   return map[code] || code.replace(/_/g, ' ')
 }
 
+function formatFlooringType(code: string | undefined): string {
+  if (!code) return 'timber'
+  const map: Record<string, string> = {
+    tongue_and_groove: 'tongue and groove',
+    square_edge: 'square edge',
+    chipboard: 'chipboard',
+    plywood: 'plywood',
+    other: 'timber',
+  }
+  return map[code] || code.replace(/_/g, ' ')
+}
+
 // =============================================================================
 // Section Builder Helper
 // =============================================================================
@@ -653,51 +665,133 @@ export async function generateReport(
 
   // --- SCOPE OF PROPOSED WORKS ---
   // Builds a detailed, numbered schedule of all works per room and property-wide.
+  // Each room produces one entry grouping items for all issue types in that room.
   let scopeItemNumber = 1
   const roomWorks: any[] = []
   let totalAffectedArea = 0
   let hasStripOut = false
 
   for (const room of rooms) {
-    if (!room.issues_identified?.includes('damp')) continue
-    const dampData = room.room_data?.damp as any
-    if (!dampData?.walls || dampData.walls.length === 0) continue
-
-    const treatmentCode = dampData.wall_treatment
-
-    // Calculate totals for this room
-    let roomTotalArea = 0
-    let roomTotalLength = 0
-    for (const wall of dampData.walls) {
-      roomTotalArea += (wall.length || 0) * (wall.height || 0)
-      roomTotalLength += wall.length || 0
-    }
-    totalAffectedArea += roomTotalArea
-    hasStripOut = true
-
-    const areaStr = `${roomTotalArea.toFixed(1)}m²`
-    const lengthStr = `${roomTotalLength.toFixed(1)} linear metres`
+    if (!room.issues_identified || room.issues_identified.length === 0) continue
 
     const items: any[] = []
 
-    if (treatmentCode === 'membrane') {
-      items.push({ number: scopeItemNumber++, description: 'Remove existing plaster to affected walls', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Remove skirting boards to affected areas', urgency: 'high', length: lengthStr })
-      items.push({ number: scopeItemNumber++, description: 'Install cavity drain membrane system to affected walls', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Fix new plasterboard to membrane and apply multi-finish skim plaster', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
-    } else if (treatmentCode === 'injection') {
-      items.push({ number: scopeItemNumber++, description: 'Strip existing plaster to affected area', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Injection of chemical damp proof course to mortar course at 150mm above external ground level', urgency: 'high', length: lengthStr })
-      items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to treated walls', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
-    } else if (treatmentCode === 'tanking') {
-      items.push({ number: scopeItemNumber++, description: 'Prepare substrate — remove existing plaster finishes to affected walls', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Apply cementitious tanking system to affected walls', urgency: 'high', area: areaStr })
-      items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to tanked surface', urgency: 'high', area: areaStr })
-    } else {
-      // Fallback for unrecognised treatment code
-      items.push({ number: scopeItemNumber++, description: `Apply ${getTreatmentLabel(treatmentCode)} to affected walls`, urgency: 'high', area: areaStr })
+    // --- DAMP WORK ITEMS ---
+    if (room.issues_identified.includes('damp')) {
+      const dampData = room.room_data?.damp as any
+      if (dampData?.walls && dampData.walls.length > 0) {
+        const treatmentCode = dampData.wall_treatment
+        let roomTotalArea = 0
+        let roomTotalLength = 0
+        for (const wall of dampData.walls) {
+          roomTotalArea += (wall.length || 0) * (wall.height || 0)
+          roomTotalLength += wall.length || 0
+        }
+        totalAffectedArea += roomTotalArea
+        hasStripOut = true
+
+        const areaStr = `${roomTotalArea.toFixed(1)}m²`
+        const lengthStr = `${roomTotalLength.toFixed(1)} linear metres`
+
+        if (treatmentCode === 'membrane') {
+          items.push({ number: scopeItemNumber++, description: 'Remove existing plaster to affected walls', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Remove skirting boards to affected areas', urgency: 'high', length: lengthStr })
+          items.push({ number: scopeItemNumber++, description: 'Install cavity drain membrane system to affected walls', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Fix new plasterboard to membrane and apply multi-finish skim plaster', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
+        } else if (treatmentCode === 'injection') {
+          items.push({ number: scopeItemNumber++, description: 'Strip existing plaster to affected area', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Injection of chemical damp proof course to mortar course at 150mm above external ground level', urgency: 'high', length: lengthStr })
+          items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to treated walls', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
+        } else if (treatmentCode === 'tanking') {
+          items.push({ number: scopeItemNumber++, description: 'Prepare substrate — remove existing plaster finishes to affected walls', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Apply cementitious tanking system to affected walls', urgency: 'high', area: areaStr })
+          items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to tanked surface', urgency: 'high', area: areaStr })
+        } else {
+          // Fallback for unrecognised treatment code
+          items.push({ number: scopeItemNumber++, description: `Apply ${getTreatmentLabel(treatmentCode)} to affected walls`, urgency: 'high', area: areaStr })
+        }
+      }
+    }
+
+    // --- CONDENSATION WORK ITEMS ---
+    // Per-room items only: mould treatment and extractor fans.
+    // PIV is property-wide and handled in additional_works below.
+    if (room.issues_identified.includes('condensation')) {
+      const condData = room.room_data?.condensation as any
+      if (condData) {
+        if (condData.black_mould_present) {
+          items.push({ number: scopeItemNumber++, description: 'Treat mould-affected surfaces with fungicidal wash', urgency: 'high' })
+        }
+        if (condData.fan_recommended && (condData.fan_count || 0) > 0) {
+          items.push({ number: scopeItemNumber++, description: `Installation of ${condData.fan_count} extractor fan(s) to improve ventilation`, urgency: 'medium' })
+        }
+      }
+    }
+
+    // --- TIMBER DECAY WORK ITEMS ---
+    if (room.issues_identified.includes('timber_decay')) {
+      const timberData = room.room_data?.timber_decay as any
+      if (timberData) {
+        if (timberData.fungal_findings?.includes('dry_rot')) {
+          items.push({ number: scopeItemNumber++, description: 'Cut out and remove all timber affected by dry rot including 300mm beyond visible decay', urgency: 'high' })
+          hasStripOut = true
+        }
+        if (timberData.fungal_findings?.includes('wet_rot')) {
+          items.push({ number: scopeItemNumber++, description: 'Cut out and remove all timber affected by wet rot including 300mm beyond visible decay', urgency: 'high' })
+          hasStripOut = true
+        }
+        if ((timberData.fungal_treatment_area || 0) > 0) {
+          const area = `${(timberData.fungal_treatment_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: `Apply fungicidal spray treatment to all exposed masonry and timber (${area})`, urgency: 'high', area })
+          totalAffectedArea += timberData.fungal_treatment_area as number
+        }
+        if (timberData.timber_replacement_needed && timberData.joist_entries?.length > 0) {
+          hasStripOut = true
+          for (const joistEntry of timberData.joist_entries as Array<{ size: string; quantity: number; length: number }>) {
+            items.push({ number: scopeItemNumber++, description: `Supply and install ${joistEntry.quantity}x ${joistEntry.size} replacement joists at ${joistEntry.length}m each`, urgency: 'high' })
+          }
+        }
+        if ((timberData.flooring_area || 0) > 0) {
+          const area = `${(timberData.flooring_area as number).toFixed(1)}m²`
+          const flooringLabel = formatFlooringType(timberData.flooring_type)
+          items.push({ number: scopeItemNumber++, description: `Supply and install replacement ${flooringLabel} flooring (${area})`, urgency: 'high', area })
+          totalAffectedArea += timberData.flooring_area as number
+          hasStripOut = true
+        }
+        if (timberData.ceiling_affected && (timberData.ceiling_area || 0) > 0) {
+          const area = `${(timberData.ceiling_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: `Renew ceiling to affected area (${area})`, urgency: 'medium', area })
+        }
+      }
+    }
+
+    // --- WOODWORM WORK ITEMS ---
+    if (room.issues_identified.includes('woodworm')) {
+      const woodwormData = room.room_data?.woodworm as any
+      if (woodwormData) {
+        const severityUrgencyMap: Record<string, string> = { light: 'low', moderate: 'medium', severe: 'high' }
+        const urgency = severityUrgencyMap[woodwormData.severity as string] || 'medium'
+        if ((woodwormData.spray_floor_area || 0) > 0) {
+          const area = `${(woodwormData.spray_floor_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: `Apply insecticidal spray treatment to floor timbers (${area})`, urgency, area })
+          totalAffectedArea += woodwormData.spray_floor_area as number
+        }
+        if ((woodwormData.spray_timber_area || 0) > 0) {
+          const area = `${(woodwormData.spray_timber_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: `Apply insecticidal spray treatment to exposed structural timbers (${area})`, urgency, area })
+          totalAffectedArea += woodwormData.spray_timber_area as number
+        }
+        if ((woodwormData.paste_treatment_area || 0) > 0) {
+          const area = `${(woodwormData.paste_treatment_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: `Apply insecticidal paste treatment to affected timbers (${area})`, urgency, area })
+          totalAffectedArea += woodwormData.paste_treatment_area as number
+        }
+        if (woodwormData.structural_damage) {
+          items.push({ number: scopeItemNumber++, description: 'Structural assessment required for timber members with significant insect damage', urgency: 'high' })
+        }
+      }
     }
 
     if (items.length > 0) {
