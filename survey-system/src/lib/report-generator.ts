@@ -13,6 +13,11 @@ import type {
   ReportSectionType,
 } from '@/types/survey-report.types'
 import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
+import type {
+  CondensationRoomData,
+  TimberRoomData,
+  WoodwormRoomData,
+} from '@/types/survey-wizard.types'
 import { loadWizardData } from './survey-wizard-data'
 import { loadSurveyPhotos } from './survey-photo-service'
 import { getSupabase } from './supabase-client'
@@ -275,7 +280,7 @@ export async function generateReport(
       roomContent = `${room.issues_identified.join(', ')} issues identified.`
     }
 
-    // Build wall table data (for damp rooms)
+    // a. DAMP: Build wall table data
     const walls: any[] = []
     if (dampData?.walls && Array.isArray(dampData.walls)) {
       const treatmentCode = dampData.wall_treatment
@@ -311,18 +316,107 @@ export async function generateReport(
       }
     }
 
-    // Match photos to room — first try by room_id, then fall back to step for
-    // recovered photos that have room_id = null. Each photo is claimed at most once.
+    // Build the room data object — includes all issue types present in the room
+    const roomData: Record<string, unknown> = {
+      room_name: room.name,
+      floor_level: formatFloorLevel(room.floor_level),
+      issues: room.issues_identified,
+      walls: walls,
+      rh_reading: (room.room_data as any)?.rh_reading ?? null,
+    }
+
+    if (dampData && walls.length > 0) {
+      roomData.treatment_type = getTreatmentLabel(dampData.wall_treatment)
+    }
+
+    // b. CONDENSATION data
+    if (room.issues_identified.includes('condensation')) {
+      const condData = room.room_data?.condensation as CondensationRoomData | undefined
+      roomData.condensation = {
+        condensation_on_windows: condData?.condensation_on_windows || false,
+        black_mould_present: condData?.black_mould_present || false,
+        mould_severity: condData?.mould_severity || null,
+        ventilation_adequate: condData?.ventilation_adequate || false,
+        humidity_reading: condData?.humidity_reading || null,
+        piv_recommended: condData?.piv_recommended || false,
+        fan_recommended: condData?.fan_recommended || false,
+        fan_count: condData?.fan_count || 0,
+      }
+    }
+
+    // c. TIMBER DECAY data
+    if (room.issues_identified.includes('timber_decay')) {
+      const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
+      roomData.timber = {
+        floor_type: timberData?.floor_type || null,
+        floor_condition: timberData?.floor_condition || null,
+        floor_access: timberData?.floor_access || null,
+        sub_floor_inspected: timberData?.sub_floor_inspected || false,
+        sub_floor_ventilation: timberData?.sub_floor_ventilation || null,
+        joist_condition: timberData?.joist_condition || null,
+        fungal_findings: timberData?.fungal_findings || [],
+        fungal_treatment_area: timberData?.fungal_treatment_area || 0,
+        timber_replacement_needed: timberData?.timber_replacement_needed || false,
+        joist_entries: timberData?.joist_entries || [],
+        flooring_type: timberData?.flooring_type || null,
+        flooring_area: timberData?.flooring_area || 0,
+        ceiling_affected: timberData?.ceiling_affected || false,
+        ceiling_area: timberData?.ceiling_area || 0,
+      }
+    }
+
+    // d. WOODWORM data
+    if (room.issues_identified.includes('woodworm')) {
+      const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
+      roomData.woodworm = {
+        species_identified: woodwormData?.species_identified || null,
+        infestation_status: woodwormData?.infestation_status || null,
+        severity: woodwormData?.severity || null,
+        structural_damage: woodwormData?.structural_damage || false,
+        spray_floor_area: woodwormData?.spray_floor_area || 0,
+        spray_timber_area: woodwormData?.spray_timber_area || 0,
+        paste_treatment_area: woodwormData?.paste_treatment_area || 0,
+      }
+    }
+
+    // Match photos to room — first try by room_id (includes new categories: room_id,
+    // defect_evidence, meter_reading), then fall back to step for recovered photos
+    // that have room_id = null. Legacy category names also accepted as fallback.
+    // Each photo is claimed at most once.
     let matchedPhotos = photos.filter(
       (p) => p.room_id === room.id && !assignedPhotoIds.has(p.id)
     )
     if (matchedPhotos.length === 0) {
       matchedPhotos = photos.filter(
-        (p) => p.step === 'room_inspection' && !assignedPhotoIds.has(p.id)
+        (p) =>
+          p.step === 'room_inspection' &&
+          !assignedPhotoIds.has(p.id) &&
+          [
+            'room_id',
+            'defect_evidence',
+            'meter_reading',
+            'damp_evidence',
+            'room_general',
+            'condensation_evidence',
+            'timber_evidence',
+            'woodworm_evidence',
+          ].includes(p.category || '')
       )
     }
     for (const p of matchedPhotos) assignedPhotoIds.add(p.id)
-    const roomPhotos = matchedPhotos.map((p) => p.id)
+
+    // Organise by category so the renderer can place them appropriately
+    roomData.room_id_photo =
+      matchedPhotos.find((p) => p.category === 'room_id')?.id || null
+    roomData.defect_photos = matchedPhotos
+      .filter((p) => p.category === 'defect_evidence')
+      .map((p) => p.id)
+    roomData.meter_photos = matchedPhotos
+      .filter((p) => p.category === 'meter_reading')
+      .map((p) => p.id)
+
+    // All room photo IDs go in sub_section.photos for backward-compatible URL resolution
+    const allRoomPhotoIds = matchedPhotos.map((p) => p.id)
 
     roomSubSections.push(
       buildSection(
@@ -331,13 +425,8 @@ export async function generateReport(
         'findings' as ReportSectionType,
         'survey_data',
         roomContent,
-        {
-          room_name: room.name,
-          floor_level: formatFloorLevel(room.floor_level),
-          issues: room.issues_identified,
-          walls: walls,
-        },
-        roomPhotos
+        roomData,
+        allRoomPhotoIds
       )
     )
 
@@ -353,6 +442,33 @@ export async function generateReport(
       for (const w of walls) {
         contextLines.push(
           `- ${w.wall_position}: ${w.treatment_area_length}m × ${w.treatment_area_height}m (${w.treatment_area_m2}m²), Treatment: ${w.treatment_type}`
+        )
+      }
+    }
+    // Condensation context
+    if (room.issues_identified.includes('condensation')) {
+      const condData = room.room_data?.condensation as CondensationRoomData | undefined
+      if (condData) {
+        contextLines.push(
+          `Condensation: ${condData.black_mould_present ? 'Black mould present' : 'No mould'}, ventilation ${condData.ventilation_adequate ? 'adequate' : 'inadequate'}`
+        )
+      }
+    }
+    // Timber context
+    if (room.issues_identified.includes('timber_decay')) {
+      const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
+      if (timberData) {
+        contextLines.push(
+          `Timber: ${timberData.fungal_findings?.join(', ') || 'No fungal findings'}, floor condition: ${timberData.floor_condition || 'not assessed'}`
+        )
+      }
+    }
+    // Woodworm context
+    if (room.issues_identified.includes('woodworm')) {
+      const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
+      if (woodwormData) {
+        contextLines.push(
+          `Woodworm: ${woodwormData.species_identified || 'Species unidentified'}, severity: ${woodwormData.severity || 'not assessed'}`
         )
       }
     }
@@ -1035,6 +1151,30 @@ export async function regenerateSection(
         const area = length * height
         lines.push(
           `- ${wall.name || 'Wall'}: ${length}m × ${height}m (${area.toFixed(1)}m²), Treatment: ${getTreatmentLabel(treatmentCode)}`
+        )
+      }
+    }
+    if (room.issues_identified.includes('condensation')) {
+      const condData = room.room_data?.condensation as CondensationRoomData | undefined
+      if (condData) {
+        lines.push(
+          `Condensation: ${condData.black_mould_present ? 'Black mould present' : 'No mould'}, ventilation ${condData.ventilation_adequate ? 'adequate' : 'inadequate'}`
+        )
+      }
+    }
+    if (room.issues_identified.includes('timber_decay')) {
+      const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
+      if (timberData) {
+        lines.push(
+          `Timber: ${timberData.fungal_findings?.join(', ') || 'No fungal findings'}, floor condition: ${timberData.floor_condition || 'not assessed'}`
+        )
+      }
+    }
+    if (room.issues_identified.includes('woodworm')) {
+      const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
+      if (woodwormData) {
+        lines.push(
+          `Woodworm: ${woodwormData.species_identified || 'Species unidentified'}, severity: ${woodwormData.severity || 'not assessed'}`
         )
       }
     }
