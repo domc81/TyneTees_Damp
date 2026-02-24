@@ -654,6 +654,7 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
                 <CondensationFields
                   data={selectedRoom.room_data.condensation || {}}
                   onChange={(data) => handleRoomDataChange('condensation', data)}
+                  rhReading={selectedRoom.room_data.rh_reading}
                 />
               )}
 

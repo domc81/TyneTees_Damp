@@ -1,14 +1,24 @@
 'use client'
 
+import { useEffect } from 'react'
 import { CondensationRoomData, MouldSeverity } from '@/types/survey-wizard.types'
 import { Wind, Droplet, Fan, AlertCircle } from 'lucide-react'
 
 interface CondensationFieldsProps {
   data: Partial<CondensationRoomData>
   onChange: (data: Partial<CondensationRoomData>) => void
+  rhReading?: number | null
 }
 
-export default function CondensationFields({ data, onChange }: CondensationFieldsProps) {
+export default function CondensationFields({ data, onChange, rhReading }: CondensationFieldsProps) {
+  // Auto-fill humidity_reading from room-level RH when empty
+  useEffect(() => {
+    if (rhReading != null && data.humidity_reading == null) {
+      onChange({ ...data, humidity_reading: rhReading })
+    }
+    // Only trigger on mount or when rhReading changes — not on every data change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rhReading])
   const handleChange = (field: keyof CondensationRoomData, value: any) => {
     onChange({ ...data, [field]: value })
   }
