@@ -191,10 +191,10 @@ export default function ReviewStep({ wizardData, rooms }: ReviewStepProps) {
               <p className="text-white font-medium">{wizardData.site_details.approx_build_year}</p>
             </div>
           </div>
-          {wizardData.site_details.reported_defect && (
+          {wizardData.reported_defect && (
             <div className="mt-4 pt-4 border-t border-white/10">
-              <span className="text-sm text-white/50">Reported Defect</span>
-              <p className="text-white mt-1">{wizardData.site_details.reported_defect}</p>
+              <span className="text-sm text-white/50">Reported Defect (from booking)</span>
+              <p className="text-white mt-1">{wizardData.reported_defect}</p>
             </div>
           )}
         </div>

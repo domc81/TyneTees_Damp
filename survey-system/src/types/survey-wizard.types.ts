@@ -13,6 +13,7 @@ export interface SurveyWizardData {
   site_details?: SiteDetails
   external_inspection?: ExternalInspection
   additional_works?: AdditionalWorks
+  reported_defect?: string // Captured at booking time — what the customer described
   wizard_step: number
   wizard_completed: boolean
 }
@@ -28,7 +29,6 @@ export interface SiteDetails {
   property_type: PropertyType
   construction_type: ConstructionType
   approx_build_year: string // e.g., "1920s", "1950-1960", "2000+"
-  reported_defect: string // Free text description
 }
 
 export type WeatherCondition =

@@ -162,8 +162,7 @@ export default function SurveyWizardPage() {
           wizardData.site_details?.weather_conditions &&
           wizardData.site_details?.temperature_c !== undefined &&
           wizardData.site_details?.property_type &&
-          wizardData.site_details?.construction_type &&
-          wizardData.site_details?.reported_defect
+          wizardData.site_details?.construction_type
         )
       case 1: // External Inspection
         return wizardData.external_inspection?.building_defects_found !== undefined

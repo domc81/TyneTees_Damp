@@ -507,6 +507,7 @@ export async function createSurveyFromForm(data: {
   weather_conditions?: string
   survey_date?: string
   notes?: string
+  reported_defect?: string
 }): Promise<Project | null> {
   const supabase = getSupabase()
   if (!supabase) return null
@@ -534,6 +535,12 @@ export async function createSurveyFromForm(data: {
     }
   }
 
+  // Store reported_defect in survey_data JSONB at the top level
+  const surveyData: Record<string, unknown> = {}
+  if (data.reported_defect) {
+    surveyData.reported_defect = data.reported_defect
+  }
+
   const { data: project, error } = await supabase
     .from('surveys')
     .insert({
@@ -550,6 +557,7 @@ export async function createSurveyFromForm(data: {
       survey_date: data.survey_date || null,
       notes: data.notes || null,
       project_number: projectNumber,
+      survey_data: surveyData,
     })
     .select()
     .single()

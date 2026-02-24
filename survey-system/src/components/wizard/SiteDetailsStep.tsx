@@ -7,7 +7,7 @@ import {
   PROPERTY_TYPES,
   CONSTRUCTION_TYPES,
 } from '@/types/survey-wizard.types'
-import { Calendar, Cloud, Thermometer, Home, Hammer, Clock, FileText, Camera } from 'lucide-react'
+import { Calendar, Cloud, Thermometer, Home, Hammer, Clock, Camera } from 'lucide-react'
 import PhotoCapture from './PhotoCapture'
 import { filterPhotos } from '@/lib/survey-photo-service'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
@@ -30,40 +30,29 @@ export default function SiteDetailsStep({ data, onChange, surveyId, photos, onPh
 
   return (
     <div className="space-y-6">
-      {/* Property Photos */}
+      {/* Property Photo */}
       <div className="glass-card p-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="p-2 rounded-lg bg-brand-500/20">
             <Camera className="w-5 h-5 text-brand-300" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Property Photos</h3>
-            <p className="text-sm text-white/60">Street view and property exterior</p>
+            <h3 className="text-lg font-semibold text-white">Property Photo</h3>
+            <p className="text-sm text-white/60">Front elevation of the property from the street</p>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <PhotoCapture
-            surveyId={surveyId}
-            step="site_details"
-            category="street_view"
-            label="Street View"
-            required={true}
-            maxPhotos={3}
-            existingPhotos={filterPhotos(sitePhotos, { category: 'street_view' })}
-            onPhotosChange={onPhotosChange}
-          />
-
-          <PhotoCapture
-            surveyId={surveyId}
-            step="site_details"
-            category="property_front"
-            label="Property Front"
-            maxPhotos={3}
-            existingPhotos={filterPhotos(sitePhotos, { category: 'property_front' })}
-            onPhotosChange={onPhotosChange}
-          />
-        </div>
+        <PhotoCapture
+          surveyId={surveyId}
+          step="site_details"
+          category="street_view"
+          label="Street View"
+          required={true}
+          maxPhotos={1}
+          existingPhotos={filterPhotos(sitePhotos, { category: 'street_view' })}
+          onPhotosChange={onPhotosChange}
+          autoDescription="Front elevation — street view"
+        />
       </div>
 
       {/* Inspection Information */}
@@ -212,36 +201,6 @@ export default function SiteDetailsStep({ data, onChange, surveyId, photos, onPh
               Enter an approximate era or range (e.g., "1920s", "1950-1960", "Pre-1900")
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* Reported Defect */}
-      <div className="glass-card p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-2 rounded-lg bg-brand-500/20">
-            <FileText className="w-5 h-5 text-brand-300" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">Reported Defect</h3>
-            <p className="text-sm text-white/60">Client's description of the problem</p>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            Defect Description *
-          </label>
-          <textarea
-            value={data.reported_defect || ''}
-            onChange={(e) => handleChange('reported_defect', e.target.value)}
-            className="input-field min-h-[120px] resize-y"
-            placeholder="Describe the defect as reported by the client..."
-            rows={5}
-            required
-          />
-          <p className="mt-1.5 text-sm text-white/50">
-            Enter the client's description of the issue they're experiencing
-          </p>
         </div>
       </div>
 

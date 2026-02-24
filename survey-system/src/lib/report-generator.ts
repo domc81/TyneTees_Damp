@@ -536,6 +536,10 @@ export async function generateReport(
     : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
 
   // 4. BUILD SECTIONS
+  const surveyorName = surveyor
+    ? `${surveyor.first_name} ${surveyor.last_name}`
+    : 'Surveyor details to be confirmed'
+
   const sections: ReportSection[] = []
 
   // --- COVER ---
@@ -574,7 +578,7 @@ export async function generateReport(
       'The Survey',
       'boilerplate',
       'template',
-      buildSurveyContextText(sd?.reported_defect || '')
+      buildSurveyContextText(wizardData.reported_defect || (sd as any)?.reported_defect || '')
     )
   )
 
@@ -1007,10 +1011,6 @@ export async function generateReport(
   )
 
   // --- SURVEYOR PROFILE ---
-  const surveyorName = surveyor
-    ? `${surveyor.first_name} ${surveyor.last_name}`
-    : 'Surveyor details to be confirmed'
-
   sections.push(
     buildSection(
       'surveyor_profile',
