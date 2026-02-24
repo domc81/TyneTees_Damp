@@ -1,0 +1,70 @@
+/* =============================================================================
+   Public Report Page — Custom styles
+   Print rules + keyboard focus for lightbox photo triggers
+   ============================================================================= */
+
+/* Keyboard focus ring for clickable photo figures */
+[data-lightbox-src]:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================= */
+
+@media print {
+  /* Hide interactive chrome */
+  .report-header-bar,
+  .report-footer-bar,
+  .report-download-btn {
+    display: none !important;
+  }
+
+  /* Clean background */
+  body {
+    font-size: 11pt;
+    color: #000;
+    background: #fff !important;
+  }
+
+  /* Prevent sections splitting across pages */
+  .report-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Force page breaks before major sections */
+  [data-section='property'],
+  [data-section='external_inspection'],
+  [data-section='room_findings'],
+  [data-section='scope_of_works'],
+  [data-section='surveyor_profile'] {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Images */
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+
+  /* Tables */
+  table {
+    page-break-inside: avoid;
+  }
+
+  /* Strip link decoration */
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  /* Hide sticky header + footer on print */
+  header,
+  footer {
+    display: none !important;
+  }
+}
