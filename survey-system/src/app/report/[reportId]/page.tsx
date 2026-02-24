@@ -172,6 +172,25 @@ function resolvePhotoUrls(
   return urls
 }
 
+/** Build a photoId → description map from survey_data.photos metadata. */
+function resolvePhotoCaptions(
+  photoIds: string[],
+  surveyData: Record<string, unknown> | null
+): Record<string, string> {
+  if (photoIds.length === 0) return {}
+
+  const allPhotos =
+    (surveyData?.photos as Array<{ id: string; description?: string }>) ?? []
+  const captionMap = new Map(allPhotos.map((p) => [p.id, p.description]))
+
+  const captions: Record<string, string> = {}
+  for (const id of photoIds) {
+    const caption = captionMap.get(id)
+    if (caption) captions[id] = caption
+  }
+  return captions
+}
+
 // =============================================================================
 // Error page — no auth, no data
 // =============================================================================
@@ -223,7 +242,8 @@ function InvalidReportPage() {
 
 function renderSection(
   section: ReportSection,
-  photoUrls: Record<string, string>
+  photoUrls: Record<string, string>,
+  photoCaptions: Record<string, string>
 ) {
   if (isSectionEmpty(section)) return null
 
@@ -271,6 +291,7 @@ function renderSection(
           key={section.key}
           section={section}
           photoUrls={photoUrls}
+          photoCaptions={photoCaptions}
         />
       )
 
@@ -396,7 +417,9 @@ export default async function PublicReportPage({
   // Resolve photos from survey_data.photos (not the legacy photos table)
   const sections = (report.sections || []) as ReportSection[]
   const photoIds = collectPhotoIds(sections)
-  const photoUrls = resolvePhotoUrls(supabase, photoIds, survey.survey_data as Record<string, unknown> | null)
+  const surveyDataRecord = survey.survey_data as Record<string, unknown> | null
+  const photoUrls = resolvePhotoUrls(supabase, photoIds, surveyDataRecord)
+  const photoCaptions = resolvePhotoCaptions(photoIds, surveyDataRecord)
 
   // Split cover from body sections
   const coverSection = sections.find((s) => s.key === 'cover')
@@ -430,7 +453,7 @@ export default async function PublicReportPage({
       <main>
         <div className="mx-auto max-w-[800px] px-4 sm:px-6">
           {contentSections.map((section) =>
-            renderSection(section, photoUrls)
+            renderSection(section, photoUrls, photoCaptions)
           )}
         </div>
       </main>

@@ -103,7 +103,9 @@ export function CoverSection({ section, surveyType, company }: CoverSectionProps
               )}
               <div>
                 <dt className="text-xs text-[#9CA3AF] mb-0.5">Prepared By</dt>
-                <dd className="text-sm text-[#374151]">{company.name}</dd>
+                <dd className="text-sm text-[#374151]">
+                  {(data.prepared_by as string | undefined) || company.name}
+                </dd>
               </div>
             </dl>
           </div>

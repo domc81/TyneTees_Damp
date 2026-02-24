@@ -13,6 +13,8 @@ import { PhotoGrid } from './PhotoGrid'
 interface RoomFindingsSectionProps {
   section: ReportSection
   photoUrls: Record<string, string>
+  /** Map of photoId → description text used as captions under defect evidence photos */
+  photoCaptions?: Record<string, string>
 }
 
 // ─── Local data-shape interfaces (mirror report-generator roomData output) ────
@@ -106,6 +108,7 @@ const tdBold = 'px-3 py-2.5 font-medium text-[#1F2937]'
 export function RoomFindingsSection({
   section,
   photoUrls,
+  photoCaptions = {},
 }: RoomFindingsSectionProps) {
   const roomSections = section.sub_sections?.filter(
     (sub) => !isSectionEmpty(sub)
@@ -200,7 +203,7 @@ export function RoomFindingsSection({
                           loading="lazy"
                         />
                         <figcaption className="px-2 py-1 text-[10px] text-[#9CA3AF] bg-white border-t border-[#E5E7EB] text-center">
-                          Room ID
+                          {(data.room_name as string | undefined) || 'Room ID'}
                         </figcaption>
                       </figure>
                     </div>
@@ -504,7 +507,11 @@ export function RoomFindingsSection({
                 {defectPhotos.length > 0 && (
                   <div>
                     <p className={subHeading}>Defect Evidence</p>
-                    <PhotoGrid photoIds={defectPhotos} photoUrls={photoUrls} />
+                    <PhotoGrid
+                      photoIds={defectPhotos}
+                      photoUrls={photoUrls}
+                      captions={photoCaptions}
+                    />
                   </div>
                 )}
 

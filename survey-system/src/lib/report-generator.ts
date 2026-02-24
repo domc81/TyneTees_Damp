@@ -552,6 +552,7 @@ export async function generateReport(
       inspection_date: sd?.inspection_date || '',
       weather_conditions: sd?.weather_conditions || '',
       temperature_c: sd?.temperature_c || '',
+      prepared_by: surveyorName,
     })
   )
 
