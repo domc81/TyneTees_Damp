@@ -22,6 +22,10 @@ import {
   Image as ImageIcon,
   ChevronDown,
   ChevronUp,
+  Globe,
+  Copy,
+  ExternalLink,
+  Link2,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,6 +35,7 @@ import {
   updateReportSection,
   updateReportStatus,
 } from '@/lib/report-data'
+import { publishReport, unpublishReport } from '@/lib/report-publish'
 import { getPhotoUrl } from '@/lib/survey-photo-service'
 import type {
   SurveyReport,
@@ -68,6 +73,7 @@ const STATUS_COLORS: Record<ReportStatus, { bg: string; text: string; border: st
   generated: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-400/30' },
   reviewed: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-400/30' },
   finalised: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-400/30' },
+  published: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-400/30' },
 }
 
 // Content source badge colors
@@ -101,6 +107,8 @@ export default function ReportEditorPage() {
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false)
   const [showAllSections, setShowAllSections] = useState(false)
   const [standardSectionsExpanded, setStandardSectionsExpanded] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -302,6 +310,60 @@ export default function ReportEditorPage() {
     }
   }
 
+  // Publish report
+  async function handlePublish() {
+    if (!report) return
+
+    setIsPublishing(true)
+    try {
+      const token = await publishReport(report.id)
+      setReport({
+        ...report,
+        publish_token: token,
+        published_at: new Date().toISOString(),
+        status: 'published',
+      })
+    } catch (err) {
+      console.error('Error publishing report:', err)
+      alert('Failed to publish report. Please try again.')
+    } finally {
+      setIsPublishing(false)
+    }
+  }
+
+  // Unpublish report
+  async function handleUnpublish() {
+    if (!report) return
+
+    const confirmed = confirm(
+      'This will disable the customer link. Are you sure?'
+    )
+    if (!confirmed) return
+
+    try {
+      await unpublishReport(report.id)
+      setReport({
+        ...report,
+        publish_token: null,
+        published_at: null,
+        status: 'finalised',
+      })
+    } catch (err) {
+      console.error('Error unpublishing report:', err)
+      alert('Failed to unpublish report. Please try again.')
+    }
+  }
+
+  // Copy share link to clipboard
+  async function handleCopyLink() {
+    if (!report?.publish_token) return
+
+    const url = `${window.location.origin}/report/${report.id}?token=${report.publish_token}`
+    await navigator.clipboard.writeText(url)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
+  }
+
   // Scroll to section
   function scrollToSection(sectionKey: string) {
     const ref = sectionRefs.current[sectionKey]
@@ -413,6 +475,7 @@ export default function ReportEditorPage() {
               {report.status === 'generated' && <Sparkles className="w-4 h-4" />}
               {report.status === 'reviewed' && <Eye className="w-4 h-4" />}
               {report.status === 'finalised' && <CheckCircle className="w-4 h-4" />}
+              {report.status === 'published' && <Globe className="w-4 h-4" />}
               <span className="text-sm font-medium capitalize">{report.status}</span>
             </div>
 
@@ -514,6 +577,117 @@ export default function ReportEditorPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 space-y-6">
+            {/* Publish Section */}
+            {(report.status === 'reviewed' || report.status === 'finalised' || report.status === 'published') && (
+              <Card className="glass border-white/10 overflow-hidden">
+                <div className="px-6 py-5">
+                  {report.publish_token && report.status === 'published' ? (
+                    // Published state
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                            <Globe className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div>
+                            <span className="text-sm font-semibold text-emerald-400">Published</span>
+                            {report.published_at && (
+                              <p className="text-xs text-white/50">
+                                {new Date(report.published_at).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleUnpublish}
+                          className="text-sm text-red-400/70 hover:text-red-400 transition-colors border border-red-400/20 hover:border-red-400/40 rounded-lg px-3 py-1.5"
+                        >
+                          Unpublish
+                        </button>
+                      </div>
+
+                      {/* Shareable URL */}
+                      <div className="flex gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10">
+                          <Link2 className="w-4 h-4 text-white/40 flex-shrink-0" />
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/report/${report.id}?token=${report.publish_token}`}
+                            className="flex-1 bg-transparent text-sm text-white/80 outline-none truncate"
+                          />
+                        </div>
+                        <Button
+                          variant={copiedLink ? 'primary' : 'ghost'}
+                          size="sm"
+                          onClick={handleCopyLink}
+                          className="flex-shrink-0"
+                        >
+                          {copiedLink ? (
+                            <>
+                              <Check className="w-4 h-4 mr-1.5" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-1.5" />
+                              Copy Link
+                            </>
+                          )}
+                        </Button>
+                        <a
+                          href={`${typeof window !== 'undefined' ? window.location.origin : ''}/report/${report.id}?token=${report.publish_token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 border border-white/10 transition-colors flex-shrink-0"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span className="hidden sm:inline">Open</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    // Unpublished state
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                          <Globe className="w-4 h-4 text-white/40" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white/90">Share with customer</p>
+                          <p className="text-xs text-white/50">Generate a shareable link for your customer</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handlePublish}
+                        disabled={isPublishing}
+                      >
+                        {isPublishing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="w-4 h-4 mr-2" />
+                            Publish Report
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Reviewable Sections */}
             {report.sections
               .filter((section) => REVIEWABLE_SECTIONS.has(section.key))
