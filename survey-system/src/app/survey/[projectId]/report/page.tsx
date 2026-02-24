@@ -46,6 +46,7 @@ import { getSupabase } from '@/lib/supabase-client'
 
 // Section categories
 const REVIEWABLE_SECTIONS = new Set([
+  'property',
   'external_inspection',
   'dpc_findings',
   'sub_floor_ventilation',
@@ -60,7 +61,6 @@ const AUTOMATIC_SECTIONS = new Set([
   'cover',
   'about_us',
   'survey_context',
-  'property',
   'ancillary_items',
   'extent_of_survey',
   'payment_terms',

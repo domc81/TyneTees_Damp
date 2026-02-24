@@ -145,28 +145,27 @@ function collectPhotoIds(sections: ReportSection[]): string[] {
   return [...new Set(ids)]
 }
 
-async function resolvePhotoUrls(
+function resolvePhotoUrls(
   supabase: ReturnType<typeof createServiceClient>,
-  photoIds: string[]
-): Promise<Record<string, string>> {
+  photoIds: string[],
+  surveyData: Record<string, unknown> | null
+): Record<string, string> {
   if (photoIds.length === 0) return {}
 
-  const { data, error } = await supabase
-    .from('photos')
-    .select('id, storage_path')
-    .in('id', photoIds)
-
-  if (error || !data) return {}
+  // Photos live in survey_data.photos JSONB — not in the legacy photos table.
+  const allPhotos = (surveyData?.photos as Array<{ id: string; storage_path?: string }>) ?? []
+  const photoMap = new Map(allPhotos.map((p) => [p.id, p.storage_path]))
 
   const urls: Record<string, string> = {}
 
-  for (const photo of data) {
-    if (!photo.storage_path) continue
+  for (const id of photoIds) {
+    const storagePath = photoMap.get(id)
+    if (!storagePath) continue
     const { data: urlData } = supabase.storage
       .from('survey-photos')
-      .getPublicUrl(photo.storage_path)
+      .getPublicUrl(storagePath)
     if (urlData?.publicUrl) {
-      urls[photo.id] = urlData.publicUrl
+      urls[id] = urlData.publicUrl
     }
   }
 
@@ -350,10 +349,10 @@ export default async function PublicReportPage({
     return <InvalidReportPage />
   }
 
-  // Load survey
+  // Load survey (include survey_data for photo resolution)
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, survey_type, customer_id, surveyor_id')
+    .select('id, survey_type, customer_id, surveyor_id, survey_data')
     .eq('id', report.survey_id)
     .single()
 
@@ -394,10 +393,10 @@ export default async function PublicReportPage({
   // Suppress unused variable warning — surveyorData available if needed for extension
   void surveyorData
 
-  // Resolve photos
+  // Resolve photos from survey_data.photos (not the legacy photos table)
   const sections = (report.sections || []) as ReportSection[]
   const photoIds = collectPhotoIds(sections)
-  const photoUrls = await resolvePhotoUrls(supabase, photoIds)
+  const photoUrls = resolvePhotoUrls(supabase, photoIds, survey.survey_data as Record<string, unknown> | null)
 
   // Split cover from body sections
   const coverSection = sections.find((s) => s.key === 'cover')

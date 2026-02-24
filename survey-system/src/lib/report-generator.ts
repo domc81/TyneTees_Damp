@@ -244,6 +244,9 @@ export async function generateReport(
   //    Must run before section pushing so executive_summary LLM call has context.
   const roomSubSections: ReportSection[] = []
   const llmContextParts: string[] = []
+  // Track assigned photo IDs so each photo appears in at most one room section.
+  // Recovered photos have room_id = null, so they fall back to step-based matching.
+  const assignedPhotoIds = new Set<string>()
 
   for (const room of rooms) {
     if (!room.issues_identified || room.issues_identified.length === 0) continue
@@ -296,15 +299,18 @@ export async function generateReport(
       }
     }
 
-    // Match photos to room
-    const roomPhotos = photos
-      .filter(
-        (p) =>
-          p.room_id === room.id ||
-          p.category === 'room_inspection' ||
-          p.category === 'damp_evidence'
+    // Match photos to room — first try by room_id, then fall back to step for
+    // recovered photos that have room_id = null. Each photo is claimed at most once.
+    let matchedPhotos = photos.filter(
+      (p) => p.room_id === room.id && !assignedPhotoIds.has(p.id)
+    )
+    if (matchedPhotos.length === 0) {
+      matchedPhotos = photos.filter(
+        (p) => p.step === 'room_inspection' && !assignedPhotoIds.has(p.id)
       )
-      .map((p) => p.id)
+    }
+    for (const p of matchedPhotos) assignedPhotoIds.add(p.id)
+    const roomPhotos = matchedPhotos.map((p) => p.id)
 
     roomSubSections.push(
       buildSection(
