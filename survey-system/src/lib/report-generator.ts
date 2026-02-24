@@ -2,7 +2,7 @@
 // Report Generator — Direct, explicit section builder
 // No templates, no condition engine, no field aliasing.
 // Each section is built with clear field mappings.
-// LLM used only for surveyor_comments summary.
+// LLM used only for executive_summary.
 // =============================================================================
 
 import type {
@@ -12,10 +12,6 @@ import type {
   ContentSource,
   ReportSectionType,
 } from '@/types/survey-report.types'
-import type {
-  SurveyWizardData,
-  SurveyRoomRow,
-} from '@/types/survey-wizard.types'
 import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
 import { loadWizardData } from './survey-wizard-data'
 import { loadSurveyPhotos } from './survey-photo-service'
@@ -101,6 +97,9 @@ Our findings relate to conditions evident at the time of inspection. We are not 
 const PAYMENT_TEXT = `An initial payment of 30% of the contract value is required before works commence. This covers the cost of ordering materials specific to your project and securing a date in our installation schedule.
 
 The remaining balance is due within 7 days of completion.`
+
+const GUARANTEE_PARAGRAPH =
+  'All treatment works carried out by Tyne Tees Damp Proofing Ltd are covered by our 25-year insurance-backed guarantee, issued through the Westminster Protected Guarantee scheme. This guarantee covers both materials and labour, operates independently of the contractor, and is fully transferable to future property owners — providing genuine long-term protection for your investment.'
 
 // =============================================================================
 // Helper Functions
@@ -212,9 +211,10 @@ export async function generateReport(
   }
 
   // Fallback surveyor from wizard data
-  if (!surveyor && sd?.surveyor_name) {
+  const sdAny = sd as any
+  if (!surveyor && sdAny?.surveyor_name) {
     surveyor = {
-      first_name: sd.surveyor_name,
+      first_name: sdAny.surveyor_name,
       last_name: '',
       qualifications: null,
       job_title: 'Surveyor',
@@ -240,7 +240,168 @@ export async function generateReport(
   const template = await loadDefaultTemplate(surveyType)
   const templateId = template?.id || 'no-template'
 
-  // 2. BUILD SECTIONS
+  // 2. RUN ROOMS LOOP EARLY — builds roomSubSections + llmContextParts
+  //    Must run before section pushing so executive_summary LLM call has context.
+  const roomSubSections: ReportSection[] = []
+  const llmContextParts: string[] = []
+
+  for (const room of rooms) {
+    if (!room.issues_identified || room.issues_identified.length === 0) continue
+
+    const dampData = room.room_data?.damp as any
+    const roomTitle = `${room.name} — ${formatFloorLevel(room.floor_level)}`
+
+    // Use surveyor's observation text if available
+    let roomContent = room.findings || ''
+    if (!roomContent && dampData) {
+      roomContent = `Inspection of this room identified ${room.issues_identified.join(', ')} issues requiring attention.`
+    }
+    if (!roomContent) {
+      roomContent = `${room.issues_identified.join(', ')} issues identified.`
+    }
+
+    // Build wall table data (for damp rooms)
+    const walls: any[] = []
+    if (dampData?.walls && Array.isArray(dampData.walls)) {
+      const treatmentCode = dampData.wall_treatment
+      for (const wall of dampData.walls) {
+        const length = wall.length || 0
+        const height = wall.height || 0
+        const area = length * height
+
+        const wallEntry: any = {
+          wall_position: wall.name || wall.wall_position || 'Wall',
+          treatment_area_length: length.toString(),
+          treatment_area_height: height.toString(),
+          treatment_area_m2: area > 0 ? area.toFixed(1) : '0',
+          treatment_type: getTreatmentLabel(treatmentCode),
+        }
+
+        // Handle moisture readings (array of MoistureReading objects)
+        if (
+          wall.moisture_readings &&
+          Array.isArray(wall.moisture_readings) &&
+          wall.moisture_readings.length > 0
+        ) {
+          const readings = wall.moisture_readings.map((r: any) =>
+            typeof r === 'number' ? r : r.reading || 0
+          )
+          const maxReading = Math.max(...readings)
+          if (maxReading > 0) {
+            wallEntry.moisture_reading = `${maxReading}% W/W`
+          }
+        }
+
+        walls.push(wallEntry)
+      }
+    }
+
+    // Match photos to room
+    const roomPhotos = photos
+      .filter(
+        (p) =>
+          p.room_id === room.id ||
+          p.category === 'room_inspection' ||
+          p.category === 'damp_evidence'
+      )
+      .map((p) => p.id)
+
+    roomSubSections.push(
+      buildSection(
+        `room_${room.id}`,
+        roomTitle,
+        'findings' as ReportSectionType,
+        'survey_data',
+        roomContent,
+        {
+          room_name: room.name,
+          floor_level: formatFloorLevel(room.floor_level),
+          issues: room.issues_identified,
+          walls: walls,
+        },
+        roomPhotos
+      )
+    )
+
+    // Build context for executive summary LLM call
+    const contextLines = [
+      `Room: ${room.name} (${formatFloorLevel(room.floor_level)})`,
+      `Issues: ${room.issues_identified.join(', ')}`,
+    ]
+    if (room.findings) {
+      contextLines.push(`Surveyor observation: ${room.findings}`)
+    }
+    if (walls.length > 0) {
+      for (const w of walls) {
+        contextLines.push(
+          `- ${w.wall_position}: ${w.treatment_area_length}m × ${w.treatment_area_height}m (${w.treatment_area_m2}m²), Treatment: ${w.treatment_type}`
+        )
+      }
+    }
+    llmContextParts.push(contextLines.join('\n'))
+  }
+
+  // 3. BUILD LLM CONTEXT AND CALL FOR EXECUTIVE SUMMARY
+  const llmContext = [
+    `Property: ${sd?.property_type || 'Unknown'}, ${sd?.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd?.approx_build_year || 'unknown year'}.`,
+    `Total rooms inspected: ${rooms.filter((r) => r.issues_identified?.length).length}`,
+    `Total affected rooms: ${dampRooms.length} with damp, ${condensationRooms.length} with condensation, ${timberRooms.length} with timber decay, ${woodwormRooms.length} with woodworm.`,
+    '',
+    'Room-by-room findings:',
+    ...llmContextParts,
+    '',
+    ext?.building_defects_found
+      ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
+      : 'No external defects noted.',
+    ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
+    ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  let execSummaryLlmText = ''
+  if (llmContextParts.length > 0) {
+    try {
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const response = await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surveyId,
+          sections: [
+            {
+              key: 'executive_summary',
+              prompt:
+                'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist.',
+              context: llmContext,
+            },
+          ],
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const generated = result.sections as Array<{
+          key: string
+          content: string
+          error?: string
+        }>
+        const match = generated?.find((s) => s.key === 'executive_summary')
+        if (match && !match.error) {
+          execSummaryLlmText = match.content
+        }
+      }
+    } catch (err) {
+      console.error('LLM call failed for executive summary:', err)
+    }
+  }
+
+  const execSummaryContent = execSummaryLlmText
+    ? execSummaryLlmText + '\n\n' + GUARANTEE_PARAGRAPH
+    : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
+
+  // 4. BUILD SECTIONS
   const sections: ReportSection[] = []
 
   // --- COVER ---
@@ -305,20 +466,31 @@ export async function generateReport(
     )
   )
 
+  // --- EXECUTIVE SUMMARY ---
+  sections.push(
+    buildSection(
+      'executive_summary',
+      'Executive Summary',
+      'findings',
+      'llm_generated',
+      execSummaryContent
+    )
+  )
+
   // --- EXTERNAL INSPECTION ---
   const extSubSections: ReportSection[] = []
   let extContent = ''
 
   if (ext) {
     if (ext.building_defects_found && ext.building_defects?.length > 0) {
-      const defectLabels = ext.building_defects.map((d) => getDefectLabel(d))
+      const defectLabels = ext.building_defects.map((d: string) => getDefectLabel(d))
       extSubSections.push(
         buildSection(
           'building_defects',
           'Building Defects',
           'findings',
           'survey_data',
-          `We noted the following building defects:\n\n${defectLabels.map((d) => ` - ${d}`).join('\n')}`
+          `We noted the following building defects:\n\n${defectLabels.map((d: string) => ` - ${d}`).join('\n')}`
         )
       )
     } else {
@@ -453,105 +625,6 @@ export async function generateReport(
   )
 
   // --- INTERNAL INSPECTION / ROOM FINDINGS ---
-  const roomSubSections: ReportSection[] = []
-  const llmContextParts: string[] = []
-
-  for (const room of rooms) {
-    if (!room.issues_identified || room.issues_identified.length === 0) continue
-
-    const dampData = room.room_data?.damp as any
-    const roomTitle = `${room.name} — ${formatFloorLevel(room.floor_level)}`
-
-    // Use surveyor's observation text if available
-    let roomContent = room.findings || ''
-    if (!roomContent && dampData) {
-      roomContent = `Inspection of this room identified ${room.issues_identified.join(', ')} issues requiring attention.`
-    }
-    if (!roomContent) {
-      roomContent = `${room.issues_identified.join(', ')} issues identified.`
-    }
-
-    // Build wall table data (for damp rooms)
-    const walls: any[] = []
-    if (dampData?.walls && Array.isArray(dampData.walls)) {
-      const treatmentCode = dampData.wall_treatment
-      for (const wall of dampData.walls) {
-        const length = wall.length || 0
-        const height = wall.height || 0
-        const area = length * height
-
-        const wallEntry: any = {
-          wall_position: wall.name || wall.wall_position || 'Wall',
-          treatment_area_length: length.toString(),
-          treatment_area_height: height.toString(),
-          treatment_area_m2: area > 0 ? area.toFixed(1) : '0',
-          treatment_type: getTreatmentLabel(treatmentCode),
-        }
-
-        // Handle moisture readings (array of MoistureReading objects)
-        if (
-          wall.moisture_readings &&
-          Array.isArray(wall.moisture_readings) &&
-          wall.moisture_readings.length > 0
-        ) {
-          const readings = wall.moisture_readings.map((r: any) =>
-            typeof r === 'number' ? r : r.reading || 0
-          )
-          const maxReading = Math.max(...readings)
-          if (maxReading > 0) {
-            wallEntry.moisture_reading = `${maxReading}% W/W`
-          }
-        }
-
-        walls.push(wallEntry)
-      }
-    }
-
-    // Match photos to room
-    const roomPhotos = photos
-      .filter(
-        (p) =>
-          p.room_id === room.id ||
-          p.category === 'room_inspection' ||
-          p.category === 'damp_evidence'
-      )
-      .map((p) => p.id)
-
-    roomSubSections.push(
-      buildSection(
-        `room_${room.id}`,
-        roomTitle,
-        'findings' as ReportSectionType,
-        'survey_data',
-        roomContent,
-        {
-          room_name: room.name,
-          floor_level: formatFloorLevel(room.floor_level),
-          issues: room.issues_identified,
-          walls: walls,
-        },
-        roomPhotos
-      )
-    )
-
-    // Build context for surveyor summary LLM call
-    const contextLines = [
-      `Room: ${room.name} (${formatFloorLevel(room.floor_level)})`,
-      `Issues: ${room.issues_identified.join(', ')}`,
-    ]
-    if (room.findings) {
-      contextLines.push(`Surveyor observation: ${room.findings}`)
-    }
-    if (walls.length > 0) {
-      for (const w of walls) {
-        contextLines.push(
-          `- ${w.wall_position}: ${w.treatment_area_length}m × ${w.treatment_area_height}m (${w.treatment_area_m2}m²), Treatment: ${w.treatment_type}`
-        )
-      }
-    }
-    llmContextParts.push(contextLines.join('\n'))
-  }
-
   // The non-destructive note is hardcoded in the PDF renderer,
   // but we need non-empty content to pass the isSectionEmpty filter
   const roomFindingsContent =
@@ -572,133 +645,116 @@ export async function generateReport(
     )
   )
 
-  // --- SUMMARY OF PROPOSED WORKS ---
-  const worksSummary: any[] = []
+  // --- SCOPE OF PROPOSED WORKS ---
+  // Builds a detailed, numbered schedule of all works per room and property-wide.
+  let scopeItemNumber = 1
+  const roomWorks: any[] = []
+  let totalAffectedArea = 0
+  let hasStripOut = false
+
   for (const room of rooms) {
     if (!room.issues_identified?.includes('damp')) continue
     const dampData = room.room_data?.damp as any
-    if (!dampData?.walls) continue
+    if (!dampData?.walls || dampData.walls.length === 0) continue
 
     const treatmentCode = dampData.wall_treatment
-    let totalArea = 0
+
+    // Calculate totals for this room
+    let roomTotalArea = 0
+    let roomTotalLength = 0
     for (const wall of dampData.walls) {
-      totalArea += (wall.length || 0) * (wall.height || 0)
+      roomTotalArea += (wall.length || 0) * (wall.height || 0)
+      roomTotalLength += wall.length || 0
+    }
+    totalAffectedArea += roomTotalArea
+    hasStripOut = true
+
+    const areaStr = `${roomTotalArea.toFixed(1)}m²`
+    const lengthStr = `${roomTotalLength.toFixed(1)} linear metres`
+
+    const items: any[] = []
+
+    if (treatmentCode === 'membrane') {
+      items.push({ number: scopeItemNumber++, description: 'Remove existing plaster to affected walls', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Remove skirting boards to affected areas', urgency: 'high', length: lengthStr })
+      items.push({ number: scopeItemNumber++, description: 'Install cavity drain membrane system to affected walls', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Fix new plasterboard to membrane and apply multi-finish skim plaster', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
+    } else if (treatmentCode === 'injection') {
+      items.push({ number: scopeItemNumber++, description: 'Strip existing plaster to affected area', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Injection of chemical damp proof course to mortar course at 150mm above external ground level', urgency: 'high', length: lengthStr })
+      items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to treated walls', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
+    } else if (treatmentCode === 'tanking') {
+      items.push({ number: scopeItemNumber++, description: 'Prepare substrate — remove existing plaster finishes to affected walls', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Apply cementitious tanking system to affected walls', urgency: 'high', area: areaStr })
+      items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to tanked surface', urgency: 'high', area: areaStr })
+    } else {
+      // Fallback for unrecognised treatment code
+      items.push({ number: scopeItemNumber++, description: `Apply ${getTreatmentLabel(treatmentCode)} to affected walls`, urgency: 'high', area: areaStr })
     }
 
-    worksSummary.push({
-      room_name: room.name,
-      floor_level: formatFloorLevel(room.floor_level),
-      issue: 'Rising damp',
-      treatment: getTreatmentLabel(treatmentCode),
-      total_area: `${totalArea.toFixed(1)}m²`,
-    })
-
-    if (room.issues_identified?.includes('condensation')) {
-      worksSummary.push({
+    if (items.length > 0) {
+      roomWorks.push({
         room_name: room.name,
         floor_level: formatFloorLevel(room.floor_level),
-        issue: 'Condensation',
-        treatment: 'Ventilation improvement',
-        total_area: '—',
+        items,
       })
     }
   }
 
-  const additionalWorks: string[] = []
+  // Additional works — property-wide
+  const scopeAdditionalWorks: any[] = []
+
+  if (hasDpcRequired) {
+    const totalDpcLen = dampRooms.reduce((sum, r) => {
+      const dampData = r.room_data?.damp as any
+      return sum + (dampData?.dpc_wall_length || 0)
+    }, 0)
+    scopeAdditionalWorks.push({
+      number: scopeItemNumber++,
+      description: 'Injection of chemical damp proof course to mortar bed at 150mm above external ground level',
+      urgency: 'high',
+      length: totalDpcLen > 0 ? `${totalDpcLen.toFixed(1)} linear metres` : undefined,
+    })
+  }
+
+  if (hasStripOut) {
+    scopeAdditionalWorks.push({
+      number: scopeItemNumber++,
+      description: 'Disposal of waste materials via licensed skip hire and transfer to licensed waste carrier',
+      urgency: 'high',
+    })
+  }
+
   if (aw?.piv_count && aw.piv_count > 0) {
-    additionalWorks.push(
-      `Installation of ${aw.piv_count} PIV unit(s) for ventilation`
-    )
+    scopeAdditionalWorks.push({
+      number: scopeItemNumber++,
+      description: `Installation of ${aw.piv_count} positive input ventilation (PIV) unit(s) to improve air quality and reduce condensation risk`,
+      urgency: 'medium',
+    })
   }
+
   if (totalAirbricks > 0) {
-    additionalWorks.push(`Installation of ${totalAirbricks} airbrick(s)`)
-  }
-  if (dampRooms.length > 0) {
-    additionalWorks.push('Multi-finish plaster skim to treated walls')
-    additionalWorks.push('Disposal of waste materials')
+    scopeAdditionalWorks.push({
+      number: scopeItemNumber++,
+      description: `Installation of ${totalAirbricks} airbrick(s) to improve sub-floor ventilation`,
+      urgency: 'medium',
+    })
   }
 
   sections.push(
     buildSection(
-      'summary_of_works',
-      'Summary of Proposed Works',
+      'scope_of_works',
+      'Scope of Proposed Works',
       'data',
       'survey_data',
-      'Based on our inspection, we propose the following remedial works:',
+      'The following schedule of works has been specified based on our survey findings. Works are listed by location and treatment sequence.',
       {
-        rooms: worksSummary,
-        additional_works: additionalWorks,
+        room_works: roomWorks,
+        additional_works: scopeAdditionalWorks,
+        total_affected_area: `${totalAffectedArea.toFixed(1)}m²`,
       }
-    )
-  )
-
-  // --- SURVEYOR COMMENTS (LLM generated) ---
-  let surveyorComments = ''
-  if (llmContextParts.length > 0) {
-    const llmContext = [
-      `Property: ${sd?.property_type || 'Unknown'}, ${sd?.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd?.approx_build_year || 'unknown year'}.`,
-      `Total rooms inspected: ${rooms.filter((r) => r.issues_identified?.length).length}`,
-      `Total affected rooms: ${dampRooms.length} with damp, ${condensationRooms.length} with condensation, ${timberRooms.length} with timber decay, ${woodwormRooms.length} with woodworm.`,
-      '',
-      'Room-by-room findings:',
-      ...llmContextParts,
-      '',
-      ext?.building_defects_found
-        ? `External defects: ${ext.building_defects.map((d) => getDefectLabel(d)).join(', ')}`
-        : 'No external defects noted.',
-      ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
-      ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
-    ]
-      .filter(Boolean)
-      .join('\n')
-
-    try {
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const response = await fetch(`${siteUrl}/api/generate-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          surveyId,
-          sections: [
-            {
-              key: 'surveyor_comments',
-              prompt:
-                'Write 2-3 paragraphs summarising the overall survey findings. Reference specific rooms, measurements and treatments by name. State the most urgent priorities. State what treatment works have been specified — do NOT suggest the customer consider options. Be specific and authoritative.',
-              context: llmContext,
-            },
-          ],
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        const generated = result.sections as Array<{
-          key: string
-          content: string
-          error?: string
-        }>
-        const match = generated?.find((s) => s.key === 'surveyor_comments')
-        if (match && !match.error) {
-          surveyorComments = match.content
-        }
-      }
-    } catch (err) {
-      console.error('LLM call failed for surveyor comments:', err)
-    }
-  }
-
-  if (!surveyorComments) {
-    surveyorComments = 'Surveyor comments to be added during review.'
-  }
-
-  sections.push(
-    buildSection(
-      'surveyor_comments',
-      'Surveyor Comments',
-      'findings',
-      'llm_generated',
-      surveyorComments
     )
   )
 
@@ -772,7 +828,7 @@ export async function generateReport(
     )
   )
 
-  // 3. SAVE REPORT TO DATABASE
+  // 5. SAVE REPORT TO DATABASE
   const reportId = crypto.randomUUID()
   const report: SurveyReport = {
     id: reportId,
@@ -806,7 +862,7 @@ export async function generateReport(
 }
 
 // =============================================================================
-// Regenerate Section — Re-runs LLM for surveyor_comments
+// Regenerate Section — Re-runs LLM for executive_summary
 // =============================================================================
 
 export async function regenerateSection(
@@ -837,8 +893,8 @@ export async function regenerateSection(
     throw new Error(`Section not found: ${sectionKey}`)
   }
 
-  // Only surveyor_comments supports LLM regeneration
-  if (sectionKey !== 'surveyor_comments') {
+  // Only executive_summary supports LLM regeneration
+  if (sectionKey !== 'executive_summary') {
     return currentSection
   }
 
@@ -893,7 +949,7 @@ export async function regenerateSection(
     ...llmContextParts,
     '',
     ext?.building_defects_found
-      ? `External defects: ${ext.building_defects.map((d) => getDefectLabel(d)).join(', ')}`
+      ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
       : 'No external defects noted.',
     ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
     ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
@@ -901,7 +957,7 @@ export async function regenerateSection(
     .filter(Boolean)
     .join('\n')
 
-  let newContent = 'Surveyor comments to be added during review.'
+  let newLlmText = ''
 
   try {
     const siteUrl =
@@ -913,9 +969,9 @@ export async function regenerateSection(
         surveyId: report.survey_id,
         sections: [
           {
-            key: 'surveyor_comments',
+            key: 'executive_summary',
             prompt:
-              'Write 2-3 paragraphs summarising the overall survey findings. Reference specific rooms, measurements and treatments by name. State the most urgent priorities. State what treatment works have been specified — do NOT suggest the customer consider options. Be specific and authoritative.',
+              'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist.',
             context: llmContext,
           },
         ],
@@ -929,14 +985,18 @@ export async function regenerateSection(
         content: string
         error?: string
       }>
-      const match = generated?.find((s) => s.key === 'surveyor_comments')
+      const match = generated?.find((s) => s.key === 'executive_summary')
       if (match && !match.error) {
-        newContent = match.content
+        newLlmText = match.content
       }
     }
   } catch (err) {
-    console.error('Error regenerating surveyor comments:', err)
+    console.error('Error regenerating executive summary:', err)
   }
+
+  const newContent = newLlmText
+    ? newLlmText + '\n\n' + GUARANTEE_PARAGRAPH
+    : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
 
   // Build updated section
   const newSection: ReportSection = {
