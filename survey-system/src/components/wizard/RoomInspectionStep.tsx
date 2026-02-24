@@ -643,6 +643,10 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
                 <DampFields
                   data={selectedRoom.room_data.damp || {}}
                   onChange={(data) => handleRoomDataChange('damp', data)}
+                  surveyId={surveyId}
+                  roomId={selectedRoom.id}
+                  photos={roomPhotos}
+                  onPhotosChange={onPhotosChange}
                 />
               )}
 

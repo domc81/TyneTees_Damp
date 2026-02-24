@@ -22,13 +22,20 @@ import {
   Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import PhotoCapture from './PhotoCapture'
+import { filterPhotos } from '@/lib/survey-photo-service'
+import type { SurveyPhoto } from '@/types/survey-photo.types'
 
 interface DampFieldsProps {
   data: Partial<DampRoomData>
   onChange: (data: Partial<DampRoomData>) => void
+  surveyId: string
+  roomId: string
+  photos: SurveyPhoto[]
+  onPhotosChange: () => void
 }
 
-export default function DampFields({ data, onChange }: DampFieldsProps) {
+export default function DampFields({ data, onChange, surveyId, roomId, photos, onPhotosChange }: DampFieldsProps) {
   // Collapsible section state
   const [expandedSections, setExpandedSections] = useState({
     walls: true,
@@ -243,6 +250,53 @@ export default function DampFields({ data, onChange }: DampFieldsProps) {
                   <label htmlFor={`wallpaper-${index}`} className="text-sm text-white/70">
                     Has wallpaper
                   </label>
+                </div>
+
+                {/* Moisture Reading */}
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-xs font-semibold text-white/50 uppercase tracking-wide mb-2">
+                    Moisture Reading
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 items-start">
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1">
+                        Reading (% WME)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        placeholder="e.g., 24.5"
+                        value={wall.moisture_readings?.[0]?.reading || ''}
+                        onChange={(e) =>
+                          updateWall(index, {
+                            moisture_readings: [{
+                              location: wall.name,
+                              reading: parseFloat(e.target.value) || 0,
+                              depth: 0,
+                            }],
+                          })
+                        }
+                        className="input-field text-sm"
+                      />
+                    </div>
+                    <div>
+                      <PhotoCapture
+                        surveyId={surveyId}
+                        step="room_inspection"
+                        roomId={roomId}
+                        category="meter_reading"
+                        label={`${wall.name} Meter`}
+                        maxPhotos={1}
+                        existingPhotos={photos.filter(
+                          (p) => p.category === 'meter_reading' && p.description?.includes(wall.name)
+                        )}
+                        onPhotosChange={onPhotosChange}
+                        autoDescription={`${wall.name} — moisture meter reading`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
