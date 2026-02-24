@@ -116,10 +116,35 @@ export async function saveWizardData(
   }
 
   try {
+    // Read the current survey_data first so we can merge rather than overwrite.
+    // The photo service writes photos into survey_data.photos independently — if we
+    // blindly write wizardData over the whole column we'll wipe any photos uploaded
+    // since the page loaded.
+    const { data: current, error: fetchError } = await supabase
+      .from('surveys')
+      .select('survey_data')
+      .eq('id', surveyId)
+      .single()
+
+    if (fetchError) {
+      console.error('Error reading current survey_data before save:', fetchError)
+      throw new Error(`Failed to read survey before save: ${fetchError.message}`)
+    }
+
+    const existingData = (current?.survey_data as Record<string, unknown>) || {}
+
+    // Merge: wizard fields overwrite matching keys, but non-wizard keys (photos, etc.) are preserved.
+    const mergedData = {
+      ...existingData,
+      ...(wizardData as Record<string, unknown>),
+      // Always keep the DB copy of photos — it is the authoritative source.
+      photos: existingData.photos ?? [],
+    }
+
     const { error } = await supabase
       .from('surveys')
       .update({
-        survey_data: wizardData as any,
+        survey_data: mergedData,
         survey_completed: wizardData.wizard_completed,
         updated_at: new Date().toISOString(),
       })

@@ -73,6 +73,9 @@ RULES:
           ],
           temperature: 0.1,
           max_tokens: 1000,
+          // grok-4.1-fast is a reasoning model; disable reasoning so thinking tokens
+          // don't bleed into the content field and corrupt the polished output.
+          reasoning: { enabled: false },
         }),
       }
     )
@@ -95,7 +98,14 @@ RULES:
       )
     }
 
-    const polished = data.choices[0].message.content.trim()
+    const rawContent = data.choices[0].message.content
+    if (!rawContent) {
+      return NextResponse.json(
+        { error: 'Model returned empty content' },
+        { status: 500 }
+      )
+    }
+    const polished = rawContent.trim()
 
     if (polished.length < 5) {
       return NextResponse.json(

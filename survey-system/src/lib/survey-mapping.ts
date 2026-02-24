@@ -427,7 +427,7 @@ function mapCondensationSurvey(
 
     // Mould severity affects area
     if (condData.black_mould_present && condData.mould_severity) {
-      const areaByGender = {
+      const areaBySeverity = {
         light: 3,
         moderate: 6,
         severe: 12
