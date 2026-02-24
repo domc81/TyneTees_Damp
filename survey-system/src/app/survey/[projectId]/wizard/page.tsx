@@ -164,8 +164,11 @@ export default function SurveyWizardPage() {
           wizardData.site_details?.property_type &&
           wizardData.site_details?.construction_type
         )
-      case 1: // External Inspection
-        return wizardData.external_inspection?.building_defects_found !== undefined
+      case 1: { // External Inspection — valid when no defects, or defects toggled on with at least one selected
+        const ext = wizardData.external_inspection
+        if (!ext?.building_defects_found) return true
+        return (ext.building_defects?.length ?? 0) > 0
+      }
       case 2: // Room Inspection
         return true // TODO: Add room validation in next iteration
       case 3: // Additional Works
