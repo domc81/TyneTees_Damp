@@ -389,11 +389,13 @@ export interface DbSurveyReport {
   id: string
   survey_id: string
   template_id: string
-  status: 'draft' | 'generated' | 'reviewed' | 'finalised'
+  status: 'draft' | 'generated' | 'reviewed' | 'finalised' | 'published'
   sections: Record<string, unknown>[] // JSONB — typed as ReportSection[] in survey-report.types.ts
   generated_at?: string | null
   reviewed_by?: string | null
   finalised_at?: string | null
+  publish_token?: string | null
+  published_at?: string | null
   created_at: string
   updated_at: string
 }

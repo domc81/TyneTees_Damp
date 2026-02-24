@@ -116,6 +116,8 @@ export interface SurveyReport {
   generated_at?: string
   reviewed_by?: string
   finalised_at?: string
+  publish_token?: string | null
+  published_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -125,6 +127,7 @@ export type ReportStatus =
   | 'generated' // all sections populated (auto + LLM)
   | 'reviewed' // surveyor has reviewed and edited
   | 'finalised' // locked, ready for customer
+  | 'published' // shared with customer via public link
 
 // =============================================================================
 // Report Section — one populated section in a generated report
@@ -159,6 +162,7 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   generated: 'Generated',
   reviewed: 'Reviewed',
   finalised: 'Finalised',
+  published: 'Published',
 }
 
 export const REPORT_STATUS_COLOURS: Record<ReportStatus, string> = {
@@ -166,6 +170,7 @@ export const REPORT_STATUS_COLOURS: Record<ReportStatus, string> = {
   generated: 'blue',
   reviewed: 'amber',
   finalised: 'green',
+  published: 'emerald',
 }
 
 export const REPORT_TITLE_PREFIXES: Record<ReportSurveyType, string> = {
