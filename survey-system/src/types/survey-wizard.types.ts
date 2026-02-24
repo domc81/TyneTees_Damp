@@ -71,6 +71,7 @@ export interface ExternalInspection {
   wall_tie_concern: boolean
   cracking_concern: boolean
   notes?: string
+  raw_notes?: string // Raw voice transcript — preserved as audit trail
 }
 
 export type BuildingDefect =

@@ -685,6 +685,11 @@ export async function generateReport(
     }
   }
 
+  // Use surveyor observation notes as top-level content when available
+  if (!extContent && ext?.notes?.trim()) {
+    extContent = ext.notes.trim()
+  }
+
   // If no external inspection data at all, set a default
   if (!extContent && extSubSections.length === 0) {
     extContent = 'External inspection details to be completed.'
@@ -698,7 +703,8 @@ export async function generateReport(
     .filter(
       (p) =>
         p.category === 'external_inspection' ||
-        p.category === 'building_defect'
+        p.category === 'building_defect' ||
+        p.category === 'external_defect'
     )
     .map((p) => p.id)
 

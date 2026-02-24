@@ -38,6 +38,7 @@ export const PHOTO_CATEGORIES = {
   ],
   external_inspection: [
     { value: 'building_defect', label: 'Building Defect' },
+    { value: 'external_defect', label: 'External Defect (per-defect)' },
     { value: 'roof_defect', label: 'Roof Defect' },
     { value: 'gutter_defect', label: 'Gutter/RWG Defect' },
     { value: 'wall_crack', label: 'Wall Crack' },
