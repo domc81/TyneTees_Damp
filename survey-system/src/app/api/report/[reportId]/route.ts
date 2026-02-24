@@ -63,36 +63,32 @@ function collectPhotoIds(sections: ReportSection[]): string[] {
   }
 
   walk(sections)
-  return [...new Set(ids)] // deduplicate
+  return Array.from(new Set(ids)) // deduplicate
 }
 
 /**
  * Resolve photo IDs to public storage URLs.
- * Looks up each ID in the photos table to get its storage_path,
- * then generates the Supabase public URL.
+ * Photos are stored in survey_data.photos JSONB array (not a photos table).
  */
 async function resolvePhotoUrls(
   supabase: ReturnType<typeof createServiceClient>,
-  photoIds: string[]
+  photoIds: string[],
+  surveyData: any
 ): Promise<Record<string, string>> {
   if (photoIds.length === 0) return {}
 
-  const { data, error } = await supabase
-    .from('photos')
-    .select('id, storage_path')
-    .in('id', photoIds)
-
-  if (error || !data) return {}
-
+  // Photos are stored in survey_data.photos JSONB array
+  const allPhotos: any[] = surveyData?.photos || []
   const urls: Record<string, string> = {}
 
-  for (const photo of data) {
-    if (!photo.storage_path) continue
+  for (const photoId of photoIds) {
+    const photo = allPhotos.find((p: any) => p.id === photoId)
+    if (!photo?.storage_path) continue
     const { data: urlData } = supabase.storage
       .from('survey-photos')
       .getPublicUrl(photo.storage_path)
     if (urlData?.publicUrl) {
-      urls[photo.id] = urlData.publicUrl
+      urls[photoId] = urlData.publicUrl
     }
   }
 
@@ -146,7 +142,7 @@ export async function GET(
     // Load the survey (for customer_id, surveyor_id, survey_type)
     const { data: survey, error: surveyError } = await supabase
       .from('surveys')
-      .select('id, survey_type, customer_id, surveyor_id')
+      .select('id, survey_type, customer_id, surveyor_id, survey_data')
       .eq('id', report.survey_id)
       .single()
 
@@ -181,7 +177,7 @@ export async function GET(
     // Resolve photo URLs from sections
     const sections = (report.sections || []) as ReportSection[]
     const photoIds = collectPhotoIds(sections)
-    const photos = await resolvePhotoUrls(supabase, photoIds)
+    const photos = await resolvePhotoUrls(supabase, photoIds, survey.survey_data)
 
     // Build customer display name
     const customerName = customerData
