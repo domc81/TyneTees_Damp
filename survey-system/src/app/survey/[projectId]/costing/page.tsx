@@ -131,9 +131,9 @@ export default function CostingReviewPage() {
           <div className="flex gap-3 justify-center">
             <Button
               variant="ghost"
-              onClick={() => router.push(`/survey/${projectId}/wizard`)}
+              onClick={() => router.push(`/surveys/${projectId}`)}
             >
-              Back to Wizard
+              Back to Survey
             </Button>
             <Button
               variant="primary"
@@ -157,11 +157,11 @@ export default function CostingReviewPage() {
           <div className="flex items-center justify-between">
             {/* Back button */}
             <Link
-              href={`/survey/${projectId}/wizard`}
+              href={`/surveys/${projectId}`}
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Back to Wizard</span>
+              <span className="hidden sm:inline">Back to Survey</span>
             </Link>
 
             {/* Title */}
@@ -364,9 +364,9 @@ export default function CostingReviewPage() {
         <div className="mt-8 flex gap-4 justify-center">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/survey/${projectId}/wizard`)}
+            onClick={() => router.push(`/surveys/${projectId}`)}
           >
-            Back to Wizard
+            Back to Survey
           </Button>
           <Button
             variant="secondary"
