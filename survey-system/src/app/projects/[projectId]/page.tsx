@@ -71,8 +71,8 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
           // Load photos for this project
           const projectPhotos = await getSupabaseProjectPhotos(data.id)
           setPhotos(projectPhotos)
-          // Load wizard_completed status
-          setWizardCompleted(data.wizard_completed || false)
+          // Load survey_completed status
+          setWizardCompleted(data.survey_completed || false)
           // Load report status
           const supabase = getSupabase()
           if (supabase) {
