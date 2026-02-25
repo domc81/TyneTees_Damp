@@ -28,6 +28,7 @@ import {
   ClipboardList,
   Building,
 } from 'lucide-react'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { Project, SurveyType } from '@/types/database.types'
 import { getProjectSections, getProjectItems, initializeSampleData } from '@/lib/store'
 import { getPhotoUrl, getProjectPhotos as getSupabaseProjectPhotos, getProject as getSupabaseProject, getSurveyRooms, createSurveyRoom, updateSurveyRoom } from '@/lib/supabase-data'
@@ -111,36 +112,42 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
-        <div className="spinner" />
-      </div>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+          <div className="spinner" />
+        </div>
+      </ProtectedRoute>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-surface-900">Error loading project</h2>
-          <p className="text-surface-500 mt-2">{error}</p>
-          <Link href="/projects" className="btn-primary mt-4 inline-block">
-            Back to Projects
-          </Link>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-surface-900">Error loading project</h2>
+            <p className="text-surface-500 mt-2">{error}</p>
+            <Link href="/projects" className="btn-primary mt-4 inline-block">
+              Back to Projects
+            </Link>
+          </div>
         </div>
-      </div>
+      </ProtectedRoute>
     )
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-surface-900">Project not found</h2>
-          <Link href="/projects" className="btn-primary mt-4 inline-block">
-            Back to Projects
-          </Link>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-surface-900">Project not found</h2>
+            <Link href="/projects" className="btn-primary mt-4 inline-block">
+              Back to Projects
+            </Link>
+          </div>
         </div>
-      </div>
+      </ProtectedRoute>
     )
   }
 
@@ -159,6 +166,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   }, { materials: 0, labor: 0, total: 0 })
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-surface-50">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-surface-200">
@@ -353,6 +361,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         )}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }
 
