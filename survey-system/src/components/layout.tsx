@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   ClipboardList,
-  Calculator,
-  FileText,
   Package,
   Users,
   Settings,
@@ -18,8 +16,6 @@ import {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
-  { icon: Calculator, label: 'Costing', href: '/costing' },
-  { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Package, label: 'Materials', href: '/materials' },
   { icon: Users, label: 'Team', href: '/team' },
   { icon: Settings, label: 'Settings', href: '/settings' },
