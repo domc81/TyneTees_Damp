@@ -21,8 +21,8 @@ import {
   Menu,
   LogOut,
 } from 'lucide-react'
-import { getProjects, initializeSampleData } from '@/lib/supabase-data'
-import type { Project } from '@/lib/supabase-data'
+import { getSurveys, initializeSampleData } from '@/lib/supabase-data'
+import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
@@ -46,7 +46,7 @@ const navItems = [
 ]
 
 export default function Dashboard() {
-  const [projects, setProjects] = useState<Project[]>([])
+  const [surveys, setSurveys] = useState<Survey[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
@@ -56,7 +56,7 @@ export default function Dashboard() {
       // Set a timeout to prevent hanging
       const timeoutId = setTimeout(() => {
         console.warn('Data loading timed out, using mock data')
-        setProjects([
+        setSurveys([
           {
             id: 'demo-1',
             enquiry_id: null,
@@ -78,14 +78,14 @@ export default function Dashboard() {
 
       try {
         await initializeSampleData()
-        const data = await getProjects()
+        const data = await getSurveys()
         clearTimeout(timeoutId)
-        setProjects(data)
+        setSurveys(data)
       } catch (err) {
         console.error('Error loading data:', err)
         clearTimeout(timeoutId)
         // Set a demo project so the UI isn't empty
-        setProjects([{
+        setSurveys([{
           id: 'demo-error-1',
           enquiry_id: null,
           project_number: 'TT-ERR-0001',
@@ -107,12 +107,12 @@ export default function Dashboard() {
     loadData()
   }, [])
 
-  const recentProjects = projects.slice(0, 5)
+  const recentSurveys = surveys.slice(0, 5)
   const stats = {
-    active: projects.filter(p => p.status === 'in_progress').length,
-    pending: projects.filter(p => p.status === 'pending_review').length,
-    draft: projects.filter(p => p.status === 'draft').length,
-    total: projects.length,
+    active: surveys.filter(p => p.status === 'in_progress').length,
+    pending: surveys.filter(p => p.status === 'pending_review').length,
+    draft: surveys.filter(p => p.status === 'draft').length,
+    total: surveys.length,
   }
 
   return (
@@ -286,7 +286,7 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {recentProjects.length === 0 ? (
+            {recentSurveys.length === 0 ? (
               <div className="p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                   <ClipboardList className="w-8 h-8 text-white/30" />
@@ -295,8 +295,8 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {recentProjects.map((project) => {
-                  const config = surveyTypeConfig[project.survey_type]
+                {recentSurveys.map((survey) => {
+                  const config = surveyTypeConfig[survey.survey_type]
                   const Icon = config.icon
 
                   const statusConfig: Record<string, { color: string; bg: string }> = {
@@ -305,12 +305,12 @@ export default function Dashboard() {
                     pending_review: { color: 'text-emerald-300', bg: 'bg-emerald-500/20 border-emerald-400/30' },
                     completed: { color: 'text-white/70', bg: 'bg-white/10 border-white/20' },
                   }
-                  const status = statusConfig[project.status] || statusConfig.draft
+                  const status = statusConfig[survey.status] || statusConfig.draft
 
                   return (
                     <Link
-                      key={project.id}
-                      href={`/surveys/${project.id}`}
+                      key={survey.id}
+                      href={`/surveys/${survey.id}`}
                       className="flex items-center gap-4 p-4 hover:bg-white/5 transition-colors"
                     >
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient}`}>
@@ -318,22 +318,22 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-mono text-white/50">{project.project_number}</span>
+                          <span className="text-xs font-mono text-white/50">{survey.project_number}</span>
                           <span className={`badge ${status.bg} ${status.color}`}>
-                            {project.status.replace('_', ' ')}
+                            {survey.status.replace('_', ' ')}
                           </span>
                         </div>
-                        <p className="font-medium text-white mt-1">{project.client_name || 'Unknown Client'}</p>
+                        <p className="font-medium text-white mt-1">{survey.client_name || 'Unknown Client'}</p>
                         <div className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
                           <MapPin className="w-3.5 h-3.5 text-white/30" />
-                          <span className="truncate">{project.site_address}</span>
+                          <span className="truncate">{survey.site_address}</span>
                         </div>
                       </div>
                       <div className="text-right hidden sm:block">
                         <p className="text-sm text-white/60">
-                          {project.survey_date ? new Date(project.survey_date).toLocaleDateString('en-GB') : '-'}
+                          {survey.survey_date ? new Date(survey.survey_date).toLocaleDateString('en-GB') : '-'}
                         </p>
-                        <p className="text-xs text-white/40 capitalize mt-0.5">{project.survey_type}</p>
+                        <p className="text-xs text-white/40 capitalize mt-0.5">{survey.survey_type}</p>
                       </div>
                       <ChevronRight className="w-5 h-5 text-white/30 ml-auto" />
                     </Link>

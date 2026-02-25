@@ -12,7 +12,7 @@ import {
   Save,
   Plus,
 } from 'lucide-react'
-import { createProjectFromForm } from '@/lib/supabase-data'
+import { createSurveyFromForm } from '@/lib/supabase-data'
 
 function NewSurveyContent() {
   const router = useRouter()
@@ -77,7 +77,7 @@ function NewSurveyContent() {
     }
 
     try {
-      const newProject = await createProjectFromForm({
+      const newProject = await createSurveyFromForm({
         customer_id: formData.customer_id,
         site_address: formData.site_address,
         site_address_line2: formData.site_address_line2,

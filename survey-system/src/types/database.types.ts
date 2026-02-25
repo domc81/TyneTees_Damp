@@ -32,9 +32,6 @@ export type SurveyStatus =
   | 'completed'
   | 'archived'
 
-/** @deprecated Use SurveyStatus instead */
-export type ProjectStatus = SurveyStatus
-
 export type DefectSeverity =
   | 'minor'
   | 'moderate'
@@ -120,9 +117,6 @@ export interface Survey {
   customer?: Customer | null
   surveyor?: Surveyor | null
 }
-
-/** @deprecated Use Survey instead */
-export type Project = Survey
 
 export interface Surveyor {
   id: string
@@ -279,9 +273,6 @@ export interface SurveyCosting {
   updated_at: string
 }
 
-/** @deprecated Use SurveyCosting instead */
-export type ProjectCosting = SurveyCosting
-
 // --- Legacy Types (for backward compatibility) ---
 
 export interface Rate {
@@ -407,11 +398,6 @@ export type CustomerUpdate = Partial<CustomerInput>
 
 export type SurveyInput = Omit<Survey, 'id' | 'project_number' | 'created_at' | 'updated_at' | 'customer' | 'surveyor'>
 export type SurveyUpdate = Partial<SurveyInput>
-
-/** @deprecated Use SurveyInput instead */
-export type ProjectInput = SurveyInput
-/** @deprecated Use SurveyUpdate instead */
-export type ProjectUpdate = SurveyUpdate
 
 export type SurveyorInput = Omit<Surveyor, 'id' | 'created_at' | 'updated_at'>
 export type SurveyorUpdate = Partial<SurveyorInput>

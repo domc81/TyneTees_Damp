@@ -5,7 +5,7 @@ import { getSupabase } from './supabase-client'
 import type {
   Customer,
   Enquiry,
-  Project,
+  Survey,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -14,16 +14,16 @@ import type {
   WorkSection,
   MaterialsCatalogItem,
   PricingItem,
-  ProjectCosting,
+  SurveyCosting,
   BaseRate,
   MarkupConfig,
 } from '@/types/database.types'
 
-// Re-export types for backward compatibility (other files import from here)
+// Re-export types for convenience (other files import from here)
 export type {
   Customer,
   Enquiry,
-  Project,
+  Survey,
   Surveyor,
   SurveyRoom,
   MoistureReading,
@@ -31,7 +31,7 @@ export type {
   Photo,
   WorkSection,
   PricingItem,
-  ProjectCosting,
+  SurveyCosting,
   BaseRate,
   MarkupConfig,
 }
@@ -67,7 +67,7 @@ export function getPhotoUrl(photo: { storage_path?: string | null; file_path?: s
 // Mock Data for Fallback (when Supabase isn't available)
 // ============================================================================
 
-const MOCK_PROJECTS: Project[] = [
+const MOCK_SURVEYS: Survey[] = [
   {
     id: 'proj-001',
     enquiry_id: 'enq-001',
@@ -415,11 +415,11 @@ export async function getEnquiry(id: string): Promise<Enquiry | null> {
 // Projects
 // ============================================================================
 
-export async function getSurveys(): Promise<Project[]> {
+export async function getSurveys(): Promise<Survey[]> {
   const supabase = getSupabase()
   if (!supabase) {
     useMockData = true
-    return MOCK_PROJECTS
+    return MOCK_SURVEYS
   }
 
   try {
@@ -431,18 +431,18 @@ export async function getSurveys(): Promise<Project[]> {
     if (error) {
       console.warn('Supabase error, using mock data:', error.message)
       useMockData = true
-      return MOCK_PROJECTS
+      return MOCK_SURVEYS
     }
 
     return data || []
   } catch (err) {
     console.warn('Supabase connection failed, using mock data:', err)
     useMockData = true
-    return MOCK_PROJECTS
+    return MOCK_SURVEYS
   }
 }
 
-export async function getSurvey(id: string): Promise<Project | null> {
+export async function getSurvey(id: string): Promise<Survey | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -461,8 +461,8 @@ export async function getSurvey(id: string): Promise<Project | null> {
 }
 
 export async function createSurvey(
-  project: Omit<Project, 'id' | 'project_number' | 'created_at' | 'updated_at'>
-): Promise<Project | null> {
+  project: Omit<Survey, 'id' | 'project_number' | 'created_at' | 'updated_at'>
+): Promise<Survey | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -508,7 +508,7 @@ export async function createSurveyFromForm(data: {
   survey_date?: string
   notes?: string
   reported_defect?: string
-}): Promise<Project | null> {
+}): Promise<Survey | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -573,8 +573,8 @@ export async function createSurveyFromForm(data: {
 
 export async function updateSurvey(
   id: string,
-  updates: Partial<Project>
-): Promise<Project | null> {
+  updates: Partial<Survey>
+): Promise<Survey | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -875,10 +875,10 @@ export async function getMarkupConfig(): Promise<MarkupConfig[]> {
 }
 
 // ============================================================================
-// Project Costing
+// Survey Costing
 // ============================================================================
 
-export async function getSurveyCosting(projectId: string): Promise<ProjectCosting | null> {
+export async function getSurveyCosting(projectId: string): Promise<SurveyCosting | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -915,7 +915,7 @@ export async function saveSurveyCosting(
     totalIncVat: number
     depositAmount: number
   }
-): Promise<ProjectCosting | null> {
+): Promise<SurveyCosting | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -1534,16 +1534,3 @@ export async function deletePhoto(photoId: string, storagePath: string): Promise
   }
 }
 
-// ============================================================================
-// Backward-Compatibility Aliases
-// These allow existing page files to keep importing the old function names.
-// ============================================================================
-
-export const getProjects = getSurveys
-export const getProject = getSurvey
-export const createProject = createSurvey
-export const createProjectFromForm = createSurveyFromForm
-export const updateProject = updateSurvey
-export const getProjectPhotos = getSurveyPhotos
-export const getProjectCosting = getSurveyCosting
-export const saveProjectCosting = saveSurveyCosting

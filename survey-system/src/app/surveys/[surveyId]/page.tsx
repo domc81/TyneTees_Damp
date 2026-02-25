@@ -19,8 +19,8 @@ import {
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
-import type { Project, SurveyType } from '@/types/database.types'
-import { getProject as getSupabaseProject } from '@/lib/supabase-data'
+import type { Survey, SurveyType } from '@/types/database.types'
+import { getSurvey as getSupabaseSurvey } from '@/lib/supabase-data'
 import { getSupabase } from '@/lib/supabase-client'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; bgColor: string; label: string }> = {
@@ -31,7 +31,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; b
 }
 
 export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
-  const [survey, setSurvey] = useState<Project | null>(null)
+  const [survey, setSurvey] = useState<Survey | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reportStatus, setReportStatus] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
     async function loadSurvey() {
       try {
         setIsLoading(true)
-        const data = await getSupabaseProject(params.surveyId)
+        const data = await getSupabaseSurvey(params.surveyId)
         setSurvey(data)
 
         if (data) {

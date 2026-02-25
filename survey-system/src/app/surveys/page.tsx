@@ -18,8 +18,8 @@ import {
   X,
   Menu,
 } from 'lucide-react'
-import { getProjects, initializeSampleData } from '@/lib/supabase-data'
-import type { Project } from '@/lib/supabase-data'
+import { getSurveys, initializeSampleData } from '@/lib/supabase-data'
+import type { Survey } from '@/types/database.types'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string }> = {
   damp: { icon: Droplets, color: 'text-blue-600', label: 'Damp', gradient: 'from-blue-50 to-cyan-50' },
@@ -42,7 +42,7 @@ const navItems = [
 ]
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
+  const [surveys, setSurveys] = useState<Survey[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -52,36 +52,36 @@ export default function ProjectsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    async function loadProjects() {
+    async function loadSurveys() {
       // Set a timeout to prevent hanging
       const timeoutId = setTimeout(() => {
-        console.warn('Projects loading timed out, using mock data')
+        console.warn('Surveys loading timed out, using mock data')
         setIsLoading(false)
       }, 5000) // 5 second timeout
 
       try {
         await initializeSampleData()
-        const data = await getProjects()
+        const data = await getSurveys()
         clearTimeout(timeoutId)
-        setProjects(data)
+        setSurveys(data)
       } catch (err) {
-        console.error('Error loading projects:', err)
+        console.error('Error loading surveys:', err)
         clearTimeout(timeoutId)
       } finally {
         setIsLoading(false)
       }
     }
-    loadProjects()
+    loadSurveys()
   }, [])
 
-  const filteredProjects = projects.filter((project) => {
+  const filteredSurveys = surveys.filter((survey) => {
     const matchesSearch =
-      (project.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (project.site_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (project.project_number || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (survey.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (survey.site_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (survey.project_number || '').toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter
-    const matchesType = typeFilter === 'all' || project.survey_type === typeFilter
+    const matchesStatus = statusFilter === 'all' || survey.status === statusFilter
+    const matchesType = typeFilter === 'all' || survey.survey_type === typeFilter
 
     return matchesSearch && matchesStatus && matchesType
   })
@@ -169,7 +169,7 @@ export default function ProjectsPage() {
               </button>
               <div>
                 <h1 className="text-2xl lg:text-3xl font-bold text-white">Projects</h1>
-                <p className="text-white/60">{filteredProjects.length} projects</p>
+                <p className="text-white/60">{filteredSurveys.length} projects</p>
               </div>
             </div>
             <Link
@@ -255,7 +255,7 @@ export default function ProjectsPage() {
 
         {/* Projects Grid/List */}
         <div className="p-4 lg:p-8">
-          {filteredProjects.length === 0 ? (
+          {filteredSurveys.length === 0 ? (
             <div className="glass-card p-12 text-center">
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                 <Filter className="w-8 h-8 text-white/30" />
@@ -265,15 +265,15 @@ export default function ProjectsPage() {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProjects.map((project, index) => {
-                const config = surveyTypeConfig[project.survey_type]
-                const status = statusConfig[project.status]
+              {filteredSurveys.map((survey, index) => {
+                const config = surveyTypeConfig[survey.survey_type]
+                const status = statusConfig[survey.status]
                 const Icon = config.icon
 
                 return (
                   <Link
-                    key={project.id}
-                    href={`/surveys/${project.id}`}
+                    key={survey.id}
+                    href={`/surveys/${survey.id}`}
                     className="glass-card card-hover-lift animate-fade-in"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
@@ -291,21 +291,21 @@ export default function ProjectsPage() {
                         </div>
                       </div>
 
-                      {/* Project info */}
-                      <h3 className="text-lg font-semibold text-white mb-1">{project.client_name}</h3>
-                      <p className="text-sm font-mono text-white/50 mb-4">{project.project_number}</p>
+                      {/* Survey info */}
+                      <h3 className="text-lg font-semibold text-white mb-1">{survey.client_name}</h3>
+                      <p className="text-sm font-mono text-white/50 mb-4">{survey.project_number}</p>
 
                       {/* Details */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-white/60">
                           <MapPin className="w-4 h-4 text-white/30" />
-                          <span className="truncate">{project.site_address}</span>
+                          <span className="truncate">{survey.site_address}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-white/60">
                           <Calendar className="w-4 h-4 text-white/30" />
                           <span>
-                            {project.survey_date
-                              ? new Date(project.survey_date).toLocaleDateString('en-GB')
+                            {survey.survey_date
+                              ? new Date(survey.survey_date).toLocaleDateString('en-GB')
                               : 'No date'}
                           </span>
                         </div>
@@ -336,23 +336,23 @@ export default function ProjectsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProjects.map((project) => {
-                    const config = surveyTypeConfig[project.survey_type]
-                    const status = statusConfig[project.status]
+                  {filteredSurveys.map((survey) => {
+                    const config = surveyTypeConfig[survey.survey_type]
+                    const status = statusConfig[survey.status]
                     const Icon = config.icon
 
                     return (
-                      <tr key={project.id}>
+                      <tr key={survey.id}>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient}`}>
                               <Icon className={`w-4 h-4 ${config.color}`} />
                             </div>
-                            <span className="font-mono text-sm text-white/70">{project.project_number}</span>
+                            <span className="font-mono text-sm text-white/70">{survey.project_number}</span>
                           </div>
                         </td>
-                        <td className="font-medium text-white">{project.client_name}</td>
-                        <td className="text-white/60 max-w-xs truncate">{project.site_address}</td>
+                        <td className="font-medium text-white">{survey.client_name}</td>
+                        <td className="text-white/60 max-w-xs truncate">{survey.site_address}</td>
                         <td>
                           <span className="text-white/50">{config.label}</span>
                         </td>
@@ -362,8 +362,8 @@ export default function ProjectsPage() {
                           </span>
                         </td>
                         <td className="text-white/60">
-                          {project.survey_date
-                            ? new Date(project.survey_date).toLocaleDateString('en-GB')
+                          {survey.survey_date
+                            ? new Date(survey.survey_date).toLocaleDateString('en-GB')
                             : '-'}
                         </td>
                         <td>
