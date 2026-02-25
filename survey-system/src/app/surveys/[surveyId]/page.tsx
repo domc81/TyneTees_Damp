@@ -108,6 +108,12 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
   const isComplete = survey.survey_completed || false
   const reportedProblem = survey.reported_problem_override || survey.reported_problem
 
+  // Survey date and weather live in the JSONB survey_data.site_details (set by wizard),
+  // with top-level columns as fallback (set at survey creation time).
+  const siteDetails = (survey.survey_data as any)?.site_details
+  const surveyDate = siteDetails?.inspection_date || survey.survey_date
+  const weatherConditions = siteDetails?.weather_conditions || survey.weather_conditions
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -195,11 +201,13 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
               <div className="p-6 space-y-4">
                 <InfoRow
                   label="Survey Date"
-                  value={survey.survey_date
-                    ? new Date(survey.survey_date).toLocaleDateString('en-GB')
+                  value={surveyDate
+                    ? new Date(surveyDate).toLocaleDateString('en-GB')
                     : '-'}
                 />
-                <InfoRow label="Weather" value={survey.weather_conditions || '-'} />
+                <InfoRow label="Weather" value={weatherConditions
+                  ? weatherConditions.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                  : '-'} />
                 <InfoRow label="Reference" value={survey.project_number} />
                 {reportStatus && (
                   <div>
