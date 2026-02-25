@@ -94,7 +94,7 @@ function NewSurveyContent() {
         throw new Error('Survey creation returned null')
       }
 
-      router.push(`/projects/${newProject.id}`)
+      router.push(`/surveys/${newProject.id}`)
     } catch (error) {
       console.error('Survey creation failed:', error)
       const errorMessage = error instanceof Error

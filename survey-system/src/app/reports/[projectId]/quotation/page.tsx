@@ -84,8 +84,8 @@ export default function QuotationPage({ params }: { params: { projectId: string 
       <div className="min-h-screen bg-surface-100 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-surface-900">Project not found</h2>
-          <Link href="/projects" className="btn-primary mt-4 inline-block">
-            Back to Projects
+          <Link href="/surveys" className="btn-primary mt-4 inline-block">
+            Back to Surveys
           </Link>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function QuotationPage({ params }: { params: { projectId: string 
       <header className="sticky top-0 z-10 bg-white border-b border-surface-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href={`/projects/${params.projectId}`} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
+            <Link href={`/surveys/${params.projectId}`} className="p-2 rounded-lg hover:bg-surface-100 transition-colors">
               <ArrowLeft className="w-5 h-5 text-surface-600" />
             </Link>
             <div>

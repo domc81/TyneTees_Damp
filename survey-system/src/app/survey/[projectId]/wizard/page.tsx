@@ -345,7 +345,7 @@ export default function SurveyWizardPage() {
           <div className="flex items-center justify-between">
             {/* Back button */}
             <Link
-              href={`/projects/${projectId}`}
+              href={`/surveys/${projectId}`}
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />

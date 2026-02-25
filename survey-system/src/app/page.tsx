@@ -36,7 +36,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; l
 
 const navItems = [
   { icon: Home, label: 'Dashboard', href: '/' },
-  { icon: ClipboardList, label: 'Surveys', href: '/projects' },
+  { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
   { icon: Calculator, label: 'Costing', href: '/costing' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Camera, label: 'Photos', href: '/photos' },
@@ -280,7 +280,7 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-white">Recent Projects</h3>
                 <p className="text-sm text-white/50 mt-1">Your latest surveys and quotations</p>
               </div>
-              <Link href="/projects" className="btn-ghost flex items-center gap-1 text-sm w-fit">
+              <Link href="/surveys" className="btn-ghost flex items-center gap-1 text-sm w-fit">
                 View all
                 <ChevronRight className="w-4 h-4" />
               </Link>
@@ -310,7 +310,7 @@ export default function Dashboard() {
                   return (
                     <Link
                       key={project.id}
-                      href={`/projects/${project.id}`}
+                      href={`/surveys/${project.id}`}
                       className="flex items-center gap-4 p-4 hover:bg-white/5 transition-colors"
                     >
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient}`}>

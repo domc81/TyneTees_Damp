@@ -377,7 +377,7 @@ export default function CostingReviewPage() {
           </Button>
           <Button
             variant="primary"
-            onClick={() => router.push(`/projects/${projectId}`)}
+            onClick={() => router.push(`/surveys/${projectId}`)}
           >
             Complete & Return to Survey
           </Button>

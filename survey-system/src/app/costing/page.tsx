@@ -18,8 +18,8 @@ export default function CostingIndexPage() {
           <p className="text-surface-500 mb-6">
             Project-specific costing is available from the project detail page.
           </p>
-          <Link href="/projects" className="btn-primary inline-flex items-center gap-2">
-            View Projects
+          <Link href="/surveys" className="btn-primary inline-flex items-center gap-2">
+            View Surveys
           </Link>
         </div>
       </div>

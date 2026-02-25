@@ -120,7 +120,7 @@ export default function ProjectsPage() {
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = item.href === '/projects'
+            const isActive = item.href === '/surveys'
             return (
               <Link
                 key={item.href}
@@ -273,7 +273,7 @@ export default function ProjectsPage() {
                 return (
                   <Link
                     key={project.id}
-                    href={`/projects/${project.id}`}
+                    href={`/surveys/${project.id}`}
                     className="glass-card card-hover-lift animate-fade-in"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >

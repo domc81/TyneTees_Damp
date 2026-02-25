@@ -30,7 +30,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; b
   condensation: { icon: Wind, color: 'text-cyan-400', bgColor: 'bg-cyan-500/20 border-cyan-400/30', label: 'Condensation Survey' },
 }
 
-export default function SurveyDetailPage({ params }: { params: { projectId: string } }) {
+export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
   const [survey, setSurvey] = useState<Project | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export default function SurveyDetailPage({ params }: { params: { projectId: stri
     async function loadSurvey() {
       try {
         setIsLoading(true)
-        const data = await getSupabaseProject(params.projectId)
+        const data = await getSupabaseProject(params.surveyId)
         setSurvey(data)
 
         if (data) {
@@ -66,7 +66,7 @@ export default function SurveyDetailPage({ params }: { params: { projectId: stri
       }
     }
     loadSurvey()
-  }, [params.projectId])
+  }, [params.surveyId])
 
   if (isLoading) {
     return (
@@ -93,7 +93,7 @@ export default function SurveyDetailPage({ params }: { params: { projectId: stri
               <h2 className="text-xl font-semibold text-white">
                 {error || 'Survey not found'}
               </h2>
-              <Link href="/projects" className="btn-primary mt-6 inline-block">
+              <Link href="/surveys" className="btn-primary mt-6 inline-block">
                 Back to Surveys
               </Link>
             </div>
@@ -115,7 +115,7 @@ export default function SurveyDetailPage({ params }: { params: { projectId: stri
           {/* ── Header ── */}
           <div>
             <Link
-              href="/projects"
+              href="/surveys"
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />

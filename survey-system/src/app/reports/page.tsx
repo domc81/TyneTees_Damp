@@ -18,8 +18,8 @@ export default function ReportsIndexPage() {
           <p className="text-surface-500 mb-6">
             Project reports are available from the project detail page.
           </p>
-          <Link href="/projects" className="btn-primary inline-flex items-center gap-2">
-            View Projects
+          <Link href="/surveys" className="btn-primary inline-flex items-center gap-2">
+            View Surveys
           </Link>
         </div>
       </div>
