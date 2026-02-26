@@ -15,17 +15,28 @@ import { getSupabase } from '@/lib/supabase-client'
 interface CostingLineTemplate {
   id: string
   section_id: string
-  label: string
-  formula_type: string
-  unit: string | null
-  default_qty: number | null
+  line_key: string
+  description: string
+  uom: string
+  base_unit_cost: number
+  wastage_factor: number
+  coverage_rate: number | null
+  material_markup: number
+  labour_rate_per_unit: number
+  labour_markup: number
+  cost_formula: string
+  formula_params: Record<string, unknown>
+  display_order: number
+  is_active: boolean
 }
 
 interface CostingSection {
   id: string
   survey_type: string
-  label: string
+  section_key: string
+  section_name: string
   display_order: number
+  is_optional: boolean
 }
 
 export default function PricingItemsPage() {
@@ -55,13 +66,13 @@ export default function PricingItemsPage() {
   }, [])
 
   const filteredTemplates = templates.filter(t => {
-    const matchesSearch = (t.label ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (t.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSection = sectionFilter === 'all' || t.section_id === sectionFilter
     return matchesSearch && matchesSection
   })
 
   const getSectionLabel = (sectionId: string) => {
-    return sections.find(s => s.id === sectionId)?.label || sectionId
+    return sections.find(s => s.id === sectionId)?.section_name || sectionId
   }
 
   const formulaTypeColors: Record<string, string> = {
@@ -127,7 +138,7 @@ export default function PricingItemsPage() {
             >
               <option value="all">All Sections</option>
               {sections.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
+                <option key={s.id} value={s.id}>{s.section_name}</option>
               ))}
             </select>
           </div>
@@ -148,27 +159,29 @@ export default function PricingItemsPage() {
                     <tr>
                       <th>Item</th>
                       <th>Section</th>
-                      <th>Formula Type</th>
-                      <th>Unit</th>
-                      <th className="text-right">Default Qty</th>
+                      <th>Formula</th>
+                      <th>UoM</th>
+                      <th className="text-right">Unit Cost</th>
+                      <th className="text-right">Labour Rate</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredTemplates.map((template) => (
                       <tr key={template.id}>
                         <td>
-                          <p className="font-medium text-white">{template.label || '-'}</p>
+                          <p className="font-medium text-white">{template.description || '-'}</p>
                         </td>
                         <td>
                           <span className="text-white/60">{getSectionLabel(template.section_id)}</span>
                         </td>
                         <td>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${(template.formula_type && formulaTypeColors[template.formula_type]) || 'bg-white/10 text-white/60'}`}>
-                            {template.formula_type || '-'}
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${(template.cost_formula && formulaTypeColors[template.cost_formula]) || 'bg-white/10 text-white/60'}`}>
+                            {template.cost_formula || '-'}
                           </span>
                         </td>
-                        <td className="text-white/60">{template.unit || '-'}</td>
-                        <td className="text-right text-white/60">{template.default_qty ?? '-'}</td>
+                        <td className="text-white/60">{template.uom || '-'}</td>
+                        <td className="text-right text-white/60">{template.base_unit_cost != null ? `£${Number(template.base_unit_cost).toFixed(2)}` : '-'}</td>
+                        <td className="text-right text-white/60">{template.labour_rate_per_unit != null ? `£${Number(template.labour_rate_per_unit).toFixed(2)}` : '-'}</td>
                       </tr>
                     ))}
                   </tbody>
