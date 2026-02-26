@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -11,7 +11,9 @@ import {
   Settings,
   Menu,
   ChevronRight,
+  LogOut,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -28,6 +30,13 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/login')
+  }
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -96,6 +105,13 @@ export default function Layout({ children }: LayoutProps) {
               <p className="text-sm font-medium text-white truncate">Tyne Tees</p>
               <p className="text-xs text-white/50">Admin</p>
             </div>
+            <button
+              onClick={handleSignOut}
+              title="Sign out"
+              className="p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
