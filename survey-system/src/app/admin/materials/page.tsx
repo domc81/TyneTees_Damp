@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import {
   Package,
   Search,
@@ -12,6 +13,7 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
 } from 'lucide-react'
 import { getMaterials } from '@/lib/supabase-data'
 import type { MaterialsCatalogItem } from '@/types/database.types'
@@ -117,6 +119,14 @@ export default function MaterialsAdminPage() {
     <ProtectedRoute>
       <Layout>
         <div className="space-y-6">
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Admin
+          </Link>
+
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

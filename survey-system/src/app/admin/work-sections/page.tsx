@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import {
   Wrench,
   Edit2,
@@ -8,6 +9,7 @@ import {
   X,
   GripVertical,
   Plus,
+  ArrowLeft,
 } from 'lucide-react'
 import { getWorkSections, getPricingItems } from '@/lib/supabase-data'
 import type { WorkSection, PricingItem } from '@/types/database.types'
@@ -45,6 +47,14 @@ export default function WorkSectionsAdminPage() {
     <ProtectedRoute>
       <Layout>
         <div className="space-y-6 max-w-4xl">
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Admin
+          </Link>
+
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
