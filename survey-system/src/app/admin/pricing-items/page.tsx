@@ -1,0 +1,187 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import {
+  PoundSterling,
+  Search,
+  ArrowRight,
+  Package,
+  Calculator,
+} from 'lucide-react'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import Layout from '@/components/layout'
+import { supabase } from '@/lib/supabase-client'
+
+interface CostingLineTemplate {
+  id: string
+  section_id: string
+  label: string
+  formula_type: string
+  unit: string | null
+  default_qty: number | null
+}
+
+interface CostingSection {
+  id: string
+  survey_type: string
+  label: string
+  display_order: number
+}
+
+export default function PricingItemsPage() {
+  const [templates, setTemplates] = useState<CostingLineTemplate[]>([])
+  const [sections, setSections] = useState<CostingSection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sectionFilter, setSectionFilter] = useState<string>('all')
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [{ data: tplData }, { data: secData }] = await Promise.all([
+          supabase.from('costing_line_templates').select('*').order('section_id'),
+          supabase.from('costing_sections').select('*').order('display_order'),
+        ])
+        setTemplates(tplData || [])
+        setSections(secData || [])
+      } catch (err) {
+        console.error('Failed to load pricing items:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const filteredTemplates = templates.filter(t => {
+    const matchesSearch = t.label.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSection = sectionFilter === 'all' || t.section_id === sectionFilter
+    return matchesSearch && matchesSection
+  })
+
+  const getSectionLabel = (sectionId: string) => {
+    return sections.find(s => s.id === sectionId)?.label || sectionId
+  }
+
+  const formulaTypeColors: Record<string, string> = {
+    standard: 'bg-blue-500/20 text-blue-300',
+    ceiling_coverage: 'bg-cyan-500/20 text-cyan-300',
+    dpc_injection: 'bg-green-500/20 text-green-300',
+    compound_material: 'bg-purple-500/20 text-purple-300',
+    fixed_price: 'bg-amber-500/20 text-amber-300',
+    tiered_disposal: 'bg-red-500/20 text-red-300',
+    bag_and_cart: 'bg-orange-500/20 text-orange-300',
+    skip_hire: 'bg-emerald-500/20 text-emerald-300',
+  }
+
+  return (
+    <ProtectedRoute>
+      <Layout>
+        <div className="space-y-6">
+          {/* Page Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                <PoundSterling className="w-6 h-6 text-green-400" />
+                Pricing Items
+              </h2>
+              <p className="text-sm text-white/60 mt-1">
+                {templates.length} costing line templates across {sections.length} sections
+              </p>
+            </div>
+            <Link href="/admin/pricing-test" className="btn-primary flex items-center gap-2">
+              <Calculator className="w-4 h-4" />
+              Test Pricing Engine
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Info Banner */}
+          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <p className="text-sm text-blue-300">
+              These items are managed by the costing engine. Each template defines a formula type,
+              default quantities, and parameters used to calculate material and labour costs automatically.
+            </p>
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input
+                type="text"
+                placeholder="Search pricing items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+            <select
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              className="input-field w-auto"
+            >
+              <option value="all">All Sections</option>
+              {sections.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Table */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <div className="spinner mx-auto mb-4" />
+                <p className="text-white/60">Loading pricing items...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="section-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="table-base">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Section</th>
+                      <th>Formula Type</th>
+                      <th>Unit</th>
+                      <th className="text-right">Default Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTemplates.map((template) => (
+                      <tr key={template.id}>
+                        <td>
+                          <p className="font-medium text-white">{template.label}</p>
+                        </td>
+                        <td>
+                          <span className="text-white/60">{getSectionLabel(template.section_id)}</span>
+                        </td>
+                        <td>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${formulaTypeColors[template.formula_type] || 'bg-white/10 text-white/60'}`}>
+                            {template.formula_type}
+                          </span>
+                        </td>
+                        <td className="text-white/60">{template.unit || '-'}</td>
+                        <td className="text-right text-white/60">{template.default_qty ?? '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {filteredTemplates.length === 0 && (
+                <div className="p-12 text-center">
+                  <Package className="w-12 h-12 text-white/20 mx-auto mb-4" />
+                  <p className="text-white/50">No pricing items found matching your criteria</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Layout>
+    </ProtectedRoute>
+  )
+}
