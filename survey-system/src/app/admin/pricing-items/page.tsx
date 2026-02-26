@@ -5,14 +5,12 @@ import Link from 'next/link'
 import {
   PoundSterling,
   Search,
-  ArrowRight,
   ArrowLeft,
   Package,
-  Calculator,
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
-import { supabase } from '@/lib/supabase-client'
+import { getSupabase } from '@/lib/supabase-client'
 
 interface CostingLineTemplate {
   id: string
@@ -40,6 +38,7 @@ export default function PricingItemsPage() {
   useEffect(() => {
     async function load() {
       try {
+        const supabase = getSupabase()
         const [{ data: tplData }, { data: secData }] = await Promise.all([
           supabase.from('costing_line_templates').select('*').order('section_id'),
           supabase.from('costing_sections').select('*').order('display_order'),
@@ -99,11 +98,6 @@ export default function PricingItemsPage() {
                 {templates.length} costing line templates across {sections.length} sections
               </p>
             </div>
-            <Link href="/admin/pricing-test" className="btn-primary flex items-center gap-2">
-              <Calculator className="w-4 h-4" />
-              Test Pricing Engine
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
 
           {/* Info Banner */}
