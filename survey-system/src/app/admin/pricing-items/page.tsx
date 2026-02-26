@@ -55,7 +55,7 @@ export default function PricingItemsPage() {
   }, [])
 
   const filteredTemplates = templates.filter(t => {
-    const matchesSearch = t.label.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (t.label ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSection = sectionFilter === 'all' || t.section_id === sectionFilter
     return matchesSearch && matchesSection
   })
@@ -157,14 +157,14 @@ export default function PricingItemsPage() {
                     {filteredTemplates.map((template) => (
                       <tr key={template.id}>
                         <td>
-                          <p className="font-medium text-white">{template.label}</p>
+                          <p className="font-medium text-white">{template.label || '-'}</p>
                         </td>
                         <td>
                           <span className="text-white/60">{getSectionLabel(template.section_id)}</span>
                         </td>
                         <td>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${formulaTypeColors[template.formula_type] || 'bg-white/10 text-white/60'}`}>
-                            {template.formula_type}
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${(template.formula_type && formulaTypeColors[template.formula_type]) || 'bg-white/10 text-white/60'}`}>
+                            {template.formula_type || '-'}
                           </span>
                         </td>
                         <td className="text-white/60">{template.unit || '-'}</td>
