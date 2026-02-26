@@ -7,6 +7,8 @@
 
 // --- Enums (match PostgreSQL enums) ---
 
+export type UserRole = 'admin' | 'office' | 'surveyor'
+
 export type EnquiryStatus =
   | 'new'
   | 'assigned'
@@ -126,6 +128,19 @@ export interface Surveyor {
   phone?: string | null
   qualifications?: string | null
   availability: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UserProfile {
+  id: string
+  user_id: string
+  role: UserRole
+  display_name: string
+  email: string
+  phone?: string | null
+  is_active: boolean
+  must_change_password: boolean
   created_at: string
   updated_at: string
 }
@@ -401,6 +416,9 @@ export type SurveyUpdate = Partial<SurveyInput>
 
 export type SurveyorInput = Omit<Surveyor, 'id' | 'created_at' | 'updated_at'>
 export type SurveyorUpdate = Partial<SurveyorInput>
+
+export type UserProfileInput = Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>
+export type UserProfileUpdate = Partial<Omit<UserProfileInput, 'user_id'>>
 
 // --- Cost Summary (calculated, not stored) ---
 

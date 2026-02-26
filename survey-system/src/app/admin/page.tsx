@@ -10,6 +10,7 @@ import {
   Settings,
   ChevronRight,
   ShieldCheck,
+  Users,
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
@@ -54,6 +55,16 @@ const adminSections = [
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
     count: 'Core settings',
+  },
+  {
+    id: 'team',
+    title: 'Team Management',
+    description: 'Create accounts, assign roles, and manage team member access',
+    icon: Users,
+    href: '/admin/team',
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    count: 'Users & roles',
   },
 ]
 

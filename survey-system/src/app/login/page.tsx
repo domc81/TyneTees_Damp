@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
@@ -14,6 +15,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { profileError } = useAuth()
+
+  // Show profile-related errors (e.g. deactivated account on session restore)
+  useEffect(() => {
+    if (profileError) {
+      setError(profileError)
+    }
+  }, [profileError])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,16 +30,46 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push('/')
+      if (authError) {
+        setError(authError.message)
+        setIsLoading(false)
+        return
       }
+
+      // Auth succeeded — now check for an active profile
+      const { data: profile, error: profileErr } = await supabase
+        .from('user_profiles')
+        .select('is_active, must_change_password')
+        .eq('user_id', data.user.id)
+        .single()
+
+      if (profileErr || !profile) {
+        await supabase.auth.signOut()
+        setError('No user profile found. Contact your administrator.')
+        setIsLoading(false)
+        return
+      }
+
+      if (!profile.is_active) {
+        await supabase.auth.signOut()
+        setError('Your account has been deactivated. Contact your administrator.')
+        setIsLoading(false)
+        return
+      }
+
+      // If user must change password, send them there instead of dashboard
+      if (profile.must_change_password) {
+        router.push('/change-password')
+        return
+      }
+
+      // Profile is active, password OK — proceed to dashboard
+      router.push('/')
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {

@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useEffect } from 'react'
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth()
+  const { session, isLoading, mustChangePassword } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -13,6 +13,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       router.push('/login')
     }
   }, [session, isLoading, router])
+
+  useEffect(() => {
+    if (!isLoading && session && mustChangePassword) {
+      router.push('/change-password')
+    }
+  }, [session, isLoading, mustChangePassword, router])
 
   if (isLoading) {
     return (
@@ -25,7 +31,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!session) {
+  if (!session || mustChangePassword) {
     return null
   }
 
