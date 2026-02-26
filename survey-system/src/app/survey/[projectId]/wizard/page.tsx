@@ -271,9 +271,9 @@ export default function SurveyWizardPage() {
   }, [projectId])
 
   // Compute flags for AdditionalWorksStep
-  const hasCondensation = rooms.some((r) => r.issues_identified.includes('condensation'))
+  const hasCondensation = rooms.some((r) => r.issues_identified?.includes('condensation'))
   const hasTimberOrDamp = rooms.some((r) =>
-    r.issues_identified.some((i) => i === 'damp' || i === 'timber_decay')
+    r.issues_identified?.some((i) => i === 'damp' || i === 'timber_decay')
   )
 
   // Render current step content

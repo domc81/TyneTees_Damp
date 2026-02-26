@@ -69,7 +69,7 @@ export default function MaterialsPage() {
   }, [])
 
   const filteredMaterials = materials.filter(material => {
-    const matchesSearch = material.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (material.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = categoryFilter === 'all' || material.category === categoryFilter
     return matchesSearch && matchesCategory
   })

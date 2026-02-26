@@ -80,7 +80,7 @@ export default function MaterialsAdminPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       items = items.filter(m =>
-        m.name.toLowerCase().includes(query) ||
+        (m.name ?? '').toLowerCase().includes(query) ||
         m.supplier?.toLowerCase().includes(query)
       )
     }
@@ -90,9 +90,9 @@ export default function MaterialsAdminPage() {
 
     items.sort((a, b) => {
       let cmp = 0
-      if (sortField === 'name') cmp = a.name.localeCompare(b.name)
-      else if (sortField === 'unit_cost') cmp = a.unit_cost - b.unit_cost
-      else if (sortField === 'category') cmp = a.category.localeCompare(b.category)
+      if (sortField === 'name') cmp = (a.name ?? '').localeCompare(b.name ?? '')
+      else if (sortField === 'unit_cost') cmp = (a.unit_cost ?? 0) - (b.unit_cost ?? 0)
+      else if (sortField === 'category') cmp = (a.category ?? '').localeCompare(b.category ?? '')
       return sortDir === 'asc' ? cmp : -cmp
     })
 

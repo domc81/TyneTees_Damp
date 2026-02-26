@@ -42,10 +42,10 @@ export default function CustomersPage() {
   }, [])
 
   const filteredCustomers = customers.filter(customer => {
-    const fullName = `${customer.first_name} ${customer.last_name}`.toLowerCase()
-    const email = customer.email.toLowerCase()
-    const phone = customer.phone.toLowerCase()
-    const address = `${customer.address_line1} ${customer.city} ${customer.postcode}`.toLowerCase()
+    const fullName = `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.toLowerCase()
+    const email = (customer.email ?? '').toLowerCase()
+    const phone = (customer.phone ?? '').toLowerCase()
+    const address = `${customer.address_line1 ?? ''} ${customer.city ?? ''} ${customer.postcode ?? ''}`.toLowerCase()
     const query = searchQuery.toLowerCase()
 
     return fullName.includes(query) || 
@@ -163,7 +163,7 @@ export default function CustomersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-sm">
-                          {customer.first_name[0]}{customer.last_name[0]}
+                          {(customer.first_name ?? '?')[0]}{(customer.last_name ?? '?')[0]}
                         </div>
                         <div>
                           <h3 className="font-semibold text-white">

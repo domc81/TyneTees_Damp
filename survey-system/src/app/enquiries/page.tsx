@@ -113,9 +113,9 @@ export default function EnquiriesPage() {
 
   const filteredEnquiries = enquiries.filter((enquiry) => {
     const matchesSearch =
-      enquiry.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      enquiry.site_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      enquiry.enquiry_number.toLowerCase().includes(searchQuery.toLowerCase())
+      (enquiry.client_name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (enquiry.site_address ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (enquiry.enquiry_number ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || enquiry.status === statusFilter
     return matchesSearch && matchesStatus
   })
