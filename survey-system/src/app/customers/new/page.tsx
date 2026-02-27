@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Mail, Phone, MapPin, Home, Save } from 'lucide-react'
@@ -20,6 +20,7 @@ function NewCustomerContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams.get('returnTo')
+  const returnToRef = useRef(returnTo)
   const [formData, setFormData] = useState({
     title: 'Mr',
     firstName: '',
@@ -91,9 +92,12 @@ function NewCustomerContent() {
       console.log('Customer created successfully:', newCustomer)
 
       // Redirect based on where the user came from
-      if (returnTo === 'survey-new') {
-        router.push(`/survey/new?customerId=${newCustomer.id}`)
-      } else if (returnTo === 'dashboard') {
+      // Use ref value (immune to React re-render closures) + hard navigation
+      // to guarantee query params arrive intact on the target page
+      const destination = returnToRef.current
+      if (destination === 'survey-new') {
+        window.location.href = `/survey/new?customerId=${newCustomer.id}`
+      } else if (destination === 'dashboard') {
         router.push('/')
       } else {
         router.push('/customers')

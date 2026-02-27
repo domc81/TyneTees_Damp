@@ -37,6 +37,13 @@ function NewSurveyContent() {
     setFormData({ ...formData, [field]: value })
   }
 
+  // Sync customerId from URL into form state (handles return from customer creation)
+  useEffect(() => {
+    if (preSelectedCustomerId) {
+      setFormData(prev => ({ ...prev, customer_id: preSelectedCustomerId }))
+    }
+  }, [preSelectedCustomerId])
+
   // Load customers on component mount
   useEffect(() => {
     async function loadCustomers() {
