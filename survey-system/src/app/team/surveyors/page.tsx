@@ -35,7 +35,7 @@ export default async function SurveyorsPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-4">
-        <Link href="/team" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors">
+        <Link href="/admin/team" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to Team
         </Link>

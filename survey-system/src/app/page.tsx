@@ -19,6 +19,7 @@ import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
+import { useAuth } from '@/context/AuthContext'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string; border: string }> = {
   damp: { icon: Droplets, color: 'text-blue-600', label: 'Damp Survey', gradient: 'from-blue-50 to-cyan-50', border: 'border-blue-200' },
@@ -28,6 +29,7 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; l
 }
 
 export default function Dashboard() {
+  const { profile, user } = useAuth()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -69,7 +71,13 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-                <p className="text-sm text-white/60">Welcome back, John</p>
+                <p className="text-sm text-white/60">
+                  {profile?.display_name
+                    ? `Welcome back, ${profile.display_name}`
+                    : user?.email
+                      ? `Welcome back, ${user.email}`
+                      : 'Welcome back'}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <Link href="/survey/new" className="btn-primary flex items-center gap-2">
