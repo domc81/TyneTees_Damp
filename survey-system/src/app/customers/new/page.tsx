@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Mail, Phone, MapPin, Home, Save } from 'lucide-react'
 import { createCustomer } from '@/lib/supabase-data'
@@ -16,8 +16,10 @@ const titleOptions = [
   { value: 'Other', label: 'Other' }
 ]
 
-export default function NewCustomerPage() {
+function NewCustomerContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo')
   const [formData, setFormData] = useState({
     title: 'Mr',
     firstName: '',
@@ -88,8 +90,14 @@ export default function NewCustomerPage() {
 
       console.log('Customer created successfully:', newCustomer)
 
-      // Redirect to customer list
-      router.push('/customers')
+      // Redirect based on where the user came from
+      if (returnTo === 'survey-new') {
+        router.push(`/survey/new?customerId=${newCustomer.id}`)
+      } else if (returnTo === 'dashboard') {
+        router.push('/')
+      } else {
+        router.push('/customers')
+      }
     } catch (error) {
       console.error('Error creating customer:', error)
       
@@ -115,7 +123,7 @@ export default function NewCustomerPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 glass border-b border-white/10 px-8 py-4">
         <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <Link href={returnTo === 'survey-new' ? '/survey/new' : returnTo === 'dashboard' ? '/' : '/customers'} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white/70" />
           </Link>
           <div>
@@ -330,5 +338,20 @@ export default function NewCustomerPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function NewCustomerPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner mx-auto mb-4" />
+          <p className="text-white/60">Loading...</p>
+        </div>
+      </div>
+    }>
+      <NewCustomerContent />
+    </Suspense>
   )
 }

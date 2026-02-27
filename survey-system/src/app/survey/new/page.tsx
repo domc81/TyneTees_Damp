@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -16,9 +16,11 @@ import { createSurveyFromForm } from '@/lib/supabase-data'
 
 function NewSurveyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preSelectedCustomerId = searchParams.get('customerId')
 
   const [formData, setFormData] = useState({
-    customer_id: '',
+    customer_id: preSelectedCustomerId || '',
     site_address: '',
     site_address_line2: '',
     site_city: '',
@@ -62,7 +64,7 @@ function NewSurveyContent() {
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
     if (value === 'new') {
-      router.push('/customers/new')
+      router.push('/customers/new?returnTo=survey-new')
     } else {
       handleInputChange('customer_id', value)
     }
@@ -152,7 +154,7 @@ function NewSurveyContent() {
                 </div>
                 <div className="flex items-end">
                   <Link
-                    href="/customers/new"
+                    href="/customers/new?returnTo=survey-new"
                     className="btn-secondary flex items-center gap-2 w-full justify-center"
                   >
                     <Plus className="w-4 h-4" />

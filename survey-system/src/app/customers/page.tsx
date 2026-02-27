@@ -91,12 +91,17 @@ export default function CustomersPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 glass border-b border-white/10 px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-white/70" />
+            </Link>
+            <div>
             <h2 className="text-2xl font-bold text-white flex items-center gap-3">
               <Users className="w-6 h-6 text-white/40" />
               Customers
             </h2>
             <p className="text-sm text-white/60">Manage your customer records</p>
+            </div>
           </div>
           <Link href="/customers/new" className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />

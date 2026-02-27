@@ -84,7 +84,7 @@ export default function Dashboard() {
                   <Plus className="w-4 h-4" />
                   New Survey
                 </Link>
-                <Link href="/customers/new" className="btn-secondary flex items-center gap-2">
+                <Link href="/customers/new?returnTo=dashboard" className="btn-secondary flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   Create Customer
                 </Link>
