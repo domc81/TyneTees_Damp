@@ -59,8 +59,9 @@ export async function POST(request: NextRequest) {
     console.log('[Transcribe DEBUG] File type (MIME):', audioFile.type)
     console.log('[Transcribe DEBUG] File size:', audioFile.size, 'bytes', `(${(audioFile.size / 1024).toFixed(1)} KB)`)
     console.log('[Transcribe DEBUG] Client recorded duration:', clientRecordedDuration, 'seconds')
-    // At 128kbps mono WebM, expect ~16KB/sec. Flag if size is suspiciously small.
-    const expectedMinBytes = clientRecordedDuration * 8000 // conservative: 8KB/sec minimum
+    // Flag suspiciously small files. WAV 16kHz mono = ~32KB/sec, WebM 128kbps = ~16KB/sec.
+    const isWavFormat = audioFile.type === 'audio/wav'
+    const expectedMinBytes = clientRecordedDuration * (isWavFormat ? 20000 : 8000)
     if (clientRecordedDuration > 0 && audioFile.size < expectedMinBytes) {
       console.warn(`[Transcribe DEBUG] ⚠️ FILE SIZE SUSPICIOUSLY SMALL: ${audioFile.size} bytes for ${clientRecordedDuration}s recording (expected at least ${expectedMinBytes} bytes)`)
     }
@@ -79,11 +80,12 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await audioFile.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // DEBUG: Log first 16 bytes to verify valid audio data arrived server-side
+    // DEBUG: Verify audio header
     const headerHex = buffer.subarray(0, 16).toString('hex').match(/.{1,2}/g)?.join(' ') || ''
     console.log('[Transcribe DEBUG] First 16 bytes (hex):', headerHex)
     const isWebM = buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3
-    console.log('[Transcribe DEBUG] Valid WebM header:', isWebM)
+    const isWav = buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 // "RIFF"
+    console.log('[Transcribe DEBUG] Format detected:', isWav ? 'WAV (PCM)' : isWebM ? 'WebM' : 'unknown')
     console.log('[Transcribe DEBUG] Buffer length matches file size:', buffer.length === audioFile.size)
 
     // Debug mode: skip keyterms when ?debug=nokeys is passed
