@@ -83,157 +83,42 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 60000) // 60-second timeout
 
-    // Domain-specific keywords help Deepgram recognise construction terminology.
-    // Boost :5 gives strong bias for specialist terms the general model rarely sees.
-    const keywords = [
-      // --- Original terms (bumped from :2 → :5) ---
-      'damp proof course:5',
-      'DPC:5',
-      'airbrick:5',
-      'airbricks:5',
-      'lintel:5',
-      'lintels:5',
-      'efflorescence:5',
-      'rising damp:5',
-      'penetrating damp:5',
-      'condensation:5',
-      'timber decay:5',
-      'woodworm:5',
-      'joists:5',
-      'floorboards:5',
-      'skirting:5',
-      'plasterwork:5',
-      'render:5',
-      'pointing:5',
-      'repointing:5',
-      'tanking:5',
-      'membrane:5',
-      'ventilation:5',
-      'subfloor:5',
-      'cavity wall:5',
-      'guttering:5',
-      'downpipe:5',
-      'roofline:5',
-      'soffit:5',
-      'fascia:5',
-      'flashing:5',
-      'salt analysis:5',
-      'hygroscopic:5',
-      'mortar:5',
-      'brick:5',
-      'sandstone:5',
-      'PIV:5',
-      'positive input ventilation:5',
-      'damp meter:5',
-      'moisture reading:5',
-      'SBR:5',
+    // Domain-specific keyterms for Nova-3 contextual prompting.
+    // Plain strings (no intensifiers) — Nova-3 uses these to understand the domain.
+    // 93 keyterms total (max 100).
+    const keyterms = [
+      // --- Single words (48) ---
+      'airbrick', 'airbricks', 'efflorescence', 'hygroscopic', 'delamination',
+      'spalling', 'friable', 'protimeter', 'mycelium', 'hyphae',
+      'frass', 'soakaway', 'soffit', 'fascia', 'flashing',
+      'coping', 'parapet', 'quoin', 'reveal', 'cill',
+      'architrave', 'coving', 'artex', 'screed', 'oversite',
+      'substrate', 'stretcher', 'lintel', 'lintels', 'repointing',
+      'tanking', 'membrane', 'ventilation', 'subfloor', 'guttering',
+      'downpipe', 'roofline', 'gulley', 'humidistat', 'skirting',
+      'plasterwork', 'render', 'joists', 'floorboards', 'mortar',
+      'sandstone', 'nitrates', 'sulphates',
 
-      // --- Building elements ---
-      'coping:5',
-      'parapet:5',
-      'cavity:5',
-      'substrate:5',
-      'mortar bed:5',
-      'wall tie:5',
-      'wall ties:5',
-      'weep hole:5',
-      'weep holes:5',
-      'soldier course:5',
-      'header:5',
-      'stretcher:5',
-      'quoin:5',
-      'quoins:5',
-      'reveal:5',
-      'cill:5',
-      'threshold:5',
-      'architrave:5',
-      'dado rail:5',
-      'coving:5',
-      'artex:5',
-      'screed:5',
-      'oversite:5',
-
-      // --- Damp specific ---
-      'damp proof membrane:5',
-      'DPM:5',
-      'lateral damp:5',
-      'hygroscopic salts:5',
-      'salt contamination:5',
-      'tide mark:5',
-      'tide marks:5',
-      'blown plaster:5',
-      'friable:5',
-      'delamination:5',
-      'spalling:5',
-      'tanking slurry:5',
-      'cementitious render:5',
-      'breathable render:5',
-      'lime mortar:5',
-      'lime plaster:5',
-      'calcium chloride:5',
-      'nitrates:5',
-      'sulphates:5',
-      'carbide meter:5',
-      'protimeter:5',
-      'WME:5',
-      'wood moisture equivalent:5',
-      'BRE digest:5',
-      'BRE:5',
-
-      // --- Timber & woodworm ---
-      'dry rot:5',
-      'wet rot:5',
-      'serpula lacrymans:5',
-      'fibroporia vaillantii:5',
-      'death watch beetle:5',
-      'common furniture beetle:5',
-      'house longhorn beetle:5',
-      'fruiting body:5',
-      'fruiting bodies:5',
-      'mycelium:5',
-      'hyphae:5',
-      'flight holes:5',
-      'frass:5',
-
-      // --- Ventilation ---
-      'trickle vent:5',
-      'trickle vents:5',
-      'air brick:5',
-      'air bricks:5',
-      'extraction fan:5',
-      'extractor fan:5',
-      'mechanical ventilation:5',
-      'through-wall vent:5',
-      'hit and miss vent:5',
-      'passive vent:5',
-      'humidistat:5',
-
-      // --- Drainage ---
-      'French drain:5',
-      'ACO drain:5',
-      'channel drain:5',
-      'soakaway:5',
-      'land drain:5',
-      'gulley:5',
-      'hopper head:5',
-      'rainwater goods:5',
-
-      // --- General survey language ---
-      'satisfactory:5',
-      'unsatisfactory:5',
-      'serviceable:5',
-      'defective:5',
-      'remedial works:5',
-      'scope of works:5',
-      'specification:5',
-      'schedule of works:5',
+      // --- Multi-word phrases (45) ---
+      'damp proof course', 'damp proof membrane', 'rising damp', 'penetrating damp',
+      'lateral damp', 'hygroscopic salts', 'salt contamination', 'tide mark',
+      'blown plaster', 'tanking slurry', 'cementitious render', 'breathable render',
+      'lime mortar', 'lime plaster', 'calcium chloride', 'carbide meter',
+      'wood moisture equivalent', 'BRE digest', 'dry rot', 'wet rot',
+      'serpula lacrymans', 'death watch beetle', 'common furniture beetle',
+      'house longhorn beetle', 'fruiting body', 'flight holes',
+      'positive input ventilation', 'trickle vent', 'extraction fan',
+      'mechanical ventilation', 'hit and miss vent', 'French drain',
+      'ACO drain', 'channel drain', 'hopper head', 'rainwater goods',
+      'cavity wall', 'wall tie', 'weep hole', 'soldier course',
+      'scope of works', 'schedule of works', 'remedial works',
+      'damp meter', 'moisture reading',
     ]
 
     try {
-      // Build query params — keywords need to be appended separately
-      // as URLSearchParams doesn't handle repeated keys well
+      // Build query params with Nova-3 keyterm prompting
       const params = new URLSearchParams({
-        model: 'nova-2',
+        model: 'nova-3',
         language: 'en-GB',
         smart_format: 'true',
         punctuate: 'true',
@@ -241,8 +126,8 @@ export async function POST(request: NextRequest) {
         filler_words: 'false',
         utterances: 'false',
       })
-      // Deepgram accepts multiple keywords= params
-      keywords.forEach((kw) => params.append('keywords', kw))
+      // Nova-3 keyterms: each appended as a separate keyterm= param
+      keyterms.forEach((kt) => params.append('keyterm', kt))
 
       // DEBUG: Log exactly what we're sending to Deepgram
       const deepgramUrl = `https://api.deepgram.com/v1/listen?${params.toString()}`
