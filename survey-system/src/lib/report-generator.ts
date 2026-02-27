@@ -723,18 +723,33 @@ export async function generateReport(
   )
 
   // --- DPC FINDINGS ---
+  // Only show DPC section when a room explicitly requires DPC treatment.
+  // When no DPC is required, omit the section entirely — otherwise it
+  // produces boilerplate that can contradict the external inspection notes
+  // (e.g. surveyor states "DPC in good condition" but report says it's adequate).
   const hasDpcRequired = dampRooms.some(
     (r) => r.room_data?.damp?.dpc_required === true
   )
   let dpcContent = ''
   if (hasDpcRequired) {
-    dpcContent =
-      'Based on our inspection findings, we recommend the installation of a new chemical damp proof course to the affected areas. This will be carried out using BBA-approved DPC injection cream applied to the mortar course at a minimum of 150mm above external ground level.'
-  } else if (dampRooms.length > 0) {
-    dpcContent =
-      'Our inspection did not identify a requirement for a new damp proof course at this time. The existing DPC appears to be functioning adequately.'
+    // Build DPC content based on the type selected
+    const dpcRooms = dampRooms.filter(
+      (r) => r.room_data?.damp?.dpc_required === true
+    )
+    const dpcTypes = new Set(
+      dpcRooms
+        .map((r) => r.room_data?.damp?.dpc_type)
+        .filter(Boolean)
+    )
+    if (dpcTypes.has('digital')) {
+      dpcContent =
+        'Based on our inspection findings, we recommend the installation of a Mursec Eco digital damp proof course system to the affected areas.'
+    } else {
+      dpcContent =
+        'Based on our inspection findings, we recommend the installation of a new chemical damp proof course to the affected areas. This will be carried out using BBA-approved DPC injection cream applied to the mortar course at a minimum of 150mm above external ground level.'
+    }
   }
-  // If no damp rooms, dpcContent stays empty and section will be hidden by isSectionEmpty
+  // When no DPC is required, dpcContent stays empty and section is hidden by isSectionEmpty
 
   sections.push(
     buildSection(
@@ -747,18 +762,49 @@ export async function generateReport(
   )
 
   // --- SUB FLOOR VENTILATION ---
-  const totalAirbricks =
-    (aw?.airbrick_clean_count || 0) +
-    (aw?.airbrick_upgrade_count || 0) +
-    (aw?.airbrick_new_count || 0)
+  // Show this section only when there's actual airbrick work proposed OR
+  // timber rooms report sub-floor ventilation concerns.
+  // Don't default to "no airbricks installed" when no data exists — that
+  // assumption can contradict external inspection notes.
+  const airbrickClean = aw?.airbrick_clean_count || 0
+  const airbrickUpgrade = aw?.airbrick_upgrade_count || 0
+  const airbrickNew = aw?.airbrick_new_count || 0
+  const totalAirbricks = airbrickClean + airbrickUpgrade + airbrickNew
+
+  // Check timber rooms for sub-floor ventilation assessment
+  const ventilationConcerns = timberRooms.filter((r) => {
+    const v = (r.room_data?.timber_decay as any)?.sub_floor_ventilation
+    return v === 'inadequate' || v === 'blocked' || v === 'none'
+  })
 
   let ventContent = ''
   if (totalAirbricks > 0) {
-    ventContent = `The sub floor voids were ventilated by ${totalAirbricks} airbrick(s). Additional airbricks may be required to ensure adequate ventilation to the sub floor void.`
-  } else if (dampRooms.length > 0) {
+    // Build specific proposal text from the airbrick work items
+    const parts: string[] = []
+    if (airbrickClean > 0) {
+      parts.push(
+        `removal, cleaning and reinstallation of ${airbrickClean} existing airbrick(s)`
+      )
+    }
+    if (airbrickUpgrade > 0) {
+      parts.push(
+        `upgrading of ${airbrickUpgrade} airbrick(s) to 225 x 150mm airbricks`
+      )
+    }
+    if (airbrickNew > 0) {
+      parts.push(
+        `installation of ${airbrickNew} new 225 x 150mm airbrick(s)`
+      )
+    }
     ventContent =
-      'There were no airbricks installed. We recommend the installation of airbricks to provide adequate ventilation to the sub floor void, which will help to reduce the risk of timber decay and dampness.'
+      `We propose the following airbrick works: ${parts.join('; ')}. ` +
+      'This will increase the airflow through the floor voids, reduce the humidity and the moisture content of linked timbers, which will greatly reduce the chances of attack by wood rotting fungi such as dry rot and wet rot.'
+  } else if (ventilationConcerns.length > 0) {
+    // Timber rooms flagged ventilation issues but no specific airbrick work proposed
+    ventContent =
+      'During our inspection, concerns were noted regarding the sub floor ventilation. We recommend that the existing airbricks are assessed and, where necessary, cleaned, upgraded or supplemented to ensure adequate airflow to the sub floor voids.'
   }
+  // When no airbrick work and no ventilation concerns, section stays empty and is hidden
 
   sections.push(
     buildSection(
