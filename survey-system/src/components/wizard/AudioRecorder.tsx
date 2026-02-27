@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Mic, Square, Loader2, AlertCircle, Play } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext'
+import { Mic, Square, Loader2, AlertCircle } from 'lucide-react'
 
 // =============================================================================
 // WAV Encoding Utilities
@@ -63,10 +62,6 @@ async function convertWebmToWav(webmBlob: Blob): Promise<Blob> {
     const samples = audioBuffer.getChannelData(0) // mono
     const actualRate = audioBuffer.sampleRate
 
-    console.log(
-      `[AudioRecorder] WAV conversion: ${audioBuffer.duration.toFixed(1)}s, ${actualRate}Hz, ${samples.length} samples → ${(samples.length * 2 / 1024).toFixed(0)}KB WAV`
-    )
-
     const wavBuffer = encodeWav(samples, actualRate)
     return new Blob([wavBuffer], { type: 'audio/wav' })
   } finally {
@@ -91,12 +86,9 @@ export default function AudioRecorder({
   disabled = false,
   className = '',
 }: AudioRecorderProps) {
-  const { isAdmin } = useAuth()
   const [state, setState] = useState<RecordingState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [skipKeyterms, setSkipKeyterms] = useState(false)
-  const [debugAudioUrl, setDebugAudioUrl] = useState<string | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -116,9 +108,6 @@ export default function AudioRecorder({
       }
       if (timerRef.current) {
         clearInterval(timerRef.current)
-      }
-      if (debugAudioUrl) {
-        URL.revokeObjectURL(debugAudioUrl)
       }
     }
   }, [])
@@ -140,12 +129,6 @@ export default function AudioRecorder({
         setError('Audio recording is not supported in your browser')
         setState('error')
         return
-      }
-
-      // Revoke previous debug audio URL
-      if (debugAudioUrl) {
-        URL.revokeObjectURL(debugAudioUrl)
-        setDebugAudioUrl(null)
       }
 
       // Request microphone access.
@@ -172,16 +155,6 @@ export default function AudioRecorder({
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
-      // DEBUG: Log configuration
-      console.log('[AudioRecorder] Requested mimeType: audio/webm')
-      console.log('[AudioRecorder] Actual mimeType:', mediaRecorder.mimeType)
-      console.log('[AudioRecorder] audioBitsPerSecond:', mediaRecorder.audioBitsPerSecond)
-
-      const audioTrack = stream.getAudioTracks()[0]
-      if (audioTrack) {
-        console.log('[AudioRecorder] Audio track settings:', JSON.stringify(audioTrack.getSettings()))
-      }
-
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -192,24 +165,15 @@ export default function AudioRecorder({
       // Handle recording stop — convert WebM → WAV then transcribe
       mediaRecorder.onstop = async () => {
         const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const duration = recordingTimeRef.current
-
-        console.log(`[AudioRecorder] Recording stopped: ${duration}s, ${chunksRef.current.length} chunks, ${(webmBlob.size / 1024).toFixed(0)}KB WebM`)
-
-        // Create debug playback URL from original WebM (admin can listen)
-        setDebugAudioUrl(URL.createObjectURL(webmBlob))
 
         try {
           // Convert to WAV — eliminates WebM container parsing issues
           setState('processing')
           const wavBlob = await convertWebmToWav(webmBlob)
-          console.log(`[AudioRecorder] WAV blob: ${(wavBlob.size / 1024).toFixed(0)}KB`)
-
-          await transcribeAudio(wavBlob, duration)
-        } catch (conversionErr) {
-          console.warn('[AudioRecorder] WAV conversion failed, falling back to WebM:', conversionErr)
+          await transcribeAudio(wavBlob)
+        } catch {
           // Fallback: send original WebM if conversion fails
-          await transcribeAudio(webmBlob, duration)
+          await transcribeAudio(webmBlob)
         }
 
         // Cleanup stream
@@ -262,48 +226,25 @@ export default function AudioRecorder({
     }
   }, [])
 
-  const transcribeAudio = async (audioBlob: Blob, duration: number) => {
+  const transcribeAudio = async (audioBlob: Blob) => {
     setState('processing')
 
     try {
-      console.log('[AudioRecorder] ---- SENDING TO API ----')
-      console.log(`[AudioRecorder] Format: ${audioBlob.type}, Size: ${(audioBlob.size / 1024).toFixed(1)}KB, Recorded: ${duration}s`)
-
-      // Create form data with recorded duration for server-side diagnostics
       const formData = new FormData()
       const filename = audioBlob.type === 'audio/wav' ? 'recording.wav' : 'recording.webm'
       formData.append('audio', audioBlob, filename)
-      formData.append('recordedDuration', duration.toString())
 
-      const transcribeUrl = skipKeyterms ? '/api/transcribe?debug=nokeys' : '/api/transcribe'
-      const response = await fetch(transcribeUrl, {
+      const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
       })
 
-      console.log('[AudioRecorder] Response status:', response.status, response.statusText)
-
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('[AudioRecorder] Error response:', JSON.stringify(errorData))
         throw new Error(errorData.error || 'Transcription failed')
       }
 
       const result = await response.json()
-
-      console.log('[AudioRecorder] Transcript:', result.text)
-      console.log('[AudioRecorder] Confidence:', result.confidence)
-      console.log('[AudioRecorder] Duration:', result.duration, 'seconds')
-      if (result.diagnostics) {
-        const d = result.diagnostics
-        console.log('[AudioRecorder] ===== TRUNCATION CHECK =====')
-        console.log(`[AudioRecorder] You recorded:     ${d.clientRecordedDuration}s`)
-        console.log(`[AudioRecorder] Deepgram received: ${d.deepgramDuration}s`)
-        console.log(`[AudioRecorder] Duration gap:      ${d.durationGap}s ${Number(d.durationGap) > 3 ? '⚠️ AUDIO TRUNCATED!' : '✓ OK'}`)
-        console.log(`[AudioRecorder] File size:         ${d.fileSizeKB}KB`)
-        console.log(`[AudioRecorder] Words returned:    ${d.wordCount} (expected ~${d.expectedWords})`)
-        console.log('[AudioRecorder] ============================')
-      }
 
       if (!result.text || result.text.trim() === '') {
         setError('No speech detected. Please try again.')
@@ -398,29 +339,6 @@ export default function AudioRecorder({
         </p>
       )}
 
-      {/* Admin-only debug controls */}
-      {isAdmin && (
-        <div className="flex flex-col items-center gap-1">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={skipKeyterms}
-              onChange={(e) => setSkipKeyterms(e.target.checked)}
-              className="w-3 h-3 rounded border-white/20 bg-white/5 accent-amber-500"
-            />
-            <span className="text-[11px] text-amber-400/70">Debug: skip keyterms</span>
-          </label>
-
-          {/* Debug playback — lets admin hear what was captured */}
-          {debugAudioUrl && (
-            <div className="flex items-center gap-2 mt-1">
-              <Play className="w-3 h-3 text-amber-400/70" />
-              <audio controls src={debugAudioUrl} className="h-6" style={{ maxWidth: '200px' }} />
-              <span className="text-[11px] text-amber-400/50">recorded audio</span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
