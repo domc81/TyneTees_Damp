@@ -52,9 +52,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // DEBUG: Log received file details
+    console.log('[Transcribe DEBUG] ---- RECEIVED FILE ----')
+    console.log('[Transcribe DEBUG] File name:', audioFile.name)
+    console.log('[Transcribe DEBUG] File type (MIME):', audioFile.type)
+    console.log('[Transcribe DEBUG] File size:', audioFile.size, 'bytes', `(${(audioFile.size / 1024).toFixed(1)} KB)`)
+
     // Validate file type
     const validTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/ogg']
     if (!validTypes.includes(audioFile.type)) {
+      console.error('[Transcribe DEBUG] REJECTED — invalid MIME type:', audioFile.type)
       return NextResponse.json(
         { error: 'Invalid audio format. Supported: WebM, WAV, MP3, OGG' },
         { status: 400 }
@@ -64,6 +71,13 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const arrayBuffer = await audioFile.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+
+    // DEBUG: Log first 16 bytes to verify valid audio data arrived server-side
+    const headerHex = buffer.subarray(0, 16).toString('hex').match(/.{1,2}/g)?.join(' ') || ''
+    console.log('[Transcribe DEBUG] First 16 bytes (hex):', headerHex)
+    const isWebM = buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3
+    console.log('[Transcribe DEBUG] Valid WebM header:', isWebM)
+    console.log('[Transcribe DEBUG] Buffer length matches file size:', buffer.length === audioFile.size)
 
     // Send to Deepgram API
     const controller = new AbortController()
@@ -128,24 +142,37 @@ export async function POST(request: NextRequest) {
       // Deepgram accepts multiple keywords= params
       keywords.forEach((kw) => params.append('keywords', kw))
 
-      const deepgramResponse = await fetch(
-        `https://api.deepgram.com/v1/listen?${params.toString()}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Token ${apiKey}`,
-            'Content-Type': audioFile.type,
-          },
-          body: buffer,
-          signal: controller.signal,
-        }
-      )
+      // DEBUG: Log exactly what we're sending to Deepgram
+      const deepgramUrl = `https://api.deepgram.com/v1/listen?${params.toString()}`
+      console.log('[Transcribe DEBUG] ---- DEEPGRAM REQUEST ----')
+      console.log('[Transcribe DEBUG] URL:', deepgramUrl)
+      console.log('[Transcribe DEBUG] Content-Type header:', audioFile.type)
+      console.log('[Transcribe DEBUG] Body size:', buffer.length, 'bytes')
+
+      const deepgramResponse = await fetch(deepgramUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          'Content-Type': audioFile.type,
+        },
+        body: buffer,
+        signal: controller.signal,
+      })
 
       clearTimeout(timeoutId)
 
+      // DEBUG: Log Deepgram response headers (includes rate limit info, request ID)
+      console.log('[Transcribe DEBUG] ---- DEEPGRAM RESPONSE ----')
+      console.log('[Transcribe DEBUG] Status:', deepgramResponse.status, deepgramResponse.statusText)
+      const dgHeaders: Record<string, string> = {}
+      deepgramResponse.headers.forEach((value, key) => {
+        dgHeaders[key] = value
+      })
+      console.log('[Transcribe DEBUG] Response headers:', JSON.stringify(dgHeaders, null, 2))
+
       if (!deepgramResponse.ok) {
         const errorText = await deepgramResponse.text()
-        console.error('Deepgram API error:', errorText)
+        console.error('[Transcribe DEBUG] Deepgram API error body:', errorText)
         return NextResponse.json(
           { error: `Transcription service error: ${deepgramResponse.status}` },
           { status: deepgramResponse.status }
@@ -153,6 +180,9 @@ export async function POST(request: NextRequest) {
       }
 
       const data: DeepgramResponse = await deepgramResponse.json()
+
+      // DEBUG: Log the FULL Deepgram response (not just the extracted transcript)
+      console.log('[Transcribe DEBUG] Full Deepgram response:', JSON.stringify(data, null, 2))
 
       // Extract transcript from response
       const channels = data.results?.channels

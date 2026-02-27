@@ -81,6 +81,19 @@ export default function AudioRecorder({
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
+      // DEBUG: Log what MIME type the browser actually chose (may differ from requested)
+      console.log('[AudioRecorder DEBUG] Requested mimeType: audio/webm')
+      console.log('[AudioRecorder DEBUG] Actual mimeType:', mediaRecorder.mimeType)
+      console.log('[AudioRecorder DEBUG] audioBitsPerSecond:', mediaRecorder.audioBitsPerSecond)
+      console.log('[AudioRecorder DEBUG] MediaRecorder state:', mediaRecorder.state)
+
+      // DEBUG: Log audio track settings (sample rate, channels, etc.)
+      const audioTrack = stream.getAudioTracks()[0]
+      if (audioTrack) {
+        const settings = audioTrack.getSettings()
+        console.log('[AudioRecorder DEBUG] Audio track settings:', JSON.stringify(settings))
+      }
+
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -144,6 +157,21 @@ export default function AudioRecorder({
     setState('processing')
 
     try {
+      // DEBUG: Log blob details before sending
+      console.log('[AudioRecorder DEBUG] ---- SENDING TO API ----')
+      console.log('[AudioRecorder DEBUG] Blob size:', audioBlob.size, 'bytes', `(${(audioBlob.size / 1024).toFixed(1)} KB)`)
+      console.log('[AudioRecorder DEBUG] Blob type:', audioBlob.type)
+      console.log('[AudioRecorder DEBUG] Chunks count:', chunksRef.current.length)
+
+      // DEBUG: Read first 16 bytes to verify it's valid audio (WebM starts with 0x1A45DFA3)
+      const headerSlice = audioBlob.slice(0, 16)
+      const headerBytes = new Uint8Array(await headerSlice.arrayBuffer())
+      const hexHeader = Array.from(headerBytes).map(b => b.toString(16).padStart(2, '0')).join(' ')
+      console.log('[AudioRecorder DEBUG] First 16 bytes (hex):', hexHeader)
+      // WebM magic bytes: 1a 45 df a3
+      const isWebM = headerBytes[0] === 0x1a && headerBytes[1] === 0x45 && headerBytes[2] === 0xdf && headerBytes[3] === 0xa3
+      console.log('[AudioRecorder DEBUG] Valid WebM header:', isWebM)
+
       // Create form data
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
@@ -154,12 +182,23 @@ export default function AudioRecorder({
         body: formData,
       })
 
+      // DEBUG: Log response headers
+      console.log('[AudioRecorder DEBUG] ---- API RESPONSE ----')
+      console.log('[AudioRecorder DEBUG] Response status:', response.status, response.statusText)
+
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('[AudioRecorder DEBUG] Error response:', JSON.stringify(errorData))
         throw new Error(errorData.error || 'Transcription failed')
       }
 
       const result = await response.json()
+
+      // DEBUG: Log the full transcription result
+      console.log('[AudioRecorder DEBUG] Full result:', JSON.stringify(result))
+      console.log('[AudioRecorder DEBUG] Transcript text:', result.text)
+      console.log('[AudioRecorder DEBUG] Confidence:', result.confidence)
+      console.log('[AudioRecorder DEBUG] Duration:', result.duration, 'seconds')
 
       if (!result.text || result.text.trim() === '') {
         setError('No speech detected. Please try again.')
