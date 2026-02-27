@@ -64,91 +64,6 @@ export function getPhotoUrl(photo: { storage_path?: string | null; file_path?: s
 }
 
 // ============================================================================
-// Mock Data for Fallback (when Supabase isn't available)
-// ============================================================================
-
-const MOCK_SURVEYS: Survey[] = [
-  {
-    id: 'proj-001',
-    enquiry_id: 'enq-001',
-    project_number: 'TT-2026-0001',
-    survey_type: 'damp',
-    status: 'in_progress',
-    survey_date: '2026-01-15',
-    weather_conditions: 'Dry and cloudy',
-    client_name: 'John Smith',
-    site_address: '12 Victoria Street, Newcastle upon Tyne, NE1 4LP',
-    site_postcode: 'NE1 4LP',
-    notes: 'Rising damp reported in ground floor living room',
-    created_at: '2026-01-10T10:00:00Z',
-    updated_at: '2026-01-15T14:30:00Z',
-  },
-  {
-    id: 'proj-002',
-    enquiry_id: 'enq-002',
-    project_number: 'TT-2026-0002',
-    survey_type: 'timber',
-    status: 'pending_review',
-    survey_date: '2026-01-18',
-    weather_conditions: 'Overcast',
-    client_name: 'Sarah Johnson',
-    site_address: '45 Jesmond Road, Jesmond, Newcastle upon Tyne, NE2 4AB',
-    site_postcode: 'NE2 4AB',
-    notes: 'Timber survey requested for period property',
-    created_at: '2026-01-12T09:00:00Z',
-    updated_at: '2026-01-18T11:00:00Z',
-  },
-  {
-    id: 'proj-003',
-    enquiry_id: 'enq-003',
-    project_number: 'TT-2026-0003',
-    survey_type: 'woodworm',
-    status: 'completed',
-    survey_date: '2026-01-20',
-    weather_conditions: 'Sunny',
-    client_name: 'Michael Brown',
-    site_address: '78 High Street, Gosforth, Newcastle upon Tyne, NE3 1ES',
-    site_postcode: 'NE3 1ES',
-    notes: 'Woodworm treatment specification required',
-    created_at: '2026-01-14T15:00:00Z',
-    updated_at: '2026-01-20T16:00:00Z',
-  },
-  {
-    id: 'proj-004',
-    enquiry_id: 'enq-004',
-    project_number: 'TT-2026-0004',
-    survey_type: 'condensation',
-    status: 'draft',
-    survey_date: null,
-    weather_conditions: null,
-    client_name: 'Emily Davis',
-    site_address: '22 Heaton Road, Heaton, Newcastle upon Tyne, NE6 1SL',
-    site_postcode: 'NE6 1SL',
-    notes: 'Condensation and mold issues in bedroom',
-    created_at: '2026-01-22T11:00:00Z',
-    updated_at: '2026-01-22T11:00:00Z',
-  },
-  {
-    id: 'proj-005',
-    enquiry_id: 'enq-005',
-    project_number: 'TT-2026-0005',
-    survey_type: 'damp',
-    status: 'draft',
-    survey_date: null,
-    weather_conditions: null,
-    client_name: 'Robert Wilson',
-    site_address: '5 Fernwood Road, Jesmond, Newcastle upon Tyne, NE2 3TJ',
-    site_postcode: 'NE2 3TJ',
-    notes: 'Damp patch appearing on upstairs bedroom wall',
-    created_at: '2026-01-25T08:00:00Z',
-    updated_at: '2026-01-25T08:00:00Z',
-  },
-]
-
-// Flag to track if we're using mock data
-let useMockData = false
-
-// ============================================================================
 // Types (matching database schema)
 // ============================================================================
 
@@ -417,29 +332,19 @@ export async function getEnquiry(id: string): Promise<Enquiry | null> {
 
 export async function getSurveys(): Promise<Survey[]> {
   const supabase = getSupabase()
-  if (!supabase) {
-    useMockData = true
-    return MOCK_SURVEYS
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('surveys')
+    .select('*, customer:customers(id, first_name, last_name, email, phone)')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching surveys:', error.message)
+    return []
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('surveys')
-      .select('*, customer:customers(id, first_name, last_name, email, phone)')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.warn('Supabase error, using mock data:', error.message)
-      useMockData = true
-      return MOCK_SURVEYS
-    }
-
-    return data || []
-  } catch (err) {
-    console.warn('Supabase connection failed, using mock data:', err)
-    useMockData = true
-    return MOCK_SURVEYS
-  }
+  return data || []
 }
 
 export async function getSurvey(id: string): Promise<Survey | null> {
@@ -994,139 +899,6 @@ async function getPricingItem(id: string): Promise<PricingItem | null> {
   return data
 }
 
-// ============================================================================
-// Sample Data Initialization
-// ============================================================================
-
-export async function initializeSampleData(): Promise<void> {
-  // If we're using mock data, skip database initialization
-  if (useMockData) {
-    console.log('Using mock data - skipping database initialization')
-    return
-  }
-
-  const supabase = getSupabase()
-  if (!supabase) {
-    useMockData = true
-    return
-  }
-
-  try {
-    // Check if we already have data
-    const { count, error: countError } = await supabase
-      .from('surveys')
-      .select('count', { count: 'exact', head: true })
-
-    if (countError) {
-      console.warn('Failed to check data, using mock:', countError.message)
-      useMockData = true
-      return
-    }
-
-    if (count && count > 0) {
-      console.log('Sample data already exists')
-      return
-    }
-
-    console.log('Initializing sample data...')
-
-    // Insert sample enquiry
-    const { data: enquiry, error: enquiryError } = await supabase
-      .from('enquiries')
-      .insert({
-        enquiry_number: 'CF-DAMP-2026-0001',
-        internal_reference: 'SMITH-123',
-        client_name: 'John Smith',
-        client_email: 'john.smith@email.com',
-        client_phone: '01234 567890',
-        site_address_1: '12 Victoria Street',
-        site_address_2: '',
-        site_city: 'Newcastle upon Tyne',
-        site_county: 'Tyne and Wear',
-        site_postcode: 'NE1 4LP',
-        survey_type: 'damp',
-        status: 'surveyed',
-        source: 'Website',
-        enquiry_date: new Date().toISOString().split('T')[0],
-        proposed_survey_date: null,
-        notes: 'Rising damp reported in ground floor',
-      })
-      .select()
-      .single()
-
-    if (enquiryError || !enquiry) {
-      console.warn('Failed to create sample enquiry, using mock:', enquiryError?.message)
-      useMockData = true
-      return
-    }
-
-    // Insert sample project
-    const { data: project, error: projectError } = await supabase
-      .from('surveys')
-      .insert({
-        enquiry_id: enquiry.id,
-        survey_type: 'damp',
-        status: 'in_progress',
-        survey_date: new Date().toISOString().split('T')[0],
-        weather_conditions: 'Dry',
-        client_name: 'John Smith',
-        site_address: '12 Victoria Street, Newcastle upon Tyne',
-        site_postcode: 'NE1 4LP',
-        notes: 'Rising damp to ground floor - demo project',
-      })
-      .select()
-      .single()
-
-    if (projectError || !project) {
-      console.warn('Failed to create sample project, using mock:', projectError?.message)
-      useMockData = true
-      return
-    }
-
-    // Insert sample room
-    const { data: room, error: roomError } = await supabase
-      .from('survey_rooms')
-      .insert({
-        project_id: project.id,
-        name: 'Living Room',
-        room_type: 'living_room',
-        floor_level: 'ground',
-        display_order: 1,
-        wall_type: 'solid_brick',
-        plaster_type: 'cement_hard',
-        floor_type: 'solid_concrete',
-        findings: 'Rising damp to north wall up to 1.2m. Visible tide marks and salt crystallisation.',
-        recommendations: 'Install physical DPC and replaster with renovating plaster system.',
-        is_completed: true,
-      })
-      .select()
-      .single()
-
-    if (roomError || !room) {
-      console.warn('Failed to create sample room, using mock:', roomError?.message)
-      useMockData = true
-      return
-    }
-
-    // Insert moisture readings
-    const { error: readingsError } = await supabase
-      .from('moisture_readings')
-      .insert([
-        { room_id: room.id, location: 'North wall - low', reading: 18, unit: 'percentage', material: 'masonry' },
-        { room_id: room.id, location: 'North wall - mid', reading: 22, unit: 'percentage', material: 'masonry' },
-        { room_id: room.id, location: 'North wall - high', reading: 19, unit: 'percentage', material: 'masonry' },
-      ])
-
-    if (readingsError) {
-      console.warn('Failed to create moisture readings:', readingsError.message)
-    }
-
-    console.log('Sample data initialized successfully')
-  } catch (err) {
-    console.warn('Database initialization failed, using mock data:', err)
-    useMockData = true
-  }
-}
 
 // ============================================================================
 // Structured Survey Data (Phase 10)

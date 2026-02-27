@@ -15,7 +15,7 @@ import {
   Wind,
   Users,
 } from 'lucide-react'
-import { getSurveys, initializeSampleData } from '@/lib/supabase-data'
+import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
@@ -33,53 +33,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function loadData() {
-      // Set a timeout to prevent hanging
-      const timeoutId = setTimeout(() => {
-        console.warn('Data loading timed out, using mock data')
-        setSurveys([
-          {
-            id: 'demo-1',
-            enquiry_id: null,
-            project_number: 'TT-DEMO-0001',
-            survey_type: 'damp',
-            status: 'draft',
-            survey_date: null,
-            weather_conditions: null,
-            client_name: 'Demo Client',
-            site_address: 'Demo Address',
-            site_postcode: 'NE1 1AA',
-            notes: 'Demo project',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ])
-        setIsLoading(false)
-      }, 5000) // 5 second timeout
-
       try {
-        await initializeSampleData()
         const data = await getSurveys()
-        clearTimeout(timeoutId)
         setSurveys(data)
       } catch (err) {
         console.error('Error loading data:', err)
-        clearTimeout(timeoutId)
-        // Set a demo project so the UI isn't empty
-        setSurveys([{
-          id: 'demo-error-1',
-          enquiry_id: null,
-          project_number: 'TT-ERR-0001',
-          survey_type: 'damp',
-          status: 'draft',
-          survey_date: null,
-          weather_conditions: null,
-          client_name: 'Demo (Error Fallback)',
-          site_address: 'Address',
-          site_postcode: 'NE1 1AA',
-          notes: 'Error fallback',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }])
       } finally {
         setIsLoading(false)
       }

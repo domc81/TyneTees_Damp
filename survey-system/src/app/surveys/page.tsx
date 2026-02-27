@@ -16,7 +16,7 @@ import {
   List,
   X,
 } from 'lucide-react'
-import { getSurveys, initializeSampleData } from '@/lib/supabase-data'
+import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
@@ -46,20 +46,11 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     async function loadSurveys() {
-      // Set a timeout to prevent hanging
-      const timeoutId = setTimeout(() => {
-        console.warn('Surveys loading timed out, using mock data')
-        setIsLoading(false)
-      }, 5000) // 5 second timeout
-
       try {
-        await initializeSampleData()
         const data = await getSurveys()
-        clearTimeout(timeoutId)
         setSurveys(data)
       } catch (err) {
         console.error('Error loading surveys:', err)
-        clearTimeout(timeoutId)
       } finally {
         setIsLoading(false)
       }
