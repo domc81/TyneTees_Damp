@@ -79,6 +79,13 @@ export async function POST(request: NextRequest) {
     console.log('[Transcribe DEBUG] Valid WebM header:', isWebM)
     console.log('[Transcribe DEBUG] Buffer length matches file size:', buffer.length === audioFile.size)
 
+    // Debug mode: skip keyterms when ?debug=nokeys is passed
+    const debugMode = request.nextUrl.searchParams.get('debug')
+    const skipKeyterms = debugMode === 'nokeys'
+    if (skipKeyterms) {
+      console.log('[Transcribe DEBUG] ⚠️ KEYTERMS BYPASSED — debug=nokeys mode')
+    }
+
     // Send to Deepgram API
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 60000) // 60-second timeout
@@ -127,11 +134,14 @@ export async function POST(request: NextRequest) {
         utterances: 'false',
       })
       // Nova-3 keyterms: each appended as a separate keyterm= param
-      keyterms.forEach((kt) => params.append('keyterm', kt))
+      if (!skipKeyterms) {
+        keyterms.forEach((kt) => params.append('keyterm', kt))
+      }
 
       // DEBUG: Log exactly what we're sending to Deepgram
       const deepgramUrl = `https://api.deepgram.com/v1/listen?${params.toString()}`
       console.log('[Transcribe DEBUG] ---- DEEPGRAM REQUEST ----')
+      console.log('[Transcribe DEBUG] Mode:', skipKeyterms ? 'NO KEYTERMS (debug)' : `WITH ${keyterms.length} KEYTERMS`)
       console.log('[Transcribe DEBUG] URL:', deepgramUrl)
       console.log('[Transcribe DEBUG] Content-Type header:', audioFile.type)
       console.log('[Transcribe DEBUG] Body size:', buffer.length, 'bytes')
@@ -205,10 +215,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Return result
-      const result: TranscriptionResult = {
+      const result: TranscriptionResult & { debugMode?: string } = {
         text: transcript,
         confidence: Math.round(confidence * 100) / 100,
         duration: Math.round(duration * 100) / 100,
+      }
+
+      if (skipKeyterms) {
+        result.debugMode = 'nokeys'
       }
 
       return NextResponse.json(result)
