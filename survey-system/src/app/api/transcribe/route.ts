@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     // Parse multipart form data
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
+    const clientRecordedDuration = parseFloat(formData.get('recordedDuration') as string) || 0
 
     if (!audioFile) {
       return NextResponse.json(
@@ -57,6 +58,12 @@ export async function POST(request: NextRequest) {
     console.log('[Transcribe DEBUG] File name:', audioFile.name)
     console.log('[Transcribe DEBUG] File type (MIME):', audioFile.type)
     console.log('[Transcribe DEBUG] File size:', audioFile.size, 'bytes', `(${(audioFile.size / 1024).toFixed(1)} KB)`)
+    console.log('[Transcribe DEBUG] Client recorded duration:', clientRecordedDuration, 'seconds')
+    // At 128kbps mono WebM, expect ~16KB/sec. Flag if size is suspiciously small.
+    const expectedMinBytes = clientRecordedDuration * 8000 // conservative: 8KB/sec minimum
+    if (clientRecordedDuration > 0 && audioFile.size < expectedMinBytes) {
+      console.warn(`[Transcribe DEBUG] ⚠️ FILE SIZE SUSPICIOUSLY SMALL: ${audioFile.size} bytes for ${clientRecordedDuration}s recording (expected at least ${expectedMinBytes} bytes)`)
+    }
 
     // Validate file type
     const validTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/ogg']
@@ -132,6 +139,10 @@ export async function POST(request: NextRequest) {
         diarize: 'false',
         filler_words: 'false',
         utterances: 'false',
+        // Disable endpointing — prevents Deepgram from stopping transcription
+        // early when it detects a pause in speech. Critical for surveyor recordings
+        // where pauses between observations are normal.
+        endpointing: 'false',
       })
       // Nova-3 keyterms: each appended as a separate keyterm= param
       if (!skipKeyterms) {
@@ -202,20 +213,33 @@ export async function POST(request: NextRequest) {
       const confidence = alternatives[0].confidence
       const duration = data.metadata?.duration || 0
 
-      // Log quality metrics for debugging transcription issues
-      console.log(
-        `[Transcribe] Duration: ${duration.toFixed(1)}s | Confidence: ${(confidence * 100).toFixed(1)}% | Words: ${transcript.split(' ').length} | Content-Type: ${audioFile.type} | Size: ${(buffer.length / 1024).toFixed(0)}KB`
-      )
+      // ===== TRUNCATION DIAGNOSTIC SUMMARY =====
+      const wordCount = transcript ? transcript.split(/\s+/).filter(Boolean).length : 0
+      const expectedWords = Math.round(duration * 2.5) // ~2.5 words/sec for normal speech
+      const durationMismatch = clientRecordedDuration > 0
+        ? Math.abs(duration - clientRecordedDuration)
+        : 0
 
-      // Warn on low confidence — may indicate poor audio quality
-      if (confidence < 0.7) {
-        console.warn(
-          `[Transcribe] Low confidence (${(confidence * 100).toFixed(1)}%) — possible audio quality issue`
-        )
+      console.log('[Transcribe] ===== DIAGNOSTIC SUMMARY =====')
+      console.log(`[Transcribe] Client recorded:  ${clientRecordedDuration}s`)
+      console.log(`[Transcribe] Deepgram saw:     ${duration.toFixed(1)}s`)
+      console.log(`[Transcribe] Duration gap:     ${durationMismatch.toFixed(1)}s ${durationMismatch > 3 ? '⚠️ MISMATCH' : '✓'}`)
+      console.log(`[Transcribe] File size:        ${(buffer.length / 1024).toFixed(0)}KB (${(buffer.length / Math.max(duration, 1) / 1024).toFixed(1)} KB/sec)`)
+      console.log(`[Transcribe] Words returned:   ${wordCount} (expected ~${expectedWords} for ${duration.toFixed(0)}s)`)
+      console.log(`[Transcribe] Confidence:       ${(confidence * 100).toFixed(1)}%`)
+      console.log(`[Transcribe] Transcript:       "${transcript.substring(0, 200)}${transcript.length > 200 ? '...' : ''}"`)
+      console.log('[Transcribe] ================================')
+
+      // Flag specific truncation scenarios
+      if (durationMismatch > 5) {
+        console.warn(`[Transcribe] ⚠️ AUDIO TRUNCATION DETECTED: Client recorded ${clientRecordedDuration}s but Deepgram only processed ${duration.toFixed(1)}s — audio data may be incomplete or WebM container is malformed`)
+      }
+      if (wordCount < expectedWords * 0.3 && duration > 5) {
+        console.warn(`[Transcribe] ⚠️ LOW WORD COUNT: Got ${wordCount} words from ${duration.toFixed(0)}s of audio (expected ~${expectedWords}) — Deepgram may be struggling with audio quality or domain terminology`)
       }
 
-      // Return result
-      const result: TranscriptionResult & { debugMode?: string } = {
+      // Return result with diagnostics
+      const result: TranscriptionResult & { debugMode?: string; diagnostics?: Record<string, unknown> } = {
         text: transcript,
         confidence: Math.round(confidence * 100) / 100,
         duration: Math.round(duration * 100) / 100,
@@ -223,6 +247,16 @@ export async function POST(request: NextRequest) {
 
       if (skipKeyterms) {
         result.debugMode = 'nokeys'
+      }
+
+      // Include diagnostics in response for client-side debugging
+      result.diagnostics = {
+        clientRecordedDuration,
+        deepgramDuration: Math.round(duration * 100) / 100,
+        durationGap: Math.round(durationMismatch * 100) / 100,
+        fileSizeKB: Math.round(buffer.length / 1024),
+        wordCount,
+        expectedWords,
       }
 
       return NextResponse.json(result)

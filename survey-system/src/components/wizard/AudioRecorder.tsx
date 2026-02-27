@@ -97,10 +97,15 @@ export default function AudioRecorder({
         console.log('[AudioRecorder DEBUG] Audio track settings:', JSON.stringify(settings))
       }
 
-      // Collect audio chunks
+      // Collect audio chunks (with timeslice=1000, fires every second)
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
+          // Log every 5 chunks (~5 seconds) to track accumulation without spam
+          if (chunksRef.current.length % 5 === 0) {
+            const totalSize = chunksRef.current.reduce((sum, c) => sum + c.size, 0)
+            console.log(`[AudioRecorder DEBUG] Chunks: ${chunksRef.current.length}, Total size: ${(totalSize / 1024).toFixed(1)}KB`)
+          }
         }
       }
 
@@ -116,8 +121,10 @@ export default function AudioRecorder({
         }
       }
 
-      // Start recording
-      mediaRecorder.start()
+      // Start recording — timeslice=1000 forces the browser to flush audio
+      // chunks every second. Without it, some browsers produce WebM files
+      // with incomplete container metadata that Deepgram can't fully parse.
+      mediaRecorder.start(1000)
       setState('recording')
       setRecordingTime(0)
 
@@ -175,9 +182,10 @@ export default function AudioRecorder({
       const isWebM = headerBytes[0] === 0x1a && headerBytes[1] === 0x45 && headerBytes[2] === 0xdf && headerBytes[3] === 0xa3
       console.log('[AudioRecorder DEBUG] Valid WebM header:', isWebM)
 
-      // Create form data
+      // Create form data — include recorded duration for server-side diagnostics
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
+      formData.append('recordedDuration', recordingTime.toString())
 
       // Send to transcription API
       const transcribeUrl = skipKeyterms ? '/api/transcribe?debug=nokeys' : '/api/transcribe'
@@ -198,11 +206,21 @@ export default function AudioRecorder({
 
       const result = await response.json()
 
-      // DEBUG: Log the full transcription result
+      // DEBUG: Log the full transcription result with diagnostics
       console.log('[AudioRecorder DEBUG] Full result:', JSON.stringify(result))
       console.log('[AudioRecorder DEBUG] Transcript text:', result.text)
       console.log('[AudioRecorder DEBUG] Confidence:', result.confidence)
       console.log('[AudioRecorder DEBUG] Duration:', result.duration, 'seconds')
+      if (result.diagnostics) {
+        const d = result.diagnostics
+        console.log('[AudioRecorder] ===== TRUNCATION CHECK =====')
+        console.log(`[AudioRecorder] You recorded:     ${d.clientRecordedDuration}s`)
+        console.log(`[AudioRecorder] Deepgram received: ${d.deepgramDuration}s`)
+        console.log(`[AudioRecorder] Duration gap:      ${d.durationGap}s ${Number(d.durationGap) > 3 ? '⚠️ AUDIO TRUNCATED!' : '✓ OK'}`)
+        console.log(`[AudioRecorder] File size:         ${d.fileSizeKB}KB`)
+        console.log(`[AudioRecorder] Words returned:    ${d.wordCount} (expected ~${d.expectedWords})`)
+        console.log('[AudioRecorder] ============================')
+      }
 
       if (!result.text || result.text.trim() === '') {
         setError('No speech detected. Please try again.')
