@@ -123,41 +123,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Quick Survey Type Selection */}
-            <div className="glass-card">
-              <div className="px-6 py-5 border-b border-white/10">
-                <h3 className="text-lg font-semibold text-white">Start New Survey</h3>
-                <p className="text-sm text-white/50 mt-1">Choose a survey type to begin</p>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {Object.entries(surveyTypeConfig).map(([key, config]) => {
-                    const Icon = config.icon
-                    return (
-                      <Link
-                        key={key}
-                        href={`/survey/new?type=${key}`}
-                        className="group relative p-6 rounded-xl bg-gradient-to-br border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden"
-                      >
-                        {/* Gradient background */}
-                        <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-
-                        <div className="relative flex flex-col items-center text-center gap-3">
-                          <div className={`p-4 rounded-xl bg-white shadow-sm ${config.color} group-hover:scale-110 transition-transform duration-300`}>
-                            <Icon className="w-8 h-8" />
-                          </div>
-                          <div>
-                            <p className={`font-semibold text-white transition-colors duration-300 group-hover:text-slate-900`}>{config.label}</p>
-                            <p className="text-xs text-white/50 group-hover:text-slate-700 mt-1 transition-colors duration-300">Create new survey</p>
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
             {/* Recent Projects */}
             <div className="glass-card">
               <div className="px-6 py-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
