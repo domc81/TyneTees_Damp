@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Loader2, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 interface AudioRecorderProps {
   onTranscriptionComplete: (text: string) => void
@@ -16,9 +17,11 @@ export default function AudioRecorder({
   disabled = false,
   className = '',
 }: AudioRecorderProps) {
+  const { isAdmin } = useAuth()
   const [state, setState] = useState<RecordingState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [skipKeyterms, setSkipKeyterms] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -177,7 +180,8 @@ export default function AudioRecorder({
       formData.append('audio', audioBlob, 'recording.webm')
 
       // Send to transcription API
-      const response = await fetch('/api/transcribe', {
+      const transcribeUrl = skipKeyterms ? '/api/transcribe?debug=nokeys' : '/api/transcribe'
+      const response = await fetch(transcribeUrl, {
         method: 'POST',
         body: formData,
       })
@@ -294,6 +298,19 @@ export default function AudioRecorder({
         <p className="text-xs text-white/50 text-center">
           Record up to {MAX_RECORDING_SECONDS / 60} minutes of audio
         </p>
+      )}
+
+      {/* Admin-only debug toggle for A/B testing keyterms */}
+      {isAdmin && (
+        <label className="flex items-center gap-2 justify-center cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={skipKeyterms}
+            onChange={(e) => setSkipKeyterms(e.target.checked)}
+            className="w-3 h-3 rounded border-white/20 bg-white/5 accent-amber-500"
+          />
+          <span className="text-[11px] text-amber-400/70">Debug: skip keyterms</span>
+        </label>
       )}
     </div>
   )
