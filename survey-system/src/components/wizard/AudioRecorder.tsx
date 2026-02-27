@@ -60,13 +60,23 @@ export default function AudioRecorder({
         return
       }
 
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Request microphone access with quality constraints
+      // Noise suppression + echo cancellation are critical for on-site recording
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: { ideal: 48000 },
+          channelCount: { ideal: 1 },
+        },
+      })
       streamRef.current = stream
 
-      // Create MediaRecorder
+      // Create MediaRecorder with explicit bitrate for clear speech
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm',
+        audioBitsPerSecond: 128000,
       })
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
