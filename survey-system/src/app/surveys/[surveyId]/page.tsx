@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Calculator,
   FileText,
+  HardHat,
   MapPin,
   User,
   Calendar,
@@ -278,6 +279,13 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                     >
                       <FileText className="w-5 h-5" />
                       {reportStatus ? 'View Report' : 'Generate Report'}
+                    </Link>
+                    <Link
+                      href={`/survey/${survey.id}/installer-info`}
+                      className="btn-secondary flex items-center gap-2 px-6 py-3 text-base"
+                    >
+                      <HardHat className="w-5 h-5" />
+                      Installer Info
                     </Link>
                   </>
                 )}
