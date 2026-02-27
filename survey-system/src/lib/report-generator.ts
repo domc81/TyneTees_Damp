@@ -484,6 +484,7 @@ export async function generateReport(
     'Room-by-room findings:',
     ...llmContextParts,
     '',
+    ext?.notes?.trim() ? `External inspection notes: ${ext.notes.trim()}` : '',
     ext?.building_defects_found
       ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
       : 'No external defects noted.',
@@ -632,9 +633,6 @@ export async function generateReport(
           `We noted the following building defects:\n\n${defectLabels.map((d: string) => ` - ${d}`).join('\n')}`
         )
       )
-    } else {
-      extContent =
-        'No significant building defects were noted during our external inspection.'
     }
 
     if (ext.wall_tie_concern) {
@@ -685,9 +683,12 @@ export async function generateReport(
     }
   }
 
-  // Use surveyor observation notes as top-level content when available
-  if (!extContent && ext?.notes?.trim()) {
+  // Surveyor observation notes always take priority as top-level content
+  if (ext?.notes?.trim()) {
     extContent = ext.notes.trim()
+  } else if (ext && !ext.building_defects_found) {
+    extContent =
+      'No significant building defects were noted during our external inspection.'
   }
 
   // If no external inspection data at all, set a default
@@ -1195,6 +1196,7 @@ export async function regenerateSection(
     'Room-by-room findings:',
     ...llmContextParts,
     '',
+    ext?.notes?.trim() ? `External inspection notes: ${ext.notes.trim()}` : '',
     ext?.building_defects_found
       ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
       : 'No external defects noted.',
