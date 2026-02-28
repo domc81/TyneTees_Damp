@@ -432,9 +432,10 @@ export interface AdditionalWorks {
 }
 
 export type PIVType =
-  | 'nuaire_drimaster_eco'
-  | 'nuaire_drimaster_2000'
-  | 'other'
+  | 'loft_heated'
+  | 'loft_unheated'
+  | 'wall_mounted'
+  | 'none'
 
 export interface DuctingComponent {
   type: DuctingType

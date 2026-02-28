@@ -439,29 +439,33 @@ function mapCondensationSurvey(
   // === PIV UNITS ===
 
   const pivCount = additionalWorks.piv_count || 0
-  const pivType = additionalWorks.piv_type || 'nuaire_drimaster_eco'
+  const pivType = additionalWorks.piv_type || 'none'
 
-  if (pivCount > 0) {
-    // Determine PIV line key based on type
-    let pivLineKey = 'va_pozidry_loft_unit_heated'
-    if (pivType === 'nuaire_drimaster_2000') {
-      pivLineKey = 'va_pozidry_loft_unit_unheated'
-    }
+  if (pivCount > 0 && pivType !== 'none') {
+    if (pivType === 'loft_heated' || pivType === 'loft_unheated') {
+      // Determine PIV line key based on heated vs unheated selection
+      const pivLineKey = pivType === 'loft_unheated'
+        ? 'va_pozidry_loft_unit_unheated'
+        : 'va_pozidry_loft_unit_heated'
 
-    const pivInput = createLineInput(lookup, 'piv_loft', pivLineKey, pivCount)
-    if (pivInput) inputs.push(pivInput)
+      const pivInput = createLineInput(lookup, 'piv_loft', pivLineKey, pivCount)
+      if (pivInput) inputs.push(pivInput)
 
-    // Electrical pack per PIV
-    if (additionalWorks.piv_electrical_pack) {
-      const electricalInput = createLineInput(lookup, 'piv_loft', 'electrical_pack_fused_spur_cable_jb', pivCount)
-      if (electricalInput) inputs.push(electricalInput)
-    }
+      // Electrical pack per PIV
+      if (additionalWorks.piv_electrical_pack) {
+        const electricalInput = createLineInput(lookup, 'piv_loft', 'electrical_pack_fused_spur_cable_jb', pivCount)
+        if (electricalInput) inputs.push(electricalInput)
+      }
 
-    // Sarkvents
-    const sarkventCount = additionalWorks.sarkvents_count || 0
-    if (sarkventCount > 0) {
-      const sarkventInput = createLineInput(lookup, 'piv_loft', 'sarkvents', sarkventCount)
-      if (sarkventInput) inputs.push(sarkventInput)
+      // Sarkvents
+      const sarkventCount = additionalWorks.sarkvents_count || 0
+      if (sarkventCount > 0) {
+        const sarkventInput = createLineInput(lookup, 'piv_loft', 'sarkvents', sarkventCount)
+        if (sarkventInput) inputs.push(sarkventInput)
+      }
+    } else if (pivType === 'wall_mounted') {
+      // Wall-mounted PIV — ducting components handled in the ducting section below
+      // TODO: Add wall-mounted PIV unit line item when template is available
     }
   }
 
