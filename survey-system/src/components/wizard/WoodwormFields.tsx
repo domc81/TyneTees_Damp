@@ -6,7 +6,7 @@ import {
   InfestationStatus,
   InfestationSeverity,
 } from '@/types/survey-wizard.types'
-import { Bug, AlertTriangle, Layers, Clock, Hammer } from 'lucide-react'
+import { Bug, AlertTriangle, Layers, Clock, Hammer, Package } from 'lucide-react'
 
 interface WoodwormFieldsProps {
   data: Partial<WoodwormRoomData>
@@ -191,6 +191,31 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
         <p className="text-xs text-white/50">
           Enter the area requiring treatment for each method
         </p>
+      </div>
+
+      {/* Loft Insulation */}
+      <div className="glass-card p-4 space-y-3">
+        <h5 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <Package className="w-4 h-4 text-red-300" />
+          Loft Insulation
+        </h5>
+        <p className="text-xs text-white/50">
+          Where roof timbers are treated, insulation must be lifted, the area fogged, and insulation relaid
+        </p>
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            Loft Insulation Area (m²)
+          </label>
+          <input
+            type="number"
+            value={data.loft_insulation_area || ''}
+            onChange={(e) => handleChange('loft_insulation_area', parseFloat(e.target.value) || undefined)}
+            className="input-field"
+            step="0.1"
+            min="0"
+            placeholder="Loft floor area requiring insulation lift"
+          />
+        </div>
       </div>
 
       {/* Staircase Fogging */}

@@ -370,6 +370,9 @@ export interface WoodwormRoomData {
   spray_timber_area?: number // m² of exposed timber
   paste_treatment_area?: number // m² requiring paste
 
+  // Loft Insulation (roof timber treatments)
+  loft_insulation_area?: number // m² of loft floor area where insulation must be lifted, fogged, and relaid
+
   // Staircase Fogging
   staircase_open_rear_steps?: number // Count of open-rear steps to fog
   staircase_closed_rear_steps?: number // Count of closed-rear steps (drill & plug) to fog
