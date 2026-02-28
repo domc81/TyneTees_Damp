@@ -637,18 +637,34 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
 
             {/* Resin Membrane fields */}
             {data.floor_treatment === 'resin_membrane' && (
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">
-                  Floor Area (m²)
-                </label>
-                <input
-                  type="number"
-                  value={data.floor_area || ''}
-                  onChange={(e) => handleChange('floor_area', parseFloat(e.target.value) || 0)}
-                  className="input-field"
-                  step="0.1"
-                  min="0"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Floor Area (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={data.floor_area || ''}
+                    onChange={(e) => handleChange('floor_area', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                    step="0.1"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Fillet Joint Length (lm)
+                  </label>
+                  <input
+                    type="number"
+                    value={data.floor_resin_fillet_length || ''}
+                    onChange={(e) => handleChange('floor_resin_fillet_length', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                    step="0.1"
+                    min="0"
+                    placeholder="Perimeter seal at wall/floor junction"
+                  />
+                </div>
               </div>
             )}
 

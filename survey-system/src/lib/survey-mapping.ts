@@ -185,6 +185,7 @@ function mapDampSurvey(
   let totalFilletJointLength = 0
   let totalOvertapeLength = 0
   let totalFloorArea = 0
+  let totalFloorResinFilletLength = 0
   let totalStripFloorArea = 0
   let totalSubFloorArea = 0
   let totalStudWallArea = 0
@@ -239,6 +240,7 @@ function mapDampSurvey(
     // Floor treatment
     if (dampData.floor_treatment) {
       totalFloorArea += dampData.floor_area || 0
+      totalFloorResinFilletLength += dampData.floor_resin_fillet_length || 0
       if (dampData.strip_existing_floor) {
         totalStripFloorArea += dampData.strip_floor_area || 0
       }
@@ -378,6 +380,12 @@ function mapDampSurvey(
     // Grip grit
     const gripInput = createLineInput(lookup, 'floor_resin', 'grip_grit', totalFloorArea)
     if (gripInput) inputs.push(gripInput)
+
+    // Floor resin fillet joint (separate from wall membrane fillet joint)
+    if (totalFloorResinFilletLength > 0) {
+      const resinFilletInput = createLineInput(lookup, 'floor_resin', 'wall_floor_fillet_resin', totalFloorResinFilletLength)
+      if (resinFilletInput) inputs.push(resinFilletInput)
+    }
   }
 
   // === PLASTERING ===

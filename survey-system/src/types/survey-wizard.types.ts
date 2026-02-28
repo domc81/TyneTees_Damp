@@ -186,6 +186,7 @@ export interface DampRoomData {
   // Floor Treatment
   floor_treatment?: FloorTreatment
   floor_area?: number // m²
+  floor_resin_fillet_length?: number // Linear metres of fillet joint for floor resin
   strip_existing_floor?: boolean
   strip_floor_area?: number // m²
   sub_floor_area?: number // m² requiring membrane
