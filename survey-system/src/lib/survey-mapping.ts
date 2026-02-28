@@ -645,6 +645,8 @@ function mapTimberSurvey(
   let totalDifficultyHours = 0
   let totalGrindBackMortarArea = 0
   let totalWireScrubArea = 0
+  let totalMasonrySterilantArea = 0
+  let totalProtectiveTreatmentArea = 0
   const joistEntries: { size: string; totalLength: number }[] = []
 
   for (const room of timberRooms) {
@@ -665,6 +667,8 @@ function mapTimberSurvey(
     // Masonry preparation areas
     totalGrindBackMortarArea += timberData.grind_back_mortar_area || 0
     totalWireScrubArea += timberData.wire_scrub_area || 0
+    totalMasonrySterilantArea += timberData.masonry_sterilant_area || 0
+    totalProtectiveTreatmentArea += timberData.protective_treatment_area || 0
 
     // Joist entries (aggregate by size)
     for (const entry of timberData.joist_entries || []) {
@@ -754,6 +758,14 @@ function mapTimberSurvey(
   // Fog subfloor
   const fogInput = createLineInput(lookup, 'timber_treatments', 'fog_subfloor_void_m2', totalFungalTreatmentArea)
   if (fogInput) inputs.push(fogInput)
+
+  // Masonry sterilant (Wykabor 20 brush-applied to exposed masonry after timber removal)
+  const masonrySterilantInput = createLineInput(lookup, 'timber_treatments', 'masonry_sterilant_wyakbor_20_brush_applied', totalMasonrySterilantArea)
+  if (masonrySterilantInput) inputs.push(masonrySterilantInput)
+
+  // Protective treatment for new replacement timbers (DP-O)
+  const protectiveTreatmentInput = createLineInput(lookup, 'timber_treatments', 'protective_treatment_following_new_timbers_installation_dp_o', totalProtectiveTreatmentArea)
+  if (protectiveTreatmentInput) inputs.push(protectiveTreatmentInput)
 
   // === DIFFICULTY HOURS ===
 

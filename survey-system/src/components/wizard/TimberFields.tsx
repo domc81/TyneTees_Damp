@@ -614,6 +614,36 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Masonry Sterilant - Wykabor 20 (m²)
+            </label>
+            <input
+              type="number"
+              value={data.masonry_sterilant_area || ''}
+              onChange={(e) => handleChange('masonry_sterilant_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Protective Treatment - New Timbers (m²)
+            </label>
+            <input
+              type="number"
+              value={data.protective_treatment_area || ''}
+              onChange={(e) => handleChange('protective_treatment_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Difficulty Hours */}

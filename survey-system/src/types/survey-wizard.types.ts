@@ -294,6 +294,8 @@ export interface TimberRoomData {
   // Masonry Preparation
   grind_back_mortar_area?: number // m² of mortar grinding on brickwork courses
   wire_scrub_area?: number // m² of wire scrubbing on brickwork faces
+  masonry_sterilant_area?: number // m² needing Wykabor 20 sterilant brush-applied
+  protective_treatment_area?: number // m² of new replacement timbers needing DP-O protective treatment
 
   // Difficulty Adjustment
   difficulty_hours?: number
