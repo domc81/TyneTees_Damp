@@ -464,8 +464,23 @@ function mapCondensationSurvey(
         if (sarkventInput) inputs.push(sarkventInput)
       }
     } else if (pivType === 'wall_mounted') {
-      // Wall-mounted PIV — ducting components handled in the ducting section below
-      // TODO: Add wall-mounted PIV unit line item when template is available
+      // Wall-mounted PIV unit
+      const wallPivInput = createLineInput(lookup, 'piv_wall', 'va_pozidry_compact_wall_mounted_unit', pivCount)
+      if (wallPivInput) inputs.push(wallPivInput)
+
+      // Electrical pack for wall-mounted PIV
+      const wallElecCount = additionalWorks.wall_mounted_electrical_pack_count || 0
+      if (wallElecCount > 0) {
+        const wallElecInput = createLineInput(lookup, 'piv_wall', 'electrical_pack_fused_spur_cable_jb_piv_wall', wallElecCount)
+        if (wallElecInput) inputs.push(wallElecInput)
+      }
+
+      // Core hole for wall-mounted PIV
+      const wallCoreCount = additionalWorks.wall_mounted_core_hole_count || 0
+      if (wallCoreCount > 0) {
+        const wallCoreInput = createLineInput(lookup, 'piv_wall', 'diamond_core_107mm_hole', wallCoreCount)
+        if (wallCoreInput) inputs.push(wallCoreInput)
+      }
     }
   }
 

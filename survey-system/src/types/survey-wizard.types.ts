@@ -390,6 +390,8 @@ export interface AdditionalWorks {
   piv_electrical_pack?: boolean
   sarkvents_count?: number
   ducting_components?: DuctingComponent[]
+  wall_mounted_electrical_pack_count?: number
+  wall_mounted_core_hole_count?: number
   fan_electrical_pack_total?: number
   fan_grille_count?: number
   fan_core_hole_count?: number

@@ -193,26 +193,56 @@ export default function AdditionalWorksStep({
                 </div>
               )}
 
-              {/* Ducting Components - shown for wall mounted PIV */}
+              {/* Wall-Mounted PIV extras - shown for wall mounted PIV */}
               {isWallMountedPIV && (
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-3">
-                    Ducting Components
-                  </label>
-                  <div className="space-y-2">
-                    {DUCTING_TYPES.map((duct) => (
-                      <div key={duct.value} className="flex items-center gap-3">
-                        <label className="text-sm text-white/70 w-40">{duct.label}</label>
-                        <input
-                          type="number"
-                          value={getDuctingCount(duct.value) || ''}
-                          onChange={(e) => setDuctingCount(duct.value, parseInt(e.target.value) || 0)}
-                          className="input-field flex-1"
-                          min="0"
-                          placeholder="Count"
-                        />
-                      </div>
-                    ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Electrical Packs (Wall PIV)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.wall_mounted_electrical_pack_count || ''}
+                        onChange={(e) => handleChange('wall_mounted_electrical_pack_count', parseInt(e.target.value) || undefined)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Core Holes (107mm, Wall PIV)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.wall_mounted_core_hole_count || ''}
+                        onChange={(e) => handleChange('wall_mounted_core_hole_count', parseInt(e.target.value) || undefined)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-3">
+                      Ducting Components
+                    </label>
+                    <div className="space-y-2">
+                      {DUCTING_TYPES.map((duct) => (
+                        <div key={duct.value} className="flex items-center gap-3">
+                          <label className="text-sm text-white/70 w-40">{duct.label}</label>
+                          <input
+                            type="number"
+                            value={getDuctingCount(duct.value) || ''}
+                            onChange={(e) => setDuctingCount(duct.value, parseInt(e.target.value) || 0)}
+                            className="input-field flex-1"
+                            min="0"
+                            placeholder="Count"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
