@@ -404,9 +404,13 @@ function mapDampSurvey(
   const skimmingInput = createLineInput(lookup, 'plastering', 'skimming_walls', totalSkimArea)
   if (skimmingInput) inputs.push(skimmingInput)
 
-  // Warmline Internal Wall Insulation (applied after membrane/tanking)
+  // Warmline Internal Wall Insulation — two templates, same area quantity
+  // Roll and adhesive have different coverage rates so each needs independent CEILING rounding
   const warmlineInput = createLineInput(lookup, 'plastering', 'warmline_iwi', totalWarmlineArea)
   if (warmlineInput) inputs.push(warmlineInput)
+
+  const warmlineAdhesiveInput = createLineInput(lookup, 'plastering', 'warmline_iwi_adhesive', totalWarmlineArea)
+  if (warmlineAdhesiveInput) inputs.push(warmlineAdhesiveInput)
 
   return inputs
 }
