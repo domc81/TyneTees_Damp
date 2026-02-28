@@ -231,10 +231,8 @@ export async function generateReport(
   const sdAny = sd as any
   if (!surveyor && sdAny?.surveyor_name) {
     surveyor = {
-      first_name: sdAny.surveyor_name,
-      last_name: '',
+      full_name: sdAny.surveyor_name,
       qualifications: null,
-      job_title: 'Surveyor',
     }
   }
 
@@ -538,7 +536,7 @@ export async function generateReport(
 
   // 4. BUILD SECTIONS
   const surveyorName = surveyor
-    ? `${surveyor.first_name} ${surveyor.last_name}`
+    ? surveyor.full_name
     : 'Surveyor details to be confirmed'
 
   const sections: ReportSection[] = []
@@ -1073,7 +1071,7 @@ export async function generateReport(
       surveyorName,
       {
         surveyor_name: surveyorName,
-        surveyor_title: surveyor?.job_title || '',
+        surveyor_title: 'Surveyor',
         surveyor_credentials: surveyor?.qualifications || '',
       }
     )
