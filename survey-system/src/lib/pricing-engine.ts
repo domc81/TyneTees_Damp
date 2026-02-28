@@ -132,10 +132,16 @@ export function calcStandard(
 ): LineResult {
   const quantity = input.inputQuantity
 
+  // Apply minimum quantity if set (e.g. ducting 2.4m minimum charge)
+  const params = template.formula_params ?? {}
+  const effectiveQuantity = params.minimum_quantity
+    ? Math.max(quantity, params.minimum_quantity)
+    : quantity
+
   // Get base unit cost (from template or override)
   const baseUnitCost = input.overrides?.unit_cost
     ?? template.base_unit_cost
-    ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
+    ?? (params.product_key ? materials[params.product_key] : 0)
     ?? 0
 
   // Get wastage factor (from template or override or config default)
@@ -150,9 +156,9 @@ export function calcStandard(
     ?? config['default_material_markup']
     ?? 0.30
 
-  // Calculate material cost
+  // Calculate material cost (using effective quantity for minimum charge)
   const materialUnitCost = baseUnitCost
-  const materialAdjustedCost = baseUnitCost * wastageFactor * quantity
+  const materialAdjustedCost = baseUnitCost * wastageFactor * effectiveQuantity
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // Get labour rate (from override or config default)
@@ -166,8 +172,8 @@ export function calcStandard(
     ?? config['default_labour_markup']
     ?? 1.00
 
-  // Calculate labour cost
-  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
+  // Calculate labour cost (using effective quantity for minimum charge)
+  const labourHours = effectiveQuantity * (template.labour_rate_per_unit ?? 0)
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
@@ -229,8 +235,11 @@ export function calcCeilingCoverage(
     ?? 0.30
 
   // Calculate material cost
+  // roundedArea = area rounded UP to whole purchase-unit boundaries
+  // e.g. 7m² at 5m² coverage → 2 units → 10m² rounded area
   const materialUnitCost = baseUnitCost
-  const materialAdjustedCost = unitsNeeded * (baseUnitCost / coverageRate * wastageFactor)
+  const roundedArea = unitsNeeded * coverageRate
+  const materialAdjustedCost = roundedArea * baseUnitCost * wastageFactor
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // Get labour rate (from override or config default)
@@ -245,7 +254,18 @@ export function calcCeilingCoverage(
     ?? 1.00
 
   // Calculate labour (based on actual area, not units)
-  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
+  const params = template.formula_params ?? {}
+  let labourHours: number
+  if (params.labour_block_size && params.labour_hours_per_block) {
+    // Block-based rounding: e.g. skimming charges in 15m² blocks at 4 hrs/block
+    labourHours = Math.ceil(quantity / params.labour_block_size) * params.labour_hours_per_block
+  } else {
+    labourHours = quantity * (template.labour_rate_per_unit ?? 0)
+  }
+  // Apply minimum labour hours if set (e.g. Aquaban 2.7 hrs minimum)
+  if (params.minimum_labour_hours) {
+    labourHours = Math.max(labourHours, params.minimum_labour_hours)
+  }
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
@@ -283,12 +303,15 @@ export function calcDpcInjection(
   const linearMeters = input.inputQuantity
   const wallDepth = input.inputDimension ?? 1 // Default to 1 brick if not provided
 
-  // DPC injection formula constants
-  const CREAM_BASE_COST = 13.93
-  const CREAM_ADJUSTMENT_DIVISOR = 1.15
-  const DRILL_PLUG_HOLES_PER_DEPTH = 6
-  const DRILL_PLUG_COST = materials['drill_plug'] ?? 4.29
-  const LABOUR_HOURS_PER_DEPTH = 0.35
+  // DPC injection formula parameters — read from template, then materials catalog, then hardcoded fallbacks
+  const params = template.formula_params ?? {}
+  const CREAM_BASE_COST = params.base_cream_cost
+    ?? materials['wykamol_ultracure_dpc_cream']
+    ?? 13.93
+  const CREAM_ADJUSTMENT_DIVISOR = params.cream_divisor ?? 1.15
+  const DRILL_PLUG_HOLES_PER_DEPTH = params.holes_per_meter ?? 6
+  const DRILL_PLUG_COST = params.drill_cost ?? materials['drill_plugs_12mm'] ?? 4.29
+  const LABOUR_HOURS_PER_DEPTH = params.labour_hours_per_depth ?? 0.35
 
   // Calculate cream cost per linear meter
   const creamCostPerLM = (CREAM_BASE_COST / CREAM_ADJUSTMENT_DIVISOR) +
@@ -518,10 +541,12 @@ export function calcTieredDisposal(
   const FIXED_HOURS_ABOVE_THRESHOLD = 2
   const MATERIAL_COST_PER_BAG = 0.01
 
-  // Calculate labour hours based on threshold
-  const labourHours = quantity <= THRESHOLD
-    ? HOURS_DIVISOR / quantity
-    : FIXED_HOURS_ABOVE_THRESHOLD
+  // Calculate labour hours based on threshold (guard against division by zero)
+  const labourHours = quantity === 0
+    ? 0
+    : quantity <= THRESHOLD
+      ? HOURS_DIVISOR / quantity
+      : FIXED_HOURS_ABOVE_THRESHOLD
 
   // Get labour rate
   const labourRate = input.overrides?.labour_rate
