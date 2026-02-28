@@ -12,6 +12,7 @@ import type {
   ContentSource,
   ReportSectionType,
 } from '@/types/survey-report.types'
+import type { Customer, Surveyor } from '@/types/database.types'
 import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
 import type {
   CondensationRoomData,
@@ -207,34 +208,30 @@ export async function generateReport(
   const ext = wizardData.external_inspection
   const aw = wizardData.additional_works
 
-  let customer: any = null
+  let customer: Customer | null = null
   if (survey.customer_id) {
     const { data } = await supabase
       .from('customers')
       .select('*')
       .eq('id', survey.customer_id)
       .single()
-    customer = data
+    customer = data as Customer | null
   }
 
-  let surveyor: any = null
+  let surveyor: Surveyor | null = null
   if (survey.surveyor_id) {
     const { data } = await supabase
       .from('surveyors')
       .select('*')
       .eq('id', survey.surveyor_id)
       .single()
-    surveyor = data
+    surveyor = data as Surveyor | null
   }
 
-  // Fallback surveyor from wizard data
+  // Fallback surveyor name from wizard data (when no DB surveyor record exists)
   const sdAny = sd as any
-  if (!surveyor && sdAny?.surveyor_name) {
-    surveyor = {
-      full_name: sdAny.surveyor_name,
-      qualifications: null,
-    }
-  }
+  const fallbackSurveyorName: string | null =
+    !surveyor && sdAny?.surveyor_name ? (sdAny.surveyor_name as string) : null
 
   const photos = await loadSurveyPhotos(surveyId)
 
@@ -535,9 +532,10 @@ export async function generateReport(
     : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
 
   // 4. BUILD SECTIONS
-  const surveyorName = surveyor
-    ? surveyor.full_name
-    : 'Surveyor details to be confirmed'
+  const surveyorName =
+    surveyor?.full_name ||
+    fallbackSurveyorName ||
+    'Surveyor details to be confirmed'
 
   const sections: ReportSection[] = []
 
