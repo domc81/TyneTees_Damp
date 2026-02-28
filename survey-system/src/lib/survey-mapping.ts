@@ -502,7 +502,7 @@ function mapCondensationSurvey(
         lineKey = 'ducting_insulated_flexi_3m_length'
         break
       case 'rigid_duct':
-        lineKey = 'ducting_round_1m'
+        lineKey = 'ducting_1m_length'
         break
       case 'duct_elbow':
         lineKey = 'ducting_round_elbow'
@@ -512,6 +512,24 @@ function mapCondensationSurvey(
         break
       case 'grille':
         lineKey = 'grille'
+        break
+      case 'round_1m':
+        lineKey = 'ducting_round_1m'
+        break
+      case 'flat_to_round_adaptor':
+        lineKey = 'ducting_flat_to_round_adaptor'
+        break
+      case 'flat_straight_connector':
+        lineKey = 'ducting_flat_straight_connector'
+        break
+      case 'flat_horizontal_bend':
+        lineKey = 'ducting_flat_horizontal_bend'
+        break
+      case 'flat_vertical_bend':
+        lineKey = 'ducting_flat_vertical_bend'
+        break
+      case 'flat_1m':
+        lineKey = 'ducting_flat_1m'
         break
     }
 

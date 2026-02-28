@@ -456,11 +456,17 @@ export interface DuctingComponent {
 }
 
 export type DuctingType =
-  | 'flexible_duct'
-  | 'rigid_duct'
-  | 'duct_elbow'
-  | 'duct_connector'
-  | 'grille'
+  | 'flexible_duct'        // → ducting_insulated_flexi_3m_length
+  | 'rigid_duct'           // → ducting_1m_length
+  | 'duct_elbow'           // → ducting_round_elbow
+  | 'duct_connector'       // → ducting_round_straight_conn
+  | 'grille'               // → grille
+  | 'round_1m'             // → ducting_round_1m
+  | 'flat_to_round_adaptor'    // → ducting_flat_to_round_adaptor
+  | 'flat_straight_connector'  // → ducting_flat_straight_connector
+  | 'flat_horizontal_bend'     // → ducting_flat_horizontal_bend
+  | 'flat_vertical_bend'       // → ducting_flat_vertical_bend
+  | 'flat_1m'              // → ducting_flat_1m
 
 // =============================================================================
 // Display Helpers (for UI rendering)

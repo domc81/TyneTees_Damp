@@ -23,12 +23,21 @@ interface AdditionalWorksStepProps {
   hasTimberOrDamp: boolean
 }
 
-const DUCTING_TYPES: { value: DuctingType; label: string }[] = [
-  { value: 'flexible_duct', label: 'Flexible Duct' },
-  { value: 'rigid_duct', label: 'Rigid Duct' },
-  { value: 'duct_elbow', label: 'Duct Elbow' },
-  { value: 'duct_connector', label: 'Duct Connector' },
-  { value: 'grille', label: 'Grille' },
+const DUCTING_TYPES: { value: DuctingType; label: string; group: string }[] = [
+  // Round ducting
+  { value: 'rigid_duct', label: 'Rigid Duct (1m)', group: 'Round' },
+  { value: 'round_1m', label: 'Round Duct (1m)', group: 'Round' },
+  { value: 'duct_elbow', label: 'Round Elbow', group: 'Round' },
+  { value: 'duct_connector', label: 'Round Straight Connector', group: 'Round' },
+  { value: 'flexible_duct', label: 'Insulated Flexi (3m)', group: 'Round' },
+  // Flat ducting
+  { value: 'flat_1m', label: 'Flat Channel (1m)', group: 'Flat' },
+  { value: 'flat_to_round_adaptor', label: 'Flat-to-Round Adaptor', group: 'Flat' },
+  { value: 'flat_straight_connector', label: 'Flat Straight Connector', group: 'Flat' },
+  { value: 'flat_horizontal_bend', label: 'Flat Horizontal Bend', group: 'Flat' },
+  { value: 'flat_vertical_bend', label: 'Flat Vertical Bend', group: 'Flat' },
+  // Other
+  { value: 'grille', label: 'Grille', group: 'Other' },
 ]
 
 export default function AdditionalWorksStep({
@@ -295,20 +304,31 @@ export default function AdditionalWorksStep({
                     <label className="block text-sm font-medium text-white/70 mb-3">
                       Ducting Components
                     </label>
-                    <div className="space-y-2">
-                      {DUCTING_TYPES.map((duct) => (
-                        <div key={duct.value} className="flex items-center gap-3">
-                          <label className="text-sm text-white/70 w-40">{duct.label}</label>
-                          <input
-                            type="number"
-                            value={getDuctingCount(duct.value) || ''}
-                            onChange={(e) => setDuctingCount(duct.value, parseInt(e.target.value) || 0)}
-                            className="input-field flex-1"
-                            min="0"
-                            placeholder="Count"
-                          />
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {['Round', 'Flat', 'Other'].map((group) => {
+                        const groupItems = DUCTING_TYPES.filter((d) => d.group === group)
+                        if (groupItems.length === 0) return null
+                        return (
+                          <div key={group}>
+                            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">{group} Ducting</p>
+                            <div className="space-y-2">
+                              {groupItems.map((duct) => (
+                                <div key={duct.value} className="flex items-center gap-3">
+                                  <label className="text-sm text-white/70 w-48">{duct.label}</label>
+                                  <input
+                                    type="number"
+                                    value={getDuctingCount(duct.value) || ''}
+                                    onChange={(e) => setDuctingCount(duct.value, parseInt(e.target.value) || 0)}
+                                    className="input-field flex-1"
+                                    min="0"
+                                    placeholder="Count"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
