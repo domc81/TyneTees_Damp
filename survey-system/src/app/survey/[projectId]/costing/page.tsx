@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Wrench, Package, FileText } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
 import { generateCostingFromSurvey } from '@/lib/survey-mapping'
-import type { CalculationResult, CalculatedLine } from '@/lib/pricing-data'
+import { loadPricingConfig, type CalculationResult, type CalculatedLine } from '@/lib/pricing-data'
+import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
 
 // Survey type display names
 const SURVEY_TYPE_NAMES: Record<string, string> = {
@@ -54,6 +55,7 @@ export default function CostingReviewPage() {
   const [error, setError] = useState<string | null>(null)
   const [costingResults, setCostingResults] = useState<Record<string, CalculationResult>>({})
   const [activeSurveyType, setActiveSurveyType] = useState<string>('')
+  const [travelOverheads, setTravelOverheads] = useState<Record<string, TravelOverheadResult>>({})
 
   // Load wizard data and generate costing on mount
   useEffect(() => {
@@ -73,6 +75,27 @@ export default function CostingReviewPage() {
         }
 
         setCostingResults(results)
+
+        // Calculate travel overhead for each survey type
+        const pricingConfig = await loadPricingConfig()
+        const additionalWorks = wizardData.additional_works || {}
+        const distanceFromOffice = additionalWorks.distance_from_office || 0
+        const numMenTravelling = additionalWorks.num_men_travelling || 0
+
+        const overheads: Record<string, TravelOverheadResult> = {}
+        for (const [surveyType, result] of Object.entries(results)) {
+          const totalLabourHours = result.lines.reduce(
+            (sum: number, line: CalculatedLine) => sum + line.result.labourHours, 0
+          )
+          overheads[surveyType] = calculateTravelOverhead({
+            totalLabourHours,
+            distanceFromOffice,
+            numMenTravelling,
+            hourlyLabourRate: pricingConfig['hourly_labour_rate'] ?? 30.63,
+            vehicleCostPerMile: pricingConfig['vehicle_cost_per_mile'] ?? 0.50,
+          })
+        }
+        setTravelOverheads(overheads)
 
         // Set the first survey type as active
         const firstSurveyType = Object.keys(results)[0]
@@ -103,8 +126,12 @@ export default function CostingReviewPage() {
   // Sort sections by display order (alphabetically for now)
   const sortedSections = Object.keys(linesBySection).sort()
 
-  // Calculate VAT (20%)
-  const subtotal = activeResult?.grandTotal.total || 0
+  // Get active travel overhead
+  const activeOverhead = activeSurveyType ? travelOverheads[activeSurveyType] : null
+  const overheadAmount = activeOverhead?.totalOverheadCost || 0
+
+  // Calculate VAT (20%) — subtotal includes section costs + overhead
+  const subtotal = (activeResult?.grandTotal.total || 0) + overheadAmount
   const vatAmount = subtotal * 0.20
   const grandTotalIncVAT = subtotal + vatAmount
 
@@ -332,6 +359,19 @@ export default function CostingReviewPage() {
                   {formatCurrency(activeResult?.grandTotal.labourTotal || 0)}
                 </span>
               </div>
+
+              {/* Project Specific Overheads (travel + vehicle — never itemised for customers) */}
+              {overheadAmount > 0 && (
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <Truck className="w-4 h-4" />
+                    <span>Project Specific Overheads</span>
+                  </div>
+                  <span className="text-white font-medium">
+                    {formatCurrency(overheadAmount)}
+                  </span>
+                </div>
+              )}
 
               {/* Subtotal (ex VAT) */}
               <div className="flex justify-between items-center pt-3 border-t border-white/10">
