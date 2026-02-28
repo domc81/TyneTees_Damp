@@ -739,12 +739,18 @@ function mapAdditionalWorks(
 ): LineInput[] {
   const inputs: LineInput[] = []
 
-  // === AIRBRICKS (common to all types) ===
+  // === AIRBRICKS (line keys differ between damp and other survey types) ===
 
-  const airbrickCleanInput = createLineInput(lookup, 'airbricks', 'clean_out_airbrick', additionalWorks.airbrick_clean_count || 0)
+  const airbrickCleanKey = surveyType === 'damp'
+    ? 'clean_out_airbrick'
+    : 'clean_out_airbrickfit_new_face'
+  const airbrickCleanInput = createLineInput(lookup, 'airbricks', airbrickCleanKey, additionalWorks.airbrick_clean_count || 0)
   if (airbrickCleanInput) inputs.push(airbrickCleanInput)
 
-  const airbrickUpgradeInput = createLineInput(lookup, 'airbricks', 'lift_upgrade_airbrick', additionalWorks.airbrick_upgrade_count || 0)
+  const airbrickUpgradeKey = surveyType === 'damp'
+    ? 'lift_upgrade_airbrick'
+    : 'liftupgrade_existing_airbrickfit_new_face'
+  const airbrickUpgradeInput = createLineInput(lookup, 'airbricks', airbrickUpgradeKey, additionalWorks.airbrick_upgrade_count || 0)
   if (airbrickUpgradeInput) inputs.push(airbrickUpgradeInput)
 
   const airbrickNewInput = createLineInput(lookup, 'airbricks', 'install_additional_airbrick', additionalWorks.airbrick_new_count || 0)
@@ -772,9 +778,12 @@ function mapAdditionalWorks(
   const asbestosInput = createLineInput(lookup, 'asbestos_testing', 'asbestos_testing', additionalWorks.asbestos_test_count || 0)
   if (asbestosInput) inputs.push(asbestosInput)
 
-  // === SKIP HIRE (all types) ===
+  // === SKIP HIRE (line key differs between damp and other survey types) ===
 
-  const skipInput = createLineInput(lookup, 'skip_hire', 'skip_hire', additionalWorks.skip_count || 0)
+  const skipLineKey = surveyType === 'damp'
+    ? 'skip_hire'
+    : 'rubbish_removal_skips'
+  const skipInput = createLineInput(lookup, 'skip_hire', skipLineKey, additionalWorks.skip_count || 0)
   if (skipInput) inputs.push(skipInput)
 
   // === PLASTERING EXTRAS (damp, timber, woodworm) ===
