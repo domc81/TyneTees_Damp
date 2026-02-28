@@ -396,6 +396,9 @@ export interface AdditionalWorks {
   fan_grille_count?: number
   fan_core_hole_count?: number
 
+  // Passive Vents (condensation)
+  cpass_vent_count?: number
+
   // Joist & Flooring Extras
   joist_endwrap_count?: number
   wall_plate_count?: number

@@ -534,6 +534,17 @@ function mapCondensationSurvey(
     if (coreHoleInput) inputs.push(coreHoleInput)
   }
 
+  // === CPASS PASSIVE VENTS ===
+
+  const cpassVentCount = additionalWorks.cpass_vent_count || 0
+  if (cpassVentCount > 0) {
+    const ventInput = createLineInput(lookup, 'passive_vent', 'dryaire_cpass_plasmo_insulated_pullcord_passive_vent', cpassVentCount)
+    if (ventInput) inputs.push(ventInput)
+
+    const coreHoleInput = createLineInput(lookup, 'passive_vent', 'diamond_core_107mm_hole_passive_vent', cpassVentCount)
+    if (coreHoleInput) inputs.push(coreHoleInput)
+  }
+
   // === MOULD TREATMENT ===
 
   if (totalMouldArea > 0) {

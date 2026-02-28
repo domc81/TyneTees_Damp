@@ -288,6 +288,21 @@ export default function AdditionalWorksStep({
                   />
                 </div>
               </div>
+
+              {/* Cpass Passive Vents */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Cpass Passive Vents (each requires one 107mm core hole)
+                </label>
+                <input
+                  type="number"
+                  value={data.cpass_vent_count || ''}
+                  onChange={(e) => handleChange('cpass_vent_count', parseInt(e.target.value) || undefined)}
+                  className="input-field"
+                  min="0"
+                  placeholder="Number of vents"
+                />
+              </div>
             </div>
           )}
         </div>
