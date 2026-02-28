@@ -396,6 +396,10 @@ export interface AdditionalWorks {
   fan_grille_count?: number
   fan_core_hole_count?: number
 
+  // Loft Hatch (condensation — only for loft PIV installations)
+  loft_hatch_new_required?: boolean
+  loft_hatch_enlarge_required?: boolean
+
   // Joinery (condensation — ducting boxwork for wall-mounted PIV)
   joinery_ducting_metres?: number
 

@@ -463,6 +463,15 @@ function mapCondensationSurvey(
         const sarkventInput = createLineInput(lookup, 'piv_loft', 'sarkvents', sarkventCount)
         if (sarkventInput) inputs.push(sarkventInput)
       }
+
+      // Loft Hatch — new or enlarge (mutually exclusive)
+      if (additionalWorks.loft_hatch_new_required) {
+        const loftHatchNewInput = createLineInput(lookup, 'loft_hatch_new', 'new_loft_hatch_with_sturdy_fold_down_ladder_with_handrail_an', 1)
+        if (loftHatchNewInput) inputs.push(loftHatchNewInput)
+      } else if (additionalWorks.loft_hatch_enlarge_required) {
+        const loftHatchEnlargeInput = createLineInput(lookup, 'loft_hatch_enlarge', 'existing_loft_hatch_enlarge_loft_hatch', 1)
+        if (loftHatchEnlargeInput) inputs.push(loftHatchEnlargeInput)
+      }
     } else if (pivType === 'wall_mounted') {
       // Wall-mounted PIV unit
       const wallPivInput = createLineInput(lookup, 'piv_wall', 'va_pozidry_compact_wall_mounted_unit', pivCount)

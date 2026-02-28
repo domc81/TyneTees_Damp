@@ -193,6 +193,73 @@ export default function AdditionalWorksStep({
                 </div>
               )}
 
+              {/* Loft Hatch Options - shown for loft PIV */}
+              {isLoftPIV && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-white/70">
+                    Loft Access
+                  </label>
+
+                  {/* New Loft Hatch */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                    <label className="text-sm font-medium text-white">New Loft Hatch & Ladder Required</label>
+                    <button
+                      onClick={() => {
+                        const newValue = !data.loft_hatch_new_required
+                        onChange({
+                          ...data,
+                          loft_hatch_new_required: newValue || undefined,
+                          // Mutually exclusive: clear enlarge when selecting new
+                          ...(newValue ? { loft_hatch_enlarge_required: undefined } : {}),
+                        })
+                      }}
+                      className={`
+                        relative inline-flex h-6 w-11 items-center rounded-full
+                        transition-colors duration-300
+                        ${data.loft_hatch_new_required ? 'bg-purple-500' : 'bg-white/20'}
+                      `}
+                    >
+                      <span
+                        className={`
+                          inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                          transition-transform duration-300
+                          ${data.loft_hatch_new_required ? 'translate-x-6' : 'translate-x-1'}
+                        `}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Enlarge Existing Loft Hatch */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                    <label className="text-sm font-medium text-white">Enlarge Existing Loft Hatch</label>
+                    <button
+                      onClick={() => {
+                        const newValue = !data.loft_hatch_enlarge_required
+                        onChange({
+                          ...data,
+                          loft_hatch_enlarge_required: newValue || undefined,
+                          // Mutually exclusive: clear new when selecting enlarge
+                          ...(newValue ? { loft_hatch_new_required: undefined } : {}),
+                        })
+                      }}
+                      className={`
+                        relative inline-flex h-6 w-11 items-center rounded-full
+                        transition-colors duration-300
+                        ${data.loft_hatch_enlarge_required ? 'bg-purple-500' : 'bg-white/20'}
+                      `}
+                    >
+                      <span
+                        className={`
+                          inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                          transition-transform duration-300
+                          ${data.loft_hatch_enlarge_required ? 'translate-x-6' : 'translate-x-1'}
+                        `}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Wall-Mounted PIV extras - shown for wall mounted PIV */}
               {isWallMountedPIV && (
                 <div className="space-y-4">
