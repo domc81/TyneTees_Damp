@@ -183,6 +183,7 @@ function mapDampSurvey(
   let totalMembraneArea = 0
   let totalTankingArea = 0
   let totalFilletJointLength = 0
+  let totalOvertapeLength = 0
   let totalFloorArea = 0
   let totalStripFloorArea = 0
   let totalSubFloorArea = 0
@@ -229,6 +230,7 @@ function mapDampSurvey(
         totalMembraneArea += wallLength * height
       }
       totalFilletJointLength += dampData.fillet_joint_length || 0
+      totalOvertapeLength += dampData.overtape_length || 0
     } else if (dampData.wall_treatment === 'tanking') {
       totalTankingArea += dampData.tanking_area || 0
       totalFilletJointLength += dampData.fillet_joint_length || 0
@@ -326,6 +328,10 @@ function mapDampSurvey(
     // Sealing tape
     const sealingTapeInput = createLineInput(lookup, 'wall_membrane', 'sealing_tape', totalMembraneArea)
     if (sealingTapeInput) inputs.push(sealingTapeInput)
+
+    // Overtape (joint sealing tape across rooms)
+    const overtapeInput = createLineInput(lookup, 'wall_membrane', 'overtape', totalOvertapeLength)
+    if (overtapeInput) inputs.push(overtapeInput)
 
     // Fillet joint
     const filletInput = createLineInput(lookup, 'wall_membrane', 'wall_floor_fillet_joint', totalFilletJointLength)

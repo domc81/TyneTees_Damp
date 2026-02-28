@@ -538,6 +538,20 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                     min="0"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Overtape (linear metres)
+                  </label>
+                  <input
+                    type="number"
+                    value={data.overtape_length || ''}
+                    onChange={(e) => handleChange('overtape_length', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                    step="0.1"
+                    min="0"
+                  />
+                </div>
               </div>
             )}
 
