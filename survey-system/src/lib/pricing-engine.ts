@@ -586,11 +586,11 @@ export function calcTieredDisposal(
  * 7. BAG AND CART FORMULA
  *
  * Per-bag debris removal:
- * - Hours = 1 per bag (quantity = number of bags)
- * - Material = quantity × 0.01 (minimal bag cost)
+ * - Hours = 0.01 per bag (~36 seconds — loading a bag onto a cart) [workbook col N]
+ * - Material = quantity × 1.00 (£1 per bag) [workbook col H]
  * - Apply markups
  *
- * Example: 15 bags = 15 hours labour
+ * Example: 40 bags = 0.4 hours labour, £40 material cost
  */
 export function calcBagAndCart(
   input: LineInput,
@@ -600,9 +600,9 @@ export function calcBagAndCart(
 ): LineResult {
   const quantity = input.inputQuantity
 
-  // Bag and cart formula constants
-  const HOURS_PER_BAG = 1
-  const MATERIAL_COST_PER_BAG = 0.01
+  // Bag and cart formula constants (workbook col N = labour, col H = material)
+  const HOURS_PER_BAG = 0.01
+  const MATERIAL_COST_PER_BAG = 1.00
 
   // Calculate labour hours
   const labourHours = quantity * HOURS_PER_BAG
