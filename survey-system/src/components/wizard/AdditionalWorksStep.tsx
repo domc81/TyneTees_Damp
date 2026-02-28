@@ -247,6 +247,25 @@ export default function AdditionalWorksStep({
                 </div>
               )}
 
+              {/* Joinery Ducting Boxwork - only for wall-mounted PIV */}
+              {isWallMountedPIV && (
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Joinery Ducting Boxwork (metres)
+                  </label>
+                  <input
+                    type="number"
+                    value={data.joinery_ducting_metres || ''}
+                    onChange={(e) => handleChange('joinery_ducting_metres', parseFloat(e.target.value) || undefined)}
+                    className="input-field"
+                    step="0.1"
+                    min="0"
+                    placeholder="Min charge 2.4m"
+                  />
+                  <p className="text-xs text-white/40 mt-1">Minimum charge of 2.4 metres applies</p>
+                </div>
+              )}
+
               {/* Fan Equipment */}
               <div className="grid grid-cols-3 gap-3">
                 <div>

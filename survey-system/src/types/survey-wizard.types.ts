@@ -396,6 +396,9 @@ export interface AdditionalWorks {
   fan_grille_count?: number
   fan_core_hole_count?: number
 
+  // Joinery (condensation — ducting boxwork for wall-mounted PIV)
+  joinery_ducting_metres?: number
+
   // Passive Vents (condensation)
   cpass_vent_count?: number
   cvent_count?: number

@@ -556,6 +556,15 @@ function mapCondensationSurvey(
     if (cventCoreHoleInput) inputs.push(cventCoreHoleInput)
   }
 
+  // === JOINERY DUCTING BOXWORK ===
+
+  const joineryDuctingMetres = additionalWorks.joinery_ducting_metres || 0
+  if (joineryDuctingMetres > 0) {
+    const joineryQuantity = Math.max(joineryDuctingMetres, 2.4)
+    const joineryInput = createLineInput(lookup, 'joinery_ducting', 'joinery_to_box_in_ducting_per_metre_min_charge_24_metres', joineryQuantity)
+    if (joineryInput) inputs.push(joineryInput)
+  }
+
   // === MOULD TREATMENT ===
 
   if (totalMouldArea > 0) {
