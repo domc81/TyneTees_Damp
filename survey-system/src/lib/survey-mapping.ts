@@ -296,9 +296,11 @@ function mapDampSurvey(
   const debrisInput = createLineInput(lookup, 'strip_out', 'bag_cart_debris', debrisBags)
   if (debrisInput) inputs.push(debrisInput)
 
-  // Disposal (tiered formula - handled by pricing engine)
-  const disposalInput = createLineInput(lookup, 'strip_out', 'licensed_disposal', debrisBags)
-  if (disposalInput) inputs.push(disposalInput)
+  // Disposal — mutually exclusive with skip hire: only emit if no skip selected
+  if ((wizardData.additional_works?.skip_count || 0) === 0) {
+    const disposalInput = createLineInput(lookup, 'strip_out', 'licensed_disposal', debrisBags)
+    if (disposalInput) inputs.push(disposalInput)
+  }
 
   // === DPC INSTALLATION ===
 
@@ -724,8 +726,11 @@ function mapTimberSurvey(
   const debrisInput = createLineInput(lookup, 'strip_out', 'bag_up_debris_cart_outside', debrisBags)
   if (debrisInput) inputs.push(debrisInput)
 
-  const disposalInput = createLineInput(lookup, 'strip_out', 'disposal_via_licensed_transfer_agent', debrisBags)
-  if (disposalInput) inputs.push(disposalInput)
+  // Disposal — mutually exclusive with skip hire: only emit if no skip selected
+  if ((additionalWorks.skip_count || 0) === 0) {
+    const disposalInput = createLineInput(lookup, 'strip_out', 'disposal_via_licensed_transfer_agent', debrisBags)
+    if (disposalInput) inputs.push(disposalInput)
+  }
 
   // === JOISTS ===
 
