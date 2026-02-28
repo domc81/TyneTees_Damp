@@ -744,7 +744,7 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
         </button>
 
         {expandedSections.plastering && (
-          <div className="p-4 pt-0">
+          <div className="p-4 pt-0 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-1.5">
@@ -788,6 +788,26 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                 />
               </div>
             </div>
+
+            {(data.wall_treatment === 'membrane' || data.wall_treatment === 'tanking') && (
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Warmline Internal Wall Insulation (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.warmline_insulation_area || ''}
+                  onChange={(e) => handleChange('warmline_insulation_area', parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                  placeholder="Wall area needing Warmline IWI"
+                />
+                <p className="mt-1 text-xs text-white/50">
+                  Applied to treated walls after membrane/tanking installation
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -191,6 +191,7 @@ function mapDampSurvey(
   let totalStudWallArea = 0
   let totalPlasterboardArea = 0
   let totalSkimArea = 0
+  let totalWarmlineArea = 0
   let totalDifficultyHours = 0
 
   // Aggregate across all damp rooms
@@ -251,6 +252,7 @@ function mapDampSurvey(
     totalStudWallArea += dampData.stud_wall_area || 0
     totalPlasterboardArea += dampData.plasterboard_area || 0
     totalSkimArea += dampData.skim_area || 0
+    totalWarmlineArea += dampData.warmline_insulation_area || 0
 
     // Difficulty hours
     totalDifficultyHours += dampData.difficulty_hours || 0
@@ -401,6 +403,10 @@ function mapDampSurvey(
   // Skimming
   const skimmingInput = createLineInput(lookup, 'plastering', 'skimming_walls', totalSkimArea)
   if (skimmingInput) inputs.push(skimmingInput)
+
+  // Warmline Internal Wall Insulation (applied after membrane/tanking)
+  const warmlineInput = createLineInput(lookup, 'plastering', 'warmline_iwi', totalWarmlineArea)
+  if (warmlineInput) inputs.push(warmlineInput)
 
   return inputs
 }

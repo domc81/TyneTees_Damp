@@ -195,6 +195,7 @@ export interface DampRoomData {
   stud_wall_area?: number // m²
   plasterboard_area?: number // m²
   skim_area?: number // m²
+  warmline_insulation_area?: number // m² of wall needing Warmline IWI (applied after membrane/tanking)
 
   // Difficulty Adjustment
   difficulty_hours?: number // Extra labour hours for access/complexity
