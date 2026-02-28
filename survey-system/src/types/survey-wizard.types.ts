@@ -438,6 +438,9 @@ export interface AdditionalWorks {
   aquaban_area?: number // m²
   asbestos_test_count?: number
 
+  // Floor Protection
+  antinox_board_count?: number // Count of 2.4m × 1.2m boards (damp, timber, woodworm)
+
   // Waste Disposal
   skip_count?: number
 

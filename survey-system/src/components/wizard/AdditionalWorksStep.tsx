@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Trash2,
   Truck,
+  Shield,
 } from 'lucide-react'
 
 interface AdditionalWorksStepProps {
@@ -21,6 +22,7 @@ interface AdditionalWorksStepProps {
   onChange: (data: Partial<AdditionalWorks>) => void
   hasCondensation: boolean
   hasTimberOrDamp: boolean
+  hasDampTimberOrWoodworm: boolean
 }
 
 const DUCTING_TYPES: { value: DuctingType; label: string; group: string }[] = [
@@ -45,6 +47,7 @@ export default function AdditionalWorksStep({
   onChange,
   hasCondensation,
   hasTimberOrDamp,
+  hasDampTimberOrWoodworm,
 }: AdditionalWorksStepProps) {
   // Collapsible section state
   const [expandedSections, setExpandedSections] = useState({
@@ -426,6 +429,32 @@ export default function AdditionalWorksStep({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Antinox Floor Protection Boards - damp, timber, woodworm only */}
+      {hasDampTimberOrWoodworm && (
+        <div className="glass-card p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <Shield className="w-5 h-5 text-brand-300" />
+            <div>
+              <h5 className="font-semibold text-white">Floor Protection</h5>
+              <p className="text-xs text-white/50">Each board is 2.4m × 1.2m</p>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Antinox HD Floor Protection Boards
+            </label>
+            <input
+              type="number"
+              value={data.antinox_board_count || ''}
+              onChange={(e) => handleChange('antinox_board_count', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="Number of boards"
+            />
+          </div>
         </div>
       )}
 

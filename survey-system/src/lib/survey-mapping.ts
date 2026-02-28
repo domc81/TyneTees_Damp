@@ -826,6 +826,16 @@ function mapAdditionalWorks(
 ): LineInput[] {
   const inputs: LineInput[] = []
 
+  // === ANTINOX FLOOR PROTECTION BOARDS (damp, timber, woodworm only) ===
+
+  if (surveyType !== 'condensation') {
+    const antinoxLineKey = surveyType === 'damp'
+      ? 'floor_protection_boards'
+      : 'antinox_hd_floor_protection_boards_24m_x_12m'
+    const antinoxInput = createLineInput(lookup, 'preparatory_work', antinoxLineKey, additionalWorks.antinox_board_count || 0)
+    if (antinoxInput) inputs.push(antinoxInput)
+  }
+
   // === AIRBRICKS (line keys differ between damp and other survey types) ===
 
   const airbrickCleanKey = surveyType === 'damp'

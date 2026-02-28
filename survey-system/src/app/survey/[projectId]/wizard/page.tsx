@@ -275,6 +275,9 @@ export default function SurveyWizardPage() {
   const hasTimberOrDamp = rooms.some((r) =>
     r.issues_identified?.some((i) => i === 'damp' || i === 'timber_decay')
   )
+  const hasDampTimberOrWoodworm = rooms.some((r) =>
+    r.issues_identified?.some((i) => i === 'damp' || i === 'timber_decay' || i === 'woodworm')
+  )
 
   // Render current step content
   const renderStepContent = () => {
@@ -316,6 +319,7 @@ export default function SurveyWizardPage() {
             onChange={handleAdditionalWorksChange}
             hasCondensation={hasCondensation}
             hasTimberOrDamp={hasTimberOrDamp}
+            hasDampTimberOrWoodworm={hasDampTimberOrWoodworm}
           />
         )
       case 4:
