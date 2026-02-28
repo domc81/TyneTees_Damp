@@ -545,6 +545,17 @@ function mapCondensationSurvey(
     if (coreHoleInput) inputs.push(coreHoleInput)
   }
 
+  // === DRYAIRE CVENTS ===
+
+  const cventCount = additionalWorks.cvent_count || 0
+  if (cventCount > 0) {
+    const cventInput = createLineInput(lookup, 'dryaire_cvent', 'dryaire_cvent', cventCount)
+    if (cventInput) inputs.push(cventInput)
+
+    const cventCoreHoleInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', cventCount)
+    if (cventCoreHoleInput) inputs.push(cventCoreHoleInput)
+  }
+
   // === MOULD TREATMENT ===
 
   if (totalMouldArea > 0) {

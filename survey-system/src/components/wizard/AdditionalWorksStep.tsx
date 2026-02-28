@@ -303,6 +303,21 @@ export default function AdditionalWorksStep({
                   placeholder="Number of vents"
                 />
               </div>
+
+              {/* Dryaire CVents */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Dryaire CVents (each requires one 107mm core hole)
+                </label>
+                <input
+                  type="number"
+                  value={data.cvent_count || ''}
+                  onChange={(e) => handleChange('cvent_count', parseInt(e.target.value) || undefined)}
+                  className="input-field"
+                  min="0"
+                  placeholder="Number of CVents"
+                />
+              </div>
             </div>
           )}
         </div>

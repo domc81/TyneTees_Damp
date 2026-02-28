@@ -398,6 +398,7 @@ export interface AdditionalWorks {
 
   // Passive Vents (condensation)
   cpass_vent_count?: number
+  cvent_count?: number
 
   // Joist & Flooring Extras
   joist_endwrap_count?: number
