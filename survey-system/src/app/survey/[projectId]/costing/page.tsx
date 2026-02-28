@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText } from 'lucide-react'
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
 import { generateCostingFromSurvey } from '@/lib/survey-mapping'
-import { loadPricingConfig, type CalculationResult, type CalculatedLine } from '@/lib/pricing-data'
+import { loadPricingConfig, loadSectionAdjustments, saveSectionAdjustment, type CalculationResult, type CalculatedLine } from '@/lib/pricing-data'
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
 
 // Survey type display names
@@ -56,6 +56,8 @@ export default function CostingReviewPage() {
   const [costingResults, setCostingResults] = useState<Record<string, CalculationResult>>({})
   const [activeSurveyType, setActiveSurveyType] = useState<string>('')
   const [travelOverheads, setTravelOverheads] = useState<Record<string, TravelOverheadResult>>({})
+  const [sectionAdjustments, setSectionAdjustments] = useState<Record<string, number>>({})
+  const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Load wizard data and generate costing on mount
   useEffect(() => {
@@ -75,6 +77,10 @@ export default function CostingReviewPage() {
         }
 
         setCostingResults(results)
+
+        // Load saved section adjustments
+        const savedAdjustments = await loadSectionAdjustments(projectId)
+        setSectionAdjustments(savedAdjustments)
 
         // Calculate travel overhead for each survey type
         const pricingConfig = await loadPricingConfig()
@@ -111,6 +117,17 @@ export default function CostingReviewPage() {
     loadAndCalculate()
   }, [projectId])
 
+  // Handle section adjustment change — updates state immediately, debounces DB write
+  function handleAdjustmentChange(sectionKey: string, surveyType: string, value: number) {
+    setSectionAdjustments(prev => ({ ...prev, [sectionKey]: value }))
+    if (debounceTimersRef.current[sectionKey]) {
+      clearTimeout(debounceTimersRef.current[sectionKey])
+    }
+    debounceTimersRef.current[sectionKey] = setTimeout(() => {
+      saveSectionAdjustment(projectId, sectionKey, surveyType, value)
+    }, 750)
+  }
+
   // Get active result
   const activeResult = activeSurveyType ? costingResults[activeSurveyType] : null
 
@@ -130,8 +147,17 @@ export default function CostingReviewPage() {
   const activeOverhead = activeSurveyType ? travelOverheads[activeSurveyType] : null
   const overheadAmount = activeOverhead?.totalOverheadCost || 0
 
-  // Calculate VAT (20%) — subtotal includes section costs + overhead
-  const subtotal = (activeResult?.grandTotal.total || 0) + overheadAmount
+  // Calculate adjusted section totals — adjustments apply to the combined section total (mat + labour)
+  const adjustedSectionTotal = sortedSections.reduce((sum, key) => {
+    const base = activeResult?.sectionTotals[key]?.sectionTotal || 0
+    const adjPct = sectionAdjustments[key] || 0
+    return sum + base * (1 + adjPct / 100)
+  }, 0)
+  const baseGrandTotal = activeResult?.grandTotal.total || 0
+  const netAdjustment = adjustedSectionTotal - baseGrandTotal
+
+  // Calculate VAT (20%) — subtotal uses adjusted section totals + overhead
+  const subtotal = adjustedSectionTotal + overheadAmount
   const vatAmount = subtotal * 0.20
   const grandTotalIncVAT = subtotal + vatAmount
 
@@ -237,6 +263,9 @@ export default function CostingReviewPage() {
           {sortedSections.map((sectionKey) => {
             const lines = linesBySection[sectionKey]
             const sectionTotal = activeResult?.sectionTotals[sectionKey]
+            const adjPct = sectionAdjustments[sectionKey] || 0
+            const baseTotal = sectionTotal?.sectionTotal || 0
+            const adjustedDisplayTotal = baseTotal * (1 + adjPct / 100)
 
             return (
               <Card key={sectionKey} className="glass border-white/10 overflow-hidden">
@@ -318,7 +347,42 @@ export default function CostingReviewPage() {
                           {formatCurrency(sectionTotal?.labourTotal || 0)}
                         </td>
                         <td className="px-6 py-4 text-sm text-white text-right">
-                          {formatCurrency(sectionTotal?.sectionTotal || 0)}
+                          {formatCurrency(baseTotal)}
+                        </td>
+                      </tr>
+
+                      {/* Section Adjustment Row */}
+                      <tr className="border-t border-white/5">
+                        <td className="px-6 py-3" colSpan={4}>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-white/50 whitespace-nowrap">
+                              Section Adjustment %
+                            </label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={adjPct}
+                              onChange={(e) =>
+                                handleAdjustmentChange(
+                                  sectionKey,
+                                  activeSurveyType,
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 text-sm text-right">
+                          {adjPct !== 0 && (
+                            <span
+                              className={`font-semibold ${
+                                adjPct > 0 ? 'text-green-400' : 'text-amber-400'
+                              }`}
+                            >
+                              {formatCurrency(adjustedDisplayTotal)}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     </tbody>
@@ -359,6 +423,22 @@ export default function CostingReviewPage() {
                   {formatCurrency(activeResult?.grandTotal.labourTotal || 0)}
                 </span>
               </div>
+
+              {/* Net Section Adjustments (only shown when at least one section has a non-zero adjustment) */}
+              {netAdjustment !== 0 && (
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span>Section Adjustments</span>
+                  </div>
+                  <span
+                    className={`font-medium ${
+                      netAdjustment > 0 ? 'text-green-400' : 'text-amber-400'
+                    }`}
+                  >
+                    {netAdjustment > 0 ? `+${formatCurrency(netAdjustment)}` : formatCurrency(netAdjustment)}
+                  </span>
+                </div>
+              )}
 
               {/* Project Specific Overheads (travel + vehicle — never itemised for customers) */}
               {overheadAmount > 0 && (
