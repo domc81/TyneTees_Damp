@@ -654,6 +654,13 @@ function mapTimberSurvey(
   const fogInput = createLineInput(lookup, 'timber_treatments', 'fog_subfloor_void_m2', totalFungalTreatmentArea)
   if (fogInput) inputs.push(fogInput)
 
+  // === DIFFICULTY HOURS ===
+
+  if (totalDifficultyHours > 0) {
+    const difficultyInput = createLineInput(lookup, 'floor_joists_decking', 'difficulty_hours_additional_hours_if_required', totalDifficultyHours)
+    if (difficultyInput) inputs.push(difficultyInput)
+  }
+
   return inputs
 }
 
@@ -707,6 +714,13 @@ function mapWoodwormSurvey(
   // Gel injection (paste treatment)
   const gelInjectionInput = createLineInput(lookup, 'timber_treatments', '401_gel_injection_100mm_centres_plug_with_dowel', totalPasteTreatmentArea)
   if (gelInjectionInput) inputs.push(gelInjectionInput)
+
+  // === DIFFICULTY HOURS ===
+
+  if (totalDifficultyHours > 0) {
+    const difficultyInput = createLineInput(lookup, 'floor_joists_decking', 'difficulty_hours_additional_hours_if_required', totalDifficultyHours)
+    if (difficultyInput) inputs.push(difficultyInput)
+  }
 
   return inputs
 }
