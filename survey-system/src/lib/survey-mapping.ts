@@ -643,6 +643,8 @@ function mapTimberSurvey(
   let totalFlooringArea = 0
   let totalCeilingArea = 0
   let totalDifficultyHours = 0
+  let totalGrindBackMortarArea = 0
+  let totalWireScrubArea = 0
   const joistEntries: { size: string; totalLength: number }[] = []
 
   for (const room of timberRooms) {
@@ -659,6 +661,10 @@ function mapTimberSurvey(
     if (timberData.ceiling_affected) {
       totalCeilingArea += timberData.ceiling_area || 0
     }
+
+    // Masonry preparation areas
+    totalGrindBackMortarArea += timberData.grind_back_mortar_area || 0
+    totalWireScrubArea += timberData.wire_scrub_area || 0
 
     // Joist entries (aggregate by size)
     for (const entry of timberData.joist_entries || []) {
@@ -677,6 +683,14 @@ function mapTimberSurvey(
   }
 
   // === STRIP OUT ===
+
+  // Masonry preparation — grind back mortar courses on brickwork
+  const grindBackMortarInput = createLineInput(lookup, 'strip_out', 'grind_back_mortar_courses_on_brickwork', totalGrindBackMortarArea)
+  if (grindBackMortarInput) inputs.push(grindBackMortarInput)
+
+  // Masonry preparation — wire scrub brickwork faces
+  const wireScrubInput = createLineInput(lookup, 'strip_out', 'wire_scrub_brickwork_faces', totalWireScrubArea)
+  if (wireScrubInput) inputs.push(wireScrubInput)
 
   // Plaster removal (walls)
   const plasterRemovalArea = totalCeilingArea // Simplified assumption

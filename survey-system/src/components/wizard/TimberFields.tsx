@@ -577,6 +577,45 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
         )}
       </div>
 
+      {/* Masonry Preparation */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Hammer className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Masonry Preparation</h5>
+        </div>
+        <p className="text-xs text-white/50">Labour-only prep before treating timber decay in masonry walls</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Grind Back Mortar Courses (m²)
+            </label>
+            <input
+              type="number"
+              value={data.grind_back_mortar_area || ''}
+              onChange={(e) => handleChange('grind_back_mortar_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Wire Scrub Brickwork (m²)
+            </label>
+            <input
+              type="number"
+              value={data.wire_scrub_area || ''}
+              onChange={(e) => handleChange('wire_scrub_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Difficulty Hours */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-3 mb-3">

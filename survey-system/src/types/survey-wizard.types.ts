@@ -291,6 +291,10 @@ export interface TimberRoomData {
   ceiling_affected: boolean
   ceiling_area?: number // m²
 
+  // Masonry Preparation
+  grind_back_mortar_area?: number // m² of mortar grinding on brickwork courses
+  wire_scrub_area?: number // m² of wire scrubbing on brickwork faces
+
   // Difficulty Adjustment
   difficulty_hours?: number
 }
