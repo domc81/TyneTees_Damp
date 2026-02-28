@@ -6,7 +6,7 @@ import {
   InfestationStatus,
   InfestationSeverity,
 } from '@/types/survey-wizard.types'
-import { Bug, AlertTriangle, Layers, Clock } from 'lucide-react'
+import { Bug, AlertTriangle, Layers, Clock, Hammer } from 'lucide-react'
 
 interface WoodwormFieldsProps {
   data: Partial<WoodwormRoomData>
@@ -191,6 +191,43 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
         <p className="text-xs text-white/50">
           Enter the area requiring treatment for each method
         </p>
+      </div>
+
+      {/* Staircase Fogging */}
+      <div className="glass-card p-4 space-y-3">
+        <h5 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <Hammer className="w-4 h-4 text-red-300" />
+          Staircase Fogging
+        </h5>
+        <p className="text-xs text-white/50">Enter step counts only where staircase fogging is required</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Open Rear Treads (steps)
+            </label>
+            <input
+              type="number"
+              value={data.staircase_open_rear_steps || ''}
+              onChange={(e) => handleChange('staircase_open_rear_steps', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Closed Rear Treads — Drill &amp; Plug (steps)
+            </label>
+            <input
+              type="number"
+              value={data.staircase_closed_rear_steps || ''}
+              onChange={(e) => handleChange('staircase_closed_rear_steps', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Difficulty Hours */}

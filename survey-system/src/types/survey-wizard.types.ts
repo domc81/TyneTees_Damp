@@ -297,6 +297,10 @@ export interface TimberRoomData {
   masonry_sterilant_area?: number // m² needing Wykabor 20 sterilant brush-applied
   protective_treatment_area?: number // m² of new replacement timbers needing DP-O protective treatment
 
+  // Staircase Fogging
+  staircase_open_rear_steps?: number // Count of open-rear steps to fog
+  staircase_closed_rear_steps?: number // Count of closed-rear steps (drill & plug) to fog
+
   // Difficulty Adjustment
   difficulty_hours?: number
 }
@@ -365,6 +369,10 @@ export interface WoodwormRoomData {
   spray_floor_area?: number // m² of floor to spray
   spray_timber_area?: number // m² of exposed timber
   paste_treatment_area?: number // m² requiring paste
+
+  // Staircase Fogging
+  staircase_open_rear_steps?: number // Count of open-rear steps to fog
+  staircase_closed_rear_steps?: number // Count of closed-rear steps (drill & plug) to fog
 
   // Difficulty Adjustment
   difficulty_hours?: number

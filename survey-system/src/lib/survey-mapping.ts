@@ -647,6 +647,8 @@ function mapTimberSurvey(
   let totalWireScrubArea = 0
   let totalMasonrySterilantArea = 0
   let totalProtectiveTreatmentArea = 0
+  let totalStaircaseOpenRearSteps = 0
+  let totalStaircaseClosedRearSteps = 0
   const joistEntries: { size: string; totalLength: number }[] = []
 
   for (const room of timberRooms) {
@@ -669,6 +671,8 @@ function mapTimberSurvey(
     totalWireScrubArea += timberData.wire_scrub_area || 0
     totalMasonrySterilantArea += timberData.masonry_sterilant_area || 0
     totalProtectiveTreatmentArea += timberData.protective_treatment_area || 0
+    totalStaircaseOpenRearSteps += timberData.staircase_open_rear_steps || 0
+    totalStaircaseClosedRearSteps += timberData.staircase_closed_rear_steps || 0
 
     // Joist entries (aggregate by size)
     for (const entry of timberData.joist_entries || []) {
@@ -767,6 +771,14 @@ function mapTimberSurvey(
   const protectiveTreatmentInput = createLineInput(lookup, 'timber_treatments', 'protective_treatment_following_new_timbers_installation_dp_o', totalProtectiveTreatmentArea)
   if (protectiveTreatmentInput) inputs.push(protectiveTreatmentInput)
 
+  // Staircase fogging — open rear treads
+  const staircaseOpenInput = createLineInput(lookup, 'timber_treatments', 'fogging_staircase_open_rear_treads_per_step', totalStaircaseOpenRearSteps)
+  if (staircaseOpenInput) inputs.push(staircaseOpenInput)
+
+  // Staircase fogging — closed rear treads (drill & plug)
+  const staircaseClosedInput = createLineInput(lookup, 'timber_treatments', 'fogging_staircase_rear_closed_drill_and_plug_per_step', totalStaircaseClosedRearSteps)
+  if (staircaseClosedInput) inputs.push(staircaseClosedInput)
+
   // === DIFFICULTY HOURS ===
 
   if (totalDifficultyHours > 0) {
@@ -803,6 +815,8 @@ function mapWoodwormSurvey(
   let totalSprayTimberArea = 0
   let totalPasteTreatmentArea = 0
   let totalDifficultyHours = 0
+  let totalWWStaircaseOpenRearSteps = 0
+  let totalWWStaircaseClosedRearSteps = 0
 
   for (const room of woodwormRooms) {
     const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
@@ -812,6 +826,8 @@ function mapWoodwormSurvey(
     totalSprayTimberArea += woodwormData.spray_timber_area || 0
     totalPasteTreatmentArea += woodwormData.paste_treatment_area || 0
     totalDifficultyHours += woodwormData.difficulty_hours || 0
+    totalWWStaircaseOpenRearSteps += woodwormData.staircase_open_rear_steps || 0
+    totalWWStaircaseClosedRearSteps += woodwormData.staircase_closed_rear_steps || 0
   }
 
   // === TIMBER TREATMENTS ===
@@ -827,6 +843,14 @@ function mapWoodwormSurvey(
   // Gel injection (paste treatment)
   const gelInjectionInput = createLineInput(lookup, 'timber_treatments', '401_gel_injection_100mm_centres_plug_with_dowel', totalPasteTreatmentArea)
   if (gelInjectionInput) inputs.push(gelInjectionInput)
+
+  // Staircase fogging — open rear treads
+  const wwStaircaseOpenInput = createLineInput(lookup, 'timber_treatments', 'fogging_staircase_open_rear_treads_per_step', totalWWStaircaseOpenRearSteps)
+  if (wwStaircaseOpenInput) inputs.push(wwStaircaseOpenInput)
+
+  // Staircase fogging — closed rear treads (drill & plug)
+  const wwStaircaseClosedInput = createLineInput(lookup, 'timber_treatments', 'fogging_staircase_rear_closed_drill_and_plug_per_step', totalWWStaircaseClosedRearSteps)
+  if (wwStaircaseClosedInput) inputs.push(wwStaircaseClosedInput)
 
   // === DIFFICULTY HOURS ===
 

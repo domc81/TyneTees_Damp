@@ -646,6 +646,43 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
         </div>
       </div>
 
+      {/* Staircase Fogging */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Hammer className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Staircase Fogging</h5>
+        </div>
+        <p className="text-xs text-white/50">Enter step counts only where staircase fogging is required</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Open Rear Treads (steps)
+            </label>
+            <input
+              type="number"
+              value={data.staircase_open_rear_steps || ''}
+              onChange={(e) => handleChange('staircase_open_rear_steps', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Closed Rear Treads — Drill &amp; Plug (steps)
+            </label>
+            <input
+              type="number"
+              value={data.staircase_closed_rear_steps || ''}
+              onChange={(e) => handleChange('staircase_closed_rear_steps', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Difficulty Hours */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-3 mb-3">
