@@ -254,6 +254,146 @@ export async function loadSectionTemplates(
 }
 
 // =============================================================================
+// Section Adjustment Functions
+// =============================================================================
+
+/**
+ * Load all per-section price adjustments for a survey.
+ *
+ * Joins with costing_sections to return a map keyed by section_key
+ * (e.g. "D1", "C3") rather than raw UUIDs, since the costing page
+ * identifies sections by their key.
+ *
+ * @param surveyId - The survey to load adjustments for
+ * @returns Map of section_key → adjustment_pct (empty object if none exist)
+ */
+export async function loadSectionAdjustments(
+  surveyId: string
+): Promise<Record<string, number>> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return {}
+  }
+
+  const { data, error } = await supabase
+    .from('costing_section_adjustments')
+    .select('adjustment_pct, costing_sections(section_key)')
+    .eq('survey_id', surveyId)
+
+  if (error) {
+    console.error('Error loading section adjustments:', error)
+    return {}
+  }
+
+  if (!data) {
+    return {}
+  }
+
+  const adjustments: Record<string, number> = {}
+  for (const row of data) {
+    const section = row.costing_sections as unknown as { section_key: string } | null
+    if (section?.section_key && row.adjustment_pct !== null) {
+      adjustments[section.section_key] = Number(row.adjustment_pct)
+    }
+  }
+
+  return adjustments
+}
+
+/**
+ * Save a single per-section price adjustment for a survey.
+ *
+ * Looks up the section UUID from costing_sections using section_key + survey_type,
+ * then upserts the adjustment row. If adjustmentPct is 0, deletes the row
+ * to keep the table clean (absence = no adjustment).
+ *
+ * @param surveyId - The survey to save the adjustment for
+ * @param sectionKey - The section key (e.g. "D1", "C3")
+ * @param surveyType - The survey type (e.g. "damp", "condensation")
+ * @param adjustmentPct - The adjustment percentage (e.g. 10 for +10%)
+ */
+export async function saveSectionAdjustment(
+  surveyId: string,
+  sectionKey: string,
+  surveyType: string,
+  adjustmentPct: number
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return
+  }
+
+  // Look up the section_id from section_key + survey_type
+  const { data: section, error: sectionError } = await supabase
+    .from('costing_sections')
+    .select('id')
+    .eq('section_key', sectionKey)
+    .eq('survey_type', surveyType)
+    .single()
+
+  if (sectionError || !section) {
+    console.error('Error finding section for key:', sectionKey, sectionError)
+    return
+  }
+
+  const sectionId = section.id
+
+  // If adjustment is 0, delete any existing row
+  if (adjustmentPct === 0) {
+    const { error: deleteError } = await supabase
+      .from('costing_section_adjustments')
+      .delete()
+      .eq('survey_id', surveyId)
+      .eq('section_id', sectionId)
+
+    if (deleteError) {
+      console.error('Error deleting section adjustment:', deleteError)
+    }
+    return
+  }
+
+  // Check if a row already exists for this survey + section
+  const { data: existing, error: existingError } = await supabase
+    .from('costing_section_adjustments')
+    .select('id')
+    .eq('survey_id', surveyId)
+    .eq('section_id', sectionId)
+    .maybeSingle()
+
+  if (existingError) {
+    console.error('Error checking existing adjustment:', existingError)
+    return
+  }
+
+  if (existing) {
+    // Update existing row
+    const { error: updateError } = await supabase
+      .from('costing_section_adjustments')
+      .update({ adjustment_pct: adjustmentPct })
+      .eq('id', existing.id)
+
+    if (updateError) {
+      console.error('Error updating section adjustment:', updateError)
+    }
+  } else {
+    // Insert new row
+    const { error: insertError } = await supabase
+      .from('costing_section_adjustments')
+      .insert({
+        survey_id: surveyId,
+        section_id: sectionId,
+        adjustment_pct: adjustmentPct,
+      })
+
+    if (insertError) {
+      console.error('Error inserting section adjustment:', insertError)
+    }
+  }
+}
+
+// =============================================================================
 // High-Level Calculation Function
 // =============================================================================
 
