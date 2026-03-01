@@ -339,26 +339,82 @@ export interface Section {
   line_items?: LineItem[]
 }
 
-// --- Quotation & Report ---
+// --- Quotation ---
+
+export type QuotationStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined'
 
 export interface Quotation {
   id: string
-  project_id: string
+  survey_id: string
+  version: number
   quotation_number: string
-  subtotal: number
+  share_token: string
+  status: QuotationStatus
+
+  // Financials (frozen at generation time)
+  subtotal_mandatory: number
+  subtotal_optional: number
+  subtotal_combined: number
+  pso_total: number
   vat_rate: number
   vat_amount: number
-  total: number
+  total_incl_vat: number
   deposit_percentage: number
-  deposit_amount?: number | null
+  deposit_amount: number
+
+  // Validity
   validity_days: number
-  status: string
-  sent_at?: string | null
-  accepted_at?: string | null
+  valid_until: string  // DATE — returned as ISO string
+
+  // Surveyor notes / T&Cs
   notes?: string | null
   terms?: string | null
+
+  // Snapshot fields (denormalised)
+  customer_name?: string | null
+  customer_address?: string | null
+  site_address?: string | null
+  surveyor_name?: string | null
+  surveyor_qualifications?: string | null
+  company_name?: string | null
+  company_phone?: string | null
+  company_email?: string | null
+
+  // Customer engagement
+  first_viewed_at?: string | null
+  last_viewed_at?: string | null
+  view_count: number
+  sent_at?: string | null
+  accepted_at?: string | null
+  declined_at?: string | null
+
   created_at: string
   updated_at: string
+}
+
+export interface QuotationSection {
+  id: string
+  quotation_id: string
+  survey_type: string         // damp | timber | woodworm | condensation | site_preparation
+  section_key: string         // matches costing_sections.section_key
+  display_name: string
+  display_order: number
+  material_total: number
+  labour_total: number
+  section_total: number
+  is_optional: boolean
+  is_included: boolean
+  created_at: string
+}
+
+export interface QuotationView {
+  id: string
+  quotation_id: string
+  viewed_at: string
+  ip_address?: string | null
+  user_agent?: string | null
+  duration_seconds?: number | null
+  referrer?: string | null
 }
 
 /** @deprecated Use ReportTemplate + SurveyReport from survey-report.types.ts instead */
