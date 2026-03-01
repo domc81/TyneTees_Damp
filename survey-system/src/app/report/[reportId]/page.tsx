@@ -277,6 +277,7 @@ function renderSection(
 
     case 'dpc_findings':
     case 'sub_floor_ventilation':
+    case 'party_wall_notification':
       return (
         <TextSection
           key={section.key}

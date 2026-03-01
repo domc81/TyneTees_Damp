@@ -51,6 +51,7 @@ const REVIEWABLE_SECTIONS = new Set([
   'dpc_findings',
   'sub_floor_ventilation',
   'room_findings',
+  'party_wall_notification',
   'summary_of_works',
   'surveyor_comments',
   'surveyor_profile',

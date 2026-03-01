@@ -719,16 +719,19 @@ export async function generateReport(
   )
 
   // --- DPC FINDINGS ---
-  // Only show DPC section when a room explicitly requires DPC treatment.
-  // When no DPC is required, omit the section entirely — otherwise it
-  // produces boilerplate that can contradict the external inspection notes
-  // (e.g. surveyor states "DPC in good condition" but report says it's adequate).
+  // Four variants depending on DPC status identified during the survey:
+  //   Variant 1 — Original DPC adequate: damp rooms surveyed, no treatment required.
+  //   Variant 2 — Previous chemical DPC found: evidence of prior third-party injection.
+  //               TODO: requires a new wizard field (e.g. `dpc_status` on ExternalInspection
+  //               or DampRoomData) to distinguish from "original adequate". Not yet captured.
+  //   Variant 3 — Chemical injection DPC recommended: BBA-approved cream injection.
+  //   Variant 4 — Digital DPC recommended: Mursec Eco electro-osmotic system.
   const hasDpcRequired = dampRooms.some(
     (r) => r.room_data?.damp?.dpc_required === true
   )
   let dpcContent = ''
   if (hasDpcRequired) {
-    // Build DPC content based on the type selected
+    // Variants 3 & 4: DPC treatment is required — select type from surveyed rooms
     const dpcRooms = dampRooms.filter(
       (r) => r.room_data?.damp?.dpc_required === true
     )
@@ -738,14 +741,20 @@ export async function generateReport(
         .filter(Boolean)
     )
     if (dpcTypes.has('digital')) {
+      // Variant 4 — Digital DPC (Mursec electro-osmotic system)
       dpcContent =
         'Based on our inspection findings, we recommend the installation of a Mursec Eco digital damp proof course system to the affected areas.'
     } else {
+      // Variant 3 — Chemical injection DPC recommended
       dpcContent =
         'Based on our inspection findings, we recommend the installation of a new chemical damp proof course to the affected areas. This will be carried out using BBA-approved DPC injection cream applied to the mortar course at a minimum of 150mm above external ground level.'
     }
+  } else if (dampRooms.length > 0) {
+    // Variant 1 — Original DPC adequate (damp rooms were surveyed but no treatment required)
+    dpcContent =
+      'Evidence of the original damp proof course was identified during the survey. The DPC appears to be in adequate condition and functioning as intended. No remedial damp proofing treatment is recommended at this time.'
   }
-  // When no DPC is required, dpcContent stays empty and section is hidden by isSectionEmpty
+  // Non-damp surveys (no dampRooms at all): dpcContent stays empty — section is hidden.
 
   sections.push(
     buildSection(
@@ -830,6 +839,28 @@ export async function generateReport(
       {},
       [],
       roomSubSections
+    )
+  )
+
+  // --- PARTY WALL ACT NOTIFICATION ---
+  // Dry rot (Serpula lacrymans) can spread through masonry into adjoining properties,
+  // engaging the Party Wall etc. Act 1996. Section is only shown when dry rot is found
+  // in any timber room. When not triggered, empty content hides the section.
+  const hasDryRot = timberRooms.some(
+    (r) =>
+      (r.room_data?.timber_decay as TimberRoomData)?.fungal_findings?.includes(
+        'dry_rot'
+      )
+  )
+  sections.push(
+    buildSection(
+      'party_wall_notification',
+      'Party Wall Act — Notification',
+      'findings',
+      'survey_data',
+      hasDryRot
+        ? `Dry rot (Serpula lacrymans) has been identified during the course of our survey.\n\nUnlike wet rot, dry rot mycelium is capable of spreading through masonry and other inert materials into adjoining properties. Where treatment works are adjacent to or affect party walls, the provisions of the Party Wall etc. Act 1996 may be engaged — in particular Section 6, which governs works that could affect the structure of an adjoining property.\n\nThe property owner is advised to serve the appropriate notice on all affected adjoining owners before commencing any treatment or remedial works that affect or are adjacent to party walls. Failure to comply with the Act may result in legal liability to the adjoining owner.\n\nWe recommend that you seek independent legal advice regarding your obligations under the Party Wall etc. Act 1996 prior to instructing works. Tyne Tees Damp Proofing Ltd can provide further guidance on the notification process on request.`
+        : ''
     )
   )
 
