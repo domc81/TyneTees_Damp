@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useCompanyProfile } from '@/context/CompanyProfileContext'
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
@@ -14,6 +15,7 @@ export default function UpdatePasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const companyProfile = useCompanyProfile()
 
   useEffect(() => {
     // Check if this is a valid password reset session
@@ -64,8 +66,8 @@ export default function UpdatePasswordPage() {
         <div className="glass-card p-8">
           <div className="text-center mb-8">
             <img
-              src="/logo.svg"
-              alt="Tyne Tees Damp Proofing"
+              src={companyProfile.logo_url || '/logo.svg'}
+              alt={companyProfile.name}
               className="h-12 w-auto mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white">Update Password</h1>

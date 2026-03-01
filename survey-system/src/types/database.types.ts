@@ -1,5 +1,5 @@
 // =============================================================================
-// Tyne Tees Survey System — Canonical Type Definitions
+// Survey System — Canonical Type Definitions
 // Single source of truth. All other files import from here.
 // These types match the actual Supabase database schema.
 // Last verified against live DB: 19 Feb 2026 (post-migration)

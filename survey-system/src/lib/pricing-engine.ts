@@ -1,5 +1,5 @@
 // =============================================================================
-// Tyne Tees Pricing Engine — Pure Calculation Module
+// Pricing Engine — Pure Calculation Module
 // No Supabase calls, no React. Just types and calculation functions.
 // Implements 8 formula types for automated pricing calculations.
 // =============================================================================

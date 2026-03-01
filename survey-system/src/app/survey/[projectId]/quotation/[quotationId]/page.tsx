@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
+import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getSupabase } from '@/lib/supabase-client'
@@ -105,13 +106,15 @@ const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
 }
 
 // Sensible default terms, used when the quotation record has no terms stored yet
-const DEFAULT_TERMS = `1. A deposit is required prior to the commencement of works as stated in this quotation.
+function getDefaultTerms(companyName: string): string {
+  return `1. A deposit is required prior to the commencement of works as stated in this quotation.
 2. The balance is due upon satisfactory completion of all works.
 3. This quotation is valid for the period stated above from the date of issue.
 4. All specified works are guaranteed against failure as per our standard guarantee documentation.
 5. Access to the property and appropriate working conditions must be provided throughout the works.
-6. Tyne Tees Damp Proofing Ltd reserves the right to revise this quotation should site conditions differ materially from those assessed during the survey.
+6. ${companyName} reserves the right to revise this quotation should site conditions differ materially from those assessed during the survey.
 7. Any additional works identified and agreed during the course of the project will be charged at our standard rates.`
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -148,6 +151,8 @@ export default function QuotationManagementPage() {
   const params = useParams()
   const projectId = params.projectId as string
   const quotationId = params.quotationId as string
+
+  const companyProfile = useCompanyProfile()
 
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [sections, setSections] = useState<QuotationSection[]>([])
@@ -195,7 +200,7 @@ export default function QuotationManagementPage() {
 
       // Seed editable fields from DB
       setEditNotes(loaded.notes || '')
-      setEditTerms(loaded.terms || DEFAULT_TERMS)
+      setEditTerms(loaded.terms || getDefaultTerms(loaded.company_name || companyProfile.name))
       setEditValidityDays(loaded.validity_days || 30)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load quotation')
@@ -453,7 +458,7 @@ export default function QuotationManagementPage() {
                   {/* Company header */}
                   <div className="flex items-start justify-between gap-6">
                     <div>
-                      <h2 className="text-xl font-bold text-white">{quotation.company_name ?? 'Tyne Tees Damp Proofing Ltd'}</h2>
+                      <h2 className="text-xl font-bold text-white">{quotation.company_name ?? companyProfile.name}</h2>
                       <div className="mt-2 space-y-1">
                         {quotation.company_phone && (
                           <div className="flex items-center gap-2 text-sm text-white/60">
@@ -664,7 +669,7 @@ export default function QuotationManagementPage() {
                       Terms &amp; Conditions
                     </p>
                     <div className="text-sm text-white/60 leading-relaxed whitespace-pre-line bg-white/5 rounded-xl p-5 border border-white/10">
-                      {quotation.terms ?? DEFAULT_TERMS}
+                      {quotation.terms ?? getDefaultTerms(quotation.company_name || companyProfile.name)}
                     </div>
                   </div>
 

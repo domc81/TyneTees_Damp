@@ -1,4 +1,4 @@
-// Supabase Data Layer for Tyne Tees Survey System
+// Supabase Data Layer — canonical query functions for all tables
 // Replaces localStorage with real database operations
 
 import { getSupabase } from './supabase-client'

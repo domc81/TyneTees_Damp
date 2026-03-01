@@ -1,5 +1,5 @@
 // =============================================================================
-// Tyne Tees Pricing Data Layer — Supabase Data-Fetching Module
+// Pricing Data Layer — Supabase Data-Fetching Module
 // Loads pricing data from database and provides high-level calculation functions.
 // =============================================================================
 

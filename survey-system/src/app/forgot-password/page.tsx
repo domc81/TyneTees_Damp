@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import { useCompanyProfile } from '@/context/CompanyProfileContext'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +15,7 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const companyProfile = useCompanyProfile()
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,8 +46,8 @@ export default function ForgotPasswordPage() {
         <div className="glass-card p-8">
           <div className="text-center mb-8">
             <img
-              src="/logo.svg"
-              alt="Tyne Tees Damp Proofing"
+              src={companyProfile.logo_url || '/logo.svg'}
+              alt={companyProfile.name}
               className="h-12 w-auto mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white">Reset Password</h1>
