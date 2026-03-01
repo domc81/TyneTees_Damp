@@ -1,21 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-let cookieStore: ReturnType<typeof cookies> | null = null
-
-function getCookieStore() {
-  if (cookieStore) return cookieStore
-  try {
-    cookieStore = cookies()
-    return cookieStore
-  } catch {
-    // Return a no-op store for build-time contexts
-    return null
-  }
-}
-
 export function createClient() {
-  const store = getCookieStore()
+  let store: ReturnType<typeof cookies> | null = null
+  try {
+    store = cookies()
+  } catch {
+    // Build-time context — no request available
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,5 +39,3 @@ export function createClient() {
     }
   )
 }
-
-export const supabase = createClient()
