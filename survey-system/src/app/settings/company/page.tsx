@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
+import { useAuth } from '@/context/AuthContext'
 import type { CompanyProfile } from '@/types/database.types'
 
 // Fields grouped for the form
@@ -123,6 +124,7 @@ function Field({
 // ---------------------------------------------------------------------------
 
 export default function CompanyProfilePage() {
+  const { session, isLoading: authLoading } = useAuth()
   const [profile, setProfile] = useState<CompanyProfile | null>(null)
   const [form, setForm] = useState<FormData | null>(null)
   const [savedForm, setSavedForm] = useState<FormData | null>(null)
@@ -133,8 +135,10 @@ export default function CompanyProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Fetch profile on mount
+  // Fetch profile only after auth session is confirmed
   useEffect(() => {
+    if (authLoading || !session) return
+
     async function load() {
       try {
         const res = await fetch('/api/settings/company')
@@ -151,7 +155,7 @@ export default function CompanyProfilePage() {
       }
     }
     load()
-  }, [])
+  }, [authLoading, session])
 
   // Track unsaved changes
   const hasChanges = form && savedForm && JSON.stringify(form) !== JSON.stringify(savedForm)
