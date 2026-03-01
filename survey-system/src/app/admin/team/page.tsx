@@ -16,6 +16,7 @@ import {
   Copy,
   CheckCircle2,
   AlertTriangle,
+  Compass,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
@@ -222,6 +223,7 @@ export default function AdminTeamPage() {
                       <th>Email</th>
                       <th>Phone</th>
                       <th>Role</th>
+                      <th className="text-center">Surveyor</th>
                       <th className="text-center">Status</th>
                       <th>Created</th>
                       <th className="text-center">Actions</th>
@@ -241,6 +243,14 @@ export default function AdminTeamPage() {
                           >
                             {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                           </span>
+                        </td>
+                        <td className="text-center">
+                          {member.is_surveyor && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-teal-500/20 text-teal-300" title={member.qualifications || undefined}>
+                              <Compass className="w-3 h-3" />
+                              Yes
+                            </span>
+                          )}
                         </td>
                         <td className="text-center">
                           {member.is_active ? (
@@ -352,6 +362,8 @@ function AddMemberModal({
     email: '',
     phone: '',
     role: 'surveyor' as UserRole,
+    isSurveyor: true, // Default true because default role is surveyor
+    qualifications: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -511,7 +523,16 @@ function AddMemberModal({
             <label className="block text-sm font-medium text-white/70 mb-1.5">Role *</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              onChange={(e) => {
+                const newRole = e.target.value as UserRole
+                setFormData({
+                  ...formData,
+                  role: newRole,
+                  // Auto-set surveyor toggle: locked on for surveyor role, off by default for others
+                  isSurveyor: newRole === 'surveyor' ? true : false,
+                  qualifications: newRole === 'surveyor' ? formData.qualifications : '',
+                })
+              }}
               className="input-field"
               required
             >
@@ -525,6 +546,38 @@ function AddMemberModal({
               Admin = full access &bull; Office = CRM & reports &bull; Surveyor = field work only
             </p>
           </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isSurveyor}
+                onChange={(e) => setFormData({ ...formData, isSurveyor: e.target.checked })}
+                disabled={formData.role === 'surveyor'}
+                className="w-5 h-5 rounded border-white/30 bg-white/10 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 disabled:opacity-50"
+              />
+              <span className="text-sm font-medium text-white/70">This user conducts surveys</span>
+            </label>
+            {formData.role === 'surveyor' && (
+              <p className="text-xs text-white/40 mt-1.5 ml-8">
+                Always enabled for users with the Surveyor role
+              </p>
+            )}
+          </div>
+
+          {formData.isSurveyor && (
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1.5">
+                Qualifications
+              </label>
+              <textarea
+                value={formData.qualifications}
+                onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                className="input-field min-h-[80px] resize-y"
+                placeholder="e.g. CSRT, CSSW, PCA accredited..."
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
             <button type="button" onClick={onClose} className="btn-secondary">
@@ -573,6 +626,8 @@ function EditMemberModal({
     displayName: member.display_name,
     phone: member.phone || '',
     role: member.role as UserRole,
+    isSurveyor: member.is_surveyor ?? false,
+    qualifications: member.qualifications || '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -593,6 +648,8 @@ function EditMemberModal({
           displayName: formData.displayName,
           phone: formData.phone,
           role: formData.role,
+          isSurveyor: formData.isSurveyor,
+          qualifications: formData.qualifications,
         }),
       })
       const data = await res.json()
@@ -659,7 +716,14 @@ function EditMemberModal({
             <label className="block text-sm font-medium text-white/70 mb-1.5">Role *</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              onChange={(e) => {
+                const newRole = e.target.value as UserRole
+                setFormData({
+                  ...formData,
+                  role: newRole,
+                  isSurveyor: newRole === 'surveyor' ? true : formData.isSurveyor,
+                })
+              }}
               className="input-field"
               disabled={isSelf}
               required
@@ -674,6 +738,38 @@ function EditMemberModal({
               <p className="text-xs text-amber-400/80 mt-1.5">You cannot change your own role</p>
             )}
           </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isSurveyor}
+                onChange={(e) => setFormData({ ...formData, isSurveyor: e.target.checked })}
+                disabled={formData.role === 'surveyor'}
+                className="w-5 h-5 rounded border-white/30 bg-white/10 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 disabled:opacity-50"
+              />
+              <span className="text-sm font-medium text-white/70">This user conducts surveys</span>
+            </label>
+            {formData.role === 'surveyor' && (
+              <p className="text-xs text-white/40 mt-1.5 ml-8">
+                Always enabled for users with the Surveyor role
+              </p>
+            )}
+          </div>
+
+          {formData.isSurveyor && (
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1.5">
+                Qualifications
+              </label>
+              <textarea
+                value={formData.qualifications}
+                onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                className="input-field min-h-[80px] resize-y"
+                placeholder="e.g. CSRT, CSSW, PCA accredited..."
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
             <button type="button" onClick={onClose} className="btn-secondary">

@@ -109,14 +109,13 @@ export async function POST(
 
     // --- Load snapshot data ---
 
-    // 1. Survey + customer + surveyor
+    // 1. Survey + customer (surveyor loaded separately from user_profiles)
     const { data: survey, error: surveyErr } = await db
       .from('surveys')
       .select(`
         id, site_address, site_address_line2, site_city, site_county, site_postcode,
         client_name, customer_id, surveyor_id,
-        customers ( title, first_name, last_name, address_line1, address_line2, city, county, postcode ),
-        surveyors ( full_name, qualifications )
+        customers ( title, first_name, last_name, address_line1, address_line2, city, county, postcode )
       `)
       .eq('id', surveyId)
       .single()
@@ -152,9 +151,21 @@ export async function POST(
       survey.site_postcode,
     ].filter(Boolean).join(', ')
 
-    const surveyor = survey.surveyors as unknown as {
-      full_name: string; qualifications?: string | null
-    } | null
+    // Load surveyor from user_profiles (surveyor_id now references user_profiles)
+    let surveyor: { full_name: string; qualifications?: string | null } | null = null
+    if (survey.surveyor_id) {
+      const { data: surveyorProfile } = await db
+        .from('user_profiles')
+        .select('display_name, qualifications')
+        .eq('id', survey.surveyor_id)
+        .single()
+      if (surveyorProfile) {
+        surveyor = {
+          full_name: surveyorProfile.display_name,
+          qualifications: surveyorProfile.qualifications,
+        }
+      }
+    }
 
     // 2. Load company profile for snapshot
     const profile = await getCompanyProfilePublic()

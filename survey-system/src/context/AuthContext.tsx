@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       isAdmin: role === 'admin',
       isOffice: role === 'office',
-      isSurveyor: role === 'surveyor',
+      isSurveyor: profile?.is_surveyor === true,
       mustChangePassword: profile?.must_change_password ?? false,
       isLoading,
       profileError,

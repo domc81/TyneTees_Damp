@@ -693,11 +693,23 @@ export async function generateReport(
   let surveyor: Surveyor | null = null
   if (survey.surveyor_id) {
     const { data } = await supabase
-      .from('surveyors')
-      .select('*')
+      .from('user_profiles')
+      .select('id, user_id, display_name, email, phone, qualifications, is_active, created_at, updated_at')
       .eq('id', survey.surveyor_id)
       .single()
-    surveyor = data as Surveyor | null
+    if (data) {
+      surveyor = {
+        id: data.id,
+        user_id: data.user_id,
+        full_name: data.display_name,
+        email: data.email,
+        phone: data.phone ?? null,
+        qualifications: data.qualifications ?? null,
+        availability: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      }
+    }
   }
 
   // Fallback surveyor name from wizard data (when no DB surveyor record exists)

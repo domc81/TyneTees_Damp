@@ -157,10 +157,14 @@ export async function GET(
         : Promise.resolve({ data: null, error: null }),
       survey.surveyor_id
         ? supabase
-            .from('surveyors')
-            .select('full_name, qualifications')
+            .from('user_profiles')
+            .select('display_name, qualifications')
             .eq('id', survey.surveyor_id)
             .single()
+            .then(res => ({
+              data: res.data ? { full_name: res.data.display_name, qualifications: res.data.qualifications } : null,
+              error: res.error,
+            }))
         : Promise.resolve({ data: null, error: null }),
     ])
 

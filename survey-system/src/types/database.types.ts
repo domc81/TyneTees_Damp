@@ -140,6 +140,8 @@ export interface UserProfile {
   email: string
   phone?: string | null
   is_active: boolean
+  is_surveyor: boolean
+  qualifications?: string | null
   must_change_password: boolean
   created_at: string
   updated_at: string

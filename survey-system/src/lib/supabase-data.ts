@@ -180,34 +180,59 @@ export async function updateCustomer(
 }
 
 // ============================================================================
-// Surveyors
+// Surveyors (now backed by user_profiles WHERE is_surveyor = true)
 // ============================================================================
 
+/** Map a user_profiles row to the legacy Surveyor shape for backward compatibility */
+function profileToSurveyor(profile: import('@/types/database.types').UserProfile): Surveyor {
+  return {
+    id: profile.id,
+    user_id: profile.user_id,
+    full_name: profile.display_name,
+    email: profile.email,
+    phone: profile.phone ?? null,
+    qualifications: profile.qualifications ?? null,
+    availability: profile.is_active,
+    created_at: profile.created_at,
+    updated_at: profile.updated_at,
+  }
+}
+
+/**
+ * Get all users who can conduct surveys.
+ * Queries user_profiles WHERE is_surveyor = true (replaces legacy surveyors table).
+ */
 export async function getSurveyors(): Promise<Surveyor[]> {
   const supabase = getSupabase()
   if (!supabase) return []
 
   const { data, error } = await supabase
-    .from('surveyors')
+    .from('user_profiles')
     .select('*')
-    .order('full_name')
+    .eq('is_surveyor', true)
+    .eq('is_active', true)
+    .order('display_name')
 
   if (error) {
     console.error('Error fetching surveyors:', error)
     return []
   }
 
-  return data || []
+  return (data || []).map(profileToSurveyor)
 }
 
+/**
+ * Get a single surveyor by user_profiles ID.
+ */
 export async function getSurveyor(id: string): Promise<Surveyor | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
   const { data, error } = await supabase
-    .from('surveyors')
+    .from('user_profiles')
     .select('*')
     .eq('id', id)
+    .eq('is_surveyor', true)
     .single()
 
   if (error) {
@@ -215,46 +240,32 @@ export async function getSurveyor(id: string): Promise<Surveyor | null> {
     return null
   }
 
-  return data
+  return data ? profileToSurveyor(data) : null
 }
 
-export async function createSurveyor(surveyorData: {
+/**
+ * @deprecated Use /api/admin/team POST instead — surveyor creation now goes through
+ * team management which creates both an auth account and a user_profiles row.
+ */
+export async function createSurveyor(_surveyorData: {
   full_name: string
   email: string
   phone?: string
   qualifications?: string
   availability?: boolean
 }): Promise<Surveyor> {
-  const supabase = getSupabase()
-  if (!supabase) {
-    throw new Error('Supabase client not available')
-  }
-
-  const { data, error } = await supabase
-    .from('surveyors')
-    .insert([{
-      full_name: surveyorData.full_name,
-      email: surveyorData.email,
-      phone: surveyorData.phone || null,
-      qualifications: surveyorData.qualifications || null,
-      availability: surveyorData.availability ?? true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }])
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating surveyor:', error)
-    throw new Error(`Failed to create surveyor: ${error.message}`)
-  }
-
-  return data
+  throw new Error(
+    'createSurveyor is deprecated. Use the Team Management page (/admin/team) to add new surveyors.'
+  )
 }
 
+/**
+ * @deprecated Use /api/admin/team PATCH instead — surveyor updates now go through
+ * team management which updates user_profiles directly.
+ */
 export async function updateSurveyor(
-  id: string,
-  surveyorData: {
+  _id: string,
+  _surveyorData: {
     full_name?: string
     email?: string
     phone?: string | null
@@ -262,27 +273,9 @@ export async function updateSurveyor(
     availability?: boolean
   }
 ): Promise<Surveyor> {
-  const supabase = getSupabase()
-  if (!supabase) {
-    throw new Error('Supabase client not available')
-  }
-
-  const { data, error } = await supabase
-    .from('surveyors')
-    .update({
-      ...surveyorData,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating surveyor:', error)
-    throw new Error(`Failed to update surveyor: ${error.message}`)
-  }
-
-  return data
+  throw new Error(
+    'updateSurveyor is deprecated. Use the Team Management page (/admin/team) to edit surveyors.'
+  )
 }
 
 // ============================================================================

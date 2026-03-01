@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { displayName, email, phone, role } = body
+    const { displayName, email, phone, role, isSurveyor, qualifications } = body
 
     if (!displayName || !email || !role) {
       return NextResponse.json(
@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Force is_surveyor = true for surveyor role, regardless of what frontend sends
+    const effectiveIsSurveyor = role === 'surveyor' ? true : (isSurveyor === true)
 
     const adminClient = getAdminClient()
     const tempPassword = generateTempPassword()
@@ -125,6 +128,8 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         role,
         is_active: true,
+        is_surveyor: effectiveIsSurveyor,
+        qualifications: effectiveIsSurveyor ? (qualifications || null) : null,
       })
       .select()
       .single()
@@ -164,7 +169,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { profileId, displayName, phone, role, isActive } = body
+    const { profileId, displayName, phone, role, isActive, isSurveyor, qualifications } = body
 
     if (!profileId) {
       return NextResponse.json({ error: 'Missing required field: profileId' }, { status: 400 })
@@ -183,8 +188,32 @@ export async function PATCH(request: NextRequest) {
     const updates: Record<string, unknown> = {}
     if (displayName !== undefined) updates.display_name = displayName
     if (phone !== undefined) updates.phone = phone || null
-    if (role !== undefined) updates.role = role
+    if (role !== undefined) {
+      updates.role = role
+      // Force is_surveyor = true when role is surveyor
+      if (role === 'surveyor') updates.is_surveyor = true
+    }
     if (isActive !== undefined) updates.is_active = isActive
+    if (isSurveyor !== undefined) {
+      // Don't allow turning off is_surveyor if role is surveyor
+      if (role === 'surveyor' || (!role && isSurveyor === false)) {
+        // Need to check existing role if role not provided
+        if (!role) {
+          const { data: existing } = await adminClient
+            .from('user_profiles')
+            .select('role')
+            .eq('id', profileId)
+            .single()
+          if (existing?.role !== 'surveyor') {
+            updates.is_surveyor = isSurveyor
+          }
+          // If role is surveyor, keep is_surveyor = true (don't allow override)
+        }
+      } else {
+        updates.is_surveyor = isSurveyor
+      }
+    }
+    if (qualifications !== undefined) updates.qualifications = qualifications || null
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
