@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
+import { CompanyLogo } from '@/components/CompanyLogo'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -60,11 +61,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="p-6 border-b border-white/10">
           <Link href="/" className="flex items-center gap-3">
-            <img
-              src={companyProfile.logo_url || '/logo.svg'}
-              alt={companyProfile.name}
-              className="h-10 w-auto"
-            />
+            <CompanyLogo className="h-10" />
           </Link>
         </div>
 
@@ -129,11 +126,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <img
-              src={companyProfile.logo_url || '/logo.svg'}
-              alt={companyProfile.trading_name || companyProfile.name}
-              className="h-6 w-auto"
-            />
+            <CompanyLogo className="h-6" />
             <div className="w-10" />
           </div>
         </header>
