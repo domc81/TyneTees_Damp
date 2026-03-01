@@ -5,7 +5,6 @@ import {
   Database,
   Package,
   Clock,
-  PoundSterling,
   Wrench,
   Settings,
   ChevronRight,
@@ -24,16 +23,6 @@ const adminSections = [
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
     count: '35+ items',
-  },
-  {
-    id: 'pricing-items',
-    title: 'Pricing Items',
-    description: 'Work items with material costs and labor hours',
-    icon: PoundSterling,
-    href: '/admin/pricing-items',
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10',
-    count: '80+ items',
   },
   {
     id: 'work-sections',
@@ -129,14 +118,10 @@ export default function AdminPage() {
               <Settings className="w-5 h-5 text-white/50" />
               System Overview
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="p-4 bg-white/5 rounded-xl">
                 <p className="text-2xl font-bold text-white">35+</p>
                 <p className="text-sm text-white/50">Materials</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-xl">
-                <p className="text-2xl font-bold text-white">80+</p>
-                <p className="text-sm text-white/50">Pricing Items</p>
               </div>
               <div className="p-4 bg-white/5 rounded-xl">
                 <p className="text-2xl font-bold text-white">14</p>
