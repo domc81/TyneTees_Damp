@@ -721,12 +721,12 @@ function mapTimberSurvey(
   for (const joistEntry of joistEntries) {
     // Map size to line key
     const sizeMap: Record<string, string> = {
-      '4x2': 'joists_100x50',
-      '5x2': 'joists_125x50',
-      '6x2': 'joists_150x50',
-      '7x2': 'joists_175x50',
-      '8x2': 'joists_200x50',
-      '9x2': 'joists_225x50'
+      '4x2': 'joists_100_x_50',
+      '5x2': 'joists_125_x_50',
+      '6x2': 'joists_150_x_50',
+      '7x2': 'joists_175_x_50',
+      '8x2': 'joists_200_x_50',
+      '9x2': 'joists_225_x_50'
     }
 
     const lineKey = sizeMap[joistEntry.size]
@@ -737,22 +737,22 @@ function mapTimberSurvey(
   }
 
   // Joist extras from additional works
-  const joist_endwrapInput = createLineInput(lookup, 'floor_joists_decking', 'treat_endwrap_joist', additionalWorks.joist_endwrap_count || 0)
+  const joist_endwrapInput = createLineInput(lookup, 'floor_joists_decking', 'treat_and_endwrap_joist', additionalWorks.joist_endwrap_count || 0)
   if (joist_endwrapInput) inputs.push(joist_endwrapInput)
 
   const wallPlateInput = createLineInput(lookup, 'floor_joists_decking', 'wall_plate_100x25', additionalWorks.wall_plate_count || 0)
   if (wallPlateInput) inputs.push(wallPlateInput)
 
-  const bowerBeamInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams', additionalWorks.bower_beam_pairs || 0)
+  const bowerBeamInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams_pair', additionalWorks.bower_beam_pairs || 0)
   if (bowerBeamInput) inputs.push(bowerBeamInput)
 
-  const flitchPlateInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates', additionalWorks.flitch_plate_pairs || 0)
+  const flitchPlateInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates_pair', additionalWorks.flitch_plate_pairs || 0)
   if (flitchPlateInput) inputs.push(flitchPlateInput)
 
   // Insulation
   if (additionalWorks.need_insulation) {
     const insulationArea = additionalWorks.warmline_insulation_area || totalFlooringArea
-    const insulationInput = createLineInput(lookup, 'floor_joists_decking', 'insulation_suspended_flooring', insulationArea)
+    const insulationInput = createLineInput(lookup, 'floor_joists_decking', 'provide_insulation_to_suspended_flooring', insulationArea)
     if (insulationInput) inputs.push(insulationInput)
   }
 
@@ -935,27 +935,43 @@ function mapAdditionalWorks(
   // === PLASTERING EXTRAS (damp, timber, woodworm) ===
 
   if (surveyType !== 'condensation') {
-    const stopBeadInput = createLineInput(lookup, 'plastering', 'plastering_stop_bead', additionalWorks.stop_bead_count || 0)
+    // Plastering line keys differ between damp and timber/woodworm
+    const stopBeadKey = surveyType === 'damp'
+      ? 'plastering_stop_bead'
+      : 'plastering_stop_bead_3m_length'
+    const stopBeadInput = createLineInput(lookup, 'plastering', stopBeadKey, additionalWorks.stop_bead_count || 0)
     if (stopBeadInput) inputs.push(stopBeadInput)
 
-    const cornerBead24Input = createLineInput(lookup, 'plastering', 'thin_coat_angle_2_4m', additionalWorks.corner_bead_24_count || 0)
+    const cornerBead24Key = surveyType === 'damp'
+      ? 'thin_coat_angle_2_4m'
+      : 'plastering_thin_coat_anglecorner_bead_24m_length'
+    const cornerBead24Input = createLineInput(lookup, 'plastering', cornerBead24Key, additionalWorks.corner_bead_24_count || 0)
     if (cornerBead24Input) inputs.push(cornerBead24Input)
 
-    const cornerBead30Input = createLineInput(lookup, 'plastering', 'thin_coat_angle_3m', additionalWorks.corner_bead_30_count || 0)
+    const cornerBead30Key = surveyType === 'damp'
+      ? 'thin_coat_angle_3m'
+      : 'plastering_thin_coat_anglecorner_bead_3m_length'
+    const cornerBead30Input = createLineInput(lookup, 'plastering', cornerBead30Key, additionalWorks.corner_bead_30_count || 0)
     if (cornerBead30Input) inputs.push(cornerBead30Input)
 
-    const plasteringDifficultyInput = createLineInput(lookup, 'plastering', 'difficulty_hours_plastering', additionalWorks.difficulty_hours_plastering || 0)
+    const difficultyKey = surveyType === 'damp'
+      ? 'difficulty_hours_plastering'
+      : 'difficulty_hours_fireplace_corners_etc'
+    const plasteringDifficultyInput = createLineInput(lookup, 'plastering', difficultyKey, additionalWorks.difficulty_hours_plastering || 0)
     if (plasteringDifficultyInput) inputs.push(plasteringDifficultyInput)
   }
 
   // === SPRAY TREATMENTS (timber, woodworm) ===
+  // timber/woodworm use timber_treatments section (spray_treatments is damp-only)
 
-  if (surveyType === 'timber' || surveyType === 'woodworm') {
-    const sprayAreaInput = createLineInput(lookup, 'spray_treatments', 'fog_subfloor_antifungal', additionalWorks.spray_treatment_area || 0)
+  if (surveyType === 'timber') {
+    const sprayAreaInput = createLineInput(lookup, 'timber_treatments', 'fog_subfloor_void_m2', additionalWorks.spray_treatment_area || 0)
     if (sprayAreaInput) inputs.push(sprayAreaInput)
+  }
 
-    const sprayDifficultyInput = createLineInput(lookup, 'spray_treatments', 'difficulty_hours_spray', additionalWorks.spray_difficulty_hours || 0)
-    if (sprayDifficultyInput) inputs.push(sprayDifficultyInput)
+  if (surveyType === 'woodworm') {
+    const sprayAreaInput = createLineInput(lookup, 'timber_treatments', 'fogging_floor_area', additionalWorks.spray_treatment_area || 0)
+    if (sprayAreaInput) inputs.push(sprayAreaInput)
   }
 
   return inputs
