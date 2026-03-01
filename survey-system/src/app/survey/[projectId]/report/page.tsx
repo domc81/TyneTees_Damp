@@ -51,6 +51,7 @@ const REVIEWABLE_SECTIONS = new Set([
   'dpc_findings',
   'sub_floor_ventilation',
   'room_findings',
+  'condensation_causes',
   'party_wall_notification',
   'summary_of_works',
   'surveyor_comments',
@@ -927,6 +928,11 @@ function SectionContent({ section, showOriginal, photos }: SectionContentProps) 
     ? section.original_content
     : section.content
 
+  // Condensation causes: render structured factor cards
+  if (section.key === 'condensation_causes') {
+    return <CondensationCausesEditorView data={section.data} content={displayContent} />
+  }
+
   // Render based on section type
   switch (section.type) {
     case 'cover':
@@ -1079,6 +1085,56 @@ function TextContent({ content }: { content: string }) {
           {para}
         </p>
       ))}
+    </div>
+  )
+}
+
+// Condensation causes renderer (admin editor view)
+const CAUSES_FACTOR_COLOURS: Record<string, { bg: string; text: string; border: string }> = {
+  ventilation: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-400/30' },
+  moisture:    { bg: 'bg-cyan-500/10',  text: 'text-cyan-300',  border: 'border-cyan-400/30' },
+  insulation:  { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-400/30' },
+  heating:     { bg: 'bg-red-500/10',   text: 'text-red-300',   border: 'border-red-400/30' },
+  mould:       { bg: 'bg-gray-500/10',  text: 'text-gray-300',  border: 'border-gray-400/30' },
+}
+
+function CondensationCausesEditorView({
+  data,
+  content,
+}: {
+  data: Record<string, unknown>
+  content: string
+}) {
+  const factors = (data?.factors as Array<{ icon_key: string; title: string; description: string }> | undefined) ?? []
+
+  if (factors.length === 0) {
+    return <TextContent content={content} />
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-white/80 leading-relaxed text-sm italic">
+        Condensation occurs when moisture-laden air comes into contact with cold surfaces,
+        causing water vapour to condense. The following factors have been identified:
+      </p>
+      <div className="space-y-3">
+        {factors.map((factor, idx) => {
+          const colours = CAUSES_FACTOR_COLOURS[factor.icon_key] ?? CAUSES_FACTOR_COLOURS.ventilation
+          return (
+            <div key={idx} className={`rounded-lg border ${colours.border} ${colours.bg} p-4`}>
+              <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${colours.text}`}>
+                {factor.icon_key}
+              </p>
+              <p className="text-sm font-semibold text-white mb-1">{factor.title}</p>
+              <p className="text-sm text-white/70 leading-relaxed">{factor.description}</p>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-white/60 text-sm italic border-t border-white/10 pt-3">
+        The recommended works detailed in the Scope of Works section are designed to address
+        these underlying causes and provide long-term resolution.
+      </p>
     </div>
   )
 }

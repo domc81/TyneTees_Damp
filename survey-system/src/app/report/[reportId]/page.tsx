@@ -26,6 +26,7 @@ import { RoomFindingsSection } from '@/components/report/RoomFindingsSection'
 import { ScopeOfWorksSection } from '@/components/report/ScopeOfWorksSection'
 import { BoilerplateSection } from '@/components/report/BoilerplateSection'
 import { SurveyorProfileSection } from '@/components/report/SurveyorProfileSection'
+import { CondensationCausesSection } from '@/components/report/CondensationCausesSection'
 import { PhotoLightbox } from '@/components/report/PhotoLightbox'
 
 // =============================================================================
@@ -295,6 +296,9 @@ function renderSection(
           photoCaptions={photoCaptions}
         />
       )
+
+    case 'condensation_causes':
+      return <CondensationCausesSection key={section.key} section={section} />
 
     case 'scope_of_works':
       return <ScopeOfWorksSection key={section.key} section={section} />

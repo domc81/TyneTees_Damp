@@ -154,6 +154,170 @@ function formatFlooringType(code: string | undefined): string {
 }
 
 // =============================================================================
+// Condensation Causes Builder
+// =============================================================================
+
+interface CondensationFactor {
+  icon_key: string
+  title: string
+  description: string
+}
+
+function isOlderProperty(approxBuildYear: string | undefined): boolean {
+  if (!approxBuildYear) return false
+  const year = approxBuildYear.toLowerCase()
+  if (year.includes('pre') || year.includes('victorian') || year.includes('edwardian')) return true
+  const matches = year.match(/\d{4}/)
+  if (matches) {
+    return parseInt(matches[0]) < 1980
+  }
+  return false
+}
+
+function buildCondensationCausesContent(
+  condensationRooms: any[],
+  sd: any,
+  aw: any
+): { content: string; data: Record<string, unknown> } {
+  const factors: CondensationFactor[] = []
+
+  // Factor 1: Inadequate Ventilation
+  const roomsWithPoorVentilation = condensationRooms.filter(
+    (r) => r.room_data?.condensation && !r.room_data.condensation.ventilation_adequate
+  )
+  const fanRooms = condensationRooms.filter((r) => r.room_data?.condensation?.fan_recommended)
+  const pivNeeded =
+    (aw?.piv_count || 0) > 0 ||
+    condensationRooms.some((r) => r.room_data?.condensation?.piv_recommended)
+
+  if (roomsWithPoorVentilation.length > 0 || fanRooms.length > 0 || pivNeeded) {
+    let ventDesc =
+      'Our inspection identified inadequate ventilation within the property. '
+    if (roomsWithPoorVentilation.length > 0) {
+      const roomNames = roomsWithPoorVentilation.map((r: any) => r.name).join(', ')
+      ventDesc += `Ventilation was found to be insufficient in: ${roomNames}. `
+    }
+    ventDesc +=
+      'Without adequate air circulation, moisture-laden air produced by everyday activities — such as cooking, bathing, and breathing — cannot be expelled from the property. This allows humidity levels to build, creating the conditions necessary for condensation to form on cold surfaces.'
+    if (pivNeeded) {
+      ventDesc +=
+        ' A positive input ventilation (PIV) system has been recommended to address the overall ventilation deficit within the property.'
+    }
+    factors.push({ icon_key: 'ventilation', title: 'Inadequate Ventilation', description: ventDesc })
+  }
+
+  // Factor 2: High Moisture Production
+  const highMoistureRooms = condensationRooms.filter((r) =>
+    ['bathroom', 'kitchen', 'utility'].includes(r.room_type)
+  )
+  const windowCondRooms = condensationRooms.filter(
+    (r) => r.room_data?.condensation?.condensation_on_windows
+  )
+
+  if (highMoistureRooms.length > 0 || windowCondRooms.length > 0) {
+    let moistDesc = 'Elevated levels of moisture production were identified during the inspection. '
+    if (highMoistureRooms.length > 0) {
+      const roomNames = highMoistureRooms.map((r: any) => r.name).join(', ')
+      moistDesc += `Activities within high-moisture areas (${roomNames}) generate significant quantities of water vapour through cooking, bathing, and the use of appliances. `
+    }
+    if (windowCondRooms.length > 0) {
+      moistDesc +=
+        'Condensation observed on windows confirms that internal humidity levels regularly exceed the dew point of internal surfaces. '
+    }
+    moistDesc +=
+      'Without adequate ventilation to remove this excess moisture, it migrates into adjoining areas where it contacts cooler surfaces and condenses.'
+    factors.push({ icon_key: 'moisture', title: 'High Moisture Production', description: moistDesc })
+  }
+
+  // Factor 3: Cold Surfaces / Thermal Bridging
+  const isSolidConstruction = ['solid_brick', 'stone', 'concrete'].includes(
+    sd?.construction_type || ''
+  )
+  const olderProperty = isOlderProperty(sd?.approx_build_year)
+
+  if (isSolidConstruction || olderProperty) {
+    let coldDesc = ''
+    if (isSolidConstruction) {
+      const constructLabel = (sd.construction_type as string).replace(/_/g, ' ')
+      coldDesc += `This property is of ${constructLabel} construction, which typically has lower thermal resistance than modern cavity or insulated construction. `
+    }
+    if (olderProperty) {
+      coldDesc += `Properties built to the standards of this period generally lack the thermal insulation levels required by current Building Regulations. `
+    }
+    coldDesc +=
+      'As a result, wall and window surfaces can become significantly colder than the internal air temperature during autumn and winter months. When warm, humid internal air contacts these cold surfaces, the temperature drops below the dew point and condensation forms — most visibly on north-facing walls, external corners, and around window frames where thermal bridging is most pronounced.'
+    factors.push({
+      icon_key: 'insulation',
+      title: 'Cold Surfaces and Thermal Bridging',
+      description: coldDesc,
+    })
+  }
+
+  // Factor 4: Black Mould — confirms sustained condensation conditions
+  const mouldRooms = condensationRooms.filter(
+    (r) => r.room_data?.condensation?.black_mould_present
+  )
+  if (mouldRooms.length > 0) {
+    const severities: string[] = mouldRooms
+      .map((r: any) => r.room_data?.condensation?.mould_severity)
+      .filter(Boolean)
+    const hasModerateOrSevere = severities.some((s) => s === 'moderate' || s === 'severe')
+    const roomNames = mouldRooms.map((r: any) => r.name).join(', ')
+    let mouldDesc = `Black mould growth was identified in ${roomNames}. The presence of mould confirms that condensation conditions have been present for a sustained period, as mould requires consistently elevated relative humidity levels to establish and spread. `
+    if (hasModerateOrSevere) {
+      mouldDesc +=
+        'The extent of mould growth observed indicates that conditions have been conducive for some time. Treatment must include eradication of existing mould alongside addressing the underlying causes to prevent recurrence and safeguard the health of occupants.'
+    } else {
+      mouldDesc +=
+        'Prompt treatment of both the mould and the underlying causes is recommended to prevent the problem from progressing.'
+    }
+    factors.push({ icon_key: 'mould', title: 'Black Mould Growth', description: mouldDesc })
+  }
+
+  // Fallback: insufficient data — provide general explanation
+  if (factors.length === 0) {
+    factors.push(
+      {
+        icon_key: 'ventilation',
+        title: 'Inadequate Ventilation',
+        description:
+          'Insufficient ventilation prevents the escape of moisture-laden air produced by everyday activities such as cooking, bathing, and breathing. Without adequate air exchange, internal humidity levels rise until condensation forms on cold surfaces.',
+      },
+      {
+        icon_key: 'heating',
+        title: 'Insufficient Heating',
+        description:
+          'Inadequate or inconsistent heating allows internal surfaces to cool significantly below the temperature of the internal air. When warm, humid air contacts these cold surfaces, the temperature drops below the dew point and condensation forms.',
+      },
+      {
+        icon_key: 'moisture',
+        title: 'High Moisture Production',
+        description:
+          'Everyday domestic activities produce large quantities of water vapour. Cooking, bathing, and drying clothes indoors collectively add significant moisture to the internal environment. Without effective ventilation, this moisture accumulates and condensation follows.',
+      },
+      {
+        icon_key: 'insulation',
+        title: 'Poor Thermal Insulation',
+        description:
+          'Cold bridging through poorly insulated walls, floors, and window frames creates cold spots on internal surfaces. These cold spots act as collection points for condensation, particularly during colder months when the temperature differential between inside and outside is greatest.',
+      }
+    )
+  }
+
+  // Build plain text content for edit mode / PDF fallback
+  const intro =
+    'Condensation occurs when moisture-laden air comes into contact with cold surfaces, causing water vapour to condense. The following factors have been identified as contributing to the condensation problems observed at this property:'
+  const factorText = factors
+    .map((f) => `${f.title}\n\n${f.description}`)
+    .join('\n\n')
+  const closing =
+    'The recommended works detailed in the Scope of Works section below are designed to address these underlying causes and provide long-term resolution of the condensation issues identified.'
+  const content = `${intro}\n\n${factorText}\n\n${closing}`
+
+  return { content, data: { factors } }
+}
+
+// =============================================================================
 // Section Builder Helper
 // =============================================================================
 
@@ -841,6 +1005,27 @@ export async function generateReport(
       roomSubSections
     )
   )
+
+  // --- CONDENSATION CAUSES ANALYSIS ---
+  // Only included when condensation was found. Explains WHY condensation is occurring
+  // based on room data, construction type, and additional works context.
+  if (condensationRooms.length > 0) {
+    const { content: causesContent, data: causesData } = buildCondensationCausesContent(
+      condensationRooms,
+      sd,
+      aw
+    )
+    sections.push(
+      buildSection(
+        'condensation_causes',
+        'Causes of Condensation',
+        'findings',
+        'survey_data',
+        causesContent,
+        causesData
+      )
+    )
+  }
 
   // --- PARTY WALL ACT NOTIFICATION ---
   // Dry rot (Serpula lacrymans) can spread through masonry into adjoining properties,

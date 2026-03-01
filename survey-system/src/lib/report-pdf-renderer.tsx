@@ -590,6 +590,7 @@ function SectionContent({
       return <ExternalInspectionSection section={section} photoUrls={photoUrls} />
     case 'dpc_findings':
     case 'sub_floor_ventilation':
+    case 'condensation_causes':
     case 'surveyor_comments':
       return <TextSection section={section} photoUrls={photoUrls} />
     case 'room_findings':
