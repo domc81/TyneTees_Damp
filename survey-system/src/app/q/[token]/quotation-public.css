@@ -1,0 +1,64 @@
+/* =============================================================================
+   Public quotation page — print stylesheet
+   The main layout uses Tailwind utility classes. This file handles print-only
+   overrides that Tailwind's print: prefix doesn't cover cleanly.
+   ============================================================================= */
+
+@media print {
+  /* Force white background regardless of OS dark mode */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide interactive elements */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove body dark background from root layout */
+  body {
+    background: white !important;
+    background-image: none !important;
+  }
+
+  /* Remove page chrome */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  /* Full-width document, no padding */
+  .quotation-content {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+  }
+
+  /* Prevent awkward page breaks inside sections */
+  .quotation-section {
+    break-inside: avoid;
+  }
+
+  table {
+    break-inside: avoid;
+  }
+
+  h2, h3 {
+    break-after: avoid;
+  }
+
+  /* Reduce outer spacing for print */
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Expiry banner stays visible on print — important signal for customer records */
+  .quotation-expiry-banner {
+    border: 1pt solid #D97706 !important;
+    margin-bottom: 16pt !important;
+  }
+}
