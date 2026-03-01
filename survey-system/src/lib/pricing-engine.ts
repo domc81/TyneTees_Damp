@@ -645,11 +645,9 @@ export function calcBagAndCart(
  * 8. SKIP HIRE FORMULA
  *
  * Reads cost from pricing_config:
- * - Material = config['skip_hire_8yd'] (flat rate)
+ * - Material = config['skip_hire_8yd'] × quantity
  * - Labour = 0 (no labour for skip hire)
  * - Apply material markup only
- *
- * Quantity input is ignored
  */
 export function calcSkipHire(
   input: LineInput,
@@ -657,6 +655,8 @@ export function calcSkipHire(
   config: PricingConfig,
   materials: MaterialLookup
 ): LineResult {
+  const quantity = input.inputQuantity
+
   // Get skip hire cost from config
   const skipCost = config['skip_hire_8yd_cost'] ?? 0
 
@@ -666,9 +666,9 @@ export function calcSkipHire(
     ?? config['default_material_markup']
     ?? 0.30
 
-  // Calculate material cost (no wastage)
+  // Calculate material cost (no wastage, scales with quantity)
   const materialUnitCost = skipCost
-  const materialAdjustedCost = skipCost
+  const materialAdjustedCost = skipCost * quantity
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // No labour for skip hire
