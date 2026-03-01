@@ -3,7 +3,7 @@
 //
 // PUBLIC endpoint — no authentication required.
 // Fetches quotation data by share_token and returns a generated PDF.
-// Uses @react-pdf/renderer (parallel to /api/report-pdf — does not modify it).
+// Uses @react-pdf/renderer to generate the PDF.
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'

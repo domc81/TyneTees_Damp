@@ -3,7 +3,7 @@
 //
 // Generates a professional A4 PDF quotation document.
 // Called server-side from the /api/q/[token]/pdf route.
-// Parallel to report-pdf-renderer.tsx — does not modify it.
+// Called server-side from the /api/q/[token]/pdf route.
 // =============================================================================
 
 import React from 'react'
