@@ -48,6 +48,7 @@ import { getSupabase } from '@/lib/supabase-client'
 const REVIEWABLE_SECTIONS = new Set([
   'property',
   'external_inspection',
+  'inaccessible_areas',
   'dpc_findings',
   'sub_floor_ventilation',
   'room_findings',

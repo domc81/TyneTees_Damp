@@ -116,6 +116,37 @@ function getDefectLabel(defectKey: string): string {
   return defect?.label || defectKey.replace(/_/g, ' ')
 }
 
+// Urgency tier classification for building defects.
+// Matches the three workbook variants:
+//   short_term  — safety-critical structural defects (within 3 months)
+//   guarantee   — defects that may affect treatment guarantee if unaddressed
+//   monitoring  — cosmetic/minor defects for routine maintenance
+const DEFECT_TIERS = {
+  short_term: new Set([
+    'wall_cracks',   // Cracks/movement to walls — structural concern
+    'lintel_cracks', // Cracks/movement to lintels — structural concern
+  ]),
+  guarantee: new Set([
+    'chimney_pointing',
+    'chimney_flashings',
+    'ridge_tiles',
+    'verge_pointing',
+    'hip_pointing',
+    'slipped_slates',
+    'loose_slates',
+    'missing_slates',
+    'defective_gutters',
+    'blocked_gutters',
+    'external_pointing',
+    'perished_brickwork',
+    'defective_joint',
+  ]),
+  monitoring: new Set([
+    'perished_paintwork',
+    'wet_rot_joinery',
+  ]),
+}
+
 function formatFloorLevel(floorLevel: string | undefined): string {
   if (!floorLevel) return 'Unknown Floor'
 
@@ -1041,13 +1072,51 @@ export async function generateReport(
   if (ext) {
     if (ext.building_defects_found && ext.building_defects?.length > 0) {
       const defectLabels = ext.building_defects.map((d: string) => getDefectLabel(d))
+
+      // Classify defects into urgency tiers for workbook-accurate warning text
+      const shortTermFound = ext.building_defects.filter((d: string) =>
+        DEFECT_TIERS.short_term.has(d as any)
+      )
+      const guaranteeFound = ext.building_defects.filter((d: string) =>
+        DEFECT_TIERS.guarantee.has(d as any)
+      )
+      const monitoringFound = ext.building_defects.filter((d: string) =>
+        DEFECT_TIERS.monitoring.has(d as any)
+      )
+
+      let defectContent = `We noted the following building defects during our external inspection:\n\n${defectLabels.map((d: string) => ` - ${d}`).join('\n')}`
+
+      if (shortTermFound.length > 0) {
+        const labels = shortTermFound.map((d: string) => getDefectLabel(d)).join(', ')
+        defectContent +=
+          `\n\nShort-Term Attention Required (Within 3 Months)\n\n` +
+          `The following defects are considered safety-critical and require urgent remedial works by a suitably qualified contractor: ${labels}. ` +
+          `We strongly recommend these are attended to as a matter of priority, and ideally before our treatment works commence.`
+      }
+
+      if (guaranteeFound.length > 0) {
+        const labels = guaranteeFound.map((d: string) => getDefectLabel(d)).join(', ')
+        defectContent +=
+          `\n\nAttention Required — May Affect Guarantee\n\n` +
+          `The following defects should be attended to before or at the time of our treatment works: ${labels}. ` +
+          `Failure to address these items may contribute to continuing moisture ingress and could affect the validity of any guarantee issued.`
+      }
+
+      if (monitoringFound.length > 0) {
+        const labels = monitoringFound.map((d: string) => getDefectLabel(d)).join(', ')
+        defectContent +=
+          `\n\nMonitoring Recommended\n\n` +
+          `The following defects are minor or cosmetic in nature and do not require immediate action: ${labels}. ` +
+          `We recommend these are monitored and included as part of routine property maintenance.`
+      }
+
       extSubSections.push(
         buildSection(
           'building_defects',
           'Building Defects',
           'findings',
           'survey_data',
-          `We noted the following building defects:\n\n${defectLabels.map((d: string) => ` - ${d}`).join('\n')}`
+          defectContent
         )
       )
     }
@@ -1139,6 +1208,54 @@ export async function generateReport(
     )
   )
 
+  // --- INACCESSIBLE AREAS ---
+  // Documents areas that could not be fully inspected, protecting the surveyor
+  // professionally. The workbooks list specific reasons (heavy furniture, fitted
+  // carpets, wall-to-wall units, tiling) with a standard supplementary disclaimer.
+  //
+  // TODO DATA GAP [R9]: The wizard has no general room-level access limitation field.
+  // The only access data captured is TimberRoomData.floor_access ('full'|'partial'|'none'),
+  // which only applies to rooms with timber decay issues. A general access_limitation field
+  // (with reason: furniture | carpet | units | tiling | other) should be added to SurveyRoomRow
+  // so all rooms can report access constraints regardless of issue type.
+  //
+  // Current implementation: uses timber floor_access as a proxy for access limitations.
+  // When floor_access is 'partial' or 'none' in a timber room, that room is listed here.
+  const inaccessibleRooms = rooms.filter((r) => {
+    const timberData = r.room_data?.timber_decay as TimberRoomData | undefined
+    return timberData?.floor_access === 'partial' || timberData?.floor_access === 'none'
+  })
+
+  let inaccessibleContent = ''
+  if (inaccessibleRooms.length > 0) {
+    const roomLines = inaccessibleRooms.map((r) => {
+      const timberData = r.room_data?.timber_decay as TimberRoomData | undefined
+      const accessLevel = timberData?.floor_access === 'none' ? 'No access' : 'Partial access only'
+      return ` - ${r.name} (${formatFloorLevel(r.floor_level)}): ${accessLevel} — floor inspection restricted`
+    })
+    inaccessibleContent =
+      `The following areas could not be fully inspected due to the conditions noted at the time of our visit:\n\n${roomLines.join('\n')}\n\n` +
+      `Should these areas become accessible in the future, a supplementary inspection is recommended to ensure a complete assessment of the property.`
+  } else {
+    // Standard professional disclaimer even when no specific access issues are recorded.
+    // The wizard does not capture general access limitations (furniture, carpets, fitted units,
+    // tiling) — any such areas inspected through limited access would not appear here.
+    inaccessibleContent =
+      `Our inspection covered all areas of the property accessible at the time of the survey. ` +
+      `Areas concealed behind fitted furniture, wall-to-wall units, floor coverings or permanent fixtures were not inspected and are not covered by our findings. ` +
+      `Should any such areas become accessible, a supplementary inspection is recommended.`
+  }
+
+  sections.push(
+    buildSection(
+      'inaccessible_areas',
+      'Inaccessible Areas',
+      'findings',
+      'survey_data',
+      inaccessibleContent
+    )
+  )
+
   // --- DPC FINDINGS ---
   // Four variants depending on DPC status identified during the survey:
   //   Variant 1 — Original DPC adequate: damp rooms surveyed, no treatment required.
@@ -1192,6 +1309,16 @@ export async function generateReport(
   // timber rooms report sub-floor ventilation concerns.
   // Don't default to "no airbricks installed" when no data exists — that
   // assumption can contradict external inspection notes.
+  //
+  // TODO DATA GAP [R8]: The wizard captures total airbrick counts only
+  // (airbrick_clean_count, airbrick_upgrade_count, airbrick_new_count).
+  // It does not capture per-elevation counts (front/rear/left/right/offshoot).
+  // The workbook format supports per-elevation breakdowns:
+  //   "Existing airbricks noted: Front elevation — X, Rear elevation — X, ..."
+  // To enable this, add per-elevation fields to AdditionalWorks:
+  //   airbrick_front_count, airbrick_rear_count, airbrick_left_count,
+  //   airbrick_right_count, airbrick_offshoot_count
+  // and capture them in the wizard Step 5 (Additional Works) UI.
   const airbrickClean = aw?.airbrick_clean_count || 0
   const airbrickUpgrade = aw?.airbrick_upgrade_count || 0
   const airbrickNew = aw?.airbrick_new_count || 0
