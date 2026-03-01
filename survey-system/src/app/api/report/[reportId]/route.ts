@@ -11,14 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import type { ReportSection } from '@/types/survey-report.types'
-
-// Company info — hardcoded until a settings table is added
-const COMPANY = {
-  name: 'Tyne Tees Damp Proofing Ltd',
-  phone: '0191 XXX XXXX',
-  email: 'info@tyneteesdampproofing.co.uk',
-  website: 'www.tyneteesdampproofing.co.uk',
-} as const
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 // =============================================================================
 // Supabase client using service role key — bypasses RLS for public reads
@@ -207,7 +200,12 @@ export async function GET(
         credentials: surveyorData?.qualifications ?? undefined,
       },
       photos,
-      company: COMPANY,
+      company: await getCompanyProfilePublic().then(p => ({
+        name: p.name,
+        phone: p.phone_primary || '',
+        email: p.email_primary || '',
+        website: p.website || '',
+      })),
     })
   } catch (error) {
     console.error('Error in GET /api/report/[reportId]:', error)

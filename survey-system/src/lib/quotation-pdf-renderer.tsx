@@ -55,14 +55,6 @@ const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
   woodworm: 'Woodworm Treatment Works',
 }
 
-const DEFAULT_TERMS = `1. A deposit is required prior to the commencement of works as stated in this quotation.
-2. The balance is due upon satisfactory completion of all works.
-3. This quotation is valid for the period stated above from the date of issue.
-4. All specified works are guaranteed against failure as per our standard guarantee documentation.
-5. Access to the property and appropriate working conditions must be provided throughout the works.
-6. Tyne Tees Damp Proofing Ltd reserves the right to revise this quotation should site conditions differ materially from those assessed during the survey.
-7. Any additional works identified and agreed during the course of the project will be charged at our standard rates.`
-
 const NAVY = '#1E3A5F'
 const SLATE = '#374151'
 const MUTED = '#6B7280'
@@ -486,12 +478,12 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
   const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
 
   const company = {
-    name: quotation.company_name ?? 'Tyne Tees Damp Proofing Ltd',
-    phone: quotation.company_phone ?? '0191 XXX XXXX',
-    email: quotation.company_email ?? 'info@tyneteesdampproofing.co.uk',
+    name: quotation.company_name ?? '',
+    phone: quotation.company_phone ?? '',
+    email: quotation.company_email ?? '',
   }
 
-  const terms = quotation.terms ?? DEFAULT_TERMS
+  const terms = quotation.terms ?? ''
 
   return (
     <Document

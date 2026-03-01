@@ -14,6 +14,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useCompanyProfile } from '@/context/CompanyProfileContext'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -32,6 +33,7 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { signOut } = useAuth()
+  const companyProfile = useCompanyProfile()
 
   const handleSignOut = async () => {
     await signOut()
@@ -59,8 +61,8 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-6 border-b border-white/10">
           <Link href="/" className="flex items-center gap-3">
             <img
-              src="/logo.svg"
-              alt="Tyne Tees Damp Proofing"
+              src={companyProfile.logo_url || '/logo.svg'}
+              alt={companyProfile.name}
               className="h-10 w-auto"
             />
           </Link>
@@ -99,10 +101,10 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
-              TD
+              {(companyProfile.trading_name || companyProfile.name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Tyne Tees</p>
+              <p className="text-sm font-medium text-white truncate">{companyProfile.trading_name || companyProfile.name}</p>
               <p className="text-xs text-white/50">Admin</p>
             </div>
             <button
@@ -128,8 +130,8 @@ export default function Layout({ children }: LayoutProps) {
               <Menu className="w-6 h-6" />
             </button>
             <img
-              src="/logo.svg"
-              alt="Tyne Tees"
+              src={companyProfile.logo_url || '/logo.svg'}
+              alt={companyProfile.trading_name || companyProfile.name}
               className="h-6 w-auto"
             />
             <div className="w-10" />

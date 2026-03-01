@@ -6,13 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase-server'
-
-// Company info — hardcoded until a settings table is added
-const COMPANY = {
-  name: 'Tyne Tees Damp Proofing Ltd',
-  phone: '0191 XXX XXXX',
-  email: 'info@tyneteesdampproofing.co.uk',
-} as const
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 // Service-role client for inserts (bypasses RLS)
 function getServiceClient() {
@@ -162,7 +156,10 @@ export async function POST(
       full_name: string; qualifications?: string | null
     } | null
 
-    // 2. Determine next version number
+    // 2. Load company profile for snapshot
+    const profile = await getCompanyProfilePublic()
+
+    // 3. Determine next version number
     const { data: existing } = await db
       .from('quotations')
       .select('version')
@@ -174,7 +171,7 @@ export async function POST(
       ? existing[0].version + 1
       : 1
 
-    // 3. Insert quotation row (quotation_number + valid_until set by trigger)
+    // 4. Insert quotation row (quotation_number + valid_until set by trigger)
     const { data: quotation, error: insertErr } = await db
       .from('quotations')
       .insert({
@@ -196,9 +193,10 @@ export async function POST(
         site_address: siteAddress,
         surveyor_name: surveyor?.full_name || null,
         surveyor_qualifications: surveyor?.qualifications || null,
-        company_name: COMPANY.name,
-        company_phone: COMPANY.phone,
-        company_email: COMPANY.email,
+        company_name: profile.name,
+        company_phone: profile.phone_primary,
+        company_email: profile.email_primary,
+        terms: profile.terms_and_conditions || null,
       })
       .select('id, quotation_number, share_token, version, valid_until')
       .single()
@@ -211,7 +209,7 @@ export async function POST(
       )
     }
 
-    // 4. Insert quotation_sections rows
+    // 5. Insert quotation_sections rows
     const sectionRows = sections.map((s) => ({
       quotation_id: quotation.id,
       survey_type: s.surveyType,

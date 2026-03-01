@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 interface PolishRequest {
   text: string
@@ -97,6 +98,17 @@ CLEANUP RULES:
 - Keep it concise — remove waffle but keep all substance
 - British English spelling`
 
+    // Load company profile for HTTP headers
+    let companyWebsite = ''
+    let companyName = 'Survey System'
+    try {
+      const profile = await getCompanyProfilePublic()
+      companyWebsite = profile.website || ''
+      companyName = profile.name
+    } catch {
+      // Use defaults if profile unavailable
+    }
+
     const userPrompt = `Clean up this surveyor's voice note:\n\n${text}`
 
     const response = await fetch(
@@ -106,8 +118,8 @@ CLEANUP RULES:
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://www.tyneteesdampproofing.co.uk',
-          'X-Title': 'Tyne Tees Survey System',
+          'HTTP-Referer': companyWebsite || (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+          'X-Title': `${companyName} Survey System`,
         },
         body: JSON.stringify({
           model: 'x-ai/grok-4.1-fast',

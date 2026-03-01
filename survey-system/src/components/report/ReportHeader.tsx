@@ -20,7 +20,6 @@ export function ReportHeader({ company }: ReportHeaderProps) {
           <p className="text-white font-bold text-base leading-tight">
             {company.name}
           </p>
-          <p className="text-blue-200 text-xs mt-0.5">Damp Proofing Specialists</p>
         </div>
         <div className="text-right hidden sm:block">
           <p className="text-blue-100 text-xs">{company.phone}</p>

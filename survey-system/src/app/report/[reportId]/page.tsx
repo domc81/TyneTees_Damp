@@ -7,9 +7,11 @@
 // =============================================================================
 
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import type { ReportSection } from '@/types/survey-report.types'
 import { isSectionEmpty } from '@/components/report/utils'
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 import './report.css'
 
 // Section components
@@ -31,15 +33,22 @@ import { TreatmentMethodologySection } from '@/components/report/TreatmentMethod
 import { PhotoLightbox } from '@/components/report/PhotoLightbox'
 
 // =============================================================================
-// Company constant (mirrors API route)
+// Cached company profile — deduplicated across generateMetadata + page render
 // =============================================================================
 
-const COMPANY = {
-  name: 'Tyne Tees Damp Proofing Ltd',
-  phone: '0191 XXX XXXX',
-  email: 'info@tyneteesdampproofing.co.uk',
-  website: 'www.tyneteesdampproofing.co.uk',
-}
+const getCachedProfile = cache(async () => {
+  try {
+    const p = await getCompanyProfilePublic()
+    return {
+      name: p.name,
+      phone: p.phone_primary || '',
+      email: p.email_primary || '',
+      website: p.website || '',
+    }
+  } catch {
+    return { name: 'Survey System', phone: '', email: '', website: '' }
+  }
+})
 
 // =============================================================================
 // Service-role Supabase client (bypasses RLS — safe because we validate
@@ -76,6 +85,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const token = typeof searchParams.token === 'string' ? searchParams.token : ''
 
+  const company = await getCachedProfile()
+
   try {
     const supabase = createServiceClient()
 
@@ -104,13 +115,11 @@ export async function generateMetadata({
             .filter(Boolean)
             .join(' ')
           return {
-            title: `Survey Report — ${name} | Tyne Tees Damp Proofing Ltd`,
-            description:
-              'Your damp proofing survey report from Tyne Tees Damp Proofing Ltd.',
+            title: `Survey Report — ${name} | ${company.name}`,
+            description: `Your survey report from ${company.name}.`,
             openGraph: {
               title: `Survey Report — ${name}`,
-              description:
-                'Your damp proofing survey report from Tyne Tees Damp Proofing Ltd.',
+              description: `Your survey report from ${company.name}.`,
               type: 'website',
             },
             robots: { index: false, follow: false },
@@ -123,8 +132,8 @@ export async function generateMetadata({
   }
 
   return {
-    title: 'Survey Report | Tyne Tees Damp Proofing Ltd',
-    description: 'Damp proofing survey report from Tyne Tees Damp Proofing Ltd.',
+    title: `Survey Report | ${company.name}`,
+    description: `Survey report from ${company.name}.`,
     robots: { index: false, follow: false },
   }
 }
@@ -197,7 +206,8 @@ function resolvePhotoCaptions(
 // Error page — no auth, no data
 // =============================================================================
 
-function InvalidReportPage() {
+async function InvalidReportPage() {
+  const company = await getCachedProfile()
   return (
     <div
       className="min-h-screen bg-white flex items-center justify-center px-6"
@@ -226,13 +236,14 @@ function InvalidReportPage() {
           Report Link Invalid
         </h1>
         <p className="text-sm text-[#6B7280] leading-relaxed">
-          This report link is invalid or has expired. Please contact Tyne Tees
-          Damp Proofing Ltd for a new link.
+          This report link is invalid or has expired. Please contact {company.name} for a new link.
         </p>
-        <div className="mt-6 text-xs text-[#9CA3AF] space-y-0.5">
-          <p>{COMPANY.phone}</p>
-          <p>{COMPANY.email}</p>
-        </div>
+        {(company.phone || company.email) && (
+          <div className="mt-6 text-xs text-[#9CA3AF] space-y-0.5">
+            {company.phone && <p>{company.phone}</p>}
+            {company.email && <p>{company.email}</p>}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -420,8 +431,10 @@ export default async function PublicReportPage({
         .join(' ')
     : ''
 
-  // Suppress unused variable warning — surveyorData available if needed for extension
   void surveyorData
+
+  // Load company profile
+  const company = await getCachedProfile()
 
   // Resolve photos from survey_data.photos (not the legacy photos table)
   const sections = (report.sections || []) as ReportSection[]
@@ -446,7 +459,7 @@ export default async function PublicReportPage({
     >
       {/* Sticky brand header */}
       <header className="report-header-bar">
-        <ReportHeader company={COMPANY} />
+        <ReportHeader company={company} />
       </header>
 
       {/* Cover section — full bleed with its own styling */}
@@ -454,7 +467,7 @@ export default async function PublicReportPage({
         <CoverSection
           section={coverSection}
           surveyType={surveyType}
-          company={COMPANY}
+          company={company}
         />
       )}
 
@@ -471,7 +484,7 @@ export default async function PublicReportPage({
       <footer className="report-footer-bar">
         <ReportFooter
           customerName={customerName}
-          company={COMPANY}
+          company={company}
           reportId={report.id}
           generatedAt={report.generated_at ?? null}
         />

@@ -12,7 +12,7 @@ import type {
   ContentSource,
   ReportSectionType,
 } from '@/types/survey-report.types'
-import type { Customer, Surveyor } from '@/types/database.types'
+import type { Customer, Surveyor, CompanyProfile } from '@/types/database.types'
 import { BUILDING_DEFECTS } from '@/types/survey-wizard.types'
 import type {
   CondensationRoomData,
@@ -54,21 +54,7 @@ export async function loadDefaultTemplate(
 // Boilerplate Constants
 // =============================================================================
 
-const ABOUT_US_TEXT = `Tyne Tees Damp Proofing Ltd is a specialist remedial contractor serving residential and commercial clients across the North East of England, including Tyneside, Wearside, Northumberland and County Durham. Our team has been working in the damp proofing industry since 1987.
-
-We specialise in the diagnosis and treatment of rising damp, penetrating damp, condensation, timber decay (dry rot and wet rot), woodworm infestation and basement waterproofing. Our surveyors are trained to correctly differentiate between the causes of damp — ensuring accurate diagnosis and effective treatment first time.
-
-Qualifications & Standards
-
-Our surveyors hold the Certificated Surveyor in Remedial Treatments (CSRT) qualification and are Associate members of the Institute of Specialist Surveyors and Engineers (A.Inst.SSE). All survey and treatment works are carried out using only BBA-approved products and in accordance with current industry best practice.
-
-Guarantees
-
-We offer 25-year company and insurance-backed guarantees for damp proofing and timber treatment works above external ground level. All guarantees cover both materials and labour. Our membrane products carry a 25-year manufacturer's product guarantee. Insurance-backed guarantees are issued through the Westminster Protected Guarantee scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.
-
-Our Track Record
-
-We maintain a 100% success rate on all damp and timber treatments, with no guarantee claims to date.`
+// ABOUT_US_TEXT — now loaded from company_profile.about_us_text
 
 function buildSurveyContextText(reportedDefect: string): string {
   return `In accordance with your instructions, we carried out a specific defects inspection of the above property for the following reported problem:
@@ -108,8 +94,11 @@ const PAYMENT_TEXT = `An initial payment of 30% of the contract value is require
 
 The remaining balance is due within 7 days of completion.`
 
-const GUARANTEE_PARAGRAPH =
-  'All treatment works carried out by Tyne Tees Damp Proofing Ltd are covered by our 25-year insurance-backed guarantee, issued through the Westminster Protected Guarantee scheme. This guarantee covers both materials and labour, operates independently of the contractor, and is fully transferable to future property owners — providing genuine long-term protection for your investment.'
+function buildGuaranteeParagraph(profile: CompanyProfile): string {
+  const years = profile.guarantee_years ?? 25
+  const scheme = profile.guarantee_scheme_name ?? 'insurance-backed guarantee scheme'
+  return `All treatment works carried out by ${profile.name} are covered by our ${years}-year insurance-backed guarantee, issued through the ${scheme}. This guarantee covers both materials and labour, operates independently of the contractor, and is fully transferable to future property owners — providing genuine long-term protection for your investment.`
+}
 
 // =============================================================================
 // Helper Functions
@@ -679,6 +668,13 @@ export async function generateReport(
     throw new Error(`Failed to load survey: ${surveyError?.message}`)
   }
 
+  // Load company profile for report content
+  const { data: profileData } = await supabase
+    .from('company_profile')
+    .select('*')
+    .single()
+  const profile = profileData as CompanyProfile | null
+
   const { wizardData, rooms } = await loadWizardData(surveyId)
   const sd = wizardData.site_details
   const ext = wizardData.external_inspection
@@ -1021,8 +1017,8 @@ export async function generateReport(
   }
 
   const execSummaryContent = execSummaryLlmText
-    ? execSummaryLlmText + '\n\n' + GUARANTEE_PARAGRAPH
-    : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
+    ? execSummaryLlmText + '\n\n' + buildGuaranteeParagraph(profile!)
+    : 'Executive summary to be reviewed.' + '\n\n' + buildGuaranteeParagraph(profile!)
 
   // 4. BUILD SECTIONS
   const surveyorName =
@@ -1054,10 +1050,10 @@ export async function generateReport(
   sections.push(
     buildSection(
       'about_us',
-      'About Tyne Tees Damp Proofing Ltd',
+      `About ${profile?.name || 'Our Company'}`,
       'boilerplate',
       'template',
-      ABOUT_US_TEXT
+      profile?.about_us_text || ''
     )
   )
 
@@ -1469,7 +1465,7 @@ export async function generateReport(
       'findings',
       'survey_data',
       hasDryRot
-        ? `Dry rot (Serpula lacrymans) has been identified during the course of our survey.\n\nUnlike wet rot, dry rot mycelium is capable of spreading through masonry and other inert materials into adjoining properties. Where treatment works are adjacent to or affect party walls, the provisions of the Party Wall etc. Act 1996 may be engaged — in particular Section 6, which governs works that could affect the structure of an adjoining property.\n\nThe property owner is advised to serve the appropriate notice on all affected adjoining owners before commencing any treatment or remedial works that affect or are adjacent to party walls. Failure to comply with the Act may result in legal liability to the adjoining owner.\n\nWe recommend that you seek independent legal advice regarding your obligations under the Party Wall etc. Act 1996 prior to instructing works. Tyne Tees Damp Proofing Ltd can provide further guidance on the notification process on request.`
+        ? `Dry rot (Serpula lacrymans) has been identified during the course of our survey.\n\nUnlike wet rot, dry rot mycelium is capable of spreading through masonry and other inert materials into adjoining properties. Where treatment works are adjacent to or affect party walls, the provisions of the Party Wall etc. Act 1996 may be engaged — in particular Section 6, which governs works that could affect the structure of an adjoining property.\n\nThe property owner is advised to serve the appropriate notice on all affected adjoining owners before commencing any treatment or remedial works that affect or are adjacent to party walls. Failure to comply with the Act may result in legal liability to the adjoining owner.\n\nWe recommend that you seek independent legal advice regarding your obligations under the Party Wall etc. Act 1996 prior to instructing works. ${profile?.name || 'We'} can provide further guidance on the notification process on request.`
         : ''
     )
   )
@@ -1797,6 +1793,7 @@ export async function generateReport(
         surveyor_name: surveyorName,
         surveyor_title: 'Surveyor',
         surveyor_credentials: surveyor?.qualifications || '',
+        company_name: profile?.name || '',
       }
     )
   )
@@ -2012,8 +2009,8 @@ export async function regenerateSection(
   }
 
   const newContent = newLlmText
-    ? newLlmText + '\n\n' + GUARANTEE_PARAGRAPH
-    : 'Executive summary to be reviewed.' + '\n\n' + GUARANTEE_PARAGRAPH
+    ? newLlmText + '\n\n' + buildGuaranteeParagraph(profile!)
+    : 'Executive summary to be reviewed.' + '\n\n' + buildGuaranteeParagraph(profile!)
 
   // Build updated section
   const newSection: ReportSection = {

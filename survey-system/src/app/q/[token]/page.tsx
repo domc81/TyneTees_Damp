@@ -10,8 +10,10 @@
 // =============================================================================
 
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { Phone, Mail, MapPin, User, AlertTriangle, FileText } from 'lucide-react'
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 import { QuotationViewTracker, QuotationActions } from './client'
 import './quotation-public.css'
 
@@ -54,13 +56,23 @@ interface QuotationSection {
   is_included: boolean
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Company profile — cached across metadata + page render ─────────────────
 
-const FALLBACK_COMPANY = {
-  name: 'Tyne Tees Damp Proofing Ltd',
-  phone: '0191 XXX XXXX',
-  email: 'info@tyneteesdampproofing.co.uk',
-}
+const getCachedProfile = cache(async () => {
+  try {
+    const p = await getCompanyProfilePublic()
+    return {
+      name: p.name,
+      phone: p.phone_primary || '',
+      email: p.email_primary || '',
+      terms: p.terms_and_conditions || null,
+    }
+  } catch {
+    return { name: 'Survey System', phone: '', email: '', terms: null }
+  }
+})
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
   damp: 'Damp Proofing Works',
@@ -68,14 +80,6 @@ const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
   timber: 'Timber Treatment Works',
   woodworm: 'Woodworm Treatment Works',
 }
-
-const DEFAULT_TERMS = `1. A deposit is required prior to the commencement of works as stated in this quotation.
-2. The balance is due upon satisfactory completion of all works.
-3. This quotation is valid for the period stated above from the date of issue.
-4. All specified works are guaranteed against failure as per our standard guarantee documentation.
-5. Access to the property and appropriate working conditions must be provided throughout the works.
-6. Tyne Tees Damp Proofing Ltd reserves the right to revise this quotation should site conditions differ materially from those assessed during the survey.
-7. Any additional works identified and agreed during the course of the project will be charged at our standard rates.`
 
 // ─── Service-role Supabase client ─────────────────────────────────────────────
 // Bypasses RLS — safe because we always filter by share_token (not by row id).
@@ -118,7 +122,8 @@ function formatDate(dateStr: string): string {
 
 // ─── Not-found page ───────────────────────────────────────────────────────────
 
-function NotFoundPage() {
+async function NotFoundPage() {
+  const profile = await getCachedProfile()
   return (
     <div
       className="min-h-screen bg-[#F9FAFB] flex items-center justify-center px-6"
@@ -133,22 +138,26 @@ function NotFoundPage() {
           This quotation link is invalid or no longer available. Please contact us if you think this is an error.
         </p>
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 text-left">
-          <p className="text-sm font-semibold text-[#374151] mb-4">{FALLBACK_COMPANY.name}</p>
+          <p className="text-sm font-semibold text-[#374151] mb-4">{profile.name}</p>
           <div className="space-y-3">
-            <a
-              href={`tel:${FALLBACK_COMPANY.phone}`}
-              className="flex items-center gap-3 text-sm text-[#6B7280] hover:text-[#1E3A5F] transition-colors"
-            >
-              <Phone className="w-4 h-4 flex-shrink-0" />
-              {FALLBACK_COMPANY.phone}
-            </a>
-            <a
-              href={`mailto:${FALLBACK_COMPANY.email}`}
-              className="flex items-center gap-3 text-sm text-[#6B7280] hover:text-[#1E3A5F] transition-colors"
-            >
-              <Mail className="w-4 h-4 flex-shrink-0" />
-              {FALLBACK_COMPANY.email}
-            </a>
+            {profile.phone && (
+              <a
+                href={`tel:${profile.phone}`}
+                className="flex items-center gap-3 text-sm text-[#6B7280] hover:text-[#1E3A5F] transition-colors"
+              >
+                <Phone className="w-4 h-4 flex-shrink-0" />
+                {profile.phone}
+              </a>
+            )}
+            {profile.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                className="flex items-center gap-3 text-sm text-[#6B7280] hover:text-[#1E3A5F] transition-colors"
+              >
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                {profile.email}
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -163,6 +172,8 @@ export async function generateMetadata({
 }: {
   params: { token: string }
 }): Promise<Metadata> {
+  const profile = await getCachedProfile()
+
   try {
     const supabase = createServiceClient()
     const { data: q } = await supabase
@@ -172,12 +183,13 @@ export async function generateMetadata({
       .single()
 
     if (q) {
+      const companyName = q.company_name ?? profile.name
       const title = q.customer_name
-        ? `Quotation for ${q.customer_name} — ${q.company_name ?? FALLBACK_COMPANY.name}`
-        : `${q.quotation_number} — ${q.company_name ?? FALLBACK_COMPANY.name}`
+        ? `Quotation for ${q.customer_name} — ${companyName}`
+        : `${q.quotation_number} — ${companyName}`
       return {
         title,
-        description: `Your quotation from ${q.company_name ?? FALLBACK_COMPANY.name}`,
+        description: `Your quotation from ${companyName}`,
         robots: { index: false, follow: false },
       }
     }
@@ -186,7 +198,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `Quotation — ${FALLBACK_COMPANY.name}`,
+    title: `Quotation — ${profile.name}`,
     robots: { index: false, follow: false },
   }
 }
@@ -258,10 +270,11 @@ export default async function PublicQuotationPage({
   const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
   const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
 
+  const profile = await getCachedProfile()
   const company = {
-    name: quotation.company_name ?? FALLBACK_COMPANY.name,
-    phone: quotation.company_phone ?? FALLBACK_COMPANY.phone,
-    email: quotation.company_email ?? FALLBACK_COMPANY.email,
+    name: quotation.company_name ?? profile.name,
+    phone: quotation.company_phone ?? profile.phone,
+    email: quotation.company_email ?? profile.email,
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -528,7 +541,7 @@ export default async function PublicQuotationPage({
                 Terms &amp; Conditions
               </h3>
               <div className="text-sm text-[#6B7280] leading-relaxed whitespace-pre-line bg-[#F9FAFB] rounded-xl p-5 border border-[#E5E7EB]">
-                {quotation.terms ?? DEFAULT_TERMS}
+                {quotation.terms ?? profile.terms ?? ''}
               </div>
             </div>
 

@@ -26,7 +26,7 @@ export function SurveyorProfileSection({ section }: SurveyorProfileSectionProps)
 
       <div className="flex flex-col items-center text-center">
         <p className="text-sm text-[#6B7280] mb-4">
-          Report produced under the guidance of Tyne Tees Damp Proofing Ltd by:
+          Report produced under the guidance of {(data.company_name as string) || 'our company'} by:
         </p>
 
         {/* Initials avatar */}

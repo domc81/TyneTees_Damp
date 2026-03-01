@@ -5,8 +5,7 @@
 
 import type { ReportSection } from '@/types/survey-report.types'
 
-const GUARANTEE_MARKER =
-  'All treatment works carried out by Tyne Tees Damp Proofing'
+const GUARANTEE_MARKER = 'All treatment works carried out by'
 
 interface ExecutiveSummarySectionProps {
   section: ReportSection

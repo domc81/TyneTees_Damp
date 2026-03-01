@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 interface SectionRequest {
   key: string
@@ -48,6 +49,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Load company profile for LLM system prompt
+    let companyName = 'the company'
+    let companyWebsite = ''
+    try {
+      const profile = await getCompanyProfilePublic()
+      companyName = profile.name
+      companyWebsite = profile.website || ''
+    } catch {
+      // Use defaults if profile unavailable
+    }
+
     // Generate content for each section
     const results: GeneratedSection[] = []
 
@@ -57,7 +69,9 @@ export async function POST(request: NextRequest) {
           apiKey,
           section.prompt,
           section.context,
-          section.key
+          section.key,
+          companyName,
+          companyWebsite
         )
         results.push({
           key: section.key,
@@ -94,9 +108,11 @@ async function generateSectionContent(
   apiKey: string,
   sectionPrompt: string,
   context: string,
-  sectionKey: string
+  sectionKey: string,
+  companyName: string,
+  companyWebsite: string
 ): Promise<{ content: string; finishReason: string }> {
-  const systemPrompt = `You are a senior remedial surveyor at Tyne Tees Damp Proofing Ltd writing sections of a formal survey report. You hold the qualification A.Inst.SSE (Associate of the Institute of Specialist Surveyors and Engineers).
+  const systemPrompt = `You are a senior remedial surveyor at ${companyName} writing sections of a formal survey report. You hold the qualification A.Inst.SSE (Associate of the Institute of Specialist Surveyors and Engineers).
 
 VOICE AND TONE:
 - Write with authority and confidence. You are the expert.
@@ -173,8 +189,8 @@ Generate the narrative content for this section now. Output ONLY the report text
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://www.tyneteesdampproofing.co.uk',
-        'X-Title': 'Tyne Tees Survey System',
+        'HTTP-Referer': companyWebsite || (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+        'X-Title': `${companyName} Survey System`,
       },
       body: JSON.stringify({
         model: 'x-ai/grok-4.1-fast',

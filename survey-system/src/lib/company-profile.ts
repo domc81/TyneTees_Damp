@@ -4,7 +4,23 @@
 // =============================================================================
 
 import { createClient as createServerClient } from '@/lib/supabase-server'
+import { createServerClient as createSSRClient } from '@supabase/ssr'
 import type { CompanyProfile, CompanyProfileUpdate } from '@/types/database.types'
+
+// =============================================================================
+// Service-role client — bypasses RLS, usable without user session
+// =============================================================================
+
+function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    throw new Error('Supabase service role credentials not configured')
+  }
+  return createSSRClient(url, serviceKey, {
+    cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+  })
+}
 
 // =============================================================================
 // Read
@@ -16,6 +32,28 @@ import type { CompanyProfile, CompanyProfileUpdate } from '@/types/database.type
  */
 export async function getCompanyProfile(): Promise<CompanyProfile> {
   const supabase = createServerClient()
+
+  const { data, error } = await supabase
+    .from('company_profile')
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to load company profile: ${error?.message ?? 'no data returned'}`
+    )
+  }
+
+  return data as CompanyProfile
+}
+
+/**
+ * Fetch the singleton company profile using the service-role key.
+ * No user session required — safe for public pages, API routes,
+ * server components, and the root layout.
+ */
+export async function getCompanyProfilePublic(): Promise<CompanyProfile> {
+  const supabase = createServiceRoleClient()
 
   const { data, error } = await supabase
     .from('company_profile')

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
+import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
   const { profileError } = useAuth()
+  const companyProfile = useCompanyProfile()
 
   // Show profile-related errors (e.g. deactivated account on session restore)
   useEffect(() => {
@@ -83,8 +85,8 @@ export default function LoginPage() {
         <div className="glass-card p-8">
           <div className="text-center mb-8">
             <img
-              src="/logo.svg"
-              alt="Tyne Tees Damp Proofing"
+              src={companyProfile.logo_url || '/logo.svg'}
+              alt={companyProfile.name}
               className="h-12 w-auto mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
