@@ -35,6 +35,7 @@ interface TemplateLookupCache {
   condensation: TemplateLookup
   timber: TemplateLookup
   woodworm: TemplateLookup
+  site_preparation: TemplateLookup
 }
 
 // =============================================================================
@@ -95,14 +96,15 @@ export async function loadTemplateLookup(surveyType: string): Promise<TemplateLo
  * Caches the results for efficient reuse
  */
 export async function loadAllTemplateLookups(): Promise<TemplateLookupCache> {
-  const [damp, condensation, timber, woodworm] = await Promise.all([
+  const [damp, condensation, timber, woodworm, site_preparation] = await Promise.all([
     loadTemplateLookup('damp'),
     loadTemplateLookup('condensation'),
     loadTemplateLookup('timber'),
-    loadTemplateLookup('woodworm')
+    loadTemplateLookup('woodworm'),
+    loadTemplateLookup('site_preparation')
   ])
 
-  return { damp, condensation, timber, woodworm }
+  return { damp, condensation, timber, woodworm, site_preparation }
 }
 
 // =============================================================================
@@ -291,16 +293,7 @@ function mapDampSurvey(
   const scrapeSubfloorInput = createLineInput(lookup, 'strip_out', 'scrape_subfloors', totalSubFloorArea)
   if (scrapeSubfloorInput) inputs.push(scrapeSubfloorInput)
 
-  // Auto-cascading: Debris bags = strip-out area × 2 bags per m²
-  const debrisBags = Math.ceil(stripoutArea * 2)
-  const debrisInput = createLineInput(lookup, 'strip_out', 'bag_cart_debris', debrisBags)
-  if (debrisInput) inputs.push(debrisInput)
-
-  // Disposal — mutually exclusive with skip hire: only emit if no skip selected
-  if ((wizardData.additional_works?.skip_count || 0) === 0) {
-    const disposalInput = createLineInput(lookup, 'strip_out', 'licensed_disposal', debrisBags)
-    if (disposalInput) inputs.push(disposalInput)
-  }
+  // NOTE: bag_cart_debris and licensed_disposal moved to mapSitePreparation (job-level)
 
   // === DPC INSTALLATION ===
 
@@ -721,16 +714,7 @@ function mapTimberSurvey(
   const stripFloorInput = createLineInput(lookup, 'strip_out', 'strip_out_existing_timber_floor_gf', totalFlooringArea)
   if (stripFloorInput) inputs.push(stripFloorInput)
 
-  // Debris removal
-  const debrisBags = Math.ceil(totalFlooringArea * 2)
-  const debrisInput = createLineInput(lookup, 'strip_out', 'bag_up_debris_cart_outside', debrisBags)
-  if (debrisInput) inputs.push(debrisInput)
-
-  // Disposal — mutually exclusive with skip hire: only emit if no skip selected
-  if ((additionalWorks.skip_count || 0) === 0) {
-    const disposalInput = createLineInput(lookup, 'strip_out', 'disposal_via_licensed_transfer_agent', debrisBags)
-    if (disposalInput) inputs.push(disposalInput)
-  }
+  // NOTE: bag_up_debris and disposal moved to mapSitePreparation (job-level)
 
   // === JOISTS ===
 
@@ -905,15 +889,7 @@ function mapAdditionalWorks(
 ): LineInput[] {
   const inputs: LineInput[] = []
 
-  // === ANTINOX FLOOR PROTECTION BOARDS (damp, timber, woodworm only) ===
-
-  if (surveyType !== 'condensation') {
-    const antinoxLineKey = surveyType === 'damp'
-      ? 'floor_protection_boards'
-      : 'antinox_hd_floor_protection_boards_24m_x_12m'
-    const antinoxInput = createLineInput(lookup, 'preparatory_work', antinoxLineKey, additionalWorks.antinox_board_count || 0)
-    if (antinoxInput) inputs.push(antinoxInput)
-  }
+  // NOTE: Antinox floor protection moved to mapSitePreparation (job-level)
 
   // === AIRBRICKS (line keys differ between damp and other survey types) ===
 
@@ -954,13 +930,7 @@ function mapAdditionalWorks(
   const asbestosInput = createLineInput(lookup, 'asbestos_testing', 'asbestos_testing', additionalWorks.asbestos_test_count || 0)
   if (asbestosInput) inputs.push(asbestosInput)
 
-  // === SKIP HIRE (line key differs between damp and other survey types) ===
-
-  const skipLineKey = surveyType === 'damp'
-    ? 'skip_hire'
-    : 'rubbish_removal_skips'
-  const skipInput = createLineInput(lookup, 'skip_hire', skipLineKey, additionalWorks.skip_count || 0)
-  if (skipInput) inputs.push(skipInput)
+  // NOTE: Skip hire moved to mapSitePreparation (job-level)
 
   // === PLASTERING EXTRAS (damp, timber, woodworm) ===
 
@@ -986,6 +956,103 @@ function mapAdditionalWorks(
 
     const sprayDifficultyInput = createLineInput(lookup, 'spray_treatments', 'difficulty_hours_spray', additionalWorks.spray_difficulty_hours || 0)
     if (sprayDifficultyInput) inputs.push(sprayDifficultyInput)
+  }
+
+  return inputs
+}
+
+// =============================================================================
+// DEBRIS BAG CALCULATION HELPERS
+// =============================================================================
+
+/**
+ * Calculate debris bags from damp strip-out work.
+ * Bags = ceil(total wall area × 2 bags per m²)
+ */
+function calcDampDebrisBags(rooms: SurveyRoomRow[]): number {
+  const dampRooms = rooms.filter(r => r.issues_identified?.includes('damp'))
+  let stripoutArea = 0
+
+  for (const room of dampRooms) {
+    const dampData = room.room_data?.damp as DampRoomData | undefined
+    if (!dampData) continue
+
+    for (const wall of dampData.walls || []) {
+      stripoutArea += wall.length * wall.height
+    }
+  }
+
+  return stripoutArea > 0 ? Math.ceil(stripoutArea * 2) : 0
+}
+
+/**
+ * Calculate debris bags from timber floor strip-out work.
+ * Bags = ceil(total flooring area × 2 bags per m²)
+ */
+function calcTimberDebrisBags(rooms: SurveyRoomRow[]): number {
+  const timberRooms = rooms.filter(r => r.issues_identified?.includes('timber_decay'))
+  let totalFlooringArea = 0
+
+  for (const room of timberRooms) {
+    const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
+    if (!timberData) continue
+
+    totalFlooringArea += timberData.flooring_area || 0
+  }
+
+  return totalFlooringArea > 0 ? Math.ceil(totalFlooringArea * 2) : 0
+}
+
+// =============================================================================
+// SITE PREPARATION MAPPING (job-level items emitted once)
+// =============================================================================
+
+/**
+ * Map site preparation items that apply once per job regardless of survey types.
+ *
+ * Consolidates skip hire, antinox floor protection, bag & cart debris removal,
+ * and licensed disposal into a single set of line items with combined quantities.
+ */
+function mapSitePreparation(
+  wizardData: SurveyWizardData,
+  rooms: SurveyRoomRow[],
+  surveyTypesPresent: Set<string>,
+  lookup: TemplateLookup
+): LineInput[] {
+  const inputs: LineInput[] = []
+  const additionalWorks = wizardData.additional_works || {}
+
+  // === SKIP HIRE ===
+  const skipCount = additionalWorks.skip_count || 0
+  const skipInput = createLineInput(lookup, 'skip_hire', 'skip_hire', skipCount)
+  if (skipInput) inputs.push(skipInput)
+
+  // === ANTINOX FLOOR PROTECTION (not for condensation-only surveys) ===
+  const hasNonCondensation = surveyTypesPresent.has('damp') ||
+    surveyTypesPresent.has('timber') ||
+    surveyTypesPresent.has('woodworm')
+
+  if (hasNonCondensation) {
+    const antinoxInput = createLineInput(lookup, 'preparatory_work', 'floor_protection_boards', additionalWorks.antinox_board_count || 0)
+    if (antinoxInput) inputs.push(antinoxInput)
+  }
+
+  // === BAG & CART DEBRIS (combined across all survey types) ===
+  let totalBags = 0
+  if (surveyTypesPresent.has('damp')) {
+    totalBags += calcDampDebrisBags(rooms)
+  }
+  if (surveyTypesPresent.has('timber')) {
+    totalBags += calcTimberDebrisBags(rooms)
+  }
+
+  const bagCartInput = createLineInput(lookup, 'strip_out_disposal', 'bag_cart_debris', totalBags)
+  if (bagCartInput) inputs.push(bagCartInput)
+
+  // === LICENSED DISPOSAL (only if no skip hired — mutually exclusive) ===
+  if (skipCount === 0 && totalBags > 0) {
+    const disposalInput = createLineInput(lookup, 'strip_out_disposal', 'licensed_disposal', totalBags)
+    if (disposalInput) inputs.push(disposalInput)
   }
 
   return inputs
@@ -1048,6 +1115,12 @@ export function mapSurveyToLineInputs(
     const inputs = mapWoodwormSurvey(wizardData, rooms, lookupCache.woodworm)
     const additionalInputs = mapAdditionalWorks(wizardData.additional_works || {}, lookupCache.woodworm, 'woodworm')
     result.woodworm = [...inputs, ...additionalInputs]
+  }
+
+  // Job-level items: skip hire, antinox, bag & cart, disposal — emitted once
+  const sitePrep = mapSitePreparation(wizardData, rooms, surveyTypesPresent, lookupCache.site_preparation)
+  if (sitePrep.length > 0) {
+    result.site_preparation = sitePrep
   }
 
   return result
