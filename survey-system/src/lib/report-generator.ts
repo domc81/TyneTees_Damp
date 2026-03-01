@@ -1059,6 +1059,22 @@ export async function generateReport(
     )
   )
 
+  // --- SURVEYOR ADDITIONAL COMMENTS ---
+  // Only included when the surveyor has entered non-empty free text.
+  // Stored in survey_data JSONB alongside other wizard fields.
+  const surveyorComments = wizardData.surveyor_additional_comments?.trim() || ''
+  if (surveyorComments) {
+    sections.push(
+      buildSection(
+        'surveyor_comments',
+        'Additional Comments From Surveyor',
+        'findings',
+        'survey_data',
+        surveyorComments
+      )
+    )
+  }
+
   // --- CLOSING SECTIONS ---
   sections.push(
     buildSection(

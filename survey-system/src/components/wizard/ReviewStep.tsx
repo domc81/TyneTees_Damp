@@ -22,6 +22,7 @@ import {
 interface ReviewStepProps {
   wizardData: SurveyWizardData
   rooms: SurveyRoomRow[]
+  onCommentsChange?: (value: string) => void
 }
 
 const ISSUE_ICONS = {
@@ -31,7 +32,7 @@ const ISSUE_ICONS = {
   woodworm: Bug,
 }
 
-export default function ReviewStep({ wizardData, rooms }: ReviewStepProps) {
+export default function ReviewStep({ wizardData, rooms, onCommentsChange }: ReviewStepProps) {
   // Calculate summary statistics
   const totalRooms = rooms.length
   const completedRooms = rooms.filter((r) => r.is_completed).length
@@ -343,6 +344,22 @@ export default function ReviewStep({ wizardData, rooms }: ReviewStepProps) {
           </div>
         </div>
       )}
+
+      {/* Surveyor's Additional Comments */}
+      <div className="glass-card p-6">
+        <h4 className="text-lg font-semibold text-white mb-2">Surveyor&apos;s Additional Comments</h4>
+        <p className="text-sm text-white/50 mb-4">
+          Optional — any additional observations, context, or recommendations not covered by the room-specific findings above.
+          These will appear in the generated report between the Scope of Works and Ancillary Items sections.
+        </p>
+        <textarea
+          value={wizardData.surveyor_additional_comments || ''}
+          onChange={(e) => onCommentsChange?.(e.target.value)}
+          placeholder="Add any additional observations, context, or recommendations not covered by the room-specific findings above..."
+          rows={5}
+          className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400/50"
+        />
+      </div>
 
       {/* Completion Status */}
       <div className="glass-card p-6 bg-brand-500/10 border-brand-400/30">

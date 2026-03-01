@@ -254,6 +254,14 @@ export default function SurveyWizardPage() {
     triggerDebouncedSave()
   }
 
+  const handleCommentsChange = (value: string) => {
+    setWizardData({
+      ...wizardData,
+      surveyor_additional_comments: value,
+    })
+    triggerDebouncedSave()
+  }
+
   // Room update handler (with debounced auto-save)
   const handleRoomsChange = (updatedRooms: SurveyRoomRow[]) => {
     setRooms(updatedRooms)
@@ -323,7 +331,7 @@ export default function SurveyWizardPage() {
           />
         )
       case 4:
-        return <ReviewStep wizardData={wizardData} rooms={rooms} />
+        return <ReviewStep wizardData={wizardData} rooms={rooms} onCommentsChange={handleCommentsChange} />
       default:
         return null
     }

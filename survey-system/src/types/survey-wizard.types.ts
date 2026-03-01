@@ -14,6 +14,7 @@ export interface SurveyWizardData {
   external_inspection?: ExternalInspection
   additional_works?: AdditionalWorks
   reported_defect?: string // Captured at booking time — what the customer described
+  surveyor_additional_comments?: string // Free-text observations not covered by room-specific findings
   wizard_step: number
   wizard_completed: boolean
 }
