@@ -8,6 +8,8 @@ import { createClient as createServerClient } from '@/lib/supabase-server'
 import { getCompanyProfilePublic, updateCompanyProfile } from '@/lib/company-profile'
 import type { CompanyProfileUpdate } from '@/types/database.types'
 
+export const dynamic = 'force-dynamic'
+
 // Fields that the PATCH endpoint accepts (prevents updating id, timestamps, etc.)
 const UPDATABLE_FIELDS = new Set([
   'name',
@@ -52,7 +54,7 @@ async function verifyAuthenticated(): Promise<string | null> {
 // GET /api/settings/company
 // =============================================================================
 
-export async function GET() {
+export async function GET(_request: NextRequest) {
   const userId = await verifyAuthenticated()
   if (!userId) {
     return NextResponse.json(
