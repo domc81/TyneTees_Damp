@@ -159,6 +159,7 @@ export default function QuotationManagementPage() {
   const [isMarkingSent, setIsMarkingSent] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
 
   // Editable fields — initialised from DB once loaded
   const [editNotes, setEditNotes] = useState('')
@@ -268,6 +269,28 @@ export default function QuotationManagementPage() {
       console.error('Failed to save changes:', err)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!quotation) return
+    setIsDownloadingPdf(true)
+    try {
+      const res = await fetch(`/api/quotation-pdf/${quotationId}`)
+      if (!res.ok) throw new Error(`PDF generation failed (${res.status})`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${quotation.quotation_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Could not generate the PDF. Please try again.')
+    } finally {
+      setIsDownloadingPdf(false)
     }
   }
 
@@ -396,10 +419,14 @@ export default function QuotationManagementPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => alert('PDF download will be available once the print route is wired up.')}
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
                 >
-                  <Download className="w-4 h-4 mr-1.5" />
-                  Download PDF
+                  {isDownloadingPdf ? (
+                    <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Generating…</>
+                  ) : (
+                    <><Download className="w-4 h-4 mr-1.5" />Download PDF</>
+                  )}
                 </Button>
               </div>
             </div>
