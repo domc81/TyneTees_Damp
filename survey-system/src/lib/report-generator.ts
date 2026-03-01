@@ -100,6 +100,10 @@ const EXTENT_TEXT = `We have reported on the areas inspected in accordance with 
 
 Our findings relate to conditions evident at the time of inspection. We are not commenting on the general risk of dampness, fungal decay or any other defect not visible during our visit, or that may develop in the future.`
 
+// R17: Appended to extent_of_survey for damp surveys only.
+const SOLID_FLOORS_DISCLAIMER =
+  'Please note that solid floor areas have not been included within this survey. Should concerns arise regarding damp to solid floor areas, a separate assessment can be arranged upon request.'
+
 const PAYMENT_TEXT = `An initial payment of 30% of the contract value is required before works commence. This covers the cost of ordering materials specific to your project and securing a date in our installation schedule.
 
 The remaining balance is due within 7 days of completion.`
@@ -343,7 +347,13 @@ function buildCondensationCausesContent(
     .join('\n\n')
   const closing =
     'The recommended works detailed in the Scope of Works section below are designed to address these underlying causes and provide long-term resolution of the condensation issues identified.'
-  const content = `${intro}\n\n${factorText}\n\n${closing}`
+
+  // R15: PIV benefits reference — shown when PIV has been recommended or specified.
+  const pivNote = pivNeeded
+    ? '\n\nFor more information about the benefits of Positive Input Ventilation, please visit our website or contact our office.'
+    : ''
+
+  const content = `${intro}\n\n${factorText}\n\n${closing}${pivNote}`
 
   return { content, data: { factors } }
 }
@@ -466,6 +476,12 @@ const METHODOLOGY_WOODWORM_SPRAY: TreatmentMethodology = {
   ],
 }
 
+// R16: Standard Anobium punctatum description.
+// Shown when Common Furniture Beetle is identified, or as default general information
+// when no species has been identified (Anobium accounts for the majority of UK infestations).
+const ANOBIUM_DESCRIPTION =
+  'The Common Furniture Beetle (Anobium punctatum) is the most frequently encountered wood-boring insect in the UK. Adult beetles are 3–5mm in length, and evidence of infestation includes small circular flight holes (1–2mm diameter) and fine bore dust (frass).'
+
 const WOODWORM_SAFETY_POINTS = [
   'The property (or treated area) must be vacated during treatment and for a minimum of 1 hour after completion.',
   'All windows and doors must be opened for ventilation once the exclusion period has ended.',
@@ -534,9 +550,17 @@ function buildWoodwormTreatmentContent(
     .map((s, i) => `${i + 1}. ${s}`)
     .join('\n')
   const safetyText = WOODWORM_SAFETY_POINTS.map((p) => `• ${p}`).join('\n')
+
+  // R16: Include Anobium description when Common Furniture Beetle was identified,
+  // or as default general information when no species was recorded (Anobium punctatum
+  // accounts for the vast majority of UK domestic infestations).
+  const hasAnobium = speciesSet.has('common_furniture_beetle')
+  const noSpeciesRecorded = speciesSet.size === 0
+  const anobiumText = hasAnobium || noSpeciesRecorded ? `\n\n${ANOBIUM_DESCRIPTION}` : ''
+
   const speciesText = speciesNote
-    ? `\n\nSPECIES IDENTIFICATION\nSpecies: ${speciesNote.name}\n${speciesNote.statusLabel}`
-    : ''
+    ? `\n\nSPECIES IDENTIFICATION\nSpecies: ${speciesNote.name}\n${speciesNote.statusLabel}${anobiumText}`
+    : anobiumText
 
   const content =
     `${METHODOLOGY_WOODWORM_SPRAY.title}\n\n` +
@@ -1745,7 +1769,9 @@ export async function generateReport(
       'Extent of Survey',
       'boilerplate',
       'template',
-      EXTENT_TEXT
+      surveyType === 'damp'
+        ? `${EXTENT_TEXT}\n\n${SOLID_FLOORS_DISCLAIMER}`
+        : EXTENT_TEXT
     )
   )
 
