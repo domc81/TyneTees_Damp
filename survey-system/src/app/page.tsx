@@ -20,6 +20,17 @@ import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
+import { getSupabase } from '@/lib/supabase-client'
+
+// Quotation status badge config (matches the quotation page colour scheme)
+type QuotationStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined'
+const QUOT_STATUS_CONFIG: Record<QuotationStatus, { bg: string; color: string; label: string }> = {
+  draft:    { bg: 'bg-gray-500/10 border border-gray-400/30',    color: 'text-gray-400',    label: 'Quote: Draft' },
+  sent:     { bg: 'bg-blue-500/10 border border-blue-400/30',    color: 'text-blue-400',    label: 'Quote: Sent' },
+  viewed:   { bg: 'bg-purple-500/10 border border-purple-400/30',  color: 'text-purple-400',  label: 'Quote: Viewed' },
+  accepted: { bg: 'bg-emerald-500/10 border border-emerald-400/30', color: 'text-emerald-400', label: 'Quote: Accepted' },
+  declined: { bg: 'bg-red-500/10 border border-red-400/30',      color: 'text-red-400',     label: 'Quote: Declined' },
+}
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string; border: string }> = {
   damp: { icon: Droplets, color: 'text-blue-600', label: 'Damp Survey', gradient: 'from-blue-50 to-cyan-50', border: 'border-blue-200' },
@@ -32,12 +43,37 @@ export default function Dashboard() {
   const { profile, user } = useAuth()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [quotationMap, setQuotationMap] = useState<Record<string, { id: string; status: QuotationStatus }>>({})
 
   useEffect(() => {
     async function loadData() {
       try {
         const data = await getSurveys()
         setSurveys(data)
+
+        // Fetch the latest quotation for each of the 5 most recent surveys
+        const recentIds = data.slice(0, 5).map(s => s.id)
+        if (recentIds.length > 0) {
+          const supabase = getSupabase()
+          if (supabase) {
+            const { data: qs } = await supabase
+              .from('quotations')
+              .select('id, survey_id, status')
+              .in('survey_id', recentIds)
+              .order('created_at', { ascending: false })
+
+            if (qs) {
+              // Keep only the latest quotation per survey (results are already newest-first)
+              const map: Record<string, { id: string; status: QuotationStatus }> = {}
+              for (const q of qs) {
+                if (!map[q.survey_id]) {
+                  map[q.survey_id] = { id: q.id, status: q.status as QuotationStatus }
+                }
+              }
+              setQuotationMap(map)
+            }
+          }
+        }
       } catch (err) {
         console.error('Error loading data:', err)
       } finally {
@@ -172,6 +208,14 @@ export default function Dashboard() {
                             <span className={`badge ${status.bg} ${status.color}`}>
                               {survey.status.replace('_', ' ')}
                             </span>
+                            {quotationMap[survey.id] && (() => {
+                              const qCfg = QUOT_STATUS_CONFIG[quotationMap[survey.id].status] ?? QUOT_STATUS_CONFIG.draft
+                              return (
+                                <span className={`badge text-xs ${qCfg.bg} ${qCfg.color}`}>
+                                  {qCfg.label}
+                                </span>
+                              )
+                            })()}
                           </div>
                           <p className="font-medium text-white mt-1">{survey.client_name || 'Unknown Client'}</p>
                           <div className="flex items-center gap-1 text-sm text-white/50 mt-0.5">
