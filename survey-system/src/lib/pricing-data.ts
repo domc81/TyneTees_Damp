@@ -305,11 +305,10 @@ export async function loadSectionAdjustments(
  * Save a single per-section price adjustment for a survey.
  *
  * Looks up the section UUID from costing_sections using section_key + survey_type,
- * then upserts the adjustment row. If adjustmentPct is 0, deletes the row
- * to keep the table clean (absence = no adjustment).
+ * then upserts the row. Only adjustment_pct is written — is_included is preserved.
  *
  * @param surveyId - The survey to save the adjustment for
- * @param sectionKey - The section key (e.g. "D1", "C3")
+ * @param sectionKey - The section key (e.g. "preparatory_work")
  * @param surveyType - The survey type (e.g. "damp", "condensation")
  * @param adjustmentPct - The adjustment percentage (e.g. 10 for +10%)
  */
@@ -325,7 +324,6 @@ export async function saveSectionAdjustment(
     return
   }
 
-  // Look up the section_id from section_key + survey_type
   const { data: section, error: sectionError } = await supabase
     .from('costing_sections')
     .select('id')
@@ -338,59 +336,152 @@ export async function saveSectionAdjustment(
     return
   }
 
-  const sectionId = section.id
-
-  // If adjustment is 0, delete any existing row
-  if (adjustmentPct === 0) {
-    const { error: deleteError } = await supabase
-      .from('costing_section_adjustments')
-      .delete()
-      .eq('survey_id', surveyId)
-      .eq('section_id', sectionId)
-
-    if (deleteError) {
-      console.error('Error deleting section adjustment:', deleteError)
-    }
-    return
-  }
-
-  // Check if a row already exists for this survey + section
-  const { data: existing, error: existingError } = await supabase
+  // Upsert — on conflict updates only adjustment_pct, leaving is_included intact
+  const { error } = await supabase
     .from('costing_section_adjustments')
-    .select('id')
-    .eq('survey_id', surveyId)
-    .eq('section_id', sectionId)
-    .maybeSingle()
+    .upsert(
+      { survey_id: surveyId, section_id: section.id, adjustment_pct: adjustmentPct },
+      { onConflict: 'survey_id,section_id' }
+    )
 
-  if (existingError) {
-    console.error('Error checking existing adjustment:', existingError)
+  if (error) {
+    console.error('Error saving section adjustment:', error)
+  }
+}
+
+/**
+ * Save the include/exclude toggle for a single optional section.
+ *
+ * Upserts the row — on conflict updates only is_included, leaving
+ * adjustment_pct intact.
+ *
+ * @param surveyId - The survey this section belongs to
+ * @param sectionKey - Section key (e.g. "dpc_digital")
+ * @param surveyType - Survey type (e.g. "damp")
+ * @param isIncluded - Whether to include this section in the job total
+ */
+export async function saveSectionInclusion(
+  surveyId: string,
+  sectionKey: string,
+  surveyType: string,
+  isIncluded: boolean
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
     return
   }
 
-  if (existing) {
-    // Update existing row
-    const { error: updateError } = await supabase
-      .from('costing_section_adjustments')
-      .update({ adjustment_pct: adjustmentPct })
-      .eq('id', existing.id)
+  const { data: section, error: sectionError } = await supabase
+    .from('costing_sections')
+    .select('id')
+    .eq('section_key', sectionKey)
+    .eq('survey_type', surveyType)
+    .single()
 
-    if (updateError) {
-      console.error('Error updating section adjustment:', updateError)
-    }
-  } else {
-    // Insert new row
-    const { error: insertError } = await supabase
-      .from('costing_section_adjustments')
-      .insert({
-        survey_id: surveyId,
-        section_id: sectionId,
-        adjustment_pct: adjustmentPct,
-      })
+  if (sectionError || !section) {
+    console.error('Error finding section for key:', sectionKey, sectionError)
+    return
+  }
 
-    if (insertError) {
-      console.error('Error inserting section adjustment:', insertError)
+  // Upsert — on conflict updates only is_included, leaving adjustment_pct intact
+  const { error } = await supabase
+    .from('costing_section_adjustments')
+    .upsert(
+      { survey_id: surveyId, section_id: section.id, is_included: isIncluded },
+      { onConflict: 'survey_id,section_id' }
+    )
+
+  if (error) {
+    console.error('Error saving section inclusion:', error)
+  }
+}
+
+/**
+ * Load the include/exclude state for all sections of a survey.
+ *
+ * Returns a map of section_key → is_included. Keys absent from the map
+ * should be treated as included (true) — the default state.
+ *
+ * @param surveyId - The survey to load inclusions for
+ * @returns Map of section_key → boolean (true = included)
+ */
+export async function loadSectionInclusions(
+  surveyId: string
+): Promise<Record<string, boolean>> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return {}
+  }
+
+  const { data, error } = await supabase
+    .from('costing_section_adjustments')
+    .select('is_included, costing_sections(section_key)')
+    .eq('survey_id', surveyId)
+
+  if (error) {
+    console.error('Error loading section inclusions:', error)
+    return {}
+  }
+
+  if (!data) return {}
+
+  const inclusions: Record<string, boolean> = {}
+  for (const row of data) {
+    const section = row.costing_sections as unknown as { section_key: string } | null
+    if (section?.section_key && row.is_included !== null) {
+      inclusions[section.section_key] = row.is_included
     }
   }
+
+  return inclusions
+}
+
+/**
+ * Load the is_optional flag for all sections across the given survey types.
+ *
+ * Returns a map of section_key → is_optional. Used by the costing page to
+ * know which sections should show the "Optional" badge and include/exclude toggle.
+ *
+ * Note: section_key is used as key (not survey_type+section_key). If the same
+ * section_key is optional in any type, it will be marked optional in the map.
+ *
+ * @param surveyTypes - Array of survey types to query (e.g. ["damp", "condensation"])
+ * @returns Map of section_key → boolean (true = optional)
+ */
+export async function loadSectionOptionalFlags(
+  surveyTypes: string[]
+): Promise<Record<string, boolean>> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return {}
+  }
+
+  const { data, error } = await supabase
+    .from('costing_sections')
+    .select('section_key, is_optional')
+    .in('survey_type', surveyTypes)
+
+  if (error) {
+    console.error('Error loading section optional flags:', error)
+    return {}
+  }
+
+  if (!data) return {}
+
+  const flags: Record<string, boolean> = {}
+  for (const row of data) {
+    // If optional in ANY survey type, mark as optional
+    if (row.is_optional) {
+      flags[row.section_key] = true
+    } else if (!(row.section_key in flags)) {
+      flags[row.section_key] = false
+    }
+  }
+
+  return flags
 }
 
 // =============================================================================

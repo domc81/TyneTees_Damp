@@ -3,12 +3,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
 import { generateCostingFromSurvey } from '@/lib/survey-mapping'
-import { loadPricingConfig, loadSectionAdjustments, saveSectionAdjustment, type CalculationResult, type CalculatedLine } from '@/lib/pricing-data'
+import {
+  loadPricingConfig,
+  loadSectionAdjustments,
+  loadSectionInclusions,
+  loadSectionOptionalFlags,
+  saveSectionAdjustment,
+  saveSectionInclusion,
+  type CalculationResult,
+  type CalculatedLine,
+} from '@/lib/pricing-data'
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
 
 // Survey type display names (excludes site_preparation — that's job-level)
@@ -19,7 +28,7 @@ const SURVEY_TYPE_NAMES: Record<string, string> = {
   woodworm: 'Woodworm Survey',
 }
 
-// Survey type colors for tabs
+// Survey type colours for tabs
 const SURVEY_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   damp: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-400/30' },
   condensation: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-400/30' },
@@ -27,7 +36,6 @@ const SURVEY_TYPE_COLORS: Record<string, { bg: string; text: string; border: str
   woodworm: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-400/30' },
 }
 
-// Format currency helper
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
@@ -37,7 +45,6 @@ function formatCurrency(value: number): string {
   }).format(value)
 }
 
-// Section name formatter (convert section_key to display name)
 function formatSectionName(sectionKey: string): string {
   return sectionKey
     .split('_')
@@ -46,7 +53,47 @@ function formatSectionName(sectionKey: string): string {
 }
 
 // ─────────────────────────────────────────────────
-// Reusable section card — renders a costing section with line items table
+// Toggle switch — inline, no extra dependency
+// ─────────────────────────────────────────────────
+function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-2 group"
+      aria-pressed={checked}
+      aria-label={label}
+    >
+      <span className="text-xs text-white/50 group-hover:text-white/70 transition-colors">
+        {checked ? 'Included' : 'Excluded'}
+      </span>
+      {/* Track */}
+      <span
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors duration-200 ${
+          checked ? 'bg-emerald-500/70' : 'bg-white/20'
+        }`}
+      >
+        {/* Thumb */}
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
+          }`}
+        />
+      </span>
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────
+// SectionCard — renders a costing section with line items table
 // ─────────────────────────────────────────────────
 function SectionCard({
   sectionKey,
@@ -54,130 +101,159 @@ function SectionCard({
   sectionTotal,
   adjPct,
   onAdjustmentChange,
+  isOptional,
+  isIncluded,
+  onInclusionToggle,
 }: {
   sectionKey: string
   lines: CalculatedLine[]
   sectionTotal: { materialTotal: number; labourTotal: number; sectionTotal: number } | undefined
   adjPct: number
   onAdjustmentChange: (value: number) => void
+  isOptional: boolean
+  isIncluded: boolean
+  onInclusionToggle?: (included: boolean) => void
 }) {
   const baseTotal = sectionTotal?.sectionTotal || 0
   const adjustedDisplayTotal = baseTotal * (1 + adjPct / 100)
+  // Dim content (not header) when this optional section is excluded
+  const dimContent = isOptional && !isIncluded
 
   return (
     <Card className="glass border-white/10 overflow-hidden">
-      {/* Section Header */}
+      {/* Section Header — always full opacity, carries the toggle */}
       <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-        <h2 className="text-lg font-semibold text-white">
-          {formatSectionName(sectionKey)}
-        </h2>
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: name + optional badge */}
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-lg font-semibold text-white truncate">
+              {formatSectionName(sectionKey)}
+            </h2>
+            {isOptional && (
+              <span className="flex-shrink-0 text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-400/20 font-medium">
+                Optional
+              </span>
+            )}
+          </div>
+
+          {/* Right: include/exclude toggle (optional sections only) */}
+          {isOptional && onInclusionToggle && (
+            <ToggleSwitch
+              checked={isIncluded}
+              onChange={onInclusionToggle}
+              label={`${isIncluded ? 'Exclude' : 'Include'} ${formatSectionName(sectionKey)}`}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Line Items Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/10">
-              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                Description
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                Quantity
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                <div className="flex items-center justify-end gap-1">
-                  <Package className="w-3 h-3" />
-                  Material
-                </div>
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                <div className="flex items-center justify-end gap-1">
-                  <Wrench className="w-3 h-3" />
-                  Labour
-                </div>
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {lines.map((line, index) => (
-              <tr key={index} className="hover:bg-white/5 transition-colors">
-                <td className="px-6 py-4 text-sm text-white/90">
-                  {line.templateDescription}
+      {/* Line Items Table — dims when excluded */}
+      <div className={`transition-opacity duration-200 ${dimContent ? 'opacity-40' : 'opacity-100'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                  Quantity
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                  <div className="flex items-center justify-end gap-1">
+                    <Package className="w-3 h-3" />
+                    Material
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                  <div className="flex items-center justify-end gap-1">
+                    <Wrench className="w-3 h-3" />
+                    Labour
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {lines.map((line, index) => (
+                <tr key={index} className="hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4 text-sm text-white/90">
+                    {line.templateDescription}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-white/70 text-right">
+                    {line.input.inputQuantity.toFixed(2)}
+                    {line.input.inputDimension && (
+                      <span className="text-white/50 ml-1">
+                        × {line.input.inputDimension}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-white/70 text-right">
+                    {formatCurrency(line.result.materialTotal)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-white/70 text-right">
+                    {formatCurrency(line.result.labourTotal)}
+                    {line.result.labourHours > 0 && (
+                      <span className="text-white/50 text-xs ml-1">
+                        ({line.result.labourHours.toFixed(1)}h)
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-white text-right">
+                    {formatCurrency(line.result.lineTotal)}
+                  </td>
+                </tr>
+              ))}
+
+              {/* Section Subtotal Row */}
+              <tr className="bg-white/5 font-semibold">
+                <td className="px-6 py-4 text-sm text-white" colSpan={2}>
+                  Section Subtotal
                 </td>
-                <td className="px-6 py-4 text-sm text-white/70 text-right">
-                  {line.input.inputQuantity.toFixed(2)}
-                  {line.input.inputDimension && (
-                    <span className="text-white/50 ml-1">
-                      × {line.input.inputDimension}
-                    </span>
-                  )}
+                <td className="px-6 py-4 text-sm text-white text-right">
+                  {formatCurrency(sectionTotal?.materialTotal || 0)}
                 </td>
-                <td className="px-6 py-4 text-sm text-white/70 text-right">
-                  {formatCurrency(line.result.materialTotal)}
+                <td className="px-6 py-4 text-sm text-white text-right">
+                  {formatCurrency(sectionTotal?.labourTotal || 0)}
                 </td>
-                <td className="px-6 py-4 text-sm text-white/70 text-right">
-                  {formatCurrency(line.result.labourTotal)}
-                  {line.result.labourHours > 0 && (
-                    <span className="text-white/50 text-xs ml-1">
-                      ({line.result.labourHours.toFixed(1)}h)
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-sm font-medium text-white text-right">
-                  {formatCurrency(line.result.lineTotal)}
+                <td className="px-6 py-4 text-sm text-white text-right">
+                  {formatCurrency(baseTotal)}
                 </td>
               </tr>
-            ))}
 
-            {/* Section Subtotal Row */}
-            <tr className="bg-white/5 font-semibold">
-              <td className="px-6 py-4 text-sm text-white" colSpan={2}>
-                Section Subtotal
-              </td>
-              <td className="px-6 py-4 text-sm text-white text-right">
-                {formatCurrency(sectionTotal?.materialTotal || 0)}
-              </td>
-              <td className="px-6 py-4 text-sm text-white text-right">
-                {formatCurrency(sectionTotal?.labourTotal || 0)}
-              </td>
-              <td className="px-6 py-4 text-sm text-white text-right">
-                {formatCurrency(baseTotal)}
-              </td>
-            </tr>
-
-            {/* Section Adjustment Row */}
-            <tr className="border-t border-white/5">
-              <td className="px-6 py-3" colSpan={4}>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-white/50 whitespace-nowrap">
-                    Section Adjustment %
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={adjPct}
-                    onChange={(e) => onAdjustmentChange(parseFloat(e.target.value) || 0)}
-                    className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
-                  />
-                </div>
-              </td>
-              <td className="px-6 py-3 text-sm text-right">
-                {adjPct !== 0 && (
-                  <span
-                    className={`font-semibold ${
-                      adjPct > 0 ? 'text-green-400' : 'text-amber-400'
-                    }`}
-                  >
-                    {formatCurrency(adjustedDisplayTotal)}
-                  </span>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              {/* Section Adjustment Row */}
+              <tr className="border-t border-white/5">
+                <td className="px-6 py-3" colSpan={4}>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-white/50 whitespace-nowrap">
+                      Section Adjustment %
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={adjPct}
+                      onChange={(e) => onAdjustmentChange(parseFloat(e.target.value) || 0)}
+                      className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
+                    />
+                  </div>
+                </td>
+                <td className="px-6 py-3 text-sm text-right">
+                  {adjPct !== 0 && (
+                    <span
+                      className={`font-semibold ${
+                        adjPct > 0 ? 'text-green-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {formatCurrency(adjustedDisplayTotal)}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </Card>
   )
@@ -195,6 +271,12 @@ export default function CostingReviewPage() {
   const [activeSurveyType, setActiveSurveyType] = useState<string>('')
   const [travelOverhead, setTravelOverhead] = useState<TravelOverheadResult | null>(null)
   const [sectionAdjustments, setSectionAdjustments] = useState<Record<string, number>>({})
+  // is_optional flag per section_key (from costing_sections)
+  const [sectionOptionalFlags, setSectionOptionalFlags] = useState<Record<string, boolean>>({})
+  // is_included per section_key (from costing_section_adjustments.is_included)
+  // absent key → default true (included)
+  const [sectionInclusions, setSectionInclusions] = useState<Record<string, boolean>>({})
+
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Load wizard data and generate costing on mount
@@ -204,10 +286,7 @@ export default function CostingReviewPage() {
       setError(null)
 
       try {
-        // Load wizard data
         const { wizardData, rooms } = await loadWizardData(projectId)
-
-        // Generate costing
         const results = await generateCostingFromSurvey(projectId, wizardData, rooms)
 
         if (Object.keys(results).length === 0) {
@@ -216,11 +295,19 @@ export default function CostingReviewPage() {
 
         setCostingResults(results)
 
-        // Load saved section adjustments
-        const savedAdjustments = await loadSectionAdjustments(projectId)
-        setSectionAdjustments(savedAdjustments)
+        // Load saved adjustments, inclusions, and optional flags in parallel
+        const allSurveyTypes = Object.keys(results)
+        const [savedAdjustments, savedInclusions, optionalFlags] = await Promise.all([
+          loadSectionAdjustments(projectId),
+          loadSectionInclusions(projectId),
+          loadSectionOptionalFlags(allSurveyTypes),
+        ])
 
-        // Calculate travel overhead ONCE from combined labour hours across ALL types
+        setSectionAdjustments(savedAdjustments)
+        setSectionInclusions(savedInclusions)
+        setSectionOptionalFlags(optionalFlags)
+
+        // Calculate travel overhead from combined labour hours across ALL types
         const pricingConfig = await loadPricingConfig()
         const additionalWorks = wizardData.additional_works || {}
         const distanceFromOffice = additionalWorks.distance_from_office || 0
@@ -269,9 +356,26 @@ export default function CostingReviewPage() {
     }, 750)
   }
 
+  // Handle include/exclude toggle — updates state immediately, persists to DB
+  function handleInclusionToggle(sectionKey: string, surveyType: string, isIncluded: boolean) {
+    setSectionInclusions(prev => ({ ...prev, [sectionKey]: isIncluded }))
+    saveSectionInclusion(projectId, sectionKey, surveyType, isIncluded)
+  }
+
+  // Returns true if a section is effectively included in the job total
+  function isSectionIncluded(sectionKey: string): boolean {
+    if (!sectionOptionalFlags[sectionKey]) return true  // mandatory = always included
+    // Optional: included unless explicitly set to false
+    return sectionInclusions[sectionKey] !== false
+  }
+
+  // Adjusted total for a single section (applies adjustment %)
+  function sectionAdjustedTotal(sectionKey: string, baseTotal: number): number {
+    return baseTotal * (1 + (sectionAdjustments[sectionKey] || 0) / 100)
+  }
+
   // ─── Derived data ───
 
-  // Separate site_preparation from per-type results
   const sitePrepResult = costingResults['site_preparation'] || null
   const perTypeResults: Record<string, CalculationResult> = {}
   for (const [key, value] of Object.entries(costingResults)) {
@@ -280,10 +384,7 @@ export default function CostingReviewPage() {
     }
   }
 
-  // Survey type tab keys (excludes site_preparation)
   const surveyTypes = Object.keys(perTypeResults)
-
-  // Active type result and its section breakdown
   const activeResult = activeSurveyType ? perTypeResults[activeSurveyType] : null
   const activeLinesBySection = activeResult?.lines.reduce((acc, line) => {
     if (!acc[line.sectionKey]) acc[line.sectionKey] = []
@@ -292,7 +393,6 @@ export default function CostingReviewPage() {
   }, {} as Record<string, CalculatedLine[]>) || {}
   const activeSortedSections = Object.keys(activeLinesBySection).sort()
 
-  // Site preparation section breakdown
   const sitePrepLinesBySection = sitePrepResult?.lines.reduce((acc, line) => {
     if (!acc[line.sectionKey]) acc[line.sectionKey] = []
     acc[line.sectionKey].push(line)
@@ -300,54 +400,46 @@ export default function CostingReviewPage() {
   }, {} as Record<string, CalculatedLine[]>) || {}
   const sitePrepSortedSections = Object.keys(sitePrepLinesBySection).sort()
 
-  // Single travel overhead
   const overheadAmount = travelOverhead?.totalOverheadCost || 0
 
-  // ─── Combined job totals ───
-  // Sum adjusted totals across ALL types + site_preparation
-  function getAdjustedTotal(result: CalculationResult | null): { adjusted: number; base: number; material: number; labour: number } {
-    if (!result) return { adjusted: 0, base: 0, material: 0, labour: 0 }
-    const sectionKeys = Object.keys(result.sectionTotals)
-    let adjusted = 0
-    for (const key of sectionKeys) {
-      const base = result.sectionTotals[key]?.sectionTotal || 0
-      const adjPct = sectionAdjustments[key] || 0
-      adjusted += base * (1 + adjPct / 100)
-    }
-    return {
-      adjusted,
-      base: result.grandTotal.total,
-      material: result.grandTotal.materialTotal,
-      labour: result.grandTotal.labourTotal,
+  // ─── Job totals — split into mandatory and optional-included ───
+
+  // Mandatory: non-optional sections (all site_prep + mandatory per-type)
+  // Optional included: optional sections where isSectionIncluded() is true
+  let mandatoryWorksTotal = 0
+  let optionalIncludedTotal = 0
+
+  // Site preparation (all sections are non-optional)
+  if (sitePrepResult) {
+    for (const [key, totals] of Object.entries(sitePrepResult.sectionTotals)) {
+      mandatoryWorksTotal += sectionAdjustedTotal(key, totals.sectionTotal)
     }
   }
 
-  // Combine across all types + site prep
-  let jobMaterialTotal = 0
-  let jobLabourTotal = 0
-  let jobAdjustedTotal = 0
-  let jobBaseTotal = 0
-
-  // Site preparation
-  const sitePrepTotals = getAdjustedTotal(sitePrepResult)
-  jobMaterialTotal += sitePrepTotals.material
-  jobLabourTotal += sitePrepTotals.labour
-  jobAdjustedTotal += sitePrepTotals.adjusted
-  jobBaseTotal += sitePrepTotals.base
-
-  // Per-type totals
+  // Per-type sections
   for (const result of Object.values(perTypeResults)) {
-    const totals = getAdjustedTotal(result)
-    jobMaterialTotal += totals.material
-    jobLabourTotal += totals.labour
-    jobAdjustedTotal += totals.adjusted
-    jobBaseTotal += totals.base
+    for (const [key, totals] of Object.entries(result.sectionTotals)) {
+      const contribution = sectionAdjustedTotal(key, totals.sectionTotal)
+      if (sectionOptionalFlags[key]) {
+        // Optional section — only count if included
+        if (isSectionIncluded(key)) {
+          optionalIncludedTotal += contribution
+        }
+      } else {
+        mandatoryWorksTotal += contribution
+      }
+    }
   }
 
-  const jobNetAdjustment = jobAdjustedTotal - jobBaseTotal
-  const jobSubtotal = jobAdjustedTotal + overheadAmount
+  const combinedWorksTotal = mandatoryWorksTotal + optionalIncludedTotal
+  const jobSubtotal = combinedWorksTotal + overheadAmount
   const jobVAT = jobSubtotal * 0.20
   const jobGrandTotalIncVAT = jobSubtotal + jobVAT
+
+  // Does this job have any optional sections that actually have line items?
+  const hasOptionalSections = Object.keys(sectionOptionalFlags).some(
+    k => sectionOptionalFlags[k]
+  )
 
   // Loading state
   if (isLoading) {
@@ -394,7 +486,6 @@ export default function CostingReviewPage() {
       <header className="sticky top-0 z-20 glass border-b border-white/10 px-4 lg:px-8 py-4 mb-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
-            {/* Back button */}
             <Link
               href={`/surveys/${projectId}`}
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
@@ -403,25 +494,23 @@ export default function CostingReviewPage() {
               <span className="hidden sm:inline">Back to Survey</span>
             </Link>
 
-            {/* Title */}
             <div className="text-center">
               <h1 className="text-xl font-semibold text-white">Survey Costing</h1>
               <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
             </div>
 
-            {/* Spacer for alignment */}
             <div className="w-[120px]" />
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
+
         {/* ════════════════════════════════════════════════════════════
             SITE PREPARATION & LOGISTICS — job-level, above tabs
            ════════════════════════════════════════════════════════════ */}
         {sitePrepResult && sitePrepSortedSections.length > 0 && (
           <div className="mb-8">
-            {/* Section heading with visual distinction */}
             <div className="flex items-center gap-3 mb-4">
               <HardHat className="w-5 h-5 text-emerald-400" />
               <h2 className="text-lg font-semibold text-white">Site Preparation & Logistics</h2>
@@ -441,6 +530,11 @@ export default function CostingReviewPage() {
                     onAdjustmentChange={(value) =>
                       handleAdjustmentChange(sectionKey, 'site_preparation', value)
                     }
+                    isOptional={sectionOptionalFlags[sectionKey] ?? false}
+                    isIncluded={isSectionIncluded(sectionKey)}
+                    onInclusionToggle={(included) =>
+                      handleInclusionToggle(sectionKey, 'site_preparation', included)
+                    }
                   />
                 </div>
               ))}
@@ -451,18 +545,22 @@ export default function CostingReviewPage() {
               <div className="text-sm text-white/70">
                 Site Preparation Subtotal:{' '}
                 <span className="text-white font-semibold">
-                  {formatCurrency(sitePrepTotals.adjusted)}
+                  {formatCurrency(
+                    Object.entries(sitePrepResult.sectionTotals).reduce(
+                      (sum, [key, totals]) => sum + sectionAdjustedTotal(key, totals.sectionTotal),
+                      0
+                    )
+                  )}
                 </span>
               </div>
             </div>
 
-            {/* Visual separator between job-level and per-type sections */}
             <div className="mt-6 border-t border-white/10" />
           </div>
         )}
 
         {/* ════════════════════════════════════════════════════════════
-            PROJECT SPECIFIC OVERHEADS — job-level, single calculation
+            PROJECT SPECIFIC OVERHEADS
            ════════════════════════════════════════════════════════════ */}
         {overheadAmount > 0 && (
           <div className="mb-8">
@@ -499,7 +597,6 @@ export default function CostingReviewPage() {
               </div>
             </Card>
 
-            {/* Visual separator */}
             <div className="mt-6 border-t border-white/10" />
           </div>
         )}
@@ -508,14 +605,13 @@ export default function CostingReviewPage() {
             PER-TYPE SURVEY SECTIONS — tabs for damp, timber, etc.
            ════════════════════════════════════════════════════════════ */}
 
-        {/* Survey Type Tabs (if multiple survey types) */}
+        {/* Survey Type Tabs */}
         {surveyTypes.length > 1 && (
           <div className="mb-6">
             <div className="flex gap-2 overflow-x-auto pb-2">
               {surveyTypes.map((surveyType) => {
                 const colors = SURVEY_TYPE_COLORS[surveyType]
                 const isActive = surveyType === activeSurveyType
-
                 return (
                   <button
                     key={surveyType}
@@ -549,6 +645,11 @@ export default function CostingReviewPage() {
                 onAdjustmentChange={(value) =>
                   handleAdjustmentChange(sectionKey, activeSurveyType, value)
                 }
+                isOptional={sectionOptionalFlags[sectionKey] ?? false}
+                isIncluded={isSectionIncluded(sectionKey)}
+                onInclusionToggle={(included) =>
+                  handleInclusionToggle(sectionKey, activeSurveyType, included)
+                }
               />
             ))}
 
@@ -558,7 +659,11 @@ export default function CostingReviewPage() {
                 <div className="text-sm text-white/70">
                   {SURVEY_TYPE_NAMES[activeSurveyType] || activeSurveyType} Subtotal:{' '}
                   <span className="text-white font-semibold">
-                    {formatCurrency(getAdjustedTotal(activeResult).adjusted)}
+                    {formatCurrency(
+                      Object.entries(activeResult.sectionTotals)
+                        .filter(([key]) => isSectionIncluded(key))
+                        .reduce((sum, [key, totals]) => sum + sectionAdjustedTotal(key, totals.sectionTotal), 0)
+                    )}
                   </span>
                 </div>
               </div>
@@ -567,7 +672,7 @@ export default function CostingReviewPage() {
         )}
 
         {/* ════════════════════════════════════════════════════════════
-            COMBINED JOB GRAND TOTAL
+            COMBINED JOB GRAND TOTAL — sticky footer
            ════════════════════════════════════════════════════════════ */}
         <Card className="glass border-white/10 overflow-hidden sticky bottom-4">
           <div className="px-6 py-4 bg-gradient-to-br from-brand-500/20 to-brand-600/20">
@@ -577,43 +682,40 @@ export default function CostingReviewPage() {
             </h2>
 
             <div className="space-y-3">
-              {/* Materials Total */}
+              {/* Mandatory works total */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-white/70">
-                  <Package className="w-4 h-4" />
-                  <span>Total Materials</span>
+                  <span>Mandatory Works</span>
                 </div>
                 <span className="text-white font-medium">
-                  {formatCurrency(jobMaterialTotal)}
+                  {formatCurrency(mandatoryWorksTotal)}
                 </span>
               </div>
 
-              {/* Labour Total */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-white/70">
-                  <Wrench className="w-4 h-4" />
-                  <span>Total Labour</span>
-                </div>
-                <span className="text-white font-medium">
-                  {formatCurrency(jobLabourTotal)}
-                </span>
-              </div>
-
-              {/* Net Section Adjustments */}
-              {jobNetAdjustment !== 0 && (
+              {/* Optional included total — only shown when the job has optional sections */}
+              {hasOptionalSections && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-white/70">
-                    <span>Section Adjustments</span>
+                    <ListChecks className="w-4 h-4 text-amber-400/70" />
+                    <span>
+                      Optional Works <span className="text-xs">(included)</span>
+                    </span>
                   </div>
-                  <span
-                    className={`font-medium ${
-                      jobNetAdjustment > 0 ? 'text-green-400' : 'text-amber-400'
-                    }`}
-                  >
-                    {jobNetAdjustment > 0 ? `+${formatCurrency(jobNetAdjustment)}` : formatCurrency(jobNetAdjustment)}
+                  <span className={`font-medium ${optionalIncludedTotal > 0 ? 'text-white' : 'text-white/40'}`}>
+                    {formatCurrency(optionalIncludedTotal)}
                   </span>
                 </div>
               )}
+
+              {/* Combined total */}
+              <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                <span className="text-white/90 font-medium">
+                  Combined Works
+                </span>
+                <span className="text-white font-semibold">
+                  {formatCurrency(combinedWorksTotal)}
+                </span>
+              </div>
 
               {/* Project Specific Overheads */}
               {overheadAmount > 0 && (
