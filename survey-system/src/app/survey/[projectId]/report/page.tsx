@@ -53,6 +53,8 @@ const REVIEWABLE_SECTIONS = new Set([
   'room_findings',
   'condensation_causes',
   'party_wall_notification',
+  'scope_of_works',
+  'treatment_methodology',
   'summary_of_works',
   'surveyor_comments',
   'surveyor_profile',
@@ -933,6 +935,11 @@ function SectionContent({ section, showOriginal, photos }: SectionContentProps) 
     return <CondensationCausesEditorView data={section.data} content={displayContent} />
   }
 
+  // Treatment methodology: render structured step blocks
+  if (section.key === 'treatment_methodology') {
+    return <TreatmentMethodologyEditorView data={section.data} content={displayContent} />
+  }
+
   // Render based on section type
   switch (section.type) {
     case 'cover':
@@ -1135,6 +1142,64 @@ function CondensationCausesEditorView({
         The recommended works detailed in the Scope of Works section are designed to address
         these underlying causes and provide long-term resolution.
       </p>
+    </div>
+  )
+}
+
+// Treatment methodology admin view — structured step blocks on dark background
+function TreatmentMethodologyEditorView({
+  data,
+  content,
+}: {
+  data: Record<string, unknown>
+  content: string
+}) {
+  const methodologies = (
+    data?.methodologies as
+      | Array<{ id: string; title: string; intro: string; steps: string[] }>
+      | undefined
+  ) ?? []
+
+  if (methodologies.length === 0) {
+    return <TextContent content={content} />
+  }
+
+  const HEADER_COLOURS: Record<string, { bg: string; text: string }> = {
+    cavity_drain_membrane: { bg: 'bg-blue-900/40', text: 'text-blue-200' },
+    cementitious_tanking:  { bg: 'bg-blue-900/40', text: 'text-blue-200' },
+    dpc_injection:         { bg: 'bg-blue-900/40', text: 'text-blue-200' },
+    wet_rot_treatment:     { bg: 'bg-green-900/40', text: 'text-green-200' },
+    dry_rot_treatment:     { bg: 'bg-amber-900/40', text: 'text-amber-200' },
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-white/60 text-sm italic">
+        {methodologies.length} treatment methodology sequence{methodologies.length !== 1 ? 's' : ''} generated:
+      </p>
+      {methodologies.map((m) => {
+        const colours = HEADER_COLOURS[m.id] ?? { bg: 'bg-white/5', text: 'text-white/80' }
+        return (
+          <div key={m.id} className="rounded-lg border border-white/10 overflow-hidden">
+            <div className={`${colours.bg} px-4 py-2.5 border-b border-white/10`}>
+              <p className={`text-sm font-semibold ${colours.text}`}>{m.title}</p>
+            </div>
+            <div className="px-4 py-3 bg-white/5">
+              <p className="text-xs text-white/50 italic mb-3">{m.intro}</p>
+              <ol className="space-y-2">
+                {m.steps.map((step, idx) => (
+                  <li key={idx} className="flex gap-3">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 text-white/60 text-xs font-bold flex items-center justify-center mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <p className="text-sm text-white/80 leading-snug">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

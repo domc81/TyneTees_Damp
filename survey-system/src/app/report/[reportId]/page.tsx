@@ -27,6 +27,7 @@ import { ScopeOfWorksSection } from '@/components/report/ScopeOfWorksSection'
 import { BoilerplateSection } from '@/components/report/BoilerplateSection'
 import { SurveyorProfileSection } from '@/components/report/SurveyorProfileSection'
 import { CondensationCausesSection } from '@/components/report/CondensationCausesSection'
+import { TreatmentMethodologySection } from '@/components/report/TreatmentMethodologySection'
 import { PhotoLightbox } from '@/components/report/PhotoLightbox'
 
 // =============================================================================
@@ -302,6 +303,9 @@ function renderSection(
 
     case 'scope_of_works':
       return <ScopeOfWorksSection key={section.key} section={section} />
+
+    case 'treatment_methodology':
+      return <TreatmentMethodologySection key={section.key} section={section} />
 
     case 'ancillary_items':
     case 'extent_of_survey':

@@ -318,6 +318,154 @@ function buildCondensationCausesContent(
 }
 
 // =============================================================================
+// Treatment Methodology — Professional process sequences for damp & timber
+// =============================================================================
+
+interface TreatmentMethodology {
+  id: string
+  title: string
+  intro: string
+  steps: string[]
+}
+
+const METHODOLOGY_MEMBRANE: TreatmentMethodology = {
+  id: 'cavity_drain_membrane',
+  title: 'Cavity Drain Membrane System',
+  intro:
+    'Where cavity drain membrane has been specified, the following treatment sequence will be followed:',
+  steps: [
+    'Remove existing plaster to all affected wall surfaces',
+    'Remove skirting boards from affected areas',
+    'Prepare wall surfaces — remove all loose material and clean down to a sound substrate',
+    'Install cavity drain membrane to manufacturer\'s specifications, mechanically fixed at regular centres',
+    'Seal all joints and edges using approved jointing tape and sealant to prevent water bypass',
+    'Install plasterboard over the membrane, fixed back to the solid wall at regular centres',
+    'Apply multi-finish skim coat plaster to achieve a smooth finished surface',
+    'Reinstate skirting boards to all treated areas',
+    'Remove and dispose of all arising waste materials via licensed carrier',
+  ],
+}
+
+const METHODOLOGY_TANKING: TreatmentMethodology = {
+  id: 'cementitious_tanking',
+  title: 'Cementitious Tanking System',
+  intro:
+    'Where cementitious tanking has been specified, the following treatment sequence will be followed:',
+  steps: [
+    'Remove existing plaster finishes and contaminated render to all affected areas',
+    'Hack back to a sound substrate, removing all loose and friable material',
+    'Apply first coat of cementitious tanking slurry to the prepared surface',
+    'Allow first coat to cure, then apply second coat at right angles to the first to ensure full coverage',
+    'Form cove fillets at all wall/floor junctions to prevent bridging and maintain a continuous waterproof barrier',
+    'Apply renovation plaster system over the tanked surface to achieve a finished level',
+    'Remove and dispose of all arising waste materials via licensed carrier',
+  ],
+}
+
+const METHODOLOGY_DPC_INJECTION: TreatmentMethodology = {
+  id: 'dpc_injection',
+  title: 'Chemical Damp Proof Course Injection',
+  intro:
+    'Where chemical DPC injection has been specified, the following treatment sequence will be followed:',
+  steps: [
+    'Drill injection holes at prescribed centres (typically 100–115mm apart) along the mortar course at a minimum of 150mm above external ground level',
+    'Inject BBA-approved chemical DPC cream into each hole under controlled pressure, ensuring full penetration of the masonry',
+    'Reinstate all drill holes using a sand and cement mortar to a flush finish',
+    'Allow to fully cure before application of associated plaster works above the injection line',
+  ],
+}
+
+const METHODOLOGY_WET_ROT: TreatmentMethodology = {
+  id: 'wet_rot_treatment',
+  title: 'Schedule for Treatment of Wet Rot',
+  intro:
+    'Where wet rot (Coniophora puteana or similar species) has been identified, the following treatment sequence will be followed:',
+  steps: [
+    'Identify and mark all affected timber — treatment and cutting back will extend a minimum of 300mm beyond the last visible signs of decay',
+    'Provide adequate support to the structure above the affected area as required during works',
+    'Carefully remove and cut out all decayed timber to the prescribed margins beyond visible decay',
+    'Grind back and clean mortar courses on all adjacent and exposed brickwork faces',
+    'Wire scrub all exposed masonry faces to remove fungal material',
+    'Apply fungicidal preservative treatment to all exposed timber surfaces and adjacent masonry',
+    'Wrap the ends of all replacement timbers in DPC material where they are to be built into masonry',
+    'Install pre-treated replacement structural timbers of the appropriate specification',
+    'Reinstate flooring and finishes as applicable',
+    'Remove all arising debris, bag and remove from site',
+    'Clean down working area and dispose of all waste via licensed carrier',
+  ],
+}
+
+const METHODOLOGY_DRY_ROT: TreatmentMethodology = {
+  id: 'dry_rot_treatment',
+  title: 'Schedule for Treatment of Dry Rot',
+  intro:
+    'Where dry rot (Serpula lacrymans) has been identified, the following treatment sequence will be followed. Note: dry rot mycelium is capable of spreading through masonry — cutting back will therefore extend a minimum of 1 metre beyond the last visible signs of growth:',
+  steps: [
+    'Identify and mark all affected timber and masonry — cutting back will extend a minimum of 1 metre beyond the last visible signs of Serpula lacrymans growth',
+    'Provide adequate support to the structure above the affected area as required during works',
+    'Carefully remove and cut out all decayed timber to the prescribed margins beyond visible decay',
+    'Grind back and clean mortar courses on all adjacent and exposed brickwork faces',
+    'Wire scrub all exposed masonry faces to remove fungal growth and mycelium',
+    'Apply sterilant treatment (Wykabor 20 or equivalent biocide) to all affected masonry surfaces by brush application',
+    'Install irrigation tubes into masonry for ongoing sterilant dosing where the extent of mycelium penetration warrants continued treatment',
+    'Apply fungicidal preservative treatment to all exposed timber surfaces and adjacent masonry',
+    'Wrap the ends of all replacement timbers in DPC material where they are to be built into masonry',
+    'Install pre-treated replacement structural timbers of the appropriate specification',
+    'Reinstate flooring and finishes as applicable',
+    'Remove all arising debris, bag and remove from site',
+    'Clean down working area and dispose of all waste via licensed carrier',
+  ],
+}
+
+function buildTreatmentMethodologyContent(
+  dampRooms: any[],
+  timberRooms: any[]
+): { content: string; data: { methodologies: TreatmentMethodology[] } } | null {
+  const methodologies: TreatmentMethodology[] = []
+
+  // Damp: check wall treatments and DPC type
+  const hasMembraneWalls = dampRooms.some(
+    (r) => (r.room_data as any)?.damp?.wall_treatment === 'membrane'
+  )
+  const hasTankingWalls = dampRooms.some(
+    (r) => (r.room_data as any)?.damp?.wall_treatment === 'tanking'
+  )
+  const hasDpcInjection = dampRooms.some(
+    (r) =>
+      (r.room_data as any)?.damp?.dpc_required === true &&
+      (r.room_data as any)?.damp?.dpc_type === 'traditional'
+  )
+
+  if (hasMembraneWalls) methodologies.push(METHODOLOGY_MEMBRANE)
+  if (hasTankingWalls) methodologies.push(METHODOLOGY_TANKING)
+  if (hasDpcInjection) methodologies.push(METHODOLOGY_DPC_INJECTION)
+
+  // Timber: check fungal findings
+  const hasDryRot = timberRooms.some(
+    (r) =>
+      (r.room_data?.timber_decay as TimberRoomData)?.fungal_findings?.includes('dry_rot')
+  )
+  const hasWetRot = timberRooms.some(
+    (r) =>
+      (r.room_data?.timber_decay as TimberRoomData)?.fungal_findings?.includes('wet_rot')
+  )
+
+  if (hasDryRot) methodologies.push(METHODOLOGY_DRY_ROT)
+  if (hasWetRot) methodologies.push(METHODOLOGY_WET_ROT)
+
+  if (methodologies.length === 0) return null
+
+  // Plain text fallback for edit mode and PDF
+  const textParts = methodologies.map((m) => {
+    const stepsText = m.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+    return `${m.title}\n\n${m.intro}\n\n${stepsText}`
+  })
+  const content = textParts.join('\n\n---\n\n')
+
+  return { content, data: { methodologies } }
+}
+
+// =============================================================================
 // Section Builder Helper
 // =============================================================================
 
@@ -1243,6 +1391,27 @@ export async function generateReport(
       }
     )
   )
+
+  // --- TREATMENT METHODOLOGY ---
+  // Detailed step-by-step treatment sequences for damp and timber surveys.
+  // Only generated when at least one recognisable treatment type is present.
+  // Not included for condensation (has its own causes section) or woodworm
+  // (handled separately in the woodworm treatment section R2).
+  if (dampRooms.length > 0 || timberRooms.length > 0) {
+    const methodologyResult = buildTreatmentMethodologyContent(dampRooms, timberRooms)
+    if (methodologyResult) {
+      sections.push(
+        buildSection(
+          'treatment_methodology',
+          'Treatment Methodology',
+          'treatment',
+          'template',
+          methodologyResult.content,
+          methodologyResult.data
+        )
+      )
+    }
+  }
 
   // --- SURVEYOR ADDITIONAL COMMENTS ---
   // Only included when the surveyor has entered non-empty free text.
