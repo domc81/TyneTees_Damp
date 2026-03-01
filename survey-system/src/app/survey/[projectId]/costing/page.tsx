@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks, Receipt } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks, Receipt, Download } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
@@ -19,6 +19,7 @@ import {
   type CalculatedLine,
 } from '@/lib/pricing-data'
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
+import { generateCFCSV } from '@/lib/cf-csv-export'
 import { getSupabase } from '@/lib/supabase-client'
 import type { PricingConfig } from '@/lib/pricing-engine'
 import Layout from '@/components/layout'
@@ -288,6 +289,8 @@ export default function CostingReviewPage() {
   } | null>(null)
   // Generate button loading state
   const [isGenerating, setIsGenerating] = useState(false)
+  // CF CSV export feedback message (auto-clears)
+  const [cfExportMessage, setCfExportMessage] = useState<string | null>(null)
 
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -481,6 +484,46 @@ export default function CostingReviewPage() {
       setError(err instanceof Error ? err.message : 'Failed to generate quotation')
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  // Download CF CSV — client-side export for Contractor Foreman import
+  function handleDownloadCFCSV() {
+    if (!travelOverhead) return
+
+    // Guard: if every line has zero cost, nothing meaningful to export
+    const hasAnyCost = Object.values(costingResults).some(result =>
+      result.lines.some(line => line.result.materialTotal > 0 || line.result.labourTotal > 0)
+    )
+
+    if (!hasAnyCost) {
+      setCfExportMessage('No costing data to export')
+      setTimeout(() => setCfExportMessage(null), 4000)
+      return
+    }
+
+    try {
+      const { csv, filename } = generateCFCSV(
+        costingResults,
+        travelOverhead,
+        sectionAdjustments,
+        surveyTypes,
+        projectId
+      )
+      // Prepend UTF-8 BOM so Excel auto-detects encoding (prevents garbled £ signs)
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('CF CSV export failed:', err)
+      setCfExportMessage(err instanceof Error ? err.message : 'Export failed')
+      setTimeout(() => setCfExportMessage(null), 4000)
     }
   }
 
@@ -904,6 +947,12 @@ export default function CostingReviewPage() {
             </div>
           )}
 
+          {cfExportMessage && (
+            <div className="text-center text-sm text-amber-400/80">
+              {cfExportMessage}
+            </div>
+          )}
+
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
               variant="ghost"
@@ -917,6 +966,15 @@ export default function CostingReviewPage() {
             >
               <FileText className="w-4 h-4 mr-2" />
               Generate Report
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleDownloadCFCSV}
+              disabled={isLoading || Object.keys(costingResults).length === 0 || !travelOverhead}
+              title="Download CSV for Contractor Foreman"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download CF CSV
             </Button>
             <Button
               variant="primary"
