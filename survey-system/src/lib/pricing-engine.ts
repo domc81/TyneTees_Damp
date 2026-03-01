@@ -330,8 +330,11 @@ export function calcDpcInjection(
     ?? 0.30
 
   // Calculate material cost
+  // Quantity = depth × linear_metres (each half-brick leaf needs injection)
+  // Material scales with depth twice: once in quantity, once in cream rate formula
+  const effectiveQuantity = wallDepth * linearMeters
   const materialUnitCost = creamCostPerLM
-  const materialAdjustedCost = creamCostPerLM * wastageFactor * linearMeters
+  const materialAdjustedCost = creamCostPerLM * wastageFactor * effectiveQuantity
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // Get labour rate
