@@ -43,6 +43,8 @@ import type {
 } from '@/types/survey-report.types'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 import { getSupabase } from '@/lib/supabase-client'
+import Layout from '@/components/layout'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 // Section categories
 const REVIEWABLE_SECTIONS = new Set([
@@ -394,6 +396,8 @@ export default function ReportEditorPage() {
   const statusColors = STATUS_COLORS[report.status]
 
   return (
+    <ProtectedRoute>
+      <Layout>
     <div className="min-h-screen pb-8">
       {/* Header */}
       <header className="sticky top-0 z-20 glass border-b border-white/10 px-4 lg:px-8 py-4 mb-8">
@@ -721,6 +725,8 @@ export default function ReportEditorPage() {
         </div>
       </div>
     </div>
+      </Layout>
+    </ProtectedRoute>
   )
 }
 

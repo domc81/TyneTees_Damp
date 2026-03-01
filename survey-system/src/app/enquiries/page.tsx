@@ -23,6 +23,8 @@ import {
   Wind,
   Home,
 } from 'lucide-react'
+import Layout from '@/components/layout'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 // Sample enquiry data
 const sampleEnquiries = [
@@ -121,22 +123,21 @@ export default function EnquiriesPage() {
   })
 
   return (
-    <div className="min-h-screen bg-surface-50">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-white border-b border-surface-200 px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-surface-900">Enquiries</h1>
-            <p className="text-sm text-surface-500">{filteredEnquiries.length} enquiries</p>
+    <ProtectedRoute>
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Enquiries</h2>
+              <p className="text-sm text-white/60">{filteredEnquiries.length} enquiries</p>
+            </div>
+            <Link href="/enquiries/new" className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              New Enquiry
+            </Link>
           </div>
-          <Link href="/enquiries/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Enquiry
-          </Link>
-        </div>
-      </header>
 
-      <div className="p-8">
+          <div>
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
@@ -252,8 +253,10 @@ export default function EnquiriesPage() {
           <WorkflowCard title="Awaiting Quote" count={enquiries.filter(e => e.status === 'surveyed').length} icon={Calculator} color="text-amber-600" />
           <WorkflowCard title="Quoted" count={enquiries.filter(e => e.status === 'quoted').length} icon={FileText} color="text-emerald-600" />
         </div>
-      </div>
-    </div>
+          </div>
+        </div>
+      </Layout>
+    </ProtectedRoute>
   )
 }
 

@@ -11,6 +11,8 @@ import {
   MapPin,
   Calendar,
 } from 'lucide-react'
+import Layout from '@/components/layout'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 const surveyTypes = [
   { value: 'damp', label: 'Damp Survey', description: 'Rising damp, penetrating damp, tanking' },
@@ -53,21 +55,19 @@ export default function NewEnquiryPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-10 glass border-b border-white/10 px-8 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/enquiries" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-white/70" />
-          </Link>
+    <ProtectedRoute>
+      <Layout>
+        <div className="space-y-6">
           <div>
-            <h1 className="text-xl font-bold text-white">New Enquiry</h1>
+            <Link href="/enquiries" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Enquiries
+            </Link>
+            <h2 className="text-2xl font-bold text-white mt-2">New Enquiry</h2>
             <p className="text-sm text-white/50">Create new enquiry and assign surveyor</p>
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-4xl mx-auto p-4 lg:p-8">
+          <div className="max-w-4xl">
         {/* Progress */}
         <div className="flex items-center gap-4 mb-8">
           <ProgressStep number="1" label="Client" active={step === 'client'} />
@@ -242,8 +242,10 @@ export default function NewEnquiryPage() {
             </div>
           )}
         </form>
-      </div>
-    </div>
+          </div>
+        </div>
+      </Layout>
+    </ProtectedRoute>
   )
 }
 

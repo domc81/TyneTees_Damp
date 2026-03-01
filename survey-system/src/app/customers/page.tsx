@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { getCustomers, getCustomer } from '@/lib/supabase-data'
 import type { Customer } from '@/lib/supabase-data'
+import Layout from '@/components/layout'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -87,31 +89,21 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-10 glass border-b border-white/10 px-4 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-white/70" />
-            </Link>
+    <ProtectedRoute>
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
             <div>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-              <Users className="w-6 h-6 text-white/40" />
-              Customers
-            </h2>
-            <p className="text-sm text-white/60">Manage your customer records</p>
+              <h2 className="text-2xl font-bold text-white">Customers</h2>
+              <p className="text-sm text-white/60">Manage your customer records</p>
             </div>
+            <Link href="/customers/new" className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              New Customer
+            </Link>
           </div>
-          <Link href="/customers/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Customer
-          </Link>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="p-4 lg:p-8">
+          <div>
         {/* Search and Stats */}
         <div className="glass-card mb-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6">
@@ -232,7 +224,9 @@ export default function CustomersPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+          </div>
+        </div>
+      </Layout>
+    </ProtectedRoute>
   )
 }
