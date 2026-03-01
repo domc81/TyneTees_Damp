@@ -728,6 +728,15 @@ export async function generateReport(
     }
 
     // a. DAMP: Build wall table data
+    //
+    // TODO DATA GAP [R10]: DampRoomData has no plaster defect type fields.
+    // The workbooks document specific plaster defects: shadow banding, salt efflorescence
+    // (salting), loss of key, and blown plaster. DampRoomData only captures treatment areas
+    // (stud_wall_area, plasterboard_area, skim_area) — not the defect classification.
+    // To enable per-room plaster defect findings, add to DampRoomData:
+    //   plaster_defects?: Array<'shadow_banding' | 'efflorescence' | 'loss_of_key' | 'blown_plaster'>
+    // and capture in the wizard damp room form. Once available, include in roomContent
+    // and the wall data object for display in the Affected Areas table.
     const walls: any[] = []
     if (dampData?.walls && Array.isArray(dampData.walls)) {
       const treatmentCode = dampData.wall_treatment
@@ -809,6 +818,14 @@ export async function generateReport(
         flooring_area: timberData?.flooring_area || 0,
         ceiling_affected: timberData?.ceiling_affected || false,
         ceiling_area: timberData?.ceiling_area || 0,
+        // TODO DATA GAP [R11]: TimberRoomData.ceiling_affected is a boolean only.
+        // The workbooks document 8 ceiling defect types per room (e.g. water staining,
+        // cracking, sagging, collapse risk, rot, damp ingress, mould, missing material).
+        // No detailed ceiling defect classification is currently captured by the wizard.
+        // To enable detailed ceiling findings, add to TimberRoomData:
+        //   ceiling_defect_types?: Array<'water_staining' | 'cracking' | 'sagging'
+        //     | 'collapse_risk' | 'rot' | 'damp_ingress' | 'mould' | 'missing_material'>
+        // and capture in the wizard timber room form.
       }
     }
 
@@ -1613,17 +1630,47 @@ export async function generateReport(
     })
   }
 
+  // R12 trigger: condensation survey that includes PIV or extractor fan installations.
+  // PIV requires electrical connection; fans may also need rewiring to comply with BS 7671.
+  const hasPivOrFan =
+    condensationRooms.length > 0 &&
+    ((aw?.piv_count || 0) > 0 ||
+      condensationRooms.some(
+        (r) =>
+          (r.room_data?.condensation as CondensationRoomData | undefined)
+            ?.fan_recommended
+      ))
+
+  // R12 — Electrical standards note (appended to content for PDF; also stored in data for styled web rendering)
+  const ELECTRICAL_STANDARDS_NOTE =
+    "Please note that the installation of ventilation equipment requires the electrical supply to meet current standards (BS 7671). If the property's electrical system does not meet current standards, remedial electrical work may be required prior to installation. This is not included in the quotation."
+
+  // R13 — Asbestos awareness paragraph (triggered when any strip-out work is present)
+  const ASBESTOS_NOTE =
+    'Properties built before 2000 may contain asbestos-containing materials (ACMs). Where our works require disturbance of materials that may contain asbestos, a sampling and testing service is available. If asbestos-containing materials are identified, specialist removal will be arranged in accordance with the Control of Asbestos Regulations 2012 prior to the commencement of treatment works.'
+
+  let scopeContent =
+    'The following schedule of works has been specified based on our survey findings. Works are listed by location and treatment sequence.'
+  if (hasPivOrFan) {
+    scopeContent += `\n\n${ELECTRICAL_STANDARDS_NOTE}`
+  }
+  if (hasStripOut) {
+    scopeContent += `\n\n${ASBESTOS_NOTE}`
+  }
+
   sections.push(
     buildSection(
       'scope_of_works',
       'Scope of Proposed Works',
       'data',
       'survey_data',
-      'The following schedule of works has been specified based on our survey findings. Works are listed by location and treatment sequence.',
+      scopeContent,
       {
         room_works: roomWorks,
         additional_works: scopeAdditionalWorks,
         total_affected_area: `${totalAffectedArea.toFixed(1)}m²`,
+        electrical_standards_note: hasPivOrFan ? ELECTRICAL_STANDARDS_NOTE : null,
+        asbestos_note: hasStripOut ? ASBESTOS_NOTE : null,
       }
     )
   )

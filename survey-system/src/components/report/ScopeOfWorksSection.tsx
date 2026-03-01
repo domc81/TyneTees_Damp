@@ -42,6 +42,8 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
   const roomWorks = (data.room_works as RoomWork[]) ?? []
   const additionalWorks = (data.additional_works as WorkItem[]) ?? []
   const totalAffectedArea = data.total_affected_area as string | undefined
+  const electricalNote = data.electrical_standards_note as string | null | undefined
+  const asbestosNote = data.asbestos_note as string | null | undefined
 
   return (
     <section
@@ -143,6 +145,26 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {/* R12 — Electrical standards note */}
+      {electricalNote && (
+        <div className="mb-4 flex gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-[#374151] leading-relaxed">
+            <span className="font-semibold">Electrical Standards (BS 7671): </span>
+            {electricalNote}
+          </p>
+        </div>
+      )}
+
+      {/* R13 — Asbestos awareness notice */}
+      {asbestosNote && (
+        <div className="mb-6 flex gap-3 bg-[#FFFBEB] border border-amber-300 rounded-lg px-4 py-3">
+          <p className="text-sm text-[#374151] leading-relaxed">
+            <span className="font-semibold">Asbestos Awareness (ACMs): </span>
+            {asbestosNote}
+          </p>
         </div>
       )}
 
