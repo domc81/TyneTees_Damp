@@ -3,12 +3,12 @@
 // Singleton table: exactly one row, never inserted/deleted from the app.
 // =============================================================================
 
-import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createServerClient as createSSRClient } from '@supabase/ssr'
 import type { CompanyProfile, CompanyProfileUpdate } from '@/types/database.types'
 
 // =============================================================================
-// Service-role client — bypasses RLS, usable without user session
+// Service-role client — bypasses RLS, usable without user session.
+// All data operations use this client; callers verify auth separately.
 // =============================================================================
 
 function createServiceRoleClient() {
@@ -25,27 +25,6 @@ function createServiceRoleClient() {
 // =============================================================================
 // Read
 // =============================================================================
-
-/**
- * Fetch the singleton company profile row.
- * Uses the server client (cookie-based auth → RLS requires authenticated).
- */
-export async function getCompanyProfile(): Promise<CompanyProfile> {
-  const supabase = createServerClient()
-
-  const { data, error } = await supabase
-    .from('company_profile')
-    .select('*')
-    .single()
-
-  if (error || !data) {
-    throw new Error(
-      `Failed to load company profile: ${error?.message ?? 'no data returned'}`
-    )
-  }
-
-  return data as CompanyProfile
-}
 
 /**
  * Fetch the singleton company profile using the service-role key.
@@ -76,11 +55,12 @@ export async function getCompanyProfilePublic(): Promise<CompanyProfile> {
 /**
  * Partial-update the singleton company profile.
  * Returns the full updated row.
+ * Uses service-role client — callers must verify auth before calling.
  */
 export async function updateCompanyProfile(
   updates: CompanyProfileUpdate
 ): Promise<CompanyProfile> {
-  const supabase = createServerClient()
+  const supabase = createServiceRoleClient()
 
   const { data, error } = await supabase
     .from('company_profile')
@@ -133,7 +113,8 @@ export async function uploadCompanyLogo(
     )
   }
 
-  const supabase = createServerClient()
+  // Use service-role client — callers must verify auth before calling
+  const supabase = createServiceRoleClient()
 
   // 1. Read the current logo_url so we can delete the old file
   const { data: profile } = await supabase

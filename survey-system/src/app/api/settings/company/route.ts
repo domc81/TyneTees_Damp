@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
-import { getCompanyProfile, updateCompanyProfile } from '@/lib/company-profile'
+import { getCompanyProfilePublic, updateCompanyProfile } from '@/lib/company-profile'
 import type { CompanyProfileUpdate } from '@/types/database.types'
 
 // Fields that the PATCH endpoint accepts (prevents updating id, timestamps, etc.)
@@ -62,7 +62,9 @@ export async function GET() {
   }
 
   try {
-    const profile = await getCompanyProfile()
+    // Use service-role client for the read — auth already verified above.
+    // This avoids double cookie-based auth and RLS issues.
+    const profile = await getCompanyProfilePublic()
     return NextResponse.json(profile)
   } catch (err) {
     console.error('GET /api/settings/company error:', err)
