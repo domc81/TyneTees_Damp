@@ -30,14 +30,12 @@ export type {
   Defect,
   Photo,
   WorkSection,
+  MaterialsCatalogItem,
   PricingItem,
   SurveyCosting,
   BaseRate,
   MarkupConfig,
 }
-
-// Alias for backward compatibility — some files import 'Material'
-export type Material = MaterialsCatalogItem
 
 // ============================================================================
 // Photo URL Helper
@@ -673,7 +671,7 @@ export async function getWorkSections(): Promise<WorkSection[]> {
 // Materials Catalog
 // ============================================================================
 
-export async function getMaterials(category?: string): Promise<Material[]> {
+export async function getMaterials(category?: string): Promise<MaterialsCatalogItem[]> {
   const supabase = getSupabase()
   if (!supabase) return []
 
@@ -697,7 +695,7 @@ export async function getMaterials(category?: string): Promise<Material[]> {
   return data || []
 }
 
-export async function getMaterial(id: string): Promise<Material | null> {
+export async function getMaterial(id: string): Promise<MaterialsCatalogItem | null> {
   const supabase = getSupabase()
   if (!supabase) {
     console.error('Supabase client not available')
