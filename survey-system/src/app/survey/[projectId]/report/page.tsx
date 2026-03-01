@@ -55,6 +55,7 @@ const REVIEWABLE_SECTIONS = new Set([
   'party_wall_notification',
   'scope_of_works',
   'treatment_methodology',
+  'woodworm_treatment_methodology',
   'summary_of_works',
   'surveyor_comments',
   'surveyor_profile',
@@ -940,6 +941,11 @@ function SectionContent({ section, showOriginal, photos }: SectionContentProps) 
     return <TreatmentMethodologyEditorView data={section.data} content={displayContent} />
   }
 
+  // Woodworm treatment: methodology steps + amber safety warning + species note
+  if (section.key === 'woodworm_treatment_methodology') {
+    return <WoodwormTreatmentEditorView data={section.data} content={displayContent} />
+  }
+
   // Render based on section type
   switch (section.type) {
     case 'cover':
@@ -1200,6 +1206,87 @@ function TreatmentMethodologyEditorView({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// Woodworm treatment methodology + safety/exclusion zone warning
+function WoodwormTreatmentEditorView({
+  data,
+  content,
+}: {
+  data: Record<string, unknown>
+  content: string
+}) {
+  const methodology = data?.methodology as
+    | { id: string; title: string; intro: string; steps: string[] }
+    | undefined
+  const safetyPoints = (data?.safetyPoints as string[] | undefined) ?? []
+  const speciesNote = data?.speciesNote as
+    | { name: string; statusLabel: string }
+    | null
+    | undefined
+
+  if (!methodology) {
+    return <TextContent content={content} />
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Treatment steps block */}
+      <div className="rounded-lg border border-white/10 overflow-hidden">
+        <div className="bg-amber-900/30 px-4 py-2.5 border-b border-white/10">
+          <p className="text-sm font-semibold text-amber-200">{methodology.title}</p>
+        </div>
+        <div className="px-4 py-3 bg-white/5">
+          <p className="text-xs text-white/50 italic mb-3">{methodology.intro}</p>
+          <ol className="space-y-2">
+            {methodology.steps.map((step, idx) => (
+              <li key={idx} className="flex gap-3">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 text-white/60 text-xs font-bold flex items-center justify-center mt-0.5">
+                  {idx + 1}
+                </span>
+                <p className="text-sm text-white/80 leading-snug">{step}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      {/* Safety / Exclusion Zone warning */}
+      {safetyPoints.length > 0 && (
+        <div className="rounded-lg border border-amber-400/40 overflow-hidden">
+          <div className="bg-amber-500/20 px-4 py-2.5 border-b border-amber-400/30 flex items-center gap-2">
+            <span className="text-amber-300 text-base">⚠</span>
+            <p className="text-sm font-bold text-amber-200 uppercase tracking-wide">
+              Important Safety Information — Exclusion Zone
+            </p>
+          </div>
+          <div className="px-4 py-3 bg-amber-500/5">
+            <ul className="space-y-2">
+              {safetyPoints.map((point, idx) => (
+                <li key={idx} className="flex gap-3">
+                  <span className="flex-shrink-0 text-amber-400 mt-0.5">•</span>
+                  <p className="text-sm text-amber-100/80 leading-snug">{point}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Species identification note */}
+      {speciesNote && (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs font-semibold text-white/50 uppercase tracking-wide mb-1">
+            Species Identification
+          </p>
+          <p className="text-sm text-white/80">
+            <span className="font-medium">{speciesNote.name}</span>
+          </p>
+          <p className="text-sm text-white/60 mt-0.5">{speciesNote.statusLabel}</p>
+        </div>
+      )}
     </div>
   )
 }

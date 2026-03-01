@@ -417,6 +417,115 @@ const METHODOLOGY_DRY_ROT: TreatmentMethodology = {
   ],
 }
 
+const METHODOLOGY_WOODWORM_SPRAY: TreatmentMethodology = {
+  id: 'woodworm_microtec_spray',
+  title: 'Treatment Methodology — Microtec Spray Application',
+  intro:
+    'Where woodworm infestation has been identified, the following treatment sequence will be followed:',
+  steps: [
+    'Identification of affected timbers and extent of infestation',
+    'Assessment of structural integrity of affected timbers',
+    'Preparation of treatment area — clearing of loose debris, removal of dust and cobwebs',
+    'Masking and protection of electrical fittings, pipes, and adjacent surfaces',
+    'Application of micro-emulsion insecticide treatment (permethrin-based) to all accessible timbers using low-pressure spray equipment',
+    'Application of insecticidal paste to timbers where spray access is restricted',
+    'Treatment of all flight holes and surrounding timber surfaces',
+    'Post-treatment inspection and sign-off',
+    'Issue of treatment guarantee certificate',
+  ],
+}
+
+const WOODWORM_SAFETY_POINTS = [
+  'The property (or treated area) must be vacated during treatment and for a minimum of 1 hour after completion.',
+  'All windows and doors must be opened for ventilation once the exclusion period has ended.',
+  'Pets must be removed from the property during treatment. Aquariums and fish tanks must be covered and air pumps disconnected during treatment as the insecticide is toxic to aquatic life.',
+  'Food preparation surfaces must be covered or cleaned after treatment.',
+  'Any persons with respiratory conditions should consult their GP before re-entering treated areas.',
+  "Children's toys and play equipment in treated areas should be cleaned before use.",
+]
+
+const WOODWORM_SPECIES_LABELS: Record<string, string | null> = {
+  common_furniture_beetle: 'Common Furniture Beetle (Anobium punctatum)',
+  deathwatch_beetle: 'Deathwatch Beetle (Xestobium rufovillosum)',
+  house_longhorn: 'House Longhorn Beetle (Hylotrupes bajulus)',
+  powderpost_beetle: 'Powderpost Beetle (Lyctus brunneus)',
+  unknown: null,
+}
+
+const WOODWORM_STATUS_LABELS: Record<string, string> = {
+  active: 'Active infestation identified — fresh exit holes and/or frass observed.',
+  historic:
+    'Infestation appears to be historic — no fresh exit holes or frass observed at the time of inspection.',
+  uncertain:
+    'Infestation status uncertain — further monitoring recommended to confirm activity.',
+}
+
+interface WoodwormTreatmentData {
+  methodology: TreatmentMethodology
+  safetyPoints: string[]
+  speciesNote: { name: string; statusLabel: string } | null
+}
+
+function buildWoodwormTreatmentContent(
+  woodwormRooms: any[]
+): { content: string; data: WoodwormTreatmentData } {
+  // Collect unique identified species across rooms (excluding 'unknown')
+  const speciesSet = new Set<string>()
+  let firstStatus: string | null = null
+
+  for (const room of woodwormRooms) {
+    const ww = room.room_data?.woodworm as WoodwormRoomData | undefined
+    if (!ww) continue
+    if (ww.species_identified && ww.species_identified !== 'unknown') {
+      speciesSet.add(ww.species_identified)
+    }
+    if (!firstStatus && ww.infestation_status) {
+      firstStatus = ww.infestation_status
+    }
+  }
+
+  const speciesNames = Array.from(speciesSet)
+    .map((s) => WOODWORM_SPECIES_LABELS[s])
+    .filter(Boolean) as string[]
+
+  const speciesNote =
+    speciesNames.length > 0 && firstStatus
+      ? {
+          name: speciesNames.join(' / '),
+          statusLabel:
+            WOODWORM_STATUS_LABELS[firstStatus] ??
+            'Infestation status not recorded.',
+        }
+      : null
+
+  // Plain text fallback for PDF and edit mode
+  const methodologySteps = METHODOLOGY_WOODWORM_SPRAY.steps
+    .map((s, i) => `${i + 1}. ${s}`)
+    .join('\n')
+  const safetyText = WOODWORM_SAFETY_POINTS.map((p) => `• ${p}`).join('\n')
+  const speciesText = speciesNote
+    ? `\n\nSPECIES IDENTIFICATION\nSpecies: ${speciesNote.name}\n${speciesNote.statusLabel}`
+    : ''
+
+  const content =
+    `${METHODOLOGY_WOODWORM_SPRAY.title}\n\n` +
+    `${METHODOLOGY_WOODWORM_SPRAY.intro}\n\n` +
+    `${methodologySteps}\n\n` +
+    `---\n\n` +
+    `IMPORTANT SAFETY INFORMATION — Exclusion Zone\n\n` +
+    `${safetyText}` +
+    speciesText
+
+  return {
+    content,
+    data: {
+      methodology: METHODOLOGY_WOODWORM_SPRAY,
+      safetyPoints: WOODWORM_SAFETY_POINTS,
+      speciesNote,
+    },
+  }
+}
+
 function buildTreatmentMethodologyContent(
   dampRooms: any[],
   timberRooms: any[]
@@ -1392,11 +1501,10 @@ export async function generateReport(
     )
   )
 
-  // --- TREATMENT METHODOLOGY ---
+  // --- TREATMENT METHODOLOGY (damp / timber) ---
   // Detailed step-by-step treatment sequences for damp and timber surveys.
   // Only generated when at least one recognisable treatment type is present.
-  // Not included for condensation (has its own causes section) or woodworm
-  // (handled separately in the woodworm treatment section R2).
+  // Not included for condensation (has its own causes section).
   if (dampRooms.length > 0 || timberRooms.length > 0) {
     const methodologyResult = buildTreatmentMethodologyContent(dampRooms, timberRooms)
     if (methodologyResult) {
@@ -1411,6 +1519,23 @@ export async function generateReport(
         )
       )
     }
+  }
+
+  // --- WOODWORM TREATMENT METHODOLOGY & SAFETY INFORMATION ---
+  // Separate section from damp/timber because it includes mandatory exclusion
+  // zone / safety information that requires distinct visual treatment.
+  if (woodwormRooms.length > 0) {
+    const wwResult = buildWoodwormTreatmentContent(woodwormRooms)
+    sections.push(
+      buildSection(
+        'woodworm_treatment_methodology',
+        'Woodworm Treatment Methodology & Safety Information',
+        'treatment',
+        'template',
+        wwResult.content,
+        wwResult.data as unknown as Record<string, unknown>
+      )
+    )
   }
 
   // --- SURVEYOR ADDITIONAL COMMENTS ---
