@@ -519,13 +519,16 @@ export function calcFixedPrice(
 /**
  * 6. TIERED DISPOSAL FORMULA
  *
- * Conditional labour rate based on quantity threshold:
- * - If quantity <= 20: hours = 40 / quantity
- * - If quantity > 20: hours = 2 (fixed)
- * - Material = quantity × 0.01 (minimal bag cost)
- * - Apply markups
+ * Subcontractor material cost with ZERO labour:
+ * - If quantity = 0: £0
+ * - If quantity <= threshold (20): flat minimum charge (£40)
+ * - If quantity > threshold: per-bag rate (£2) × quantity
+ * - Apply material markup only
+ * - Labour hours = 0, labour cost = 0
  *
- * Example: 10 bags = 40/10 = 4 hours, 30 bags = 2 hours
+ * Constants read from formula_params: { threshold, min_charge, per_bag_over }
+ *
+ * Example: 10 bags = £40 × 1.30 = £52, 30 bags = 30 × £2 × 1.30 = £78
  */
 export function calcTieredDisposal(
   input: LineInput,
@@ -535,42 +538,36 @@ export function calcTieredDisposal(
 ): LineResult {
   const quantity = input.inputQuantity
 
-  // Tiered disposal formula constants
-  const THRESHOLD = 20
-  const HOURS_DIVISOR = 40
-  const FIXED_HOURS_ABOVE_THRESHOLD = 2
-  const MATERIAL_COST_PER_BAG = 0.01
+  // Read constants from formula_params (seeded in damp template), with defaults
+  const params = template.formula_params ?? {}
+  const THRESHOLD = params.threshold ?? 20
+  const MIN_CHARGE = params.min_charge ?? 40
+  const PER_BAG_RATE = params.per_bag_over ?? 2
 
-  // Calculate labour hours based on threshold (guard against division by zero)
-  const labourHours = quantity === 0
-    ? 0
-    : quantity <= THRESHOLD
-      ? HOURS_DIVISOR / quantity
-      : FIXED_HOURS_ABOVE_THRESHOLD
+  // Calculate base material cost based on tier
+  let baseMaterialCost: number
+  if (quantity === 0) {
+    baseMaterialCost = 0
+  } else if (quantity <= THRESHOLD) {
+    baseMaterialCost = MIN_CHARGE
+  } else {
+    baseMaterialCost = quantity * PER_BAG_RATE
+  }
 
-  // Get labour rate
-  const labourRate = input.overrides?.labour_rate
-    ?? config['hourly_labour_rate']
-    ?? 30.63
-
-  // Get labour markup
-  const labourMarkup = input.overrides?.labour_markup
-    ?? template.labour_markup
-    ?? config['default_labour_markup']
-    ?? 1.00
-
-  // Calculate labour
-  const labourBase = labourHours * labourRate
-  const labourTotal = applyMarkup(labourBase, labourMarkup)
-
-  // Calculate minimal material cost
-  const materialUnitCost = MATERIAL_COST_PER_BAG
-  const materialAdjustedCost = quantity * MATERIAL_COST_PER_BAG
+  // Get material markup
   const materialMarkup = input.overrides?.material_markup
     ?? template.material_markup
     ?? config['default_material_markup']
     ?? 0.30
-  const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
+
+  // Material cost with markup (no wastage — subcontractor flat rate)
+  const materialUnitCost = quantity <= THRESHOLD ? MIN_CHARGE : PER_BAG_RATE
+  const materialAdjustedCost = baseMaterialCost
+  const materialTotal = applyMarkup(baseMaterialCost, materialMarkup)
+
+  // Zero labour — disposal is entirely a subcontractor cost
+  const labourHours = 0
+  const labourTotal = 0
 
   return {
     materialUnitCost,
