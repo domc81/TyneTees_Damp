@@ -462,6 +462,38 @@ export interface DbSurveyReport {
   updated_at: string
 }
 
+// --- Company Profile (singleton) ---
+
+export interface CompanyProfile {
+  id: string
+  is_singleton: boolean
+  name: string
+  trading_name?: string | null
+  established_year?: number | null
+  registered_address_line1?: string | null
+  registered_address_line2?: string | null
+  registered_address_city?: string | null
+  registered_address_county?: string | null
+  registered_address_postcode?: string | null
+  phone_primary?: string | null
+  phone_secondary?: string | null
+  email_primary?: string | null
+  email_secondary?: string | null
+  website?: string | null
+  logo_url?: string | null
+  about_us_text?: string | null
+  terms_and_conditions?: string | null
+  default_deposit_note?: string | null
+  guarantee_years?: number | null
+  guarantee_scheme_name?: string | null
+  company_registration_number?: string | null
+  vat_number?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CompanyProfileUpdate = Partial<Omit<CompanyProfile, 'id' | 'is_singleton' | 'created_at' | 'updated_at'>>
+
 // --- Form Input Types (for creating/updating records) ---
 
 export type CustomerInput = Omit<Customer, 'id' | 'created_at' | 'updated_at'>
