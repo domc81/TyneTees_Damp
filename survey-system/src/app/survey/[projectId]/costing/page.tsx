@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
@@ -11,7 +11,7 @@ import { generateCostingFromSurvey } from '@/lib/survey-mapping'
 import { loadPricingConfig, loadSectionAdjustments, saveSectionAdjustment, type CalculationResult, type CalculatedLine } from '@/lib/pricing-data'
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
 
-// Survey type display names
+// Survey type display names (excludes site_preparation — that's job-level)
 const SURVEY_TYPE_NAMES: Record<string, string> = {
   damp: 'Damp Survey',
   condensation: 'Condensation Survey',
@@ -45,6 +45,144 @@ function formatSectionName(sectionKey: string): string {
     .join(' ')
 }
 
+// ─────────────────────────────────────────────────
+// Reusable section card — renders a costing section with line items table
+// ─────────────────────────────────────────────────
+function SectionCard({
+  sectionKey,
+  lines,
+  sectionTotal,
+  adjPct,
+  onAdjustmentChange,
+}: {
+  sectionKey: string
+  lines: CalculatedLine[]
+  sectionTotal: { materialTotal: number; labourTotal: number; sectionTotal: number } | undefined
+  adjPct: number
+  onAdjustmentChange: (value: number) => void
+}) {
+  const baseTotal = sectionTotal?.sectionTotal || 0
+  const adjustedDisplayTotal = baseTotal * (1 + adjPct / 100)
+
+  return (
+    <Card className="glass border-white/10 overflow-hidden">
+      {/* Section Header */}
+      <div className="px-6 py-4 border-b border-white/10 bg-white/5">
+        <h2 className="text-lg font-semibold text-white">
+          {formatSectionName(sectionKey)}
+        </h2>
+      </div>
+
+      {/* Line Items Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Description
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                Quantity
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                <div className="flex items-center justify-end gap-1">
+                  <Package className="w-3 h-3" />
+                  Material
+                </div>
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                <div className="flex items-center justify-end gap-1">
+                  <Wrench className="w-3 h-3" />
+                  Labour
+                </div>
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {lines.map((line, index) => (
+              <tr key={index} className="hover:bg-white/5 transition-colors">
+                <td className="px-6 py-4 text-sm text-white/90">
+                  {line.templateDescription}
+                </td>
+                <td className="px-6 py-4 text-sm text-white/70 text-right">
+                  {line.input.inputQuantity.toFixed(2)}
+                  {line.input.inputDimension && (
+                    <span className="text-white/50 ml-1">
+                      × {line.input.inputDimension}
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-white/70 text-right">
+                  {formatCurrency(line.result.materialTotal)}
+                </td>
+                <td className="px-6 py-4 text-sm text-white/70 text-right">
+                  {formatCurrency(line.result.labourTotal)}
+                  {line.result.labourHours > 0 && (
+                    <span className="text-white/50 text-xs ml-1">
+                      ({line.result.labourHours.toFixed(1)}h)
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm font-medium text-white text-right">
+                  {formatCurrency(line.result.lineTotal)}
+                </td>
+              </tr>
+            ))}
+
+            {/* Section Subtotal Row */}
+            <tr className="bg-white/5 font-semibold">
+              <td className="px-6 py-4 text-sm text-white" colSpan={2}>
+                Section Subtotal
+              </td>
+              <td className="px-6 py-4 text-sm text-white text-right">
+                {formatCurrency(sectionTotal?.materialTotal || 0)}
+              </td>
+              <td className="px-6 py-4 text-sm text-white text-right">
+                {formatCurrency(sectionTotal?.labourTotal || 0)}
+              </td>
+              <td className="px-6 py-4 text-sm text-white text-right">
+                {formatCurrency(baseTotal)}
+              </td>
+            </tr>
+
+            {/* Section Adjustment Row */}
+            <tr className="border-t border-white/5">
+              <td className="px-6 py-3" colSpan={4}>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-white/50 whitespace-nowrap">
+                    Section Adjustment %
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={adjPct}
+                    onChange={(e) => onAdjustmentChange(parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
+                  />
+                </div>
+              </td>
+              <td className="px-6 py-3 text-sm text-right">
+                {adjPct !== 0 && (
+                  <span
+                    className={`font-semibold ${
+                      adjPct > 0 ? 'text-green-400' : 'text-amber-400'
+                    }`}
+                  >
+                    {formatCurrency(adjustedDisplayTotal)}
+                  </span>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
 export default function CostingReviewPage() {
   const params = useParams()
   const router = useRouter()
@@ -55,7 +193,7 @@ export default function CostingReviewPage() {
   const [error, setError] = useState<string | null>(null)
   const [costingResults, setCostingResults] = useState<Record<string, CalculationResult>>({})
   const [activeSurveyType, setActiveSurveyType] = useState<string>('')
-  const [travelOverheads, setTravelOverheads] = useState<Record<string, TravelOverheadResult>>({})
+  const [travelOverhead, setTravelOverhead] = useState<TravelOverheadResult | null>(null)
   const [sectionAdjustments, setSectionAdjustments] = useState<Record<string, number>>({})
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -82,30 +220,33 @@ export default function CostingReviewPage() {
         const savedAdjustments = await loadSectionAdjustments(projectId)
         setSectionAdjustments(savedAdjustments)
 
-        // Calculate travel overhead for each survey type
+        // Calculate travel overhead ONCE from combined labour hours across ALL types
         const pricingConfig = await loadPricingConfig()
         const additionalWorks = wizardData.additional_works || {}
         const distanceFromOffice = additionalWorks.distance_from_office || 0
         const numMenTravelling = additionalWorks.num_men_travelling || 0
 
-        const overheads: Record<string, TravelOverheadResult> = {}
-        for (const [surveyType, result] of Object.entries(results)) {
-          const totalLabourHours = result.lines.reduce(
+        let combinedLabourHours = 0
+        for (const result of Object.values(results)) {
+          combinedLabourHours += result.lines.reduce(
             (sum: number, line: CalculatedLine) => sum + line.result.labourHours, 0
           )
-          overheads[surveyType] = calculateTravelOverhead({
-            totalLabourHours,
-            distanceFromOffice,
-            numMenTravelling,
-            hourlyLabourRate: pricingConfig['hourly_labour_rate'] ?? 30.63,
-            vehicleCostPerMile: pricingConfig['vehicle_cost_per_mile'] ?? 0.50,
-          })
         }
-        setTravelOverheads(overheads)
 
-        // Set the first survey type as active
-        const firstSurveyType = Object.keys(results)[0]
-        setActiveSurveyType(firstSurveyType)
+        const overhead = calculateTravelOverhead({
+          totalLabourHours: combinedLabourHours,
+          distanceFromOffice,
+          numMenTravelling,
+          hourlyLabourRate: pricingConfig['hourly_labour_rate'] ?? 30.63,
+          vehicleCostPerMile: pricingConfig['vehicle_cost_per_mile'] ?? 0.50,
+        })
+        setTravelOverhead(overhead)
+
+        // Set the first non-site_preparation survey type as active tab
+        const typeKeys = Object.keys(results).filter(k => k !== 'site_preparation')
+        if (typeKeys.length > 0) {
+          setActiveSurveyType(typeKeys[0])
+        }
       } catch (err) {
         console.error('Failed to generate costing:', err)
         setError(err instanceof Error ? err.message : 'Failed to generate costing. Please try again.')
@@ -128,38 +269,85 @@ export default function CostingReviewPage() {
     }, 750)
   }
 
-  // Get active result
-  const activeResult = activeSurveyType ? costingResults[activeSurveyType] : null
+  // ─── Derived data ───
 
-  // Group lines by section
-  const linesBySection = activeResult?.lines.reduce((acc, line) => {
-    if (!acc[line.sectionKey]) {
-      acc[line.sectionKey] = []
+  // Separate site_preparation from per-type results
+  const sitePrepResult = costingResults['site_preparation'] || null
+  const perTypeResults: Record<string, CalculationResult> = {}
+  for (const [key, value] of Object.entries(costingResults)) {
+    if (key !== 'site_preparation') {
+      perTypeResults[key] = value
     }
+  }
+
+  // Survey type tab keys (excludes site_preparation)
+  const surveyTypes = Object.keys(perTypeResults)
+
+  // Active type result and its section breakdown
+  const activeResult = activeSurveyType ? perTypeResults[activeSurveyType] : null
+  const activeLinesBySection = activeResult?.lines.reduce((acc, line) => {
+    if (!acc[line.sectionKey]) acc[line.sectionKey] = []
     acc[line.sectionKey].push(line)
     return acc
   }, {} as Record<string, CalculatedLine[]>) || {}
+  const activeSortedSections = Object.keys(activeLinesBySection).sort()
 
-  // Sort sections by display order (alphabetically for now)
-  const sortedSections = Object.keys(linesBySection).sort()
+  // Site preparation section breakdown
+  const sitePrepLinesBySection = sitePrepResult?.lines.reduce((acc, line) => {
+    if (!acc[line.sectionKey]) acc[line.sectionKey] = []
+    acc[line.sectionKey].push(line)
+    return acc
+  }, {} as Record<string, CalculatedLine[]>) || {}
+  const sitePrepSortedSections = Object.keys(sitePrepLinesBySection).sort()
 
-  // Get active travel overhead
-  const activeOverhead = activeSurveyType ? travelOverheads[activeSurveyType] : null
-  const overheadAmount = activeOverhead?.totalOverheadCost || 0
+  // Single travel overhead
+  const overheadAmount = travelOverhead?.totalOverheadCost || 0
 
-  // Calculate adjusted section totals — adjustments apply to the combined section total (mat + labour)
-  const adjustedSectionTotal = sortedSections.reduce((sum, key) => {
-    const base = activeResult?.sectionTotals[key]?.sectionTotal || 0
-    const adjPct = sectionAdjustments[key] || 0
-    return sum + base * (1 + adjPct / 100)
-  }, 0)
-  const baseGrandTotal = activeResult?.grandTotal.total || 0
-  const netAdjustment = adjustedSectionTotal - baseGrandTotal
+  // ─── Combined job totals ───
+  // Sum adjusted totals across ALL types + site_preparation
+  function getAdjustedTotal(result: CalculationResult | null): { adjusted: number; base: number; material: number; labour: number } {
+    if (!result) return { adjusted: 0, base: 0, material: 0, labour: 0 }
+    const sectionKeys = Object.keys(result.sectionTotals)
+    let adjusted = 0
+    for (const key of sectionKeys) {
+      const base = result.sectionTotals[key]?.sectionTotal || 0
+      const adjPct = sectionAdjustments[key] || 0
+      adjusted += base * (1 + adjPct / 100)
+    }
+    return {
+      adjusted,
+      base: result.grandTotal.total,
+      material: result.grandTotal.materialTotal,
+      labour: result.grandTotal.labourTotal,
+    }
+  }
 
-  // Calculate VAT (20%) — subtotal uses adjusted section totals + overhead
-  const subtotal = adjustedSectionTotal + overheadAmount
-  const vatAmount = subtotal * 0.20
-  const grandTotalIncVAT = subtotal + vatAmount
+  // Combine across all types + site prep
+  let jobMaterialTotal = 0
+  let jobLabourTotal = 0
+  let jobAdjustedTotal = 0
+  let jobBaseTotal = 0
+
+  // Site preparation
+  const sitePrepTotals = getAdjustedTotal(sitePrepResult)
+  jobMaterialTotal += sitePrepTotals.material
+  jobLabourTotal += sitePrepTotals.labour
+  jobAdjustedTotal += sitePrepTotals.adjusted
+  jobBaseTotal += sitePrepTotals.base
+
+  // Per-type totals
+  for (const result of Object.values(perTypeResults)) {
+    const totals = getAdjustedTotal(result)
+    jobMaterialTotal += totals.material
+    jobLabourTotal += totals.labour
+    jobAdjustedTotal += totals.adjusted
+    jobBaseTotal += totals.base
+  }
+
+  const jobNetAdjustment = jobAdjustedTotal - jobBaseTotal
+  const jobSubtotal = jobAdjustedTotal + overheadAmount
+  const jobVAT = jobSubtotal * 0.20
+  const jobGrandTotalIncVAT = jobSubtotal + jobVAT
 
   // Loading state
   if (isLoading) {
@@ -200,8 +388,6 @@ export default function CostingReviewPage() {
     )
   }
 
-  const surveyTypes = Object.keys(costingResults)
-
   return (
     <div className="min-h-screen pb-8">
       {/* Header */}
@@ -230,6 +416,98 @@ export default function CostingReviewPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        {/* ════════════════════════════════════════════════════════════
+            SITE PREPARATION & LOGISTICS — job-level, above tabs
+           ════════════════════════════════════════════════════════════ */}
+        {sitePrepResult && sitePrepSortedSections.length > 0 && (
+          <div className="mb-8">
+            {/* Section heading with visual distinction */}
+            <div className="flex items-center gap-3 mb-4">
+              <HardHat className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-semibold text-white">Site Preparation & Logistics</h2>
+              <span className="text-xs text-emerald-400/70 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
+                Whole job
+              </span>
+            </div>
+
+            <div className="space-y-6 pl-0 border-l-2 border-emerald-400/30 rounded-sm">
+              {sitePrepSortedSections.map((sectionKey) => (
+                <div key={sectionKey} className="ml-4">
+                  <SectionCard
+                    sectionKey={sectionKey}
+                    lines={sitePrepLinesBySection[sectionKey]}
+                    sectionTotal={sitePrepResult.sectionTotals[sectionKey]}
+                    adjPct={sectionAdjustments[sectionKey] || 0}
+                    onAdjustmentChange={(value) =>
+                      handleAdjustmentChange(sectionKey, 'site_preparation', value)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Site prep subtotal */}
+            <div className="mt-4 ml-4 flex justify-end">
+              <div className="text-sm text-white/70">
+                Site Preparation Subtotal:{' '}
+                <span className="text-white font-semibold">
+                  {formatCurrency(sitePrepTotals.adjusted)}
+                </span>
+              </div>
+            </div>
+
+            {/* Visual separator between job-level and per-type sections */}
+            <div className="mt-6 border-t border-white/10" />
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════
+            PROJECT SPECIFIC OVERHEADS — job-level, single calculation
+           ════════════════════════════════════════════════════════════ */}
+        {overheadAmount > 0 && (
+          <div className="mb-8">
+            <Card className="glass border-white/10 overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-sky-400" />
+                  <h2 className="text-lg font-semibold text-white">Project Specific Overheads</h2>
+                  <span className="text-xs text-sky-400/70 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-400/20">
+                    Whole job
+                  </span>
+                </div>
+              </div>
+              <div className="px-6 py-4 space-y-2">
+                {travelOverhead && travelOverhead.labourDays > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/60">
+                      Working days: {travelOverhead.labourDays} &middot; Travel hours: {travelOverhead.travelHours.toFixed(1)}h
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/70">Travel labour</span>
+                  <span className="text-white">{formatCurrency(travelOverhead?.travelLabourCost || 0)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/70">Vehicle mileage</span>
+                  <span className="text-white">{formatCurrency(travelOverhead?.vehicleMileageCost || 0)}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-white/10 font-semibold">
+                  <span className="text-white">Overhead Total</span>
+                  <span className="text-white">{formatCurrency(overheadAmount)}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Visual separator */}
+            <div className="mt-6 border-t border-white/10" />
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════
+            PER-TYPE SURVEY SECTIONS — tabs for damp, timber, etc.
+           ════════════════════════════════════════════════════════════ */}
+
         {/* Survey Type Tabs (if multiple survey types) */}
         {surveyTypes.length > 1 && (
           <div className="mb-6">
@@ -258,147 +536,44 @@ export default function CostingReviewPage() {
           </div>
         )}
 
-        {/* Section Breakdown */}
-        <div className="space-y-6 mb-8">
-          {sortedSections.map((sectionKey) => {
-            const lines = linesBySection[sectionKey]
-            const sectionTotal = activeResult?.sectionTotals[sectionKey]
-            const adjPct = sectionAdjustments[sectionKey] || 0
-            const baseTotal = sectionTotal?.sectionTotal || 0
-            const adjustedDisplayTotal = baseTotal * (1 + adjPct / 100)
+        {/* Active type section breakdown */}
+        {activeResult && (
+          <div className="space-y-6 mb-8">
+            {activeSortedSections.map((sectionKey) => (
+              <SectionCard
+                key={sectionKey}
+                sectionKey={sectionKey}
+                lines={activeLinesBySection[sectionKey]}
+                sectionTotal={activeResult.sectionTotals[sectionKey]}
+                adjPct={sectionAdjustments[sectionKey] || 0}
+                onAdjustmentChange={(value) =>
+                  handleAdjustmentChange(sectionKey, activeSurveyType, value)
+                }
+              />
+            ))}
 
-            return (
-              <Card key={sectionKey} className="glass border-white/10 overflow-hidden">
-                {/* Section Header */}
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-white">
-                    {formatSectionName(sectionKey)}
-                  </h2>
+            {/* Per-type subtotal (informational, within tab context) */}
+            {surveyTypes.length > 1 && (
+              <div className="flex justify-end">
+                <div className="text-sm text-white/70">
+                  {SURVEY_TYPE_NAMES[activeSurveyType] || activeSurveyType} Subtotal:{' '}
+                  <span className="text-white font-semibold">
+                    {formatCurrency(getAdjustedTotal(activeResult).adjusted)}
+                  </span>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
 
-                {/* Line Items Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                          Description
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                          Quantity
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                          <div className="flex items-center justify-end gap-1">
-                            <Package className="w-3 h-3" />
-                            Material
-                          </div>
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                          <div className="flex items-center justify-end gap-1">
-                            <Wrench className="w-3 h-3" />
-                            Labour
-                          </div>
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
-                          Total
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {lines.map((line, index) => (
-                        <tr key={index} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 text-sm text-white/90">
-                            {line.templateDescription}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/70 text-right">
-                            {line.input.inputQuantity.toFixed(2)}
-                            {line.input.inputDimension && (
-                              <span className="text-white/50 ml-1">
-                                × {line.input.inputDimension}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/70 text-right">
-                            {formatCurrency(line.result.materialTotal)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/70 text-right">
-                            {formatCurrency(line.result.labourTotal)}
-                            {line.result.labourHours > 0 && (
-                              <span className="text-white/50 text-xs ml-1">
-                                ({line.result.labourHours.toFixed(1)}h)
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-white text-right">
-                            {formatCurrency(line.result.lineTotal)}
-                          </td>
-                        </tr>
-                      ))}
-
-                      {/* Section Subtotal Row */}
-                      <tr className="bg-white/5 font-semibold">
-                        <td className="px-6 py-4 text-sm text-white" colSpan={2}>
-                          Section Subtotal
-                        </td>
-                        <td className="px-6 py-4 text-sm text-white text-right">
-                          {formatCurrency(sectionTotal?.materialTotal || 0)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-white text-right">
-                          {formatCurrency(sectionTotal?.labourTotal || 0)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-white text-right">
-                          {formatCurrency(baseTotal)}
-                        </td>
-                      </tr>
-
-                      {/* Section Adjustment Row */}
-                      <tr className="border-t border-white/5">
-                        <td className="px-6 py-3" colSpan={4}>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-white/50 whitespace-nowrap">
-                              Section Adjustment %
-                            </label>
-                            <input
-                              type="number"
-                              step="0.5"
-                              value={adjPct}
-                              onChange={(e) =>
-                                handleAdjustmentChange(
-                                  sectionKey,
-                                  activeSurveyType,
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-6 py-3 text-sm text-right">
-                          {adjPct !== 0 && (
-                            <span
-                              className={`font-semibold ${
-                                adjPct > 0 ? 'text-green-400' : 'text-amber-400'
-                              }`}
-                            >
-                              {formatCurrency(adjustedDisplayTotal)}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-
-        {/* Grand Totals Card */}
+        {/* ════════════════════════════════════════════════════════════
+            COMBINED JOB GRAND TOTAL
+           ════════════════════════════════════════════════════════════ */}
         <Card className="glass border-white/10 overflow-hidden sticky bottom-4">
           <div className="px-6 py-4 bg-gradient-to-br from-brand-500/20 to-brand-600/20">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
-              Cost Summary
+              Job Cost Summary
             </h2>
 
             <div className="space-y-3">
@@ -409,7 +584,7 @@ export default function CostingReviewPage() {
                   <span>Total Materials</span>
                 </div>
                 <span className="text-white font-medium">
-                  {formatCurrency(activeResult?.grandTotal.materialTotal || 0)}
+                  {formatCurrency(jobMaterialTotal)}
                 </span>
               </div>
 
@@ -420,27 +595,27 @@ export default function CostingReviewPage() {
                   <span>Total Labour</span>
                 </div>
                 <span className="text-white font-medium">
-                  {formatCurrency(activeResult?.grandTotal.labourTotal || 0)}
+                  {formatCurrency(jobLabourTotal)}
                 </span>
               </div>
 
-              {/* Net Section Adjustments (only shown when at least one section has a non-zero adjustment) */}
-              {netAdjustment !== 0 && (
+              {/* Net Section Adjustments */}
+              {jobNetAdjustment !== 0 && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-white/70">
                     <span>Section Adjustments</span>
                   </div>
                   <span
                     className={`font-medium ${
-                      netAdjustment > 0 ? 'text-green-400' : 'text-amber-400'
+                      jobNetAdjustment > 0 ? 'text-green-400' : 'text-amber-400'
                     }`}
                   >
-                    {netAdjustment > 0 ? `+${formatCurrency(netAdjustment)}` : formatCurrency(netAdjustment)}
+                    {jobNetAdjustment > 0 ? `+${formatCurrency(jobNetAdjustment)}` : formatCurrency(jobNetAdjustment)}
                   </span>
                 </div>
               )}
 
-              {/* Project Specific Overheads (travel + vehicle — never itemised for customers) */}
+              {/* Project Specific Overheads */}
               {overheadAmount > 0 && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-white/70">
@@ -457,7 +632,7 @@ export default function CostingReviewPage() {
               <div className="flex justify-between items-center pt-3 border-t border-white/10">
                 <span className="text-white/90 font-medium">Subtotal (ex VAT)</span>
                 <span className="text-white font-semibold text-lg">
-                  {formatCurrency(subtotal)}
+                  {formatCurrency(jobSubtotal)}
                 </span>
               </div>
 
@@ -465,7 +640,7 @@ export default function CostingReviewPage() {
               <div className="flex justify-between items-center">
                 <span className="text-white/70">VAT (20%)</span>
                 <span className="text-white/90">
-                  {formatCurrency(vatAmount)}
+                  {formatCurrency(jobVAT)}
                 </span>
               </div>
 
@@ -473,7 +648,7 @@ export default function CostingReviewPage() {
               <div className="flex justify-between items-center pt-3 border-t border-white/10">
                 <span className="text-white font-bold text-lg">Grand Total (inc VAT)</span>
                 <span className="text-brand-300 font-bold text-2xl">
-                  {formatCurrency(grandTotalIncVAT)}
+                  {formatCurrency(jobGrandTotalIncVAT)}
                 </span>
               </div>
             </div>
