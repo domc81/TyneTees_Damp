@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks, Receipt } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
@@ -19,6 +19,8 @@ import {
   type CalculatedLine,
 } from '@/lib/pricing-data'
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
+import { getSupabase } from '@/lib/supabase-client'
+import type { PricingConfig } from '@/lib/pricing-engine'
 
 // Survey type display names (excludes site_preparation — that's job-level)
 const SURVEY_TYPE_NAMES: Record<string, string> = {
@@ -276,6 +278,14 @@ export default function CostingReviewPage() {
   // is_included per section_key (from costing_section_adjustments.is_included)
   // absent key → default true (included)
   const [sectionInclusions, setSectionInclusions] = useState<Record<string, boolean>>({})
+  // Pricing config (stored for deposit % lookup)
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({})
+  // Existing quotation (latest version for this survey, if any)
+  const [existingQuotation, setExistingQuotation] = useState<{
+    version: number; created_at: string; quotation_number: string
+  } | null>(null)
+  // Generate button loading state
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -308,7 +318,8 @@ export default function CostingReviewPage() {
         setSectionOptionalFlags(optionalFlags)
 
         // Calculate travel overhead from combined labour hours across ALL types
-        const pricingConfig = await loadPricingConfig()
+        const loadedConfig = await loadPricingConfig()
+        setPricingConfig(loadedConfig)
         const additionalWorks = wizardData.additional_works || {}
         const distanceFromOffice = additionalWorks.distance_from_office || 0
         const numMenTravelling = additionalWorks.num_men_travelling || 0
@@ -324,10 +335,24 @@ export default function CostingReviewPage() {
           totalLabourHours: combinedLabourHours,
           distanceFromOffice,
           numMenTravelling,
-          hourlyLabourRate: pricingConfig['hourly_labour_rate'] ?? 30.63,
-          vehicleCostPerMile: pricingConfig['vehicle_cost_per_mile'] ?? 0.50,
+          hourlyLabourRate: loadedConfig['hourly_labour_rate'] ?? 30.63,
+          vehicleCostPerMile: loadedConfig['vehicle_cost_per_mile'] ?? 0.50,
         })
         setTravelOverhead(overhead)
+
+        // Load existing quotation (latest version) if any
+        const supabase = getSupabase()
+        if (supabase) {
+          const { data: existingQ } = await supabase
+            .from('quotations')
+            .select('version, created_at, quotation_number')
+            .eq('survey_id', projectId)
+            .order('version', { ascending: false })
+            .limit(1)
+          if (existingQ && existingQ.length > 0) {
+            setExistingQuotation(existingQ[0])
+          }
+        }
 
         // Set the first non-site_preparation survey type as active tab
         const typeKeys = Object.keys(results).filter(k => k !== 'site_preparation')
@@ -372,6 +397,89 @@ export default function CostingReviewPage() {
   // Adjusted total for a single section (applies adjustment %)
   function sectionAdjustedTotal(sectionKey: string, baseTotal: number): number {
     return baseTotal * (1 + (sectionAdjustments[sectionKey] || 0) / 100)
+  }
+
+  // Generate quotation — gathers all frozen data and POSTs to the API
+  async function handleGenerateQuotation() {
+    setIsGenerating(true)
+    try {
+      // Build section payloads from all costing results
+      const sectionPayloads: Array<{
+        surveyType: string; sectionKey: string; displayName: string;
+        displayOrder: number; materialTotal: number; labourTotal: number;
+        sectionTotal: number; isOptional: boolean; isIncluded: boolean;
+      }> = []
+
+      let displayOrder = 0
+
+      // Site preparation sections
+      if (sitePrepResult) {
+        for (const [key, totals] of Object.entries(sitePrepResult.sectionTotals)) {
+          const adjTotal = sectionAdjustedTotal(key, totals.sectionTotal)
+          const adjFactor = 1 + (sectionAdjustments[key] || 0) / 100
+          sectionPayloads.push({
+            surveyType: 'site_preparation',
+            sectionKey: key,
+            displayName: formatSectionName(key),
+            displayOrder: displayOrder++,
+            materialTotal: totals.materialTotal * adjFactor,
+            labourTotal: totals.labourTotal * adjFactor,
+            sectionTotal: adjTotal,
+            isOptional: sectionOptionalFlags[key] ?? false,
+            isIncluded: isSectionIncluded(key),
+          })
+        }
+      }
+
+      // Per-type sections
+      for (const [surveyType, result] of Object.entries(perTypeResults)) {
+        for (const [key, totals] of Object.entries(result.sectionTotals)) {
+          const adjTotal = sectionAdjustedTotal(key, totals.sectionTotal)
+          const adjFactor = 1 + (sectionAdjustments[key] || 0) / 100
+          sectionPayloads.push({
+            surveyType,
+            sectionKey: key,
+            displayName: formatSectionName(key),
+            displayOrder: displayOrder++,
+            materialTotal: totals.materialTotal * adjFactor,
+            labourTotal: totals.labourTotal * adjFactor,
+            sectionTotal: adjTotal,
+            isOptional: sectionOptionalFlags[key] ?? false,
+            isIncluded: isSectionIncluded(key),
+          })
+        }
+      }
+
+      const res = await fetch(`/api/surveys/${projectId}/quotation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtotalMandatory: mandatoryWorksTotal,
+          subtotalOptional: optionalIncludedTotal,
+          subtotalCombined: combinedWorksTotal,
+          psoTotal: overheadAmount,
+          vatRate: 0.20,
+          vatAmount: jobVAT,
+          totalInclVat: jobGrandTotalIncVAT,
+          depositPercentage: depositPct,
+          depositAmount,
+          sections: sectionPayloads,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to generate quotation')
+      }
+
+      const data = await res.json()
+      router.push(`/survey/${projectId}/quotation/${data.quotationId}`)
+    } catch (err) {
+      console.error('Failed to generate quotation:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate quotation')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // ─── Derived data ───
@@ -435,6 +543,26 @@ export default function CostingReviewPage() {
   const jobSubtotal = combinedWorksTotal + overheadAmount
   const jobVAT = jobSubtotal * 0.20
   const jobGrandTotalIncVAT = jobSubtotal + jobVAT
+
+  // ─── Deposit calculation ───
+  // Deposit % keys in pricing_config: damp_deposit_pct, condensation_deposit_pct, etc.
+  // Use the HIGHEST deposit percentage among active survey types.
+  const DEPOSIT_CONFIG_KEYS: Record<string, string> = {
+    damp: 'damp_deposit_pct',
+    condensation: 'condensation_deposit_pct',
+    timber: 'timber_deposit_pct',
+    woodworm: 'woodworm_deposit_pct',
+  }
+
+  let depositPct = 0
+  for (const type of surveyTypes) {
+    const configKey = DEPOSIT_CONFIG_KEYS[type]
+    if (configKey && pricingConfig[configKey] != null) {
+      depositPct = Math.max(depositPct, pricingConfig[configKey])
+    }
+  }
+  // Deposit calculated from mandatory total only
+  const depositAmount = mandatoryWorksTotal * depositPct
 
   // Does this job have any optional sections that actually have line items?
   const hasOptionalSections = Object.keys(sectionOptionalFlags).some(
@@ -753,31 +881,67 @@ export default function CostingReviewPage() {
                   {formatCurrency(jobGrandTotalIncVAT)}
                 </span>
               </div>
+
+              {/* Deposit required */}
+              {depositPct > 0 && (
+                <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <Receipt className="w-4 h-4 text-brand-300/70" />
+                    <span>Deposit required ({Math.round(depositPct * 100)}%)</span>
+                  </div>
+                  <span className="text-brand-300 font-semibold">
+                    {formatCurrency(depositAmount)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </Card>
 
         {/* Action Buttons */}
-        <div className="mt-8 flex gap-4 justify-center">
-          <Button
-            variant="ghost"
-            onClick={() => router.push(`/surveys/${projectId}`)}
-          >
-            Back to Survey
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => router.push(`/survey/${projectId}/report`)}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Generate Report
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => router.push(`/surveys/${projectId}`)}
-          >
-            Complete & Return to Survey
-          </Button>
+        <div className="mt-8 space-y-4">
+          {/* Previous quotation version note */}
+          {existingQuotation && (
+            <div className="text-center text-sm text-white/50">
+              v{existingQuotation.version} ({existingQuotation.quotation_number}) generated on{' '}
+              {new Date(existingQuotation.created_at).toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric',
+              })}
+            </div>
+          )}
+
+          <div className="flex gap-4 justify-center flex-wrap">
+            <Button
+              variant="ghost"
+              onClick={() => router.push(`/surveys/${projectId}`)}
+            >
+              Back to Survey
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => router.push(`/survey/${projectId}/report`)}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Generate Report
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleGenerateQuotation}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Receipt className="w-4 h-4 mr-2" />
+                  {existingQuotation ? 'Regenerate Quotation' : 'Generate Quotation'}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
