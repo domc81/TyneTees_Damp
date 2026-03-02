@@ -50,9 +50,9 @@ export function SurveyorSelect({
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value
     if (!id) return
-    const surveyor = surveyors.find((s) => s.user_id === id)
+    const surveyor = surveyors.find((s) => s.id === id)
     if (surveyor) {
-      onSelect(surveyor.user_id, surveyor.display_name)
+      onSelect(surveyor.id, surveyor.display_name)
     }
   }
 
@@ -75,7 +75,7 @@ export function SurveyorSelect({
           <>
             <option value="">Select a surveyor...</option>
             {surveyors.map((s) => (
-              <option key={s.user_id} value={s.user_id}>
+              <option key={s.id} value={s.id}>
                 {s.display_name}
               </option>
             ))}
