@@ -311,6 +311,7 @@ export function SlotPicker({
           {/* Week Navigation Header */}
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
             <button
+              type="button"
               onClick={handlePrevWeek}
               disabled={!canGoPrev}
               className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -324,6 +325,7 @@ export function SlotPicker({
             </div>
 
             <button
+              type="button"
               onClick={handleNextWeek}
               className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
               title="Next week"
@@ -361,6 +363,7 @@ export function SlotPicker({
                   No available slots this week
                 </p>
                 <button
+                  type="button"
                   onClick={handleNextWeek}
                   className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
                 >
@@ -460,6 +463,7 @@ function DayColumn({
             const selected = isSlotSelected(slot)
             return (
               <button
+                type="button"
                 key={`${slot.date}-${slot.startTime}`}
                 onClick={() => onSlotClick(slot)}
                 className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
