@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -22,6 +22,8 @@ import {
   ExternalLink,
   Settings,
   Loader2,
+  Navigation,
+  List,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
@@ -93,6 +95,32 @@ function getSurveyorColour(surveyorId: string, colourMap: Map<string, number>): 
   return SURVEYOR_COLOURS[idx % SURVEYOR_COLOURS.length]
 }
 
+function getDirectionsUrl(address: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
+}
+
+function getTodayStr(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = (now.getMonth() + 1).toString().padStart(2, '0')
+  const d = now.getDate().toString().padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** Simple mobile detection hook — ≤768px viewport width */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  return isMobile
+}
+
 // =============================================================================
 // Main Page
 // =============================================================================
@@ -100,6 +128,7 @@ function getSurveyorColour(surveyorId: string, colourMap: Map<string, number>): 
 export default function CalendarPage() {
   const { isAdmin, isOffice, isSurveyor, isLoading: authLoading, profile } = useAuth()
   const calendarRef = useRef<FullCalendar>(null)
+  const isMobile = useIsMobile()
 
   // Surveyors list
   const [surveyors, setSurveyors] = useState<UserProfile[]>([])
@@ -120,6 +149,9 @@ export default function CalendarPage() {
   const [selectedBooking, setSelectedBooking] = useState<SurveyBooking | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Agenda toggle for surveyors
+  const [showAgenda, setShowAgenda] = useState(true)
 
   const supabase = createClient()
 
@@ -245,7 +277,6 @@ export default function CalendarPage() {
       borderColour = 'rgba(100, 100, 100, 0.6)'
       textColour = 'rgba(255, 255, 255, 0.6)'
     } else if (isCompleted) {
-      // Green tint blended with surveyor colour
       bgColour = '#16a34a'
       borderColour = '#15803d'
       textColour = '#ffffff'
@@ -302,6 +333,15 @@ export default function CalendarPage() {
   })
 
   const allEvents = [...bookingEvents, ...blockEvents]
+
+  // ─── Today's bookings for surveyor agenda ────────────────────────
+  const todayBookings = useMemo(() => {
+    if (!isSurveyorOnly) return []
+    const today = getTodayStr()
+    return filteredBookings
+      .filter(b => b.booking_date === today && b.status !== 'cancelled')
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+  }, [filteredBookings, isSurveyorOnly])
 
   // ─── Event click handler ───────────────────────────────────────────
   const handleEventClick = (info: EventClickArg) => {
@@ -360,6 +400,11 @@ export default function CalendarPage() {
     }
   }
 
+  // Surveyor default view: day view on mobile, week on desktop
+  const surveyorInitialView = isSurveyorOnly
+    ? (isMobile ? 'timeGridDay' : 'timeGridDay')
+    : 'timeGridWeek'
+
   // ─── Render ────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
@@ -385,60 +430,85 @@ export default function CalendarPage() {
             <div>
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                 <CalendarIcon className="w-6 h-6 text-brand-400" />
-                Calendar
+                {isSurveyorOnly ? 'My Schedule' : 'Calendar'}
               </h2>
               <p className="text-sm text-white/60 mt-1">
                 {isSurveyorOnly
-                  ? 'Your survey schedule'
+                  ? 'Your survey schedule and daily agenda'
                   : 'All surveyors\u2019 schedules at a glance'}
               </p>
             </div>
 
-            {isAdminOrOffice && (
-              <Link
-                href="/admin/availability"
-                className="btn-secondary flex items-center gap-2 text-sm w-fit"
-              >
-                <Settings className="w-4 h-4" />
-                Manage Availability
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {isSurveyorOnly && (
+                <button
+                  onClick={() => setShowAgenda(prev => !prev)}
+                  className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg transition-all ${
+                    showAgenda
+                      ? 'bg-brand-500/20 text-brand-300 border border-brand-400/30'
+                      : 'btn-secondary'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                  Today&apos;s Agenda
+                </button>
+              )}
+
+              {isAdminOrOffice && (
+                <Link
+                  href="/admin/availability"
+                  className="btn-secondary flex items-center gap-2 text-sm w-fit"
+                >
+                  <Settings className="w-4 h-4" />
+                  Manage Availability
+                </Link>
+              )}
+            </div>
           </div>
 
+          {/* ── Surveyor Agenda (surveyor role only) ──────────────── */}
+          {isSurveyorOnly && showAgenda && (
+            <SurveyorAgenda
+              bookings={todayBookings}
+              actionLoading={actionLoading}
+              onBookingClick={(booking) => {
+                setSelectedBooking(booking)
+                setActionMessage(null)
+              }}
+              onQuickComplete={(bookingId) => handleStatusChange(bookingId, 'completed')}
+            />
+          )}
+
           {/* ── Surveyor Filter ──────────────────────────────────── */}
-          {surveyors.length > 0 && (
+          {surveyors.length > 0 && !isSurveyorOnly && (
             <div className="section-card p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium text-white/60 mr-1">Surveyors:</span>
 
-                {!isSurveyorOnly && (
-                  <button
-                    onClick={handleToggleAll}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      showAllSurveyors
-                        ? 'bg-brand-500/30 text-brand-300 border border-brand-400/30'
-                        : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    All
-                  </button>
-                )}
+                <button
+                  onClick={handleToggleAll}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    showAllSurveyors
+                      ? 'bg-brand-500/30 text-brand-300 border border-brand-400/30'
+                      : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  All
+                </button>
 
                 {surveyors.map(s => {
                   const colour = getSurveyorColour(s.user_id, surveyorColourMap)
                   const isSelected = selectedSurveyorIds.has(s.user_id)
-                  const isLocked = isSurveyorOnly
 
                   return (
                     <button
                       key={s.user_id}
                       onClick={() => handleSurveyorToggle(s.user_id)}
-                      disabled={isLocked}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
                         isSelected
                           ? 'border text-white'
                           : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
-                      } ${isLocked ? 'cursor-not-allowed' : ''}`}
+                      }`}
                       style={isSelected ? {
                         backgroundColor: `${colour.bg}25`,
                         borderColor: `${colour.bg}60`,
@@ -496,7 +566,7 @@ export default function CalendarPage() {
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="timeGridWeek"
+              initialView={surveyorInitialView}
               headerToolbar={{
                 left: 'prev,next today',
                 center: 'title',
@@ -557,10 +627,124 @@ export default function CalendarPage() {
             onStatusChange={handleStatusChange}
             onNotesUpdate={handleNotesUpdate}
             isAdminOrOffice={isAdminOrOffice}
+            isSurveyorOnly={isSurveyorOnly}
+            isMobile={isMobile}
           />
         )}
       </Layout>
     </ProtectedRoute>
+  )
+}
+
+// =============================================================================
+// Surveyor Agenda — Today's daily briefing
+// =============================================================================
+
+function SurveyorAgenda({
+  bookings,
+  actionLoading,
+  onBookingClick,
+  onQuickComplete,
+}: {
+  bookings: SurveyBooking[]
+  actionLoading: boolean
+  onBookingClick: (booking: SurveyBooking) => void
+  onQuickComplete: (bookingId: string) => void
+}) {
+  const today = getTodayStr()
+  const todayFormatted = formatDate(today)
+
+  if (bookings.length === 0) {
+    return (
+      <div className="section-card p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <List className="w-5 h-5 text-brand-400" />
+          <h3 className="text-lg font-semibold text-white">Today&apos;s Agenda</h3>
+          <span className="text-xs text-white/40 ml-auto">{todayFormatted}</span>
+        </div>
+        <p className="text-sm text-white/50 text-center py-6">
+          No surveys scheduled for today
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="section-card p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <List className="w-5 h-5 text-brand-400" />
+        <h3 className="text-lg font-semibold text-white">Today&apos;s Agenda</h3>
+        <span className="text-xs bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full">
+          {bookings.length} {bookings.length === 1 ? 'survey' : 'surveys'}
+        </span>
+        <span className="text-xs text-white/40 ml-auto">{todayFormatted}</span>
+      </div>
+
+      <div className="space-y-2">
+        {bookings.map(booking => {
+          const statusInfo = STATUS_CONFIG[booking.status]
+          const StatusIcon = statusInfo.icon
+          const isScheduled = booking.status === 'scheduled'
+
+          return (
+            <div
+              key={booking.id}
+              className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer group"
+              onClick={() => onBookingClick(booking)}
+            >
+              {/* Time */}
+              <div className="shrink-0 text-center min-w-[60px]">
+                <p className="text-sm font-semibold text-white">{formatTime(booking.start_time)}</p>
+                <p className="text-[10px] text-white/40">{formatTime(booking.end_time)}</p>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-10 bg-white/10 shrink-0" />
+
+              {/* Details */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{booking.customer_name}</p>
+                {booking.customer_address && (
+                  <p className="text-xs text-white/40 truncate mt-0.5">{booking.customer_address}</p>
+                )}
+              </div>
+
+              {/* Phone shortcut — large tap target */}
+              {booking.customer_phone && (
+                <a
+                  href={`tel:${booking.customer_phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-300 hover:bg-brand-500/20 transition-all"
+                  title={`Call ${booking.customer_phone}`}
+                >
+                  <Phone className="w-4 h-4" />
+                </a>
+              )}
+
+              {/* Status / Quick complete */}
+              {isScheduled ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onQuickComplete(booking.id)
+                  }}
+                  disabled={actionLoading}
+                  className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
+                  title="Mark completed"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                </button>
+              ) : (
+                <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${statusInfo.colour}`}>
+                  <StatusIcon className="w-3 h-3" />
+                  {statusInfo.label}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -577,6 +761,8 @@ function BookingDetailModal({
   onStatusChange,
   onNotesUpdate,
   isAdminOrOffice,
+  isSurveyorOnly,
+  isMobile,
 }: {
   booking: SurveyBooking
   surveyorColourMap: Map<string, number>
@@ -586,6 +772,8 @@ function BookingDetailModal({
   onStatusChange: (id: string, status: BookingStatus) => void
   onNotesUpdate: (id: string, notes: string) => void
   isAdminOrOffice: boolean
+  isSurveyorOnly: boolean
+  isMobile: boolean
 }) {
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(booking.notes || '')
@@ -599,6 +787,185 @@ function BookingDetailModal({
     setEditingNotes(false)
   }, [booking.id, booking.notes])
 
+  // ─── Surveyor-focused detail panel ─────────────────────────────────
+  if (isSurveyorOnly) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div
+          className={`glass-card w-full overflow-y-auto ${
+            isMobile
+              ? 'max-h-[95vh] rounded-t-2xl rounded-b-none'
+              : 'max-w-lg max-h-[90vh] rounded-2xl'
+          }`}
+        >
+          {/* Header — customer name prominent */}
+          <div
+            className="p-5 border-b border-white/10"
+            style={{ borderTop: `3px solid ${colour.bg}` }}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white">{booking.customer_name}</h2>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium ${statusInfo.colour}`}>
+                    <StatusIcon className="w-3 h-3" />
+                    {statusInfo.label}
+                  </span>
+                  <span className="text-xs text-white/40">
+                    {formatDate(booking.booking_date)}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors -mt-1 -mr-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Body — field-optimised layout */}
+          <div className="p-5 space-y-4">
+            {/* Time slot */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+              <Clock className="w-5 h-5 text-brand-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  {formatTime(booking.start_time)} – {formatTime(booking.end_time)}
+                </p>
+                <p className="text-xs text-white/40">{formatDate(booking.booking_date)}</p>
+              </div>
+            </div>
+
+            {/* Phone — large CTA button */}
+            {booking.customer_phone && (
+              <a
+                href={`tel:${booking.customer_phone}`}
+                className="flex items-center gap-3 p-4 rounded-xl bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/20 transition-all min-h-[52px]"
+              >
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-500/20 shrink-0">
+                  <Phone className="w-5 h-5 text-brand-300" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-brand-300/70">Call Customer</p>
+                  <p className="text-base font-semibold text-brand-200">{booking.customer_phone}</p>
+                </div>
+              </a>
+            )}
+
+            {/* Email */}
+            {booking.customer_email && (
+              <a
+                href={`mailto:${booking.customer_email}`}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all min-h-[44px]"
+              >
+                <Mail className="w-5 h-5 text-white/40 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-white/40">Email</p>
+                  <p className="text-sm text-brand-300 truncate">{booking.customer_email}</p>
+                </div>
+              </a>
+            )}
+
+            {/* Address + Get Directions */}
+            {booking.customer_address && (
+              <div className="rounded-xl bg-white/5 border border-white/5 overflow-hidden">
+                <div className="flex items-start gap-3 p-3">
+                  <MapPin className="w-5 h-5 text-white/40 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs text-white/40">Address</p>
+                    <p className="text-sm text-white mt-0.5">{booking.customer_address}</p>
+                  </div>
+                </div>
+                <a
+                  href={getDirectionsUrl(booking.customer_address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 p-3 border-t border-white/5 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all min-h-[48px]"
+                >
+                  <Navigation className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-300">Get Directions</span>
+                </a>
+              </div>
+            )}
+
+            {/* Notes (read-only for surveyors) */}
+            {booking.notes && (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                <FileText className="w-5 h-5 text-white/40 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-white/40">Notes</p>
+                  <p className="text-sm text-white/70 mt-0.5">{booking.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Survey link */}
+            {booking.survey_id && (
+              <Link
+                href={`/surveys/${booking.survey_id}`}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all min-h-[44px]"
+              >
+                <FileText className="w-4 h-4 text-brand-300" />
+                <span className="text-sm font-medium text-brand-300">View Survey</span>
+                <ExternalLink className="w-3 h-3 text-brand-300/60" />
+              </Link>
+            )}
+
+            {/* Action message */}
+            {actionMessage && (
+              <div
+                className={`p-3 rounded-xl flex items-center gap-2 text-sm ${
+                  actionMessage.type === 'success'
+                    ? 'bg-green-500/10 border border-green-500/20 text-green-300'
+                    : 'bg-red-500/10 border border-red-500/20 text-red-300'
+                }`}
+              >
+                {actionMessage.type === 'success' ? (
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                )}
+                {actionMessage.text}
+              </div>
+            )}
+
+            {/* Surveyor actions: Completed + No Show (no Cancel) */}
+            {booking.status === 'scheduled' && (
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => onStatusChange(booking.id, 'completed')}
+                  disabled={actionLoading}
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 hover:bg-green-500/20 transition-all min-h-[48px] disabled:opacity-50"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-medium">Completed</span>
+                </button>
+                <button
+                  onClick={() => onStatusChange(booking.id, 'no_show')}
+                  disabled={actionLoading}
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all min-h-[48px] disabled:opacity-50"
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="text-sm font-medium">No Show</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-5 border-t border-white/10 flex justify-end">
+            <button onClick={onClose} className="btn-secondary text-sm min-h-[44px] px-6">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Admin/Office detail panel (unchanged) ─────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -694,7 +1061,7 @@ function BookingDetailModal({
                 <div>
                   <p className="text-xs text-white/40">Linked Survey</p>
                   <Link
-                    href={`/projects/${booking.survey_id}`}
+                    href={`/surveys/${booking.survey_id}`}
                     className="text-sm text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"
                   >
                     View Survey <ExternalLink className="w-3 h-3" />
@@ -771,7 +1138,7 @@ function BookingDetailModal({
             </div>
           )}
 
-          {/* Action buttons */}
+          {/* Action buttons — admin/office only */}
           {isAdminOrOffice && booking.status !== 'cancelled' && (
             <div className="pt-3 border-t border-white/10">
               <p className="text-xs text-white/40 mb-2">Actions</p>
