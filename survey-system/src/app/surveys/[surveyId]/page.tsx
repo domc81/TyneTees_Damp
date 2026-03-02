@@ -31,6 +31,8 @@ import type { Survey } from '@/types/database.types'
 import { getSurvey as getSupabaseSurvey } from '@/lib/supabase-data'
 import { getSupabase } from '@/lib/supabase-client'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
+import { getBookingBySurveyId } from '@/lib/calendar-data'
+import type { SurveyBooking } from '@/lib/calendar-types'
 
 // ─── Quotation types & config ────────────────────────────────────────────────
 
@@ -132,6 +134,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
   const [error, setError] = useState<string | null>(null)
   const [reportStatus, setReportStatus] = useState<string | null>(null)
   const [quotation, setQuotation] = useState<QuotationSummary | null>(null)
+  const [booking, setBooking] = useState<SurveyBooking | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
 
   useEffect(() => {
@@ -144,7 +147,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
         if (data) {
           const supabase = getSupabase()
           if (supabase) {
-            const [{ data: report }, { data: q }] = await Promise.all([
+            const [{ data: report }, { data: q }, bookingData] = await Promise.all([
               supabase
                 .from('survey_reports')
                 .select('status')
@@ -159,9 +162,11 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single(),
+              getBookingBySurveyId(data.id),
             ])
             if (report) setReportStatus(report.status)
             if (q) setQuotation(q as QuotationSummary)
+            if (bookingData) setBooking(bookingData)
           }
         }
       } catch (err) {
@@ -290,6 +295,106 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
               })}
             </div>
           )}
+
+          {/* ── Survey Appointment ── */}
+          <div className="glass-card">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white/50" />
+              <h3 className="font-semibold text-white">Survey Appointment</h3>
+            </div>
+            <div className="p-6">
+              {booking ? (
+                booking.status === 'cancelled' ? (
+                  <div className="space-y-3">
+                    <div className="opacity-40">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 line-through">
+                        <div>
+                          <p className="text-sm text-white/50">Surveyor</p>
+                          <p className="font-medium text-white">{booking.surveyor_name || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-white/50">Date</p>
+                          <p className="font-medium text-white">
+                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
+                              weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-white/50">Time</p>
+                          <p className="font-medium text-white">
+                            {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-red-500/15 text-red-300 border-red-400/30">
+                        Cancelled
+                      </span>
+                      <Link
+                        href="/calendar"
+                        className="text-sm text-brand-400 hover:text-brand-300 transition-colors"
+                      >
+                        Rebook appointment
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-white/50">Surveyor</p>
+                      <p className="font-medium text-white">{booking.surveyor_name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/50">Date</p>
+                      <p className="font-medium text-white">
+                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
+                          weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/50">Time</p>
+                      <p className="font-medium text-white">
+                        {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/50">Status</p>
+                      <span className={`inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                        booking.status === 'scheduled'
+                          ? 'bg-blue-500/15 text-blue-300 border-blue-400/30'
+                          : booking.status === 'completed'
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+                            : booking.status === 'no_show'
+                              ? 'bg-red-500/15 text-red-300 border-red-400/30'
+                              : 'bg-white/10 text-white/60 border-white/20'
+                      }`}>
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-white/60 text-sm">No survey appointment booked</p>
+                    <p className="text-white/40 text-xs mt-1">
+                      Schedule a time with an available surveyor.
+                    </p>
+                  </div>
+                  <Link
+                    href="/calendar"
+                    className="btn-secondary flex items-center gap-2 text-sm px-4 py-2 whitespace-nowrap"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Book Appointment
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* ── Survey Information ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
