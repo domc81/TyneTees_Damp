@@ -230,6 +230,13 @@ export default function SurveyWizardPage() {
       setWizardData(completedData)
       setLastSaved(new Date())
 
+      // Notify admin/office that the survey wizard is complete (fire-and-forget)
+      fetch('/api/notifications/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_type: 'survey_completed', survey_id: projectId }),
+      }).catch(err => console.error('Notification trigger failed:', err))
+
       // Redirect to costing review page
       router.push(`/survey/${projectId}/costing`)
     } catch (err) {

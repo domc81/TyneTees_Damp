@@ -296,6 +296,17 @@ export default function ReportEditorPage() {
         published_at: new Date().toISOString(),
         status: 'published',
       })
+
+      // Notify admin/office that a report was published (fire-and-forget)
+      fetch('/api/notifications/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: 'report_published',
+          report_id: report.id,
+          survey_id: projectId,
+        }),
+      }).catch(err => console.error('Notification trigger failed:', err))
     } catch (err) {
       console.error('Error publishing report:', err)
       alert('Failed to publish report. Please try again.')

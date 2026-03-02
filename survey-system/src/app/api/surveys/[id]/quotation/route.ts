@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
+import { isNotificationEnabled } from '@/lib/notification-preferences'
+import { notifyQuotationGenerated } from '@/lib/notifications-server'
 
 // Service-role client for inserts (bypasses RLS)
 function getServiceClient() {
@@ -113,7 +115,7 @@ export async function POST(
     const { data: survey, error: surveyErr } = await db
       .from('surveys')
       .select(`
-        id, site_address, site_address_line2, site_city, site_county, site_postcode,
+        id, project_number, site_address, site_address_line2, site_city, site_county, site_postcode,
         client_name, customer_id, surveyor_id,
         customers ( title, first_name, last_name, address_line1, address_line2, city, county, postcode )
       `)
@@ -245,6 +247,17 @@ export async function POST(
         // The quotation can be fixed by re-generating
       }
     }
+
+    // Notify admin/office about the new quotation (fire-and-forget)
+    isNotificationEnabled('quotation_generated', 'in_app')
+      .then(async (enabled) => {
+        if (!enabled) return
+        await notifyQuotationGenerated(
+          { id: quotation.id, quotation_number: quotation.quotation_number },
+          { id: surveyId, project_number: survey.project_number, client_name: survey.client_name }
+        )
+      })
+      .catch(err => console.error('Quotation notification failed:', err))
 
     return NextResponse.json({
       quotationId: quotation.id,

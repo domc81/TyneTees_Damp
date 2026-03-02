@@ -131,6 +131,13 @@ function NewSurveyContent() {
         throw new Error('Survey creation returned null')
       }
 
+      // Notify admin/office that a new survey was created (fire-and-forget)
+      fetch('/api/notifications/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_type: 'survey_created', survey_id: newSurvey.id }),
+      }).catch(err => console.error('Notification trigger failed:', err))
+
       // Step 2: If a slot was selected, create the booking and update the survey
       if (selectedSlot) {
         const customer = customers.find((c) => c.id === formData.customer_id)

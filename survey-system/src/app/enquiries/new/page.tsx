@@ -51,6 +51,18 @@ export default function NewEnquiryPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Creating enquiry:', formData)
+
+    // Notify admin/office about the new enquiry (fire-and-forget)
+    fetch('/api/notifications/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'enquiry_created',
+        enquiry_name: formData.client_name,
+        enquiry_email: formData.client_email,
+      }),
+    }).catch(err => console.error('Notification trigger failed:', err))
+
     router.push('/enquiries')
   }
 

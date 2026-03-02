@@ -14,6 +14,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { isNotificationEnabled } from '@/lib/notification-preferences'
+import { notifyQuotationViewed } from '@/lib/notifications-server'
 
 function createServiceClient() {
   return createClient(
@@ -35,7 +37,7 @@ export async function POST(
     // Look up the quotation by share_token — also grab tracking fields we need to update
     const { data: quotation, error } = await supabase
       .from('quotations')
-      .select('id, status, first_viewed_at, view_count')
+      .select('id, quotation_number, survey_id, status, first_viewed_at, view_count')
       .eq('share_token', token)
       .single()
 
@@ -67,8 +69,23 @@ export async function POST(
     }
 
     // Transition 'sent' → 'viewed' on first customer open
-    if (quotation.status === 'sent') {
+    const isFirstView = quotation.status === 'sent'
+    if (isFirstView) {
       update.status = 'viewed'
+    }
+
+    // Notify admin/office on first customer view only (fire-and-forget)
+    if (isFirstView) {
+      isNotificationEnabled('quotation_viewed', 'in_app')
+        .then(async (enabled) => {
+          if (!enabled) return
+          await notifyQuotationViewed({
+            id: quotation.id,
+            quotation_number: quotation.quotation_number,
+            survey_id: quotation.survey_id,
+          })
+        })
+        .catch(err => console.error('Quotation viewed notification failed:', err))
     }
 
     const quotationUpdate = supabase
