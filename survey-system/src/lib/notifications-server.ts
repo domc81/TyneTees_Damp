@@ -308,3 +308,55 @@ export async function notifyEnquiryCreated(
 
   await insertNotifications(rows)
 }
+
+// -----------------------------------------------------------------------------
+// Quotation acceptance / decline notifications
+// -----------------------------------------------------------------------------
+
+export async function notifyQuotationAccepted(
+  quotation: { id: string; quotation_number?: string; survey_id: string },
+  customerName: string,
+  customerNotes?: string | null
+): Promise<void> {
+  const recipientIds = await getOfficeAndAdminProfileIds()
+  if (recipientIds.length === 0) return
+
+  const qNum = quotation.quotation_number || 'A quotation'
+  const notesSnippet = customerNotes ? ` Notes: "${customerNotes.slice(0, 100)}"` : ''
+
+  const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
+    user_id: userId,
+    type: 'quotation_accepted',
+    title: `Quotation accepted! — ${qNum}`,
+    message: `${customerName} has accepted ${qNum}.${notesSnippet}`,
+    quotation_id: quotation.id,
+    survey_id: quotation.survey_id,
+    link_url: `/survey/${quotation.survey_id}/costing`,
+  }))
+
+  await insertNotifications(rows)
+}
+
+export async function notifyQuotationDeclined(
+  quotation: { id: string; quotation_number?: string; survey_id: string },
+  customerName: string,
+  customerNotes?: string | null
+): Promise<void> {
+  const recipientIds = await getOfficeAndAdminProfileIds()
+  if (recipientIds.length === 0) return
+
+  const qNum = quotation.quotation_number || 'A quotation'
+  const notesSnippet = customerNotes ? ` Reason: "${customerNotes.slice(0, 100)}"` : ''
+
+  const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
+    user_id: userId,
+    type: 'quotation_declined',
+    title: `Quotation declined — ${qNum}`,
+    message: `${customerName} has declined ${qNum}.${notesSnippet}`,
+    quotation_id: quotation.id,
+    survey_id: quotation.survey_id,
+    link_url: `/survey/${quotation.survey_id}/costing`,
+  }))
+
+  await insertNotifications(rows)
+}

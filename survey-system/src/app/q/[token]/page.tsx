@@ -14,7 +14,8 @@ import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { Phone, Mail, MapPin, User, AlertTriangle, FileText } from 'lucide-react'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
-import { QuotationViewTracker, QuotationActions } from './client'
+import { hashTermsContent } from '@/lib/terms-hash'
+import { QuotationViewTracker, QuotationActions, QuotationResponseSection } from './client'
 import './quotation-public.css'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -43,6 +44,9 @@ interface Quotation {
   company_name: string | null
   company_phone: string | null
   company_email: string | null
+  accepted_at: string | null
+  declined_at: string | null
+  responded_at: string | null
   created_at: string
 }
 
@@ -275,6 +279,50 @@ export default async function PublicQuotationPage({
     name: quotation.company_name ?? profile.name,
     phone: quotation.company_phone ?? profile.phone,
     email: quotation.company_email ?? profile.email,
+  }
+
+  // ─── Acceptance/response state ──────────────────────────────────────────
+  // Determine if this quotation can be responded to, and fetch any existing
+  // acceptance record for display purposes.
+
+  const isRespondable = ['sent', 'viewed'].includes(quotation.status) && !isExpired
+  const isAccepted = quotation.status === 'accepted'
+  const isDeclined = quotation.status === 'declined'
+
+  // If already accepted, fetch the signatory name for the confirmation banner
+  let acceptanceSignatoryName: string | null = null
+  if (isAccepted) {
+    const { data: acceptance } = await supabase
+      .from('quotation_acceptances')
+      .select('signatory_name, responded_at')
+      .eq('quotation_id', quotation.id)
+      .eq('response', 'accepted')
+      .order('responded_at', { ascending: false })
+      .limit(1)
+      .single()
+    if (acceptance) {
+      acceptanceSignatoryName = acceptance.signatory_name
+    }
+  }
+
+  // Load current T&Cs and compute hash for the acceptance modal
+  const termsText = quotation.terms ?? profile.terms ?? ''
+  const termsHash = termsText ? await hashTermsContent(termsText) : ''
+
+  // Build the quotation snapshot data that the client will send back
+  const quotationSnapshotData = {
+    quotation_number: quotation.quotation_number,
+    total_incl_vat: quotation.total_incl_vat,
+    vat_amount: quotation.vat_amount,
+    deposit_amount: quotation.deposit_amount,
+    deposit_percentage: quotation.deposit_percentage,
+    valid_until: quotation.valid_until,
+    sections_summary: sections.map(s => ({
+      display_name: s.display_name,
+      section_total: s.section_total,
+      is_optional: s.is_optional,
+      is_included: s.is_included,
+    })),
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -559,9 +607,33 @@ export default async function PublicQuotationPage({
 
           </div>
 
-          {/* ── Footer action area (home for future accept/decline buttons) ── */}
+          {/* ── Response section ─────────────────────────────────────────── */}
           <div className="no-print px-6 sm:px-10 py-6 border-t border-[#E5E7EB] bg-[#F9FAFB]">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <QuotationResponseSection
+              token={token}
+              status={quotation.status}
+              isExpired={isExpired}
+              isRespondable={isRespondable}
+              isAccepted={isAccepted}
+              isDeclined={isDeclined}
+              acceptanceSignatoryName={acceptanceSignatoryName}
+              acceptedAt={quotation.accepted_at}
+              declinedAt={quotation.declined_at}
+              validUntil={quotation.valid_until}
+              termsText={termsText}
+              termsHash={termsHash}
+              totalInclVat={quotation.total_incl_vat}
+              vatAmount={quotation.vat_amount}
+              vatRate={quotation.vat_rate}
+              depositAmount={quotation.deposit_amount}
+              depositPercentage={quotation.deposit_percentage}
+              quotationSnapshot={quotationSnapshotData}
+              companyPhone={company.phone}
+              companyEmail={company.email}
+              companyName={company.name}
+              quotationNumber={quotation.quotation_number}
+            />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
               <p className="text-sm text-[#9CA3AF] leading-relaxed">
                 Questions about this quotation?{' '}
                 <a href={`tel:${company.phone}`} className="text-[#1E3A5F] hover:underline font-medium">

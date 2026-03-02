@@ -552,3 +552,108 @@ export async function testEmail(data: TestEmailData): Promise<EmailTemplate> {
 
   return { subject, html: wrapInBrandedLayout(body, branding) }
 }
+
+// ── Quotation accepted ──────────────────────────────────────────────────
+
+export interface QuotationAcceptedEmailData {
+  customerName: string
+  quotationNumber: string
+  totalInclVat: string       // formatted, e.g. "£1,234.56"
+  depositAmount: string      // formatted
+  coolingOffEndDate: string  // e.g. "16 March 2026"
+  quotationUrl: string
+}
+
+export async function quotationAcceptedEmail(data: QuotationAcceptedEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Thank you for accepting our quotation — ${branding.companyName}`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Your acceptance of quotation ${escapeHtml(data.quotationNumber)} has been recorded.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for accepting our quotation. We&apos;re pleased to confirm that your acceptance has been recorded.
+    </p>
+
+    ${infoBox([
+      ['Quotation reference', data.quotationNumber],
+      ['Total (inc. VAT)', data.totalInclVat],
+      ['Deposit required', data.depositAmount],
+    ])}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Our team will contact you shortly to discuss next steps and arrange a convenient start date.
+    </p>
+
+    <p style="margin:0 0 6px 0;font-size:14px;color:#374151;line-height:1.6;font-weight:600;">
+      Deposit
+    </p>
+    <p style="margin:0 0 20px 0;font-size:14px;color:#374151;line-height:1.6;">
+      A deposit of ${escapeHtml(data.depositAmount)} is required before we can schedule the works. We&apos;ll provide payment details when we get in touch.
+    </p>
+
+    <!-- Cooling-off period reminder — legally required -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin:20px 0;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#92400e;">
+            Your Right to Cancel
+          </p>
+          <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+            Under the Consumer Contracts Regulations 2013, you have the right to cancel this contract within
+            14 days of acceptance (until ${escapeHtml(data.coolingOffEndDate)}) without giving any reason.
+            To cancel, please contact us by phone, email, or letter within this period.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    ${ctaButton(data.quotationUrl, 'View Your Quotation')}
+
+    <p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;line-height:1.6;">
+      If the button doesn&apos;t work, copy and paste this link into your browser:<br />
+      <a href="${data.quotationUrl}" style="color:#1e3a5f;word-break:break-all;">${escapeHtml(data.quotationUrl)}</a>
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
+
+// ── Quotation declined ──────────────────────────────────────────────────
+
+export interface QuotationDeclinedEmailData {
+  customerName: string
+  quotationNumber: string
+}
+
+export async function quotationDeclinedEmail(data: QuotationDeclinedEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your quotation response — ${branding.companyName}`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      We&apos;ve received your response to quotation ${escapeHtml(data.quotationNumber)}.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for letting us know your decision regarding quotation ${escapeHtml(data.quotationNumber)}.
+    </p>
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      We understand this may not be the right time. If your circumstances change or you&apos;d like to discuss the quotation further, we&apos;re always happy to help.
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
