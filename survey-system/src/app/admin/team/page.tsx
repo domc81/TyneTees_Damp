@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Compass,
+  Calendar,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
@@ -274,6 +275,15 @@ export default function AdminTeamPage() {
                         </td>
                         <td>
                           <div className="flex items-center justify-center gap-1">
+                            {member.is_surveyor && (
+                              <Link
+                                href={`/admin/availability?surveyor=${member.user_id}`}
+                                className="p-1.5 rounded hover:bg-teal-500/10 text-white/50 hover:text-teal-400 transition-colors"
+                                title="Manage Availability"
+                              >
+                                <Calendar className="w-4 h-4" />
+                              </Link>
+                            )}
                             <button
                               onClick={() => setEditingMember(member)}
                               className="p-1.5 rounded hover:bg-white/10 text-white/50 hover:text-brand-400 transition-colors"

@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Package,
   Users,
+  Calendar,
   Settings,
   Menu,
   ChevronRight,
@@ -22,6 +23,7 @@ const navItems = [
   { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
   { icon: Package, label: 'Materials', href: '/materials' },
   { icon: Users, label: 'Team', href: '/admin/team' },
+  { icon: Calendar, label: 'Calendar', href: '/admin/availability' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ]
 
