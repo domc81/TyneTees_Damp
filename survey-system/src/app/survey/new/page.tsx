@@ -152,7 +152,7 @@ function NewSurveyContent() {
           .join(', ')
 
         try {
-          await createBooking({
+          const newBooking = await createBooking({
             surveyId: newSurvey.id,
             surveyorId: selectedSlot.surveyorId,
             customerName: customer
@@ -167,6 +167,13 @@ function NewSurveyContent() {
             notes: formData.notes || null,
             createdBy: profile?.id || '',
           })
+
+          // Send booking confirmation email to customer (fire-and-forget)
+          fetch('/api/bookings/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: newBooking.id, eventType: 'booking_created' }),
+          }).catch((err) => console.error('Booking confirmation email failed:', err))
 
           // Update the survey record with surveyor_id and survey_date
           await updateSurvey(newSurvey.id, {

@@ -360,6 +360,12 @@ export default function CalendarPage() {
     try {
       if (newStatus === 'cancelled') {
         await cancelBooking(bookingId)
+        // Send cancellation email to customer (fire-and-forget)
+        fetch('/api/bookings/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId, eventType: 'booking_cancelled' }),
+        }).catch((err) => console.error('Booking cancellation email failed:', err))
       } else {
         await updateBooking(bookingId, { status: newStatus })
       }

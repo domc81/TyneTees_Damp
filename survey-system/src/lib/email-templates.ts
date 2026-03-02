@@ -324,6 +324,59 @@ export async function bookingCancellationEmail(data: BookingCancellationData): P
   return { subject, html: wrapInBrandedLayout(body, branding) }
 }
 
+// ── Booking updated ───────────────────────────────────────────────────────
+
+export interface BookingUpdatedData {
+  customerName: string
+  bookingDate: string    // e.g. "Monday 3 March 2026"
+  bookingTime: string    // e.g. "09:00"
+  surveyorName: string
+  siteAddress: string
+}
+
+export async function bookingUpdatedEmail(data: BookingUpdatedData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your survey appointment has been updated — ${branding.companyName}`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Your survey appointment has been rescheduled to ${escapeHtml(data.bookingDate)} at ${escapeHtml(data.bookingTime)}.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      We're writing to let you know that your survey appointment has been updated. Please see the new details below.
+    </p>
+
+    ${infoBox([
+      ['Date', data.bookingDate],
+      ['Time', data.bookingTime],
+      ['Surveyor', data.surveyorName],
+      ['Property address', data.siteAddress],
+    ])}
+
+    <p style="margin:0 0 20px 0;font-size:14px;color:#374151;line-height:1.6;">
+      If you have any questions or need to make further changes, please contact us:
+    </p>
+
+    ${branding.companyPhone ? `<p style="margin:0 0 20px 0;">
+      <a href="tel:${branding.companyPhone.replace(/\s/g, '')}"
+         style="font-size:16px;font-weight:700;color:#1e3a5f;text-decoration:none;">
+        ${escapeHtml(branding.companyPhone)}
+      </a>
+    </p>` : ''}
+
+    ${branding.companyEmail ? `<p style="margin:0 0 20px 0;font-size:14px;color:#374151;">
+      Or email us at <a href="mailto:${branding.companyEmail}" style="color:#1e3a5f;">${escapeHtml(branding.companyEmail)}</a>
+    </p>` : ''}
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
+
 // ── Booking reminder ──────────────────────────────────────────────────────
 
 export interface BookingReminderData {
