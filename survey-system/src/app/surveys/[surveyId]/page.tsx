@@ -24,15 +24,21 @@ import {
   Send,
   CheckCircle,
   XCircle,
+  CalendarClock,
+  X,
+  Loader2,
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import type { Survey } from '@/types/database.types'
-import { getSurvey as getSupabaseSurvey } from '@/lib/supabase-data'
+import { getSurvey as getSupabaseSurvey, updateSurvey } from '@/lib/supabase-data'
 import { getSupabase } from '@/lib/supabase-client'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
-import { getBookingBySurveyId } from '@/lib/calendar-data'
+import { getBookingBySurveyId, createBooking } from '@/lib/calendar-data'
 import type { SurveyBooking } from '@/lib/calendar-types'
+import { SlotPicker } from '@/components/calendar/SlotPicker'
+import type { SelectedSlot } from '@/components/calendar/SlotPicker'
+import { useAuth } from '@/context/AuthContext'
 
 // ─── Quotation types & config ────────────────────────────────────────────────
 
@@ -128,7 +134,14 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; b
   condensation: { icon: Wind, color: 'text-cyan-400', bgColor: 'bg-cyan-500/20 border-cyan-400/30', label: 'Condensation Survey' },
 }
 
+function formatSlotDate(dateStr: string): string {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
 export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
+  const { user } = useAuth()
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -136,6 +149,9 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
   const [quotation, setQuotation] = useState<QuotationSummary | null>(null)
   const [booking, setBooking] = useState<SurveyBooking | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [showBookingPicker, setShowBookingPicker] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
+  const [isBooking, setIsBooking] = useState(false)
 
   useEffect(() => {
     async function loadSurvey() {
@@ -212,6 +228,50 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
         </Layout>
       </ProtectedRoute>
     )
+  }
+
+  async function handleConfirmBooking() {
+    if (!selectedSlot || !survey) return
+    setIsBooking(true)
+    try {
+      const customerAddress = [
+        survey.site_address,
+        survey.site_address_line2,
+        survey.site_city,
+        survey.site_county,
+        survey.site_postcode,
+      ].filter(Boolean).join(', ')
+
+      await createBooking({
+        surveyId: survey.id,
+        surveyorId: selectedSlot.surveyorId,
+        customerName: survey.client_name || 'Unknown',
+        customerPhone: survey.customer?.phone || null,
+        customerEmail: survey.customer?.email || null,
+        customerAddress,
+        bookingDate: selectedSlot.date,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        notes: survey.notes || null,
+        createdBy: user?.id || 'unknown',
+      })
+
+      await updateSurvey(survey.id, {
+        surveyor_id: selectedSlot.surveyorId,
+        survey_date: selectedSlot.date,
+      })
+
+      // Refresh booking display
+      const refreshed = await getBookingBySurveyId(survey.id)
+      setBooking(refreshed)
+      setShowBookingPicker(false)
+      setSelectedSlot(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert(`Failed to book appointment: ${message}`)
+    } finally {
+      setIsBooking(false)
+    }
   }
 
   function handleCopyLink() {
@@ -303,94 +363,121 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
               <h3 className="font-semibold text-white">Survey Appointment</h3>
             </div>
             <div className="p-6">
-              {booking ? (
-                booking.status === 'cancelled' ? (
-                  <div className="space-y-3">
-                    <div className="opacity-40">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 line-through">
-                        <div>
-                          <p className="text-sm text-white/50">Surveyor</p>
-                          <p className="font-medium text-white">{booking.surveyor_name || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-white/50">Date</p>
-                          <p className="font-medium text-white">
-                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
-                              weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-white/50">Time</p>
-                          <p className="font-medium text-white">
-                            {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-red-500/15 text-red-300 border-red-400/30">
-                        Cancelled
-                      </span>
-                      <Link
-                        href="/calendar"
-                        className="text-sm text-brand-400 hover:text-brand-300 transition-colors"
-                      >
-                        Rebook appointment
-                      </Link>
-                    </div>
+              {booking && booking.status !== 'cancelled' ? (
+                /* Active booking — show details */
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-white/50">Surveyor</p>
+                    <p className="font-medium text-white">{booking.surveyor_name || '-'}</p>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-white/50">Surveyor</p>
-                      <p className="font-medium text-white">{booking.surveyor_name || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-white/50">Date</p>
-                      <p className="font-medium text-white">
-                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
-                          weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-white/50">Time</p>
-                      <p className="font-medium text-white">
-                        {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-white/50">Status</p>
-                      <span className={`inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                        booking.status === 'scheduled'
-                          ? 'bg-blue-500/15 text-blue-300 border-blue-400/30'
-                          : booking.status === 'completed'
-                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
-                            : booking.status === 'no_show'
-                              ? 'bg-red-500/15 text-red-300 border-red-400/30'
-                              : 'bg-white/10 text-white/60 border-white/20'
-                      }`}>
-                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1">
-                    <p className="text-white/60 text-sm">No survey appointment booked</p>
-                    <p className="text-white/40 text-xs mt-1">
-                      Schedule a time with an available surveyor.
+                  <div>
+                    <p className="text-sm text-white/50">Date</p>
+                    <p className="font-medium text-white">
+                      {formatSlotDate(booking.booking_date)}
                     </p>
                   </div>
-                  <Link
-                    href="/calendar"
+                  <div>
+                    <p className="text-sm text-white/50">Time</p>
+                    <p className="font-medium text-white">
+                      {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-white/50">Status</p>
+                    <span className={`inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                      booking.status === 'scheduled'
+                        ? 'bg-blue-500/15 text-blue-300 border-blue-400/30'
+                        : booking.status === 'completed'
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+                          : booking.status === 'no_show'
+                            ? 'bg-red-500/15 text-red-300 border-red-400/30'
+                            : 'bg-white/10 text-white/60 border-white/20'
+                    }`}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              ) : showBookingPicker ? (
+                /* Inline slot picker */
+                <div className="space-y-4">
+                  {booking?.status === 'cancelled' && (
+                    <div className="flex items-center gap-2 text-sm text-amber-300/70 mb-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-red-500/15 text-red-300 border-red-400/30">
+                        Previous booking cancelled
+                      </span>
+                    </div>
+                  )}
+                  <SlotPicker
+                    onSlotSelected={setSelectedSlot}
+                    selectedSlot={selectedSlot}
+                  />
+                  {selectedSlot && (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-400/20">
+                      <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                      <p className="text-sm text-emerald-300">
+                        <span className="font-semibold text-white">{selectedSlot.surveyorName}</span>
+                        {' · '}
+                        <span className="font-semibold text-white">{formatSlotDate(selectedSlot.date)}</span>
+                        {' · '}
+                        <span className="font-semibold text-white">{selectedSlot.startTime} – {selectedSlot.endTime}</span>
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => { setShowBookingPicker(false); setSelectedSlot(null) }}
+                      disabled={isBooking}
+                      className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmBooking}
+                      disabled={!selectedSlot || isBooking}
+                      className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isBooking ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" />Booking...</>
+                      ) : (
+                        <><CalendarClock className="w-4 h-4" />Confirm Booking</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* No booking (or cancelled) — prompt to book */
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1">
+                    {booking?.status === 'cancelled' ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-red-500/15 text-red-300 border-red-400/30">
+                            Cancelled
+                          </span>
+                          <span className="text-white/50 text-xs line-through">
+                            {booking.surveyor_name} · {formatSlotDate(booking.booking_date)} · {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
+                          </span>
+                        </div>
+                        <p className="text-white/40 text-xs">Book a new appointment below.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-white/60 text-sm">No survey appointment booked</p>
+                        <p className="text-white/40 text-xs mt-1">Schedule a time with an available surveyor.</p>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowBookingPicker(true)}
                     className="btn-secondary flex items-center gap-2 text-sm px-4 py-2 whitespace-nowrap"
                   >
                     <Calendar className="w-4 h-4" />
-                    Book Appointment
-                  </Link>
+                    {booking?.status === 'cancelled' ? 'Rebook Appointment' : 'Book Appointment'}
+                  </button>
                 </div>
               )}
             </div>
