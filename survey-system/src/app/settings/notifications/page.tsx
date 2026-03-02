@@ -135,6 +135,7 @@ export default function NotificationSettingsPage() {
   const [state, setState] = useState<SettingsState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testEmailSending, setTestEmailSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -240,6 +241,35 @@ export default function NotificationSettingsPage() {
       setToast({ type: 'error', message: err instanceof Error ? err.message : 'Save failed' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Test email
+  // ---------------------------------------------------------------------------
+
+  // Returns true if the current email mode has enough config to attempt sending
+  const isEmailConfigured = (): boolean => {
+    if (!state) return false
+    if (emailMode === 'platform') {
+      return state.emailConfig.platformResendKeyConfigured && !!state.emailConfig.platformFromEmail
+    }
+    return state.emailConfig.customResendKeyConfigured && !!state.emailConfig.customFromEmail
+  }
+
+  const handleTestEmail = async () => {
+    setTestEmailSending(true)
+    try {
+      const res = await fetch('/api/settings/notifications/test-email', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+      setToast({ type: 'success', message: `Test email sent to ${data.sentTo ?? 'your email'}. Check your inbox.` })
+    } catch (err) {
+      setToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to send test email' })
+    } finally {
+      setTestEmailSending(false)
     }
   }
 
@@ -460,19 +490,28 @@ export default function NotificationSettingsPage() {
                     </p>
                   </div>
 
-                  {/* Test email placeholder */}
+                  {/* Test email */}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-white/70">Test email delivery</p>
-                      <p className="text-xs text-white/40 mt-0.5">Sends a test to your admin email address</p>
+                      <p className="text-xs text-white/40 mt-0.5">
+                        {isEmailConfigured()
+                          ? 'Sends a test to your admin email address'
+                          : 'Save a Resend API key and from address to enable'}
+                      </p>
                     </div>
                     <button
                       type="button"
-                      disabled
-                      className="btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed"
-                      title="Email service not configured yet"
+                      onClick={handleTestEmail}
+                      disabled={!isEmailConfigured() || testEmailSending}
+                      className={`btn-secondary text-sm px-4 py-2 flex items-center gap-2 ${
+                        !isEmailConfigured() || testEmailSending ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
-                      Send test email
+                      {testEmailSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : null}
+                      {testEmailSending ? 'Sending...' : 'Send test email'}
                     </button>
                   </div>
                 </div>
@@ -539,19 +578,28 @@ export default function NotificationSettingsPage() {
                     </div>
                   </div>
 
-                  {/* Test email placeholder */}
+                  {/* Test email */}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-white/70">Test email delivery</p>
-                      <p className="text-xs text-white/40 mt-0.5">Sends a test to your admin email address</p>
+                      <p className="text-xs text-white/40 mt-0.5">
+                        {isEmailConfigured()
+                          ? 'Sends a test to your admin email address'
+                          : 'Save a Resend API key and from address to enable'}
+                      </p>
                     </div>
                     <button
                       type="button"
-                      disabled
-                      className="btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed"
-                      title="Email service not configured yet"
+                      onClick={handleTestEmail}
+                      disabled={!isEmailConfigured() || testEmailSending}
+                      className={`btn-secondary text-sm px-4 py-2 flex items-center gap-2 ${
+                        !isEmailConfigured() || testEmailSending ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
-                      Send test email
+                      {testEmailSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : null}
+                      {testEmailSending ? 'Sending...' : 'Send test email'}
                     </button>
                   </div>
                 </div>
