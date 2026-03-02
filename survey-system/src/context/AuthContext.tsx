@@ -20,8 +20,8 @@ type AuthContextType = {
   refreshProfile: () => Promise<void>
 }
 
-const AUTH_TIMEOUT_MS = 8000
-const PROFILE_FETCH_TIMEOUT_MS = 5000
+const AUTH_TIMEOUT_MS = 20000
+const PROFILE_FETCH_TIMEOUT_MS = 15000
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -32,6 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
   const initializedRef = useRef(false)
+  // Counter to prevent stale auth events from overwriting newer state.
+  // When multiple auth events fire concurrently (e.g. _recoverAndRefresh + INITIAL_SESSION),
+  // only the latest handleSession call is allowed to write state.
+  const sessionCallIdRef = useRef(0)
   const supabase = createClient()
 
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
@@ -75,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase])
 
   const handleSession = useCallback(async (newSession: Session | null) => {
-    console.log('[Auth] handleSession called, has session:', !!newSession, 'user:', newSession?.user?.email)
+    const callId = ++sessionCallIdRef.current
+    console.log('[Auth] handleSession called, callId:', callId, 'has session:', !!newSession, 'user:', newSession?.user?.email)
     setSession(newSession)
     setUser(newSession?.user ?? null)
 
@@ -88,6 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const userProfile = await fetchProfile(newSession.user.id)
+
+    // If a newer handleSession call started while we were fetching,
+    // discard this result — the newer call will handle state.
+    if (callId !== sessionCallIdRef.current) {
+      console.log('[Auth] Discarding stale result from callId:', callId, '(current:', sessionCallIdRef.current, ')')
+      return
+    }
 
     if (!userProfile) {
       console.warn('[Auth] No profile found or fetch failed — allowing login without profile')
