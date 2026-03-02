@@ -24,6 +24,7 @@ import {
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
+import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getSupabase } from '@/lib/supabase-client'
@@ -153,15 +154,22 @@ export default function QuotationManagementPage() {
   const quotationId = params.quotationId as string
 
   const companyProfile = useCompanyProfile()
+  const { isAdmin, isOffice } = useAuth()
+  const canSend = isAdmin || isOffice
 
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [sections, setSections] = useState<QuotationSection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Customer email (loaded alongside quotation)
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null)
+
   // Button states
   const [copiedLink, setCopiedLink] = useState(false)
-  const [isMarkingSent, setIsMarkingSent] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendConfirm, setSendConfirm] = useState(false)
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
@@ -198,6 +206,15 @@ export default function QuotationManagementPage() {
       setQuotation(loaded)
       setSections((secs || []) as QuotationSection[])
 
+      // Load customer email from linked survey → customer
+      const { data: survey } = await supabase
+        .from('surveys')
+        .select('customers ( email )')
+        .eq('id', loaded.survey_id)
+        .single()
+      const cust = survey?.customers as unknown as { email: string | null } | null
+      setCustomerEmail(cust?.email ?? null)
+
       // Seed editable fields from DB
       setEditNotes(loaded.notes || '')
       setEditTerms(loaded.terms || getDefaultTerms(loaded.company_name || companyProfile.name))
@@ -217,23 +234,40 @@ export default function QuotationManagementPage() {
     setTimeout(() => setCopiedLink(false), 2500)
   }
 
-  async function handleMarkAsSent() {
+  async function handleSendToCustomer() {
     if (!quotation) return
-    setIsMarkingSent(true)
+    setIsSending(true)
+    setSendResult(null)
     try {
-      const supabase = getSupabase()
-      if (!supabase) throw new Error('No DB connection')
+      const res = await fetch(`/api/quotations/${quotation.id}/send`, { method: 'POST' })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setSendResult({ success: false, message: data.error || 'Failed to send quotation' })
+        return
+      }
+
+      if (data.sent === false) {
+        setSendResult({ success: true, message: data.reason || 'Email not sent' })
+        return
+      }
+
+      // Update local state to reflect the new status
       const now = new Date().toISOString()
-      const { error: updateErr } = await supabase
-        .from('quotations')
-        .update({ status: 'sent', sent_at: now })
-        .eq('id', quotationId)
-      if (updateErr) throw updateErr
-      setQuotation({ ...quotation, status: 'sent', sent_at: now })
+      setQuotation({
+        ...quotation,
+        status: quotation.status === 'draft' ? 'sent' : quotation.status,
+        sent_at: now,
+      })
+      setSendResult({ success: true, message: `Quotation sent to ${data.sentTo}` })
     } catch (err) {
-      console.error('Failed to mark as sent:', err)
+      console.error('Failed to send quotation:', err)
+      setSendResult({ success: false, message: 'An unexpected error occurred' })
     } finally {
-      setIsMarkingSent(false)
+      setIsSending(false)
+      setSendConfirm(false)
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSendResult(null), 5000)
     }
   }
 
@@ -411,14 +445,46 @@ export default function QuotationManagementPage() {
                   )}
                 </Button>
 
-                {quotation.status === 'draft' && (
-                  <Button variant="primary" size="sm" onClick={handleMarkAsSent} disabled={isMarkingSent}>
-                    {isMarkingSent ? (
-                      <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Sending…</>
-                    ) : (
-                      <><Send className="w-4 h-4 mr-1.5" />Mark as Sent</>
-                    )}
-                  </Button>
+                {/* Send to Customer — admin/office only */}
+                {canSend && (
+                  sendConfirm ? (
+                    <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/10">
+                      <span className="text-xs text-white/70">
+                        Send to <strong className="text-white">{customerEmail}</strong>?
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSendToCustomer}
+                        disabled={isSending}
+                      >
+                        {isSending ? (
+                          <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending…</>
+                        ) : (
+                          'Confirm'
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSendConfirm(false)}
+                        disabled={isSending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setSendConfirm(true)}
+                      disabled={!customerEmail || isSending}
+                      title={!customerEmail ? 'No customer email — update the customer record first' : undefined}
+                    >
+                      <Send className="w-4 h-4 mr-1.5" />
+                      {quotation.status === 'draft' ? 'Send to Customer' : 'Resend to Customer'}
+                    </Button>
+                  )
                 )}
 
                 <Button
@@ -434,6 +500,26 @@ export default function QuotationManagementPage() {
                   )}
                 </Button>
               </div>
+
+              {/* Send result feedback */}
+              {sendResult && (
+                <div className={`text-sm px-3 py-2 rounded-lg mt-2 ${
+                  sendResult.success
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
+                    : 'bg-red-500/10 text-red-400 border border-red-400/20'
+                }`}>
+                  {sendResult.success ? <Check className="w-4 h-4 inline mr-1.5" /> : <AlertCircle className="w-4 h-4 inline mr-1.5" />}
+                  {sendResult.message}
+                </div>
+              )}
+
+              {/* No email hint */}
+              {canSend && !customerEmail && !isLoading && (
+                <p className="text-xs text-amber-400/70 mt-1">
+                  <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+                  No customer email on file — update the customer record to enable sending.
+                </p>
+              )}
             </div>
           </div>
 
@@ -808,8 +894,11 @@ export default function QuotationManagementPage() {
 
                   {quotation.sent_at && (
                     <div className="pt-4 mt-4 border-t border-white/10">
-                      <p className="text-xs text-white/40 mb-0.5">Sent</p>
+                      <p className="text-xs text-white/40 mb-0.5">Last sent</p>
                       <p className="text-sm text-white/70">{formatDateTime(quotation.sent_at)}</p>
+                      {customerEmail && (
+                        <p className="text-xs text-white/40 mt-1">to {customerEmail}</p>
+                      )}
                     </div>
                   )}
                 </div>

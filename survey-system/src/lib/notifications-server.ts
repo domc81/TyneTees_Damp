@@ -172,6 +172,29 @@ export async function notifyQuotationGenerated(
   await insertNotifications(rows)
 }
 
+export async function notifyQuotationSent(
+  quotation: { id: string; quotation_number?: string },
+  survey: { id: string; project_number?: string; client_name?: string },
+  customerName: string
+): Promise<void> {
+  const recipientIds = await getOfficeAndAdminProfileIds()
+  if (recipientIds.length === 0) return
+
+  const qNum = quotation.quotation_number || 'A quotation'
+
+  const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
+    user_id: userId,
+    type: 'quotation_sent',
+    title: `Quotation sent — ${qNum}`,
+    message: `${qNum} has been emailed to ${customerName}.`,
+    quotation_id: quotation.id,
+    survey_id: survey.id,
+    link_url: `/survey/${survey.id}/costing`,
+  }))
+
+  await insertNotifications(rows)
+}
+
 export async function notifyQuotationViewed(
   quotation: { id: string; quotation_number?: string; survey_id: string }
 ): Promise<void> {
