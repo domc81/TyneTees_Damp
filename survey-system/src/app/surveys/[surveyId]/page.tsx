@@ -141,7 +141,7 @@ function formatSlotDate(dateStr: string): string {
 }
 
 export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -253,7 +253,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         notes: survey.notes || null,
-        createdBy: user?.id || 'unknown',
+        createdBy: profile?.id || user?.id || '',
       })
 
       await updateSurvey(survey.id, {
