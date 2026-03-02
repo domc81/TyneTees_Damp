@@ -1,230 +1,341 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
-  Users,
   Plus,
   Search,
-  Phone,
-  Mail,
-  MapPin,
-  Edit,
-  Trash2,
-  User,
+  X,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  ClipboardList,
+  Calendar,
 } from 'lucide-react'
-import { getCustomers, getCustomer } from '@/lib/supabase-data'
-import type { Customer } from '@/lib/supabase-data'
+import {
+  getCustomerList,
+  type CustomerWithSurveyCount,
+  type CustomerListOptions,
+} from '@/lib/customer-data'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
-export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [error, setError] = useState<string | null>(null)
+const PAGE_SIZE = 25
 
+type SortColumn = 'first_name' | 'last_name' | 'email' | 'phone' | 'postcode' | 'created_at'
+
+export default function CustomersPage() {
+  const router = useRouter()
+  const [customers, setCustomers] = useState<CustomerWithSurveyCount[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Search, sort, pagination state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortBy, setSortBy] = useState<SortColumn>('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [page, setPage] = useState(1)
+
+  // Debounce search input
   useEffect(() => {
-    async function loadCustomers() {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const customerList = await getCustomers()
-        setCustomers(customerList)
-      } catch (err) {
-        console.error('Error loading customers:', err)
-        setError('Failed to load customers. Please try again.')
-      } finally {
-        setIsLoading(false)
-      }
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1) // Reset to first page on new search
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Fetch customers when filters change
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true)
+    const options: CustomerListOptions = {
+      search: debouncedSearch || undefined,
+      sortBy,
+      sortOrder,
+      page,
+      pageSize: PAGE_SIZE,
     }
 
-    loadCustomers()
-  }, [])
+    const result = await getCustomerList(options)
+    setCustomers(result.customers)
+    setTotalCount(result.totalCount)
+    setIsLoading(false)
+  }, [debouncedSearch, sortBy, sortOrder, page])
 
-  const filteredCustomers = customers.filter(customer => {
-    const fullName = `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.toLowerCase()
-    const email = (customer.email ?? '').toLowerCase()
-    const phone = (customer.phone ?? '').toLowerCase()
-    const address = `${customer.address_line1 ?? ''} ${customer.city ?? ''} ${customer.postcode ?? ''}`.toLowerCase()
-    const query = searchQuery.toLowerCase()
+  useEffect(() => {
+    fetchCustomers()
+  }, [fetchCustomers])
 
-    return fullName.includes(query) || 
-           email.includes(query) || 
-           phone.includes(query) || 
-           address.includes(query)
-  })
+  // Sort handler
+  const handleSort = (column: SortColumn) => {
+    if (sortBy === column) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+    setPage(1)
+  }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="spinner mx-auto mb-4" />
-          <p className="text-white/60">Loading customers...</p>
-        </div>
-      </div>
+  // Pagination
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount)
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortBy !== column) return null
+    return sortOrder === 'asc' ? (
+      <ChevronUp className="w-4 h-4 inline ml-1" />
+    ) : (
+      <ChevronDown className="w-4 h-4 inline ml-1" />
     )
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-red-400" />
-          </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Error Loading Customers</h3>
-          <p className="text-white/60 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary flex items-center gap-2 mx-auto"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retry
-          </button>
-        </div>
-      </div>
-    )
+  // Format last survey date
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
   }
 
   return (
     <ProtectedRoute>
       <Layout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          {/* Page Header */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-white">Customers</h2>
-              <p className="text-sm text-white/60">Manage your customer records</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white">Customers</h1>
+              <p className="text-white/60">{totalCount} customer{totalCount !== 1 ? 's' : ''}</p>
             </div>
-            <Link href="/customers/new" className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              New Customer
-            </Link>
-          </div>
-
-          <div>
-        {/* Search and Stats */}
-        <div className="glass-card mb-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6">
-            <div className="flex-1 min-w-0">
-              <label className="sr-only">Search customers</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <input
-                  type="text"
-                  placeholder="Search customers by name, email, phone, or address..."
-                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/50 focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-white">{filteredCustomers.length}</p>
-                <p className="text-sm text-white/50">Filtered</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{customers.length}</p>
-                <p className="text-sm text-white/50">Total</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Customers List */}
-        {filteredCustomers.length === 0 ? (
-          <div className="glass-card text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-white/30" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">No customers found</h3>
-            <p className="text-white/60 mb-6">
-              {searchQuery ? 'Your search did not match any customers' : 'You haven\'t added any customers yet'}
-            </p>
             <Link
               href="/customers/new"
-              className="btn-primary flex items-center gap-2 mx-auto"
+              className="btn-primary flex items-center gap-2 w-fit"
             >
-              <Plus className="w-4 h-4" />
-              Add First Customer
+              <Plus className="w-5 h-5" />
+              Add Customer
             </Link>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredCustomers.map((customer) => (
-              <div key={customer.id} className="glass-card hover:bg-white/5 transition-colors">
-                <div className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-sm">
-                          {(customer.first_name ?? '?')[0]}{(customer.last_name ?? '?')[0]}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-white">
-                            {customer.first_name} {customer.last_name}
-                          </h3>
-                          <p className="text-sm text-white/60">{customer.email}</p>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div className="flex items-center gap-2 text-sm text-white/80">
-                          <Phone className="w-4 h-4 text-white/40" />
-                          <span>{customer.phone}</span>
-                          {customer.mobile && (
-                            <span className="text-white/50">/ {customer.mobile}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-white/80">
-                          <Mail className="w-4 h-4 text-white/40" />
-                          <span>{customer.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-white/80 col-span-1 md:col-span-2">
-                          <MapPin className="w-4 h-4 text-white/40" />
-                          <span>{customer.address_line1}, {customer.city}, {customer.postcode}</span>
-                        </div>
-                      </div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <input
+              type="text"
+              placeholder="Search by name, email, phone, or postcode..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input-field pl-12 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
 
-                      {customer.notes && (
-                        <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                          <p className="text-sm text-white/70">{customer.notes}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Link
-                        href={`/customers/${customer.id}`}
-                        className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                        title="View customer details"
-                      >
-                        <User className="w-5 h-5" />
-                      </Link>
-                      <Link
-                        href={`/customers/${customer.id}`}
-                        className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                        title="Edit customer"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </Link>
-                      <button
-                        className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-red-500/20 transition-colors"
-                        title="Delete customer"
-                        onClick={() => alert('Delete functionality to be implemented')}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="text-center">
+                <div className="spinner mx-auto mb-4" />
+                <p className="text-white/60">Loading customers...</p>
+              </div>
+            </div>
+          ) : customers.length === 0 ? (
+            /* Empty states */
+            <div className="glass-card p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-white/30" />
+              </div>
+              {debouncedSearch ? (
+                <>
+                  <h3 className="text-lg font-medium text-white mb-2">
+                    No customers match &lsquo;{debouncedSearch}&rsquo;
+                  </h3>
+                  <p className="text-white/50 mb-4">Try a different search.</p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="btn-secondary inline-flex items-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear Search
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-medium text-white mb-2">
+                    No customers yet
+                  </h3>
+                  <p className="text-white/50 mb-4">
+                    Create your first customer to get started.
+                  </p>
+                  <Link
+                    href="/customers/new"
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Customer
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Table */}
+              <div className="glass-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="table-base">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button
+                            onClick={() => handleSort('first_name')}
+                            className="flex items-center gap-1 hover:text-white transition-colors"
+                          >
+                            Name <SortIcon column="first_name" />
+                          </button>
+                        </th>
+                        <th>
+                          <button
+                            onClick={() => handleSort('email')}
+                            className="flex items-center gap-1 hover:text-white transition-colors"
+                          >
+                            Email <SortIcon column="email" />
+                          </button>
+                        </th>
+                        <th>
+                          <button
+                            onClick={() => handleSort('phone')}
+                            className="flex items-center gap-1 hover:text-white transition-colors"
+                          >
+                            Phone <SortIcon column="phone" />
+                          </button>
+                        </th>
+                        <th>
+                          <button
+                            onClick={() => handleSort('postcode')}
+                            className="flex items-center gap-1 hover:text-white transition-colors"
+                          >
+                            Postcode <SortIcon column="postcode" />
+                          </button>
+                        </th>
+                        <th>Surveys</th>
+                        <th>
+                          <button
+                            onClick={() => handleSort('created_at')}
+                            className="flex items-center gap-1 hover:text-white transition-colors"
+                          >
+                            Created <SortIcon column="created_at" />
+                          </button>
+                        </th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customers.map((customer) => (
+                        <tr
+                          key={customer.id}
+                          onClick={() => router.push(`/customers/${customer.id}`)}
+                          className="cursor-pointer"
+                        >
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {(customer.first_name?.[0] || '?')}
+                                {(customer.last_name?.[0] || '?')}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-white truncate">
+                                  {customer.title ? `${customer.title} ` : ''}
+                                  {customer.first_name} {customer.last_name}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-white/60 truncate max-w-[200px]">
+                            {customer.email}
+                          </td>
+                          <td className="text-white/60 whitespace-nowrap">
+                            {customer.phone}
+                          </td>
+                          <td className="text-white/60 font-mono text-sm">
+                            {customer.postcode}
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <ClipboardList className="w-4 h-4 text-white/30" />
+                              <span className="text-white/60">
+                                {customer.survey_count}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="text-white/60 whitespace-nowrap">
+                            {formatDate(customer.created_at)}
+                          </td>
+                          <td>
+                            <ChevronRight className="w-5 h-5 text-white/30 ml-auto" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-          </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
+                  <p className="text-white/50">
+                    Showing {rangeStart}–{rangeEnd} of {totalCount}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (p) => (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                            p === page
+                              ? 'bg-brand-500/20 text-brand-300 border border-brand-400/30'
+                              : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-white/50">
+                    Page {page} of {totalPages}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </Layout>
     </ProtectedRoute>
