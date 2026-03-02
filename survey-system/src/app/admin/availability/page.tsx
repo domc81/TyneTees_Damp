@@ -156,7 +156,7 @@ export default function AvailabilityPage() {
 }
 
 function AvailabilityPageInner() {
-  const { isAdmin, isOffice, isLoading: authLoading, user, profile } = useAuth()
+  const { isAdmin, isOffice, isLoading: authLoading, profile } = useAuth()
   const searchParams = useSearchParams()
   const preselectedSurveyor = searchParams.get('surveyor')
   const [surveyors, setSurveyors] = useState<UserProfile[]>([])
@@ -181,9 +181,11 @@ function AvailabilityPageInner() {
         setSurveyors(data || [])
         if (data && data.length > 0 && !selectedSurveyorId) {
           // Pre-select from URL param if provided, otherwise first surveyor
-          const preselect = preselectedSurveyor && data.some((s) => s.user_id === preselectedSurveyor)
+          // selectedSurveyorId must be user_profiles.id (the PK), not user_id (auth UUID),
+          // because surveyor_availability.surveyor_id references user_profiles(id).
+          const preselect = preselectedSurveyor && data.some((s) => s.id === preselectedSurveyor)
             ? preselectedSurveyor
-            : data[0].user_id
+            : data[0].id
           setSelectedSurveyorId(preselect)
         }
       }
@@ -264,7 +266,7 @@ function AvailabilityPageInner() {
                   className="input-field w-auto min-w-[250px]"
                 >
                   {surveyors.map((s) => (
-                    <option key={s.user_id} value={s.user_id}>
+                    <option key={s.id} value={s.id}>
                       {s.display_name}
                     </option>
                   ))}
@@ -285,7 +287,7 @@ function AvailabilityPageInner() {
                   <AbsenceBlocksSection
                     surveyorId={selectedSurveyorId}
                     surveyorName={selectedSurveyor.display_name}
-                    currentUserId={user?.id || ''}
+                    currentUserId={profile?.id || ''}
                   />
                 </>
               )}

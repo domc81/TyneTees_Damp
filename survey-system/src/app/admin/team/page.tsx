@@ -277,7 +277,7 @@ export default function AdminTeamPage() {
                           <div className="flex items-center justify-center gap-1">
                             {member.is_surveyor && (
                               <Link
-                                href={`/admin/availability?surveyor=${member.user_id}`}
+                                href={`/admin/availability?surveyor=${member.id}`}
                                 className="p-1.5 rounded hover:bg-teal-500/10 text-white/50 hover:text-teal-400 transition-colors"
                                 title="Manage Availability"
                               >
