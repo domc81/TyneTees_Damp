@@ -30,6 +30,7 @@ import Layout from '@/components/layout'
 import type { Survey } from '@/types/database.types'
 import { getSurvey as getSupabaseSurvey } from '@/lib/supabase-data'
 import { getSupabase } from '@/lib/supabase-client'
+import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 
 // ─── Quotation types & config ────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
     setTimeout(() => setCopiedLink(false), 2500)
   }
 
-  const config = surveyTypeConfig[survey.survey_type] || surveyTypeConfig.damp
+  const config = surveyTypeConfig[primarySurveyTypeFromTags(survey.survey_tags)] || surveyTypeConfig.damp
   const Icon = config.icon
   const isComplete = survey.survey_completed || false
   const reportedProblem = survey.reported_problem_override || survey.reported_problem

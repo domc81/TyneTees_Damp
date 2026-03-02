@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
+import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
@@ -182,7 +183,7 @@ export default function Dashboard() {
               ) : (
                 <div className="divide-y divide-white/5">
                   {recentSurveys.map((survey) => {
-                    const config = surveyTypeConfig[survey.survey_type]
+                    const config = surveyTypeConfig[primarySurveyTypeFromTags(survey.survey_tags)]
                     const Icon = config.icon
 
                     const statusConfig: Record<string, { color: string; bg: string }> = {
@@ -227,7 +228,7 @@ export default function Dashboard() {
                           <p className="text-sm text-white/60">
                             {survey.survey_date ? new Date(survey.survey_date).toLocaleDateString('en-GB') : '-'}
                           </p>
-                          <p className="text-xs text-white/40 capitalize mt-0.5">{survey.survey_type}</p>
+                          <p className="text-xs text-white/40 capitalize mt-0.5">{primarySurveyTypeFromTags(survey.survey_tags)}</p>
                         </div>
                         <ChevronRight className="w-5 h-5 text-white/30 ml-auto" />
                       </Link>

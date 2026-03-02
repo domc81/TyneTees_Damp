@@ -19,6 +19,7 @@ import {
 import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import Layout from '@/components/layout'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string }> = {
@@ -65,7 +66,7 @@ export default function ProjectsPage() {
       (survey.project_number || '').toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || survey.status === statusFilter
-    const matchesType = typeFilter === 'all' || survey.survey_type === typeFilter
+    const matchesType = typeFilter === 'all' || primarySurveyTypeFromTags(survey.survey_tags) === typeFilter
 
     return matchesSearch && matchesStatus && matchesType
   })
@@ -180,7 +181,7 @@ export default function ProjectsPage() {
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredSurveys.map((survey, index) => {
-                  const config = surveyTypeConfig[survey.survey_type]
+                  const config = surveyTypeConfig[primarySurveyTypeFromTags(survey.survey_tags)]
                   const status = statusConfig[survey.status]
                   const Icon = config.icon
 
@@ -251,7 +252,7 @@ export default function ProjectsPage() {
                   </thead>
                   <tbody>
                     {filteredSurveys.map((survey) => {
-                      const config = surveyTypeConfig[survey.survey_type]
+                      const config = surveyTypeConfig[primarySurveyTypeFromTags(survey.survey_tags)]
                       const status = statusConfig[survey.status]
                       const Icon = config.icon
 

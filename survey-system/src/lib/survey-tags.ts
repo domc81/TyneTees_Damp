@@ -78,3 +78,25 @@ export function deriveSurveyTags(
 
   return [...tags].sort()
 }
+
+// Priority order for picking the dominant type when multiple issues are present.
+// Damp first — most common and most likely to need the correct report template.
+const ISSUE_TAG_TO_SURVEY_TYPE: Array<{ tag: string; type: string }> = [
+  { tag: 'damp',         type: 'damp' },
+  { tag: 'condensation', type: 'condensation' },
+  { tag: 'timber_decay', type: 'timber' },
+  { tag: 'woodworm',     type: 'woodworm' },
+]
+
+/**
+ * Derive the primary SurveyType string from a survey_tags array.
+ * Used to replace reads of surveys.survey_type (which is hardcoded 'damp' on all rows).
+ * Falls back to 'damp' — identical to the previous `survey.survey_type || 'damp'` behaviour.
+ */
+export function primarySurveyTypeFromTags(tags: string[] | null | undefined): string {
+  if (!tags || tags.length === 0) return 'damp'
+  for (const { tag, type } of ISSUE_TAG_TO_SURVEY_TYPE) {
+    if (tags.includes(tag)) return type
+  }
+  return 'damp'
+}

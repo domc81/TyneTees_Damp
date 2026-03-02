@@ -22,6 +22,7 @@ import type {
 import { loadWizardData } from './survey-wizard-data'
 import { loadSurveyPhotos } from './survey-photo-service'
 import { getSupabase } from './supabase-client'
+import { primarySurveyTypeFromTags } from './survey-tags'
 
 // =============================================================================
 // Template Loading (kept — used for template_id on report record)
@@ -732,7 +733,7 @@ export async function generateReport(
   )
 
   // Load template ID for report record
-  const surveyType = survey.survey_type || 'damp'
+  const surveyType = primarySurveyTypeFromTags(survey.survey_tags)
   const template = await loadDefaultTemplate(surveyType)
   const templateId = template?.id || 'no-template'
 
