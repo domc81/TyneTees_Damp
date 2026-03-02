@@ -436,90 +436,92 @@ export default function QuotationManagementPage() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="ghost" size="sm" onClick={handleCopyLink}>
-                  {copiedLink ? (
-                    <><Check className="w-4 h-4 mr-1.5 text-emerald-400" />Copied!</>
-                  ) : (
-                    <><Copy className="w-4 h-4 mr-1.5" />Copy Link</>
-                  )}
-                </Button>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="ghost" size="sm" onClick={handleCopyLink}>
+                    {copiedLink ? (
+                      <><Check className="w-4 h-4 mr-1.5 text-emerald-400" />Copied!</>
+                    ) : (
+                      <><Copy className="w-4 h-4 mr-1.5" />Copy Link</>
+                    )}
+                  </Button>
 
-                {/* Send to Customer — admin/office only */}
-                {canSend && (
-                  sendConfirm ? (
-                    <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/10">
-                      <span className="text-xs text-white/70">
-                        Send to <strong className="text-white">{customerEmail}</strong>?
-                      </span>
+                  {/* Send to Customer — admin/office only */}
+                  {canSend && (
+                    sendConfirm ? (
+                      <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/10">
+                        <span className="text-xs text-white/70">
+                          Send to <strong className="text-white">{customerEmail}</strong>?
+                        </span>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleSendToCustomer}
+                          disabled={isSending}
+                        >
+                          {isSending ? (
+                            <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending…</>
+                          ) : (
+                            'Confirm'
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSendConfirm(false)}
+                          disabled={isSending}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={handleSendToCustomer}
-                        disabled={isSending}
+                        onClick={() => setSendConfirm(true)}
+                        disabled={!customerEmail || isSending}
+                        title={!customerEmail ? 'No customer email — update the customer record first' : undefined}
                       >
-                        {isSending ? (
-                          <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending…</>
-                        ) : (
-                          'Confirm'
-                        )}
+                        <Send className="w-4 h-4 mr-1.5" />
+                        {quotation.status === 'draft' ? 'Send to Customer' : 'Resend to Customer'}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSendConfirm(false)}
-                        disabled={isSending}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setSendConfirm(true)}
-                      disabled={!customerEmail || isSending}
-                      title={!customerEmail ? 'No customer email — update the customer record first' : undefined}
-                    >
-                      <Send className="w-4 h-4 mr-1.5" />
-                      {quotation.status === 'draft' ? 'Send to Customer' : 'Resend to Customer'}
-                    </Button>
-                  )
+                    )
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloadingPdf}
+                  >
+                    {isDownloadingPdf ? (
+                      <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Generating…</>
+                    ) : (
+                      <><Download className="w-4 h-4 mr-1.5" />Download PDF</>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Send result feedback */}
+                {sendResult && (
+                  <div className={`text-sm px-3 py-2 rounded-lg ${
+                    sendResult.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
+                      : 'bg-red-500/10 text-red-400 border border-red-400/20'
+                  }`}>
+                    {sendResult.success ? <Check className="w-4 h-4 inline mr-1.5" /> : <AlertCircle className="w-4 h-4 inline mr-1.5" />}
+                    {sendResult.message}
+                  </div>
                 )}
 
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleDownloadPdf}
-                  disabled={isDownloadingPdf}
-                >
-                  {isDownloadingPdf ? (
-                    <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Generating…</>
-                  ) : (
-                    <><Download className="w-4 h-4 mr-1.5" />Download PDF</>
-                  )}
-                </Button>
+                {/* No email hint */}
+                {canSend && !customerEmail && !isLoading && (
+                  <p className="text-xs text-amber-400/70">
+                    <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+                    No customer email on file — update the customer record to enable sending.
+                  </p>
+                )}
               </div>
-
-              {/* Send result feedback */}
-              {sendResult && (
-                <div className={`text-sm px-3 py-2 rounded-lg mt-2 ${
-                  sendResult.success
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
-                    : 'bg-red-500/10 text-red-400 border border-red-400/20'
-                }`}>
-                  {sendResult.success ? <Check className="w-4 h-4 inline mr-1.5" /> : <AlertCircle className="w-4 h-4 inline mr-1.5" />}
-                  {sendResult.message}
-                </div>
-              )}
-
-              {/* No email hint */}
-              {canSend && !customerEmail && !isLoading && (
-                <p className="text-xs text-amber-400/70 mt-1">
-                  <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
-                  No customer email on file — update the customer record to enable sending.
-                </p>
-              )}
             </div>
           </div>
 
