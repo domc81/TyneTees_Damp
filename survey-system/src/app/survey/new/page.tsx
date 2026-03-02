@@ -40,7 +40,7 @@ function NewSurveyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preSelectedCustomerId = searchParams.get('customerId')
-  const { user } = useAuth()
+  const { profile } = useAuth()
 
   const [formData, setFormData] = useState({
     customer_id: preSelectedCustomerId || '',
@@ -158,7 +158,7 @@ function NewSurveyContent() {
             startTime: selectedSlot.startTime,
             endTime: selectedSlot.endTime,
             notes: formData.notes || null,
-            createdBy: user?.id || 'unknown',
+            createdBy: profile?.id || '',
           })
 
           // Update the survey record with surveyor_id and survey_date
