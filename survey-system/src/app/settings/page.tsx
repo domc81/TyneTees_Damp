@@ -52,7 +52,7 @@ const settingsSections = [
     href: '/settings/notifications',
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
-    badge: 'Coming Soon',
+    badge: null,
   },
   {
     id: 'appearance',
