@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -102,8 +102,8 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
-export default function CustomerDetailPage({ params }: { params: Promise<{ customerId: string }> }) {
-  const { customerId } = use(params)
+export default function CustomerDetailPage({ params }: { params: { customerId: string } }) {
+  const { customerId } = params
   const router = useRouter()
   const [customer, setCustomer] = useState<CustomerDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
