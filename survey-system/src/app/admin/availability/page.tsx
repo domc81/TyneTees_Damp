@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -913,9 +914,9 @@ function BlockModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="glass-card w-full max-w-lg">
+      <div className="w-full max-w-lg rounded-2xl border border-white/12 bg-slate-900/95 shadow-2xl">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
             {isEdit ? 'Edit Absence Block' : 'Add Absence Block'}
@@ -1019,6 +1020,7 @@ function BlockModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
