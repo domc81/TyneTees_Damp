@@ -215,7 +215,7 @@ function AvailabilityPageInner() {
     )
   }
 
-  const selectedSurveyor = surveyors.find((s) => s.user_id === selectedSurveyorId) || null
+  const selectedSurveyor = surveyors.find((s) => s.id === selectedSurveyorId) || null
 
   return (
     <ProtectedRoute>
