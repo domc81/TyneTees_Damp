@@ -181,15 +181,15 @@ export default function CalendarPage() {
 
       // Build colour map
       const cMap = new Map<string, number>()
-      surveyorList.forEach((s, i) => cMap.set(s.user_id, i))
+      surveyorList.forEach((s, i) => cMap.set(s.id, i))
       setSurveyorColourMap(cMap)
 
       // Default filter: surveyor sees only themselves
       if (isSurveyorOnly && profile) {
-        setSelectedSurveyorIds(new Set([profile.user_id]))
+        setSelectedSurveyorIds(new Set([profile.id]))
         setShowAllSurveyors(false)
       } else {
-        setSelectedSurveyorIds(new Set(surveyorList.map(s => s.user_id)))
+        setSelectedSurveyorIds(new Set(surveyorList.map(s => s.id)))
         setShowAllSurveyors(true)
       }
 
@@ -246,7 +246,7 @@ export default function CalendarPage() {
       setSelectedSurveyorIds(new Set())
       setShowAllSurveyors(false)
     } else {
-      setSelectedSurveyorIds(new Set(surveyors.map(s => s.user_id)))
+      setSelectedSurveyorIds(new Set(surveyors.map(s => s.id)))
       setShowAllSurveyors(true)
     }
   }
@@ -497,13 +497,13 @@ export default function CalendarPage() {
                 </button>
 
                 {surveyors.map(s => {
-                  const colour = getSurveyorColour(s.user_id, surveyorColourMap)
-                  const isSelected = selectedSurveyorIds.has(s.user_id)
+                  const colour = getSurveyorColour(s.id, surveyorColourMap)
+                  const isSelected = selectedSurveyorIds.has(s.id)
 
                   return (
                     <button
-                      key={s.user_id}
-                      onClick={() => handleSurveyorToggle(s.user_id)}
+                      key={s.id}
+                      onClick={() => handleSurveyorToggle(s.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
                         isSelected
                           ? 'border text-white'
@@ -528,10 +528,10 @@ export default function CalendarPage() {
               {showMultipleSurveyors && (
                 <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-white/5">
                   <span className="text-xs text-white/40">Legend:</span>
-                  {surveyors.filter(s => selectedSurveyorIds.has(s.user_id)).map(s => {
-                    const colour = getSurveyorColour(s.user_id, surveyorColourMap)
+                  {surveyors.filter(s => selectedSurveyorIds.has(s.id)).map(s => {
+                    const colour = getSurveyorColour(s.id, surveyorColourMap)
                     return (
-                      <div key={s.user_id} className="flex items-center gap-1.5">
+                      <div key={s.id} className="flex items-center gap-1.5">
                         <span
                           className="w-3 h-3 rounded-sm"
                           style={{ backgroundColor: colour.bg }}
