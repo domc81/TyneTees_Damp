@@ -393,7 +393,7 @@ function WeeklyHoursSection({
     setCopyFromId('')
   }
 
-  const otherSurveyors = allSurveyors.filter((s) => s.user_id !== surveyorId)
+  const otherSurveyors = allSurveyors.filter((s) => s.id !== surveyorId)
   const hasAnyHoursSet = Object.values(initialWeekState).some((d) => d.isActive)
 
   return (
@@ -477,7 +477,7 @@ function WeeklyHoursSection({
               >
                 <option value="">Select surveyor...</option>
                 {otherSurveyors.map((s) => (
-                  <option key={s.user_id} value={s.user_id}>
+                  <option key={s.id} value={s.id}>
                     {s.display_name}
                   </option>
                 ))}
