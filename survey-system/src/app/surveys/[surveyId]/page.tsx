@@ -66,6 +66,58 @@ function formatDateTimeLong(dateStr: string) {
   return new Date(dateStr).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// ─── Survey tag display config ────────────────────────────────────────────────
+
+const TAG_LABELS: Record<string, string> = {
+  damp:                        'Damp',
+  rising_damp:                 'Rising Damp',
+  condensation:                'Condensation',
+  black_mould:                 'Black Mould',
+  timber_decay:                'Timber Decay',
+  dry_rot:                     'Dry Rot',
+  wet_rot:                     'Wet Rot',
+  cellar_fungus:               'Cellar Fungus',
+  white_pore_fungus:           'White Pore Fungus',
+  woodworm:                    'Woodworm',
+  common_furniture_beetle:     'Common Furniture Beetle',
+  deathwatch_beetle:           'Deathwatch Beetle',
+  house_longhorn:              'House Longhorn Beetle',
+  powderpost_beetle:           'Powderpost Beetle',
+  active_woodworm:             'Active Woodworm',
+  external_wet_rot:            'External Wet Rot',
+  defective_rainwater_goods:   'Defective Rainwater Goods',
+  roof_defects:                'Roof Defects',
+}
+
+// Colour by category — grouped by what issue type produces each tag
+const TAG_COLOURS: Record<string, { bg: string; text: string; border: string }> = {
+  // Damp (blue)
+  damp:                        { bg: 'bg-blue-500/15',   text: 'text-blue-300',   border: 'border-blue-400/30' },
+  rising_damp:                 { bg: 'bg-blue-500/15',   text: 'text-blue-300',   border: 'border-blue-400/30' },
+  // Condensation (purple)
+  condensation:                { bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-400/30' },
+  black_mould:                 { bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-400/30' },
+  // Timber (amber)
+  timber_decay:                { bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-400/30' },
+  dry_rot:                     { bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-400/30' },
+  wet_rot:                     { bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-400/30' },
+  cellar_fungus:               { bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-400/30' },
+  white_pore_fungus:           { bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-400/30' },
+  // Woodworm (red)
+  woodworm:                    { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  common_furniture_beetle:     { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  deathwatch_beetle:           { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  house_longhorn:              { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  powderpost_beetle:           { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  active_woodworm:             { bg: 'bg-red-500/15',    text: 'text-red-300',    border: 'border-red-400/30' },
+  // External (slate)
+  external_wet_rot:            { bg: 'bg-slate-500/15',  text: 'text-slate-300',  border: 'border-slate-400/30' },
+  defective_rainwater_goods:   { bg: 'bg-slate-500/15',  text: 'text-slate-300',  border: 'border-slate-400/30' },
+  roof_defects:                { bg: 'bg-slate-500/15',  text: 'text-slate-300',  border: 'border-slate-400/30' },
+}
+
+const DEFAULT_TAG_COLOUR = { bg: 'bg-white/10', text: 'text-white/60', border: 'border-white/20' }
+
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; bgColor: string; label: string }> = {
   damp: { icon: Droplets, color: 'text-blue-400', bgColor: 'bg-blue-500/20 border-blue-400/30', label: 'Damp Survey' },
   timber: { icon: Bug, color: 'text-amber-400', bgColor: 'bg-amber-500/20 border-amber-400/30', label: 'Timber Survey' },
@@ -219,6 +271,24 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
               </div>
             </div>
           </div>
+
+          {/* ── Finding Tags ── */}
+          {survey.survey_tags && survey.survey_tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {survey.survey_tags.map((tag) => {
+                const colour = TAG_COLOURS[tag] ?? DEFAULT_TAG_COLOUR
+                const label = TAG_LABELS[tag] ?? tag.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                return (
+                  <span
+                    key={tag}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${colour.bg} ${colour.text} ${colour.border}`}
+                  >
+                    {label}
+                  </span>
+                )
+              })}
+            </div>
+          )}
 
           {/* ── Survey Information ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

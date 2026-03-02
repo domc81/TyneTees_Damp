@@ -258,6 +258,28 @@ export async function saveRoom(
 }
 
 // =============================================================================
+// Update Survey Tags
+// =============================================================================
+
+/**
+ * Persist auto-derived survey tags to surveys.survey_tags column.
+ * Fire-and-forget safe — errors are logged but not re-thrown.
+ * @param surveyId - The UUID of the survey
+ * @param tags - Sorted, deduplicated tag array from deriveSurveyTags()
+ */
+export async function updateSurveyTags(surveyId: string, tags: string[]): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+  const { error } = await supabase
+    .from('surveys')
+    .update({ survey_tags: tags, updated_at: new Date().toISOString() })
+    .eq('id', surveyId)
+  if (error) {
+    console.error('Error updating survey tags:', error)
+  }
+}
+
+// =============================================================================
 // Delete Room
 // =============================================================================
 

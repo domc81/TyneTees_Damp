@@ -23,7 +23,9 @@ import {
   loadWizardData,
   saveWizardData,
   saveAllRooms,
+  updateSurveyTags,
 } from '@/lib/survey-wizard-data'
+import { deriveSurveyTags } from '@/lib/survey-tags'
 import { loadSurveyPhotos } from '@/lib/survey-photo-service'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -115,6 +117,9 @@ export default function SurveyWizardPage() {
 
       // Save all rooms (batch operation) - read from ref to get latest value
       const updatedRooms = await saveAllRooms(projectId, roomsRef.current)
+
+      // Auto-populate survey tags from current findings (fire-and-forget, non-blocking)
+      updateSurveyTags(projectId, deriveSurveyTags(wizardDataRef.current, roomsRef.current))
 
       // Only update IDs that changed (temp → DB), preserve any new rooms added during save
       setRooms(prev => prev.map(room => {
@@ -218,6 +223,9 @@ export default function SurveyWizardPage() {
       const completedData = { ...wizardData, wizard_completed: true }
       await saveWizardData(projectId, completedData)
       await saveAllRooms(projectId, rooms)
+
+      // Persist final tags on survey completion (awaited — ensures tags are written before redirect)
+      await updateSurveyTags(projectId, deriveSurveyTags(completedData, rooms))
 
       setWizardData(completedData)
       setLastSaved(new Date())

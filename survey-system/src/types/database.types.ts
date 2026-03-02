@@ -104,6 +104,7 @@ export interface Survey {
   site_postcode: string
   notes?: string | null
   survey_data?: Record<string, any> | null
+  survey_tags?: string[] | null  // auto-populated from wizard findings
   survey_skipped_sections?: string[] | null
   survey_progress?: number | null
   survey_completed?: boolean | null
