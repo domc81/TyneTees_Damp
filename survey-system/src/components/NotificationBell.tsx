@@ -54,7 +54,7 @@ function formatRelativeTime(dateStr: string): string {
 // =============================================================================
 
 export function NotificationBell() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const router = useRouter()
 
   const [isOpen, setIsOpen]           = useState(false)
@@ -71,20 +71,20 @@ export function NotificationBell() {
   // Initial unread count on mount
   // ------------------------------------------------------------------
   useEffect(() => {
-    if (!user?.id) return
-    getUnreadCount(user.id).then(setUnreadCount)
-  }, [user?.id])
+    if (!profile?.id) return
+    getUnreadCount(profile.id).then(setUnreadCount)
+  }, [profile?.id])
 
   // ------------------------------------------------------------------
   // Fetch notification list when dropdown opens
   // ------------------------------------------------------------------
   useEffect(() => {
-    if (!isOpen || !user?.id) return
+    if (!isOpen || !profile?.id) return
     setIsLoading(true)
-    getNotificationsForUser(user.id, 20)
+    getNotificationsForUser(profile.id, 20)
       .then(setNotifications)
       .finally(() => setIsLoading(false))
-  }, [isOpen, user?.id])
+  }, [isOpen, profile?.id])
 
   // ------------------------------------------------------------------
   // Close dropdown on outside click
@@ -109,14 +109,15 @@ export function NotificationBell() {
 
   // ------------------------------------------------------------------
   // Supabase Realtime subscription — INSERT on notifications table
+  // filter uses profile.id (user_profiles PK) which is what notifications.user_id stores
   // ------------------------------------------------------------------
   useEffect(() => {
-    if (!user?.id) return
+    if (!profile?.id) return
 
     const supabase = createClient()
     if (!supabase) return
 
-    const channelName = `notifications-${user.id}`
+    const channelName = `notifications-${profile.id}`
 
     const channel = supabase
       .channel(channelName)
@@ -126,7 +127,7 @@ export function NotificationBell() {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${profile.id}`,
         },
         (payload) => {
           const incoming = payload.new as Notification
@@ -151,7 +152,7 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.id])
+  }, [profile?.id])
 
   // ------------------------------------------------------------------
   // Handlers
@@ -174,15 +175,15 @@ export function NotificationBell() {
   )
 
   const handleMarkAllAsRead = useCallback(async () => {
-    if (!user?.id || isMarkingAll) return
+    if (!profile?.id || isMarkingAll) return
     setIsMarkingAll(true)
-    const ok = await markAllAsRead(user.id)
+    const ok = await markAllAsRead(profile.id)
     if (ok) {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
       setUnreadCount(0)
     }
     setIsMarkingAll(false)
-  }, [user?.id, isMarkingAll])
+  }, [profile?.id, isMarkingAll])
 
   // Don't render if there's no authenticated user
   if (!user) return null
