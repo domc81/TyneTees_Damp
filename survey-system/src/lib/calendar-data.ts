@@ -9,6 +9,7 @@ import type {
   AvailabilityBlock,
   SurveyBooking,
   Notification,
+  NotificationCreateData,
   SurveyorWithAvailability,
   TimeSlot,
   BookingFormData,
@@ -24,6 +25,7 @@ export type {
   AvailabilityBlock,
   SurveyBooking,
   Notification,
+  NotificationCreateData,
   SurveyorWithAvailability,
   TimeSlot,
   BookingFormData,
@@ -704,15 +706,12 @@ export async function markAllAsRead(userId: string): Promise<boolean> {
 }
 
 /**
- * Create a notification.
+ * Create a notification (browser-side — subject to RLS: only office/admin can insert).
+ * For system-generated notifications that bypass RLS, use notifications-server.ts.
  */
-export async function createNotification(notificationData: {
-  user_id: string
-  type: NotificationType
-  title: string
-  message: string
-  booking_id?: string | null
-}): Promise<Notification | null> {
+export async function createNotification(
+  notificationData: NotificationCreateData
+): Promise<Notification | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 

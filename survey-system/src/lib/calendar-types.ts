@@ -11,10 +11,29 @@ export type BlockType = 'annual_leave' | 'sickness' | 'training' | 'other'
 export type BookingStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
 
 export type NotificationType =
+  // Booking events
   | 'booking_created'
   | 'booking_updated'
   | 'booking_cancelled'
   | 'booking_reminder'
+  // Survey events
+  | 'survey_created'
+  | 'survey_assigned'
+  | 'survey_completed'
+  | 'survey_status_changed'
+  // Quotation events
+  | 'quotation_generated'
+  | 'quotation_sent'
+  | 'quotation_viewed'
+  | 'quotation_accepted'
+  | 'quotation_declined'
+  // Report events
+  | 'report_generated'
+  | 'report_published'
+  // Enquiry events
+  | 'enquiry_created'
+  // System
+  | 'system_alert'
 
 // --- Table types (snake_case matching database columns) ---
 
@@ -67,8 +86,27 @@ export interface Notification {
   title: string
   message: string
   booking_id?: string | null
+  survey_id?: string | null
+  quotation_id?: string | null
+  report_id?: string | null
+  enquiry_id?: string | null
+  link_url?: string | null
   read: boolean
   created_at: string
+}
+
+/** Data shape accepted by createNotification and server-side notify helpers */
+export interface NotificationCreateData {
+  user_id: string
+  type: NotificationType
+  title: string
+  message: string
+  booking_id?: string | null
+  survey_id?: string | null
+  quotation_id?: string | null
+  report_id?: string | null
+  enquiry_id?: string | null
+  link_url?: string | null
 }
 
 // --- Composite types for UI ---

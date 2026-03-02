@@ -2,7 +2,26 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, CalendarPlus, CalendarX, Clock, Edit2 } from 'lucide-react'
+import {
+  Bell,
+  CalendarPlus,
+  CalendarX,
+  Clock,
+  Edit2,
+  ClipboardList,
+  ClipboardCheck,
+  UserCheck,
+  RefreshCw,
+  FileText,
+  Send,
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  FileCheck,
+  FileOutput,
+  Inbox,
+  AlertCircle,
+} from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
@@ -20,11 +39,30 @@ import type { Notification, NotificationType } from '@/lib/calendar-types'
 
 function getNotificationIcon(type: NotificationType) {
   switch (type) {
-    case 'booking_created':  return CalendarPlus
-    case 'booking_cancelled': return CalendarX
-    case 'booking_updated':  return Edit2
-    case 'booking_reminder': return Clock
-    default:                 return Bell
+    // Booking events
+    case 'booking_created':     return CalendarPlus
+    case 'booking_cancelled':   return CalendarX
+    case 'booking_updated':     return Edit2
+    case 'booking_reminder':    return Clock
+    // Survey events
+    case 'survey_created':      return ClipboardList
+    case 'survey_assigned':     return UserCheck
+    case 'survey_completed':    return ClipboardCheck
+    case 'survey_status_changed': return RefreshCw
+    // Quotation events
+    case 'quotation_generated': return FileText
+    case 'quotation_sent':      return Send
+    case 'quotation_viewed':    return Eye
+    case 'quotation_accepted':  return ThumbsUp
+    case 'quotation_declined':  return ThumbsDown
+    // Report events
+    case 'report_generated':    return FileCheck
+    case 'report_published':    return FileOutput
+    // Enquiry events
+    case 'enquiry_created':     return Inbox
+    // System
+    case 'system_alert':        return AlertCircle
+    default:                    return Bell
   }
 }
 
@@ -33,11 +71,30 @@ function getNotificationColors(type: NotificationType): {
   icon: string
 } {
   switch (type) {
-    case 'booking_created':  return { border: 'border-l-emerald-500', icon: 'text-emerald-400' }
-    case 'booking_cancelled': return { border: 'border-l-red-500',     icon: 'text-red-400'     }
-    case 'booking_updated':  return { border: 'border-l-amber-500',   icon: 'text-amber-400'   }
-    case 'booking_reminder': return { border: 'border-l-blue-500',    icon: 'text-blue-400'    }
-    default:                 return { border: 'border-l-white/20',    icon: 'text-white/40'    }
+    // Booking — green/red/amber/blue
+    case 'booking_created':      return { border: 'border-l-emerald-500', icon: 'text-emerald-400' }
+    case 'booking_cancelled':    return { border: 'border-l-red-500',     icon: 'text-red-400'     }
+    case 'booking_updated':      return { border: 'border-l-amber-500',   icon: 'text-amber-400'   }
+    case 'booking_reminder':     return { border: 'border-l-blue-500',    icon: 'text-blue-400'    }
+    // Survey — teal/cyan
+    case 'survey_created':       return { border: 'border-l-teal-500',    icon: 'text-teal-400'    }
+    case 'survey_assigned':      return { border: 'border-l-cyan-500',    icon: 'text-cyan-400'    }
+    case 'survey_completed':     return { border: 'border-l-emerald-500', icon: 'text-emerald-400' }
+    case 'survey_status_changed': return { border: 'border-l-teal-500',   icon: 'text-teal-400'    }
+    // Quotation — purple/violet
+    case 'quotation_generated':  return { border: 'border-l-purple-500',  icon: 'text-purple-400'  }
+    case 'quotation_sent':       return { border: 'border-l-violet-500',  icon: 'text-violet-400'  }
+    case 'quotation_viewed':     return { border: 'border-l-indigo-500',  icon: 'text-indigo-400'  }
+    case 'quotation_accepted':   return { border: 'border-l-emerald-500', icon: 'text-emerald-400' }
+    case 'quotation_declined':   return { border: 'border-l-red-500',     icon: 'text-red-400'     }
+    // Report — sky
+    case 'report_generated':     return { border: 'border-l-sky-500',     icon: 'text-sky-400'     }
+    case 'report_published':     return { border: 'border-l-sky-500',     icon: 'text-sky-400'     }
+    // Enquiry — amber
+    case 'enquiry_created':      return { border: 'border-l-amber-500',   icon: 'text-amber-400'   }
+    // System — red/warning
+    case 'system_alert':         return { border: 'border-l-red-500',     icon: 'text-red-400'     }
+    default:                     return { border: 'border-l-white/20',    icon: 'text-white/40'    }
   }
 }
 
@@ -167,9 +224,14 @@ export function NotificationBell() {
         setUnreadCount((prev) => Math.max(0, prev - 1))
       }
       setIsOpen(false)
-      if (notification.booking_id) {
+
+      // Navigate: prefer link_url, fall back to /calendar for booking notifications
+      if (notification.link_url) {
+        router.push(notification.link_url)
+      } else if (notification.booking_id) {
         router.push('/calendar')
       }
+      // Notifications with neither link_url nor booking_id just mark as read
     },
     [router]
   )
