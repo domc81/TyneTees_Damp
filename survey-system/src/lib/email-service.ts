@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { Resend } from 'resend'
+import { createServerClient as createSSRClient } from '@supabase/ssr'
 import { getEmailConfig } from './email-config'
 
 // ---------------------------------------------------------------------------
@@ -20,12 +21,73 @@ export interface SendEmailOptions {
   subject: string
   html: string
   replyTo?: string
+  // Logging context — optional, for audit trail in communication_log
+  templateName?: string
+  customerId?: string
+  surveyId?: string
+  quotationId?: string
+  bookingId?: string
+  sentBy?: string
+  recipientName?: string
 }
 
 export interface SendEmailResult {
   success: boolean
   messageId?: string
   error?: string
+}
+
+// ---------------------------------------------------------------------------
+// Internal: logging helper
+// ---------------------------------------------------------------------------
+
+function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) return null
+  return createSSRClient(url, serviceKey, {
+    cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+  })
+}
+
+async function logCommunication(params: {
+  status: 'sent' | 'failed'
+  recipientEmail: string
+  recipientName?: string
+  subject: string
+  messageId?: string
+  errorMessage?: string
+  templateName?: string
+  customerId?: string
+  surveyId?: string
+  quotationId?: string
+  bookingId?: string
+  sentBy?: string
+}): Promise<void> {
+  try {
+    const supabase = createServiceRoleClient()
+    if (!supabase) return
+
+    await supabase.from('communication_log').insert({
+      channel: 'email',
+      direction: 'outbound',
+      status: params.status,
+      recipient_email: params.recipientEmail,
+      recipient_name: params.recipientName ?? null,
+      subject: params.subject,
+      message_id: params.messageId ?? null,
+      error_message: params.errorMessage ?? null,
+      template_name: params.templateName ?? null,
+      customer_id: params.customerId ?? null,
+      survey_id: params.surveyId ?? null,
+      quotation_id: params.quotationId ?? null,
+      booking_id: params.bookingId ?? null,
+      sent_by: params.sentBy ?? null,
+    })
+  } catch (err) {
+    // Logging must never cause the send to fail
+    console.error('[email-service] Failed to write to communication_log:', err)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -41,7 +103,15 @@ export interface SendEmailResult {
  * Never throws.
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
-  const { to, subject, html, replyTo } = options
+  const {
+    to, subject, html, replyTo,
+    templateName, customerId, surveyId, quotationId, bookingId, sentBy, recipientName,
+  } = options
+
+  const recipientEmail = Array.isArray(to) ? to[0] : to
+
+  // Shared logging args for every exit path
+  const logBase = { recipientEmail, recipientName, subject, templateName, customerId, surveyId, quotationId, bookingId, sentBy }
 
   // 1. Load email config dynamically — returns null if not configured
   let config
@@ -81,39 +151,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
         ? String((error as { message: unknown }).message)
         : JSON.stringify(error)
       console.error('[email-service] Resend API error:', msg, { to, subject })
-      // TODO (Prompt 4): log to communication_log table
-      console.log('[email-service] SEND_LOG', {
-        recipient: Array.isArray(to) ? to.join(', ') : to,
-        subject,
-        success: false,
-        error: msg,
-        timestamp: new Date().toISOString(),
-      })
+      await logCommunication({ ...logBase, status: 'failed', errorMessage: msg })
       return { success: false, error: 'Failed to send email' }
     }
 
     const messageId = data?.id
-    // TODO (Prompt 4): log to communication_log table
-    console.log('[email-service] SEND_LOG', {
-      recipient: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      success: true,
-      messageId,
-      timestamp: new Date().toISOString(),
-    })
+    await logCommunication({ ...logBase, status: 'sent', messageId })
 
     return { success: true, messageId }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[email-service] Unexpected error sending email:', msg, { to, subject })
-    // TODO (Prompt 4): log to communication_log table
-    console.log('[email-service] SEND_LOG', {
-      recipient: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      success: false,
-      error: msg,
-      timestamp: new Date().toISOString(),
-    })
+    await logCommunication({ ...logBase, status: 'failed', errorMessage: msg })
     return { success: false, error: 'An unexpected error occurred while sending email' }
   }
 }

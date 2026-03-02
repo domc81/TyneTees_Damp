@@ -88,7 +88,11 @@ export function clearBrandingCache() {
  * All styling is inline.
  */
 export function wrapInBrandedLayout(bodyContent: string, branding: CompanyBranding): string {
-  const logoSection = branding.logoUrl
+  // SVG is blocked by virtually all email clients (Gmail, Outlook, Apple Mail)
+  // for security reasons. Only render an <img> tag for raster formats (PNG/JPG/etc).
+  // Fall back to the company name as styled text for SVG or missing logo.
+  const isRasterLogo = branding.logoUrl && !/\.svg$/i.test(branding.logoUrl)
+  const logoSection = isRasterLogo
     ? `<img src="${branding.logoUrl}" alt="${escapeHtml(branding.companyName)}" style="max-height:60px;max-width:200px;display:block;" />`
     : `<span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">${escapeHtml(branding.companyName)}</span>`
 

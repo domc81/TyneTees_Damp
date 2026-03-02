@@ -17,6 +17,7 @@ export async function POST(_request: NextRequest) {
   // ── Auth check ─────────────────────────────────────────────────────────
 
   let adminEmail: string | null = null
+  let adminProfileId: string | null = null
 
   try {
     const supabase = createServerClient()
@@ -25,10 +26,10 @@ export async function POST(_request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    // Verify admin role
+    // Verify admin role — also grab profile id for communication_log.sent_by
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('role')
+      .select('id, role')
       .eq('user_id', user.id)
       .single()
 
@@ -37,6 +38,7 @@ export async function POST(_request: NextRequest) {
     }
 
     adminEmail = user.email ?? null
+    adminProfileId = profile?.id ?? null
   } catch {
     return NextResponse.json({ error: 'Authentication check failed' }, { status: 401 })
   }
@@ -66,6 +68,9 @@ export async function POST(_request: NextRequest) {
     to: adminEmail,
     subject: template.subject,
     html: template.html,
+    templateName: 'test',
+    sentBy: adminProfileId ?? undefined,
+    recipientName: adminEmail,
   })
 
   if (!result.success) {
