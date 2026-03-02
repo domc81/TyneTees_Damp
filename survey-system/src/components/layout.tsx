@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { CompanyLogo } from '@/components/CompanyLogo'
+import { NotificationBell } from '@/components/NotificationBell'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -117,6 +118,11 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </aside>
 
+      {/* Desktop notification bell — fixed top-right, hidden on mobile (mobile uses header slot) */}
+      <div className="hidden lg:flex fixed top-4 right-6 z-30">
+        <NotificationBell />
+      </div>
+
       {/* Main content wrapper */}
       <div className="lg:ml-64">
         {/* Mobile header */}
@@ -129,7 +135,7 @@ export default function Layout({ children }: LayoutProps) {
               <Menu className="w-6 h-6" />
             </button>
             <CompanyLogo className="h-6" />
-            <div className="w-10" />
+            <NotificationBell />
           </div>
         </header>
 
