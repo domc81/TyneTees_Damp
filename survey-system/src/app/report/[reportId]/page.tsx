@@ -31,6 +31,7 @@ import { SurveyorProfileSection } from '@/components/report/SurveyorProfileSecti
 import { CondensationCausesSection } from '@/components/report/CondensationCausesSection'
 import { TreatmentMethodologySection } from '@/components/report/TreatmentMethodologySection'
 import { PhotoLightbox } from '@/components/report/PhotoLightbox'
+import { ReportViewTracker } from './client'
 
 // =============================================================================
 // Cached company profile — deduplicated across generateMetadata + page render
@@ -492,6 +493,9 @@ export default async function PublicReportPage({
           generatedAt={report.generated_at ?? null}
         />
       </footer>
+
+      {/* Analytics beacon — fires on page load, non-blocking */}
+      <ReportViewTracker reportId={report.id} token={token} />
 
       {/* Client component — progressive enhancement for photo lightbox */}
       <PhotoLightbox />

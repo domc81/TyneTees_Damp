@@ -30,6 +30,8 @@ export type NotificationType =
   // Report events
   | 'report_generated'
   | 'report_published'
+  | 'report_sent'
+  | 'report_viewed'
   // Enquiry events
   | 'enquiry_created'
   // System

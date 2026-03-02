@@ -118,6 +118,11 @@ export interface SurveyReport {
   finalised_at?: string
   publish_token?: string | null
   published_at?: string | null
+  sent_at?: string | null
+  sent_to_email?: string | null
+  first_viewed_at?: string | null
+  last_viewed_at?: string | null
+  view_count?: number
   created_at: string
   updated_at: string
 }

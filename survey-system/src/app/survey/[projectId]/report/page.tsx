@@ -25,6 +25,8 @@ import {
   Copy,
   ExternalLink,
   Link2,
+  Send,
+  Mail,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -115,6 +117,10 @@ export default function ReportEditorPage() {
   const [standardSectionsExpanded, setStandardSectionsExpanded] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendConfirm, setSendConfirm] = useState(false)
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -124,6 +130,26 @@ export default function ReportEditorPage() {
   // Load report on mount
   useEffect(() => {
     loadReportData()
+  }, [projectId])
+
+  // Load customer email for the send button
+  useEffect(() => {
+    async function loadCustomerEmail() {
+      const supabase = getSupabase()
+      if (!supabase) return
+
+      const { data: survey } = await supabase
+        .from('surveys')
+        .select('customer_id, customers ( email )')
+        .eq('id', projectId)
+        .single()
+
+      if (survey?.customers) {
+        const c = survey.customers as unknown as { email: string | null }
+        setCustomerEmail(c?.email || null)
+      }
+    }
+    loadCustomerEmail()
   }, [projectId])
 
   async function loadReportData() {
@@ -346,6 +372,46 @@ export default function ReportEditorPage() {
     await navigator.clipboard.writeText(url)
     setCopiedLink(true)
     setTimeout(() => setCopiedLink(false), 2000)
+  }
+
+  // Send report to customer
+  async function handleSendToCustomer() {
+    if (!report) return
+    setIsSending(true)
+    setSendResult(null)
+
+    try {
+      const res = await fetch(`/api/reports/${report.id}/send`, { method: 'POST' })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        setSendResult({ success: false, message: data.error || 'Failed to send report' })
+        return
+      }
+
+      if (data.sent === false) {
+        // Email disabled in notification preferences
+        setSendResult({ success: true, message: data.reason || 'Email not sent' })
+        return
+      }
+
+      const now = new Date().toISOString()
+      setReport({
+        ...report,
+        sent_at: now,
+        sent_to_email: data.sentTo,
+      })
+      setSendResult({ success: true, message: `Report sent to ${data.sentTo}` })
+      setSendConfirm(false)
+
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSendResult(null), 5000)
+    } catch (err) {
+      console.error('Error sending report:', err)
+      setSendResult({ success: false, message: 'An unexpected error occurred' })
+    } finally {
+      setIsSending(false)
+    }
   }
 
   // Scroll to section
@@ -615,6 +681,96 @@ export default function ReportEditorPage() {
                           <ExternalLink className="w-4 h-4" />
                           <span className="hidden sm:inline">Open</span>
                         </a>
+                      </div>
+
+                      {/* Send to Customer */}
+                      <div className="border-t border-white/10 pt-4 space-y-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {!sendConfirm ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => setSendConfirm(true)}
+                              disabled={!customerEmail || isSending}
+                              title={!customerEmail ? 'No customer email — update the customer record first' : undefined}
+                            >
+                              <Send className="w-4 h-4 mr-1.5" />
+                              {report.sent_at ? 'Resend to Customer' : 'Send to Customer'}
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/10">
+                              <span className="text-xs text-white/70">
+                                Send to <strong className="text-white">{customerEmail}</strong>?
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleSendToCustomer}
+                                disabled={isSending}
+                              >
+                                {isSending ? (
+                                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending…</>
+                                ) : (
+                                  'Confirm'
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSendConfirm(false)}
+                                disabled={isSending}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Last sent info */}
+                        {report.sent_at && (
+                          <p className="text-xs text-white/50 flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5" />
+                            Last sent: {new Date(report.sent_at).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })} to {report.sent_to_email}
+                          </p>
+                        )}
+
+                        {/* Send result feedback */}
+                        {sendResult && (
+                          <div className={`text-sm px-3 py-2 rounded-lg ${
+                            sendResult.success
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-400/20'
+                          }`}>
+                            {sendResult.success ? <Check className="w-4 h-4 inline mr-1.5" /> : <AlertCircle className="w-4 h-4 inline mr-1.5" />}
+                            {sendResult.message}
+                          </div>
+                        )}
+
+                        {/* View tracking stats */}
+                        {(report.view_count ?? 0) > 0 && (
+                          <div className="flex items-center gap-3 text-xs text-white/50">
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-3.5 h-3.5" />
+                              {report.view_count} {report.view_count === 1 ? 'view' : 'views'}
+                            </span>
+                            {report.first_viewed_at && (
+                              <span>
+                                First viewed: {new Date(report.first_viewed_at).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (

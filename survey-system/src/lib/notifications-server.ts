@@ -243,6 +243,48 @@ export async function notifyReportPublished(
   await insertNotifications(rows)
 }
 
+export async function notifyReportSent(
+  report: { id: string },
+  survey: { id: string; project_number?: string; client_name?: string },
+  customerName: string
+): Promise<void> {
+  const recipientIds = await getOfficeAndAdminProfileIds()
+  if (recipientIds.length === 0) return
+
+  const label = survey.project_number || 'A survey'
+
+  const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
+    user_id: userId,
+    type: 'report_sent',
+    title: `Report sent — ${label}`,
+    message: `Report for ${label} has been emailed to ${customerName}.`,
+    report_id: report.id,
+    survey_id: survey.id,
+    link_url: `/survey/${survey.id}/report`,
+  }))
+
+  await insertNotifications(rows)
+}
+
+export async function notifyReportViewed(
+  report: { id: string; survey_id: string }
+): Promise<void> {
+  const recipientIds = await getOfficeAndAdminProfileIds()
+  if (recipientIds.length === 0) return
+
+  const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
+    user_id: userId,
+    type: 'report_viewed',
+    title: 'Report Viewed by Customer',
+    message: `A customer has viewed their survey report.`,
+    report_id: report.id,
+    survey_id: report.survey_id,
+    link_url: `/survey/${report.survey_id}/report`,
+  }))
+
+  await insertNotifications(rows)
+}
+
 // -----------------------------------------------------------------------------
 // Enquiry notifications
 // -----------------------------------------------------------------------------
