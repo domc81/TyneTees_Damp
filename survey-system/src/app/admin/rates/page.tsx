@@ -7,103 +7,116 @@ import {
   Save,
   RefreshCw,
   AlertCircle,
-  PoundSterling,
+  CheckCircle,
   Percent,
   Truck,
   Users,
   ArrowLeft,
+  Hammer,
+  Receipt,
 } from 'lucide-react'
-import { getBaseRates, getMarkupConfig } from '@/lib/supabase-data'
-import type { BaseRate, MarkupConfig } from '@/types/database.types'
+import { loadPricingConfig, updatePricingConfigBatch } from '@/lib/pricing-data'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+type ConfigMap = Record<string, number>
+
+/** Stored decimal (0.30) → display percent (30) */
+const toPercent = (decimal: number) => Math.round(decimal * 100)
+
+/** Display percent (30) → stored decimal (0.30) */
+const toDecimal = (percent: number) => percent / 100
+
+/** Stored wastage factor (1.10) → display percent (10) */
+const wastageToPercent = (factor: number) => Math.round((factor - 1) * 100)
+
+/** Display percent (10) → stored wastage factor (1.10) */
+const wastageToFactor = (percent: number) => 1 + percent / 100
+
+const fmt = (v: number) => `£${v.toFixed(2)}`
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function RatesAdminPage() {
-  const [laborRate, setLaborRate] = useState(0)
-  const [laborMarkup, setLaborMarkup] = useState(0)
-  const [contractorRate, setContractorRate] = useState(0)
-  const [travelRate, setTravelRate] = useState(0)
-  const [vehicleCost, setVehicleCost] = useState(0)
-  const [materialMarkup, setMaterialMarkup] = useState(0)
-  const [overheadMarkup, setOverheadMarkup] = useState(0)
-  const [initialRates, setInitialRates] = useState<BaseRate[]>([])
-  const [initialMarkups, setInitialMarkups] = useState<MarkupConfig[]>([])
+  const [config, setConfig] = useState<ConfigMap>({})
+  const [initialConfig, setInitialConfig] = useState<ConfigMap>({})
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Load all pricing config on mount
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        const [ratesData, markupData] = await Promise.all([
-          getBaseRates(),
-          getMarkupConfig()
-        ])
-
-        const labor = ratesData.find(r => r.category === 'labor')
-        const contractor = ratesData.find(r => r.category === 'contractor')
-        const travel = ratesData.find(r => r.category === 'travel')
-
-        setLaborRate(labor?.rate_value || 0)
-        setContractorRate(contractor?.rate_value || 0)
-        setTravelRate(travel?.rate_value || 0)
-
-        const material = markupData.find(m => m.item_type === 'MTL')
-        const overhead = markupData.find(m => m.item_type === 'OVR')
-
-        setMaterialMarkup(material?.percentage || 0)
-        setOverheadMarkup(overhead?.percentage || 0)
-
-        setInitialRates(ratesData)
-        setInitialMarkups(markupData)
-      } catch (err) {
-        console.error('Failed to load rates:', err)
-      } finally {
-        setLoading(false)
-      }
+    const load = async () => {
+      setLoading(true)
+      const data = await loadPricingConfig()
+      setConfig(data)
+      setInitialConfig(data)
+      setLoading(false)
     }
-
-    loadData()
+    load()
   }, [])
 
-  const [hasChanges, setHasChanges] = useState(false)
-  const [saving, setSaving] = useState(false)
+  // Auto-dismiss success messages after 4s
+  useEffect(() => {
+    if (message?.type === 'success') {
+      const t = setTimeout(() => setMessage(null), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [message])
+
+  const get = (key: string) => config[key] ?? 0
+
+  const set = (key: string, value: number) => {
+    setConfig(prev => ({ ...prev, [key]: value }))
+    setHasChanges(true)
+    setMessage(null)
+  }
 
   const handleSave = async () => {
     setSaving(true)
-    await new Promise(resolve => setTimeout(resolve, 500))
-    console.log('Saving rates:', {
-      labor: { base_hourly_rate: laborRate, markup_percentage: laborMarkup },
-      contractor: { hourly_rate: contractorRate },
-      travel: { hourly_rate: travelRate, vehicle_cost_per_mile: vehicleCost },
-      markups: { materials: materialMarkup, overheads: overheadMarkup },
-    })
-    alert('Rates saved (demo mode - data not persisted)')
+    setMessage(null)
+
+    const updates = Object.entries(config)
+      .filter(([key, value]) => value !== initialConfig[key])
+      .map(([config_key, config_value]) => ({ config_key, config_value }))
+
+    if (updates.length === 0) {
+      setSaving(false)
+      return
+    }
+
+    const success = await updatePricingConfigBatch(updates)
+
+    if (success) {
+      setInitialConfig({ ...config })
+      setHasChanges(false)
+      setMessage({
+        type: 'success',
+        text: `${updates.length} setting${updates.length > 1 ? 's' : ''} saved successfully`,
+      })
+    } else {
+      setMessage({ type: 'error', text: 'Failed to save changes. Please try again.' })
+    }
+
     setSaving(false)
-    setHasChanges(false)
   }
 
   const handleReset = () => {
-    const labor = initialRates.find(r => r.category === 'labor')
-    const contractor = initialRates.find(r => r.category === 'contractor')
-    const travel = initialRates.find(r => r.category === 'travel')
-    const material = initialMarkups.find(m => m.item_type === 'MTL')
-    const overhead = initialMarkups.find(m => m.item_type === 'OVR')
-
-    setLaborRate(labor?.rate_value || 0)
-    setContractorRate(contractor?.rate_value || 0)
-    setTravelRate(travel?.rate_value || 0)
-    setMaterialMarkup(material?.percentage || 0)
-    setOverheadMarkup(overhead?.percentage || 0)
+    setConfig({ ...initialConfig })
     setHasChanges(false)
+    setMessage(null)
   }
 
-  const updateValue = (setter: React.Dispatch<React.SetStateAction<number>>, value: number) => {
-    setter(value)
-    setHasChanges(true)
-  }
-
-  const effectiveLaborRate = laborRate * (1 + laborMarkup / 100)
-  const effectiveMaterialMarkup = 1 + materialMarkup / 100
+  // Derived values
+  const effectiveLabourRate =
+    get('hourly_labour_rate') * (1 + get('default_labour_markup'))
 
   if (loading) {
     return (
@@ -112,7 +125,7 @@ export default function RatesAdminPage() {
           <div className="flex items-center justify-center py-32">
             <div className="text-center">
               <div className="spinner mx-auto mb-4" />
-              <p className="text-white/60">Loading rates...</p>
+              <p className="text-white/60">Loading pricing config...</p>
             </div>
           </div>
         </Layout>
@@ -137,16 +150,15 @@ export default function RatesAdminPage() {
             <div>
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                 <Clock className="w-6 h-6 text-purple-400" />
-                Base Rates &amp; Markups
+                Pricing Configuration
               </h2>
-              <p className="text-sm text-white/60 mt-1">Configure core pricing parameters</p>
+              <p className="text-sm text-white/60 mt-1">
+                All values feed directly into the pricing engine
+              </p>
             </div>
             <div className="flex items-center gap-3">
               {hasChanges && (
-                <button
-                  onClick={handleReset}
-                  className="btn-secondary flex items-center gap-2"
-                >
+                <button onClick={handleReset} className="btn-secondary flex items-center gap-2">
                   <RefreshCw className="w-4 h-4" />
                   Reset
                 </button>
@@ -168,204 +180,309 @@ export default function RatesAdminPage() {
             <div>
               <h3 className="font-semibold text-amber-300">Important</h3>
               <p className="text-sm text-amber-400/80 mt-1">
-                Changing these rates will affect all new price calculations across the system.
-                Existing quotes will not be updated.
+                Changing these values will affect all new price calculations.
+                Existing quotes are not updated.
               </p>
             </div>
           </div>
 
+          {/* Save feedback */}
+          {message && (
+            <div
+              className={`p-4 rounded-xl flex items-start gap-3 ${
+                message.type === 'success'
+                  ? 'bg-green-500/10 border border-green-500/20'
+                  : 'bg-red-500/10 border border-red-500/20'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+              )}
+              <p
+                className={`text-sm ${
+                  message.type === 'success' ? 'text-green-300' : 'text-red-300'
+                }`}
+              >
+                {message.text}
+              </p>
+            </div>
+          )}
+
+          {/* ── Cards ────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Labor Rates */}
+            {/* Labour Rates */}
             <div className="section-card p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-amber-500/10">
                   <Users className="w-5 h-5 text-amber-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Labor Rates</h3>
+                <h3 className="text-lg font-semibold text-white">Labour Rates</h3>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Base Hourly Rate (&pound;)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Base Hourly Rate (&pound;)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={laborRate}
-                    onChange={(e) => updateValue(setLaborRate, parseFloat(e.target.value) || 0)}
+                    value={get('hourly_labour_rate')}
+                    onChange={e => set('hourly_labour_rate', parseFloat(e.target.value) || 0)}
                     className="input-field"
                   />
                   <p className="text-xs text-white/40 mt-1">Cost to company per hour</p>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Labor Markup (%)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Labour Markup (%)
+                  </label>
                   <input
                     type="number"
                     step="1"
                     min="0"
-                    value={laborMarkup}
-                    onChange={(e) => updateValue(setLaborMarkup, parseInt(e.target.value) || 0)}
+                    value={toPercent(get('default_labour_markup'))}
+                    onChange={e => set('default_labour_markup', toDecimal(parseInt(e.target.value) || 0))}
                     className="input-field"
                   />
-                  <p className="text-xs text-white/40 mt-1">Applied to all labor costs</p>
+                  <p className="text-xs text-white/40 mt-1">Applied to all labour costs</p>
                 </div>
-
                 <div className="p-3 bg-white/5 rounded-xl">
                   <p className="text-sm text-white/70">
                     <strong className="text-white/90">Effective Rate:</strong>
                     <span className="ml-2 text-lg font-bold text-brand-400">
-                      &pound;{effectiveLaborRate.toFixed(2)}/hr
+                      {fmt(effectiveLabourRate)}/hr
                     </span>
                   </p>
                   <p className="text-xs text-white/40 mt-1">
-                    &pound;{laborRate.toFixed(2)} &times; {(1 + laborMarkup / 100).toFixed(2)} = &pound;{effectiveLaborRate.toFixed(2)}
+                    {fmt(get('hourly_labour_rate'))} &times;{' '}
+                    {(1 + get('default_labour_markup')).toFixed(2)} ={' '}
+                    {fmt(effectiveLabourRate)}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Contractor Rates */}
-            <div className="section-card p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-purple-500/10">
-                  <Users className="w-5 h-5 text-purple-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-white">Contractor Rates</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Subcontractor Hourly Rate (&pound;)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={contractorRate}
-                    onChange={(e) => updateValue(setContractorRate, parseFloat(e.target.value) || 0)}
-                    className="input-field"
-                  />
-                  <p className="text-xs text-white/40 mt-1">Paid to external contractors</p>
-                </div>
-
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <p className="text-sm text-white/60">
-                    Subcontractor markup is set to <strong className="text-white/80">0%</strong> by default
-                    (pass-through cost)
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Travel Costs */}
+            {/* Contractor & Travel */}
             <div className="section-card p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-green-500/10">
                   <Truck className="w-5 h-5 text-green-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Travel Costs</h3>
+                <h3 className="text-lg font-semibold text-white">Contractor &amp; Travel</h3>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Travel Time Rate (&pound;/hr)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Contractor Hourly Rate (&pound;)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={travelRate}
-                    onChange={(e) => updateValue(setTravelRate, parseFloat(e.target.value) || 0)}
+                    value={get('contractor_hourly_rate')}
+                    onChange={e => set('contractor_hourly_rate', parseFloat(e.target.value) || 0)}
                     className="input-field"
                   />
-                  <p className="text-xs text-white/40 mt-1">Billed for travel time</p>
+                  <p className="text-xs text-white/40 mt-1">Rate paid to subcontractors (no markup)</p>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Vehicle Cost (&pound;/mile)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Vehicle Cost (&pound;/mile)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={vehicleCost}
-                    onChange={(e) => updateValue(setVehicleCost, parseFloat(e.target.value) || 0)}
+                    value={get('vehicle_cost_per_mile')}
+                    onChange={e => set('vehicle_cost_per_mile', parseFloat(e.target.value) || 0)}
                     className="input-field"
                   />
-                  <p className="text-xs text-white/40 mt-1">Fuel and vehicle costs per mile</p>
+                  <p className="text-xs text-white/40 mt-1">
+                    Used in Project Specific Overheads calculation
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Markup Percentages */}
+            {/* Markups & Wastage */}
             <div className="section-card p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-blue-500/10">
                   <Percent className="w-5 h-5 text-blue-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Markup Percentages</h3>
+                <h3 className="text-lg font-semibold text-white">Markups &amp; Wastage</h3>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Materials Markup (%)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Material Markup (%)
+                  </label>
                   <input
                     type="number"
                     step="1"
                     min="0"
-                    value={materialMarkup}
-                    onChange={(e) => updateValue(setMaterialMarkup, parseInt(e.target.value) || 0)}
+                    value={toPercent(get('default_material_markup'))}
+                    onChange={e =>
+                      set('default_material_markup', toDecimal(parseInt(e.target.value) || 0))
+                    }
                     className="input-field"
                   />
                   <p className="text-xs text-white/40 mt-1">Applied to supplier material costs</p>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Overheads Markup (%)</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Wastage Factor (%)
+                  </label>
                   <input
                     type="number"
                     step="1"
                     min="0"
-                    value={overheadMarkup}
-                    onChange={(e) => updateValue(setOverheadMarkup, parseInt(e.target.value) || 0)}
+                    value={wastageToPercent(get('default_wastage_factor'))}
+                    onChange={e =>
+                      set('default_wastage_factor', wastageToFactor(parseInt(e.target.value) || 0))
+                    }
                     className="input-field"
                   />
-                  <p className="text-xs text-white/40 mt-1">Applied to project overheads (skips, etc.)</p>
-                </div>
-
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <p className="text-sm text-white/70">
-                    Material at &pound;10.00 &rarr;
-                    <span className="ml-2 font-bold text-brand-400">
-                      &pound;{(10 * effectiveMaterialMarkup).toFixed(2)}
-                    </span>
-                    <span className="text-white/40 ml-1">(+{materialMarkup}%)</span>
+                  <p className="text-xs text-white/40 mt-1">
+                    Extra material ordered to cover waste (e.g. 10%)
                   </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    VAT Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={toPercent(get('vat_rate'))}
+                    onChange={e => set('vat_rate', toDecimal(parseInt(e.target.value) || 0))}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">Standard VAT rate</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Costs */}
+            <div className="section-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <Hammer className="w-5 h-5 text-purple-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Fixed Costs</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Skip Hire — 8yd (&pound;)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={get('skip_hire_8yd_cost')}
+                    onChange={e => set('skip_hire_8yd_cost', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">Base cost per skip</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Asbestos Testing (&pound;/sample)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={get('asbestos_testing_cost')}
+                    onChange={e => set('asbestos_testing_cost', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">Per sample lab cost</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Digital DPC Unit (&pound;)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={get('digital_dpc_base_cost')}
+                    onChange={e => set('digital_dpc_base_cost', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">Mursec Eco digital DPC base cost</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Summary Card */}
+          {/* Deposit Percentages */}
+          <div className="section-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-teal-500/10">
+                <Receipt className="w-5 h-5 text-teal-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Deposit Percentages</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { key: 'damp_deposit_pct', label: 'Damp' },
+                { key: 'condensation_deposit_pct', label: 'Condensation' },
+                { key: 'timber_deposit_pct', label: 'Timber' },
+                { key: 'woodworm_deposit_pct', label: 'Woodworm' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    {label} (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={toPercent(get(key))}
+                    onChange={e => set(key, toDecimal(parseInt(e.target.value) || 0))}
+                    className="input-field"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Summary */}
           <div className="section-card p-6">
             <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <PoundSterling className="w-5 h-5 text-white/50" />
+              <Clock className="w-5 h-5 text-white/50" />
               Pricing Summary
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="p-4 bg-amber-500/10 rounded-xl text-center">
-                <p className="text-2xl font-bold text-amber-300">&pound;{effectiveLaborRate.toFixed(2)}</p>
-                <p className="text-sm text-amber-400/80">Effective Labor Rate</p>
-              </div>
-              <div className="p-4 bg-purple-500/10 rounded-xl text-center">
-                <p className="text-2xl font-bold text-purple-300">&pound;{contractorRate.toFixed(2)}</p>
-                <p className="text-sm text-purple-400/80">Contractor Rate</p>
-              </div>
-              <div className="p-4 bg-blue-500/10 rounded-xl text-center">
-                <p className="text-2xl font-bold text-blue-300">{materialMarkup}%</p>
-                <p className="text-sm text-blue-400/80">Material Markup</p>
+                <p className="text-2xl font-bold text-amber-300">{fmt(effectiveLabourRate)}</p>
+                <p className="text-sm text-amber-400/80">Effective Labour Rate</p>
               </div>
               <div className="p-4 bg-green-500/10 rounded-xl text-center">
-                <p className="text-2xl font-bold text-green-300">&pound;{vehicleCost.toFixed(2)}/mi</p>
-                <p className="text-sm text-green-400/80">Vehicle Cost</p>
+                <p className="text-2xl font-bold text-green-300">
+                  {fmt(get('contractor_hourly_rate'))}
+                </p>
+                <p className="text-sm text-green-400/80">Contractor Rate</p>
+              </div>
+              <div className="p-4 bg-blue-500/10 rounded-xl text-center">
+                <p className="text-2xl font-bold text-blue-300">
+                  {toPercent(get('default_material_markup'))}%
+                </p>
+                <p className="text-sm text-blue-400/80">Material Markup</p>
+              </div>
+              <div className="p-4 bg-purple-500/10 rounded-xl text-center">
+                <p className="text-2xl font-bold text-purple-300">
+                  {fmt(get('vehicle_cost_per_mile'))}/mi
+                </p>
+                <p className="text-sm text-purple-400/80">Vehicle Cost</p>
               </div>
             </div>
           </div>

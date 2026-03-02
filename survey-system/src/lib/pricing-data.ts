@@ -123,6 +123,69 @@ export async function loadPricingConfig(): Promise<PricingConfig> {
 }
 
 /**
+ * Update a single pricing_config row by config_key.
+ *
+ * @param configKey - The config_key to update (e.g. 'hourly_labour_rate')
+ * @param configValue - The new numeric value
+ * @returns true on success, false on error
+ */
+export async function updatePricingConfigValue(
+  configKey: string,
+  configValue: number
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.error('Supabase client not available')
+    return false
+  }
+
+  const { error } = await supabase
+    .from('pricing_config')
+    .update({
+      config_value: configValue,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('config_key', configKey)
+
+  if (error) {
+    console.error(`Error updating pricing config "${configKey}":`, error)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Update multiple pricing_config values at once.
+ * Runs updates in parallel. Returns true if ALL succeed, false if any fail.
+ */
+export async function updatePricingConfigBatch(
+  updates: Array<{ config_key: string; config_value: number }>
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  const now = new Date().toISOString()
+
+  const results = await Promise.all(
+    updates.map(({ config_key, config_value }) =>
+      supabase
+        .from('pricing_config')
+        .update({ config_value, updated_at: now })
+        .eq('config_key', config_key)
+    )
+  )
+
+  const failed = results.filter(r => r.error)
+  if (failed.length > 0) {
+    failed.forEach(r => console.error('Pricing config update error:', r.error))
+    return false
+  }
+
+  return true
+}
+
+/**
  * Load material catalog lookup map from the database
  *
  * Queries the materials_catalog table and transforms it into a lookup map

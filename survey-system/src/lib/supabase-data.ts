@@ -8,15 +8,8 @@ import type {
   Survey,
   Surveyor,
   SurveyRoom,
-  MoistureReading,
-  Defect,
   Photo,
-  WorkSection,
   MaterialsCatalogItem,
-  PricingItem,
-  SurveyCosting,
-  BaseRate,
-  MarkupConfig,
 } from '@/types/database.types'
 
 // Re-export types for convenience (other files import from here)
@@ -26,15 +19,8 @@ export type {
   Survey,
   Surveyor,
   SurveyRoom,
-  MoistureReading,
-  Defect,
   Photo,
-  WorkSection,
   MaterialsCatalogItem,
-  PricingItem,
-  SurveyCosting,
-  BaseRate,
-  MarkupConfig,
 }
 
 // ============================================================================
@@ -554,70 +540,6 @@ export async function updateSurveyRoom(
 }
 
 // ============================================================================
-// Moisture Readings
-// ============================================================================
-
-export async function getMoistureReadings(roomId: string): Promise<MoistureReading[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-
-  const { data, error } = await supabase
-    .from('moisture_readings')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('timestamp')
-
-  if (error) {
-    console.error('Error fetching moisture readings:', error)
-    return []
-  }
-
-  return data || []
-}
-
-export async function createMoistureReading(
-  reading: Omit<MoistureReading, 'id' | 'timestamp'>
-): Promise<MoistureReading | null> {
-  const supabase = getSupabase()
-  if (!supabase) return null
-
-  const { data, error } = await supabase
-    .from('moisture_readings')
-    .insert(reading)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating moisture reading:', error)
-    return null
-  }
-
-  return data
-}
-
-// ============================================================================
-// Defects
-// ============================================================================
-
-export async function getDefects(roomId: string): Promise<Defect[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-
-  const { data, error } = await supabase
-    .from('defects')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('created_at')
-
-  if (error) {
-    console.error('Error fetching defects:', error)
-    return []
-  }
-
-  return data || []
-}
-
-// ============================================================================
 // Photos
 // ============================================================================
 
@@ -633,27 +555,6 @@ export async function getSurveyPhotos(projectId: string): Promise<Photo[]> {
 
   if (error) {
     console.error('Error fetching photos:', error)
-    return []
-  }
-
-  return data || []
-}
-
-// ============================================================================
-// Work Sections
-// ============================================================================
-
-export async function getWorkSections(): Promise<WorkSection[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-
-  const { data, error } = await supabase
-    .from('work_sections')
-    .select('*')
-    .order('display_order')
-
-  if (error) {
-    console.error('Error fetching work sections:', error)
     return []
   }
 
@@ -708,188 +609,6 @@ export async function getMaterial(id: string): Promise<MaterialsCatalogItem | nu
 
   return data
 }
-
-// ============================================================================
-// Pricing Items
-// ============================================================================
-
-export async function getPricingItems(sectionId?: string): Promise<PricingItem[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-
-  let query = supabase
-    .from('pricing_items')
-    .select('*')
-    .order('name')
-
-  if (sectionId) {
-    query = query.eq('section_id', sectionId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('Error fetching pricing items:', error)
-    return []
-  }
-
-  return data || []
-}
-
-export async function getItemsBySection(sectionId: string): Promise<PricingItem[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('pricing_items')
-    .select('*')
-    .eq('section_id', sectionId)
-    .order('name')
-  if (error) { console.error('Error fetching items by section:', error); return [] }
-  return data || []
-}
-
-export async function getBaseRates(): Promise<BaseRate[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('base_rates')
-    .select('*')
-    .order('category', { ascending: true })
-  if (error) { console.error('Error fetching base rates:', error); return [] }
-  return data || []
-}
-
-export async function getMarkupConfig(): Promise<MarkupConfig[]> {
-  const supabase = getSupabase()
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('markup_config')
-    .select('*')
-    .order('item_type', { ascending: true })
-  if (error) { console.error('Error fetching markup config:', error); return [] }
-  return data || []
-}
-
-// ============================================================================
-// Survey Costing
-// ============================================================================
-
-export async function getSurveyCosting(projectId: string): Promise<SurveyCosting | null> {
-  const supabase = getSupabase()
-  if (!supabase) return null
-
-  const { data, error } = await supabase
-    .from('project_costing')
-    .select('*')
-    .eq('project_id', projectId)
-    .single()
-
-  if (error) {
-    // Not found is okay, just return null
-    if (error.code !== 'PGRST116') {
-      console.error('Error fetching project costing:', error)
-    }
-    return null
-  }
-
-  return data
-}
-
-export async function saveSurveyCosting(
-  projectId: string,
-  costing: {
-    selectedItems: Record<string, number>
-    selectedOptionalItems: string[]
-    travelMiles: number
-    notes?: string
-    materialSubtotal: number
-    laborSubtotal: number
-    optionalExtras: number
-    travelCost: number
-    subtotal: number
-    vatAmount: number
-    totalIncVat: number
-    depositAmount: number
-  }
-): Promise<SurveyCosting | null> {
-  const supabase = getSupabase()
-  if (!supabase) return null
-
-  // Check if exists, then upsert
-  const { data: existing } = await supabase
-    .from('project_costing')
-    .select('id')
-    .eq('project_id', projectId)
-    .single()
-
-  const { data, error } = await supabase
-    .from('project_costing')
-    .upsert({
-      project_id: projectId,
-      selected_items: costing.selectedItems,
-      selected_optional_items: costing.selectedOptionalItems,
-      travel_miles: costing.travelMiles,
-      notes: costing.notes || null,
-      material_subtotal: costing.materialSubtotal,
-      labor_subtotal: costing.laborSubtotal,
-      optional_extras: costing.optionalExtras,
-      travel_cost: costing.travelCost,
-      subtotal: costing.subtotal,
-      vat_amount: costing.vatAmount,
-      total_inc_vat: costing.totalIncVat,
-      deposit_amount: costing.depositAmount,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error saving project costing:', error)
-    return null
-  }
-
-  return data
-}
-
-// ============================================================================
-// Pricing Calculations
-// ============================================================================
-
-export async function calculateItemCost(itemId: string, quantity: number = 1): Promise<{
-  materialCost: number
-  laborCost: number
-  total: number
-} | null> {
-  const item = await getPricingItem(itemId)
-  if (!item) return null
-
-  const materialCost = item.material_cost * quantity * 1.30 // 30% markup
-  const laborCost = item.labor_hours * quantity * 30.63 * 2 // £30.63/hr × 100% markup
-
-  return {
-    materialCost,
-    laborCost,
-    total: materialCost + laborCost,
-  }
-}
-
-async function getPricingItem(id: string): Promise<PricingItem | null> {
-  const supabase = getSupabase()
-  if (!supabase) return null
-
-  const { data, error } = await supabase
-    .from('pricing_items')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching pricing item:', error)
-    return null
-  }
-
-  return data
-}
-
 
 // ============================================================================
 // Structured Survey Data (Phase 10)

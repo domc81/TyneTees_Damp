@@ -5,7 +5,6 @@ import {
   Database,
   Package,
   Clock,
-  Wrench,
   Settings,
   ChevronRight,
   ShieldCheck,
@@ -25,24 +24,14 @@ const adminSections = [
     count: '35+ items',
   },
   {
-    id: 'work-sections',
-    title: 'Work Sections',
-    description: 'Define work categories and optional sections',
-    icon: Wrench,
-    href: '/admin/work-sections',
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    count: '14 sections',
-  },
-  {
-    id: 'base-rates',
-    title: 'Base Rates & Markups',
-    description: 'Configure labor rates, contractor rates, and markup percentages',
+    id: 'pricing-config',
+    title: 'Pricing Configuration',
+    description: 'Labour rates, markups, wastage, travel and fixed costs',
     icon: Clock,
     href: '/admin/rates',
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
-    count: 'Core settings',
+    count: '14 parameters',
   },
 ]
 
@@ -118,18 +107,14 @@ export default function AdminPage() {
               <Settings className="w-5 h-5 text-white/50" />
               System Overview
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-white/5 rounded-xl">
                 <p className="text-2xl font-bold text-white">35+</p>
                 <p className="text-sm text-white/50">Materials</p>
               </div>
               <div className="p-4 bg-white/5 rounded-xl">
                 <p className="text-2xl font-bold text-white">14</p>
-                <p className="text-sm text-white/50">Work Sections</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-xl">
-                <p className="text-2xl font-bold text-white">£30.63</p>
-                <p className="text-sm text-white/50">Base Labor Rate</p>
+                <p className="text-sm text-white/50">Pricing Parameters</p>
               </div>
             </div>
           </div>

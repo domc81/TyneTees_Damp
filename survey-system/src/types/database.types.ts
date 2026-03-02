@@ -34,15 +34,6 @@ export type SurveyStatus =
   | 'completed'
   | 'archived'
 
-export type DefectSeverity =
-  | 'minor'
-  | 'moderate'
-  | 'significant'
-  | 'severe'
-  | 'critical'
-
-export type ItemType = 'MTL' | 'LBR' | 'SUB' | 'OVR' | 'TRA'
-
 // --- Core Tables ---
 
 export interface Customer {
@@ -169,29 +160,6 @@ export interface SurveyRoom {
   updated_at: string
 }
 
-export interface MoistureReading {
-  id: string
-  room_id: string
-  location: string
-  reading: number
-  unit: string
-  material?: string | null
-  notes?: string | null
-  timestamp: string
-}
-
-export interface Defect {
-  id: string
-  room_id: string
-  defect_type: string
-  severity: DefectSeverity
-  location: string
-  description?: string | null
-  photo_id?: string | null
-  recommendation?: string | null
-  created_at: string
-}
-
 export interface Photo {
   id: string
   project_id: string
@@ -213,16 +181,6 @@ export interface Photo {
 
 // --- Pricing Tables ---
 
-export interface WorkSection {
-  id: string
-  name: string
-  description?: string | null
-  is_optional: boolean
-  display_order: number
-  created_at: string
-  updated_at: string
-}
-
 export interface MaterialsCatalogItem {
   id: string
   name: string
@@ -236,110 +194,6 @@ export interface MaterialsCatalogItem {
   is_active: boolean
   created_at: string
   updated_at: string
-}
-
-export interface PricingItem {
-  id: string
-  section_id: string
-  name: string
-  unit: string
-  material_cost: number
-  labor_hours: number
-  item_type: ItemType
-  is_mandatory: boolean
-  markup_override?: number | null
-  contractor_cost?: number | null
-  created_at: string
-  updated_at: string
-}
-
-export interface BaseRate {
-  id: string
-  category: string
-  rate_name: string
-  rate_value: number
-  description?: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface MarkupConfig {
-  id: string
-  item_type: ItemType
-  percentage: number
-  name: string
-  created_at: string
-  updated_at: string
-}
-
-export interface SurveyCosting {
-  id: string
-  survey_id: string
-  selected_items: Record<string, any>
-  selected_optional_items: string[]
-  travel_miles: number
-  notes?: string | null
-  material_subtotal: number
-  labor_subtotal: number
-  optional_extras: number
-  travel_cost: number
-  subtotal: number
-  vat_amount: number
-  total_inc_vat: number
-  deposit_amount: number
-  created_at: string
-  updated_at: string
-}
-
-// --- Legacy Types (for backward compatibility) ---
-
-export interface Rate {
-  id: string
-  name: string
-  value: number
-  unit?: string
-  description?: string
-  is_active: boolean
-  effective_from?: string
-  effective_to?: string
-  created_at: string
-  updated_at: string
-}
-
-export interface LineItem {
-  id: string
-  section_id?: string
-  project_id: string
-  item_name: string
-  description?: string
-  category?: string
-  length?: number
-  width?: number
-  height?: number
-  quantity?: number
-  uom?: string
-  unit_rate?: number
-  waste_factor?: number
-  hours_per_unit?: number
-  is_optional?: boolean
-  is_active?: boolean
-  display_order: number
-  created_at: string
-  updated_at: string
-  // Calculated fields (not in DB)
-  material_cost?: number
-  labor_cost?: number
-  total_cost?: number
-}
-
-export interface Section {
-  id: string
-  project_id: string
-  name: string
-  display_order: number
-  markup_percentage: number
-  created_at: string
-  line_items?: LineItem[]
 }
 
 // --- Quotation ---
@@ -418,20 +272,6 @@ export interface QuotationView {
   user_agent?: string | null
   duration_seconds?: number | null
   referrer?: string | null
-}
-
-/** @deprecated Use ReportTemplate + SurveyReport from survey-report.types.ts instead */
-export interface Report {
-  id: string
-  project_id: string
-  report_type: string
-  version: number
-  template_name: string
-  content?: Record<string, unknown> | null
-  pdf_path?: string | null
-  generated_at?: string | null
-  generated_by?: string | null
-  created_at: string
 }
 
 // --- Report Templates & Generated Reports (new model) ---

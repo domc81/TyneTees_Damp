@@ -25,10 +25,8 @@ survey-system/
 │   ├── app/
 │   │   ├── admin/
 │   │   │   ├── materials/          # Materials catalogue
-│   │   │   ├── pricing-items/      # LEGACY pricing UI
 │   │   │   ├── pricing-test/       # ✅ Pricing engine test page
-│   │   │   ├── rates/              # Rate management
-│   │   │   └── work-sections/      # Work section management
+│   │   │   └── rates/              # ✅ Pricing config (reads/writes pricing_config table)
 │   │   ├── costing/                # Costing calculator pages
 │   │   │   └── [projectId]/
 │   │   ├── customers/              # Customer CRUD
@@ -63,9 +61,7 @@ survey-system/
 │   │   └── page.tsx                # Dashboard
 │   ├── components/
 │   │   ├── layout.tsx              # App layout wrapper
-│   │   ├── pricing-calculator.tsx  # LEGACY — uses static pricing data
 │   │   ├── ProtectedRoute.tsx      # Auth guard
-│   │   ├── structured-survey-form.tsx  # LEGACY survey form
 │   │   └── ui/                     # UI component library
 │   │       ├── button.tsx
 │   │       ├── card.tsx
@@ -79,11 +75,10 @@ survey-system/
 │   │   ├── supabase-client.ts      # Browser Supabase client
 │   │   ├── supabase-server.ts      # Server-side Supabase client
 │   │   ├── supabase-data.ts        # All Supabase queries (canonical data layer)
+│   │   ├── travel-overhead.ts      # ✅ Travel & vehicle overhead calculator
 │   │   ├── store.ts                # Client-side state management
 │   │   ├── survey-sections.ts      # Survey section definitions
-│   │   ├── mock-data.ts            # Mock data for development
-│   │   ├── cost-calculator.ts      # LEGACY — replaced by pricing-engine.ts
-│   │   └── pricing-database.ts     # LEGACY — replaced by pricing-data.ts
+│   │   └── mock-data.ts            # Mock data for development
 │   └── types/
 │       ├── database.types.ts       # Canonical DB TypeScript types
 │       ├── survey-wizard.types.ts  # Wizard data model types
@@ -139,12 +134,11 @@ survey-system/
 - `report_templates` — report template definitions (one default per survey type, sections + settings as JSONB)
 - `survey_reports` — generated report instances (status: draft → generated → reviewed → finalised)
 
+**Photos:**
+- `photos` — photo metadata with Supabase Storage paths (used by wizard and installer-info)
+
 **Survey Outputs (schema exists, not yet used):**
 - `survey_customer_summary`, `survey_overheads`, `survey_caf1`, `survey_subcontractor_costs`
-
-**Legacy/Deprecated (still in DB):**
-- `work_sections`, `pricing_items`, `base_rates`, `markup_config`, `project_costing`
-- `moisture_readings`, `defects`, `photos`
 
 ### Key Pricing Config Values
 
@@ -189,8 +183,7 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 ## TypeScript Conventions
 
 - **Canonical DB types** in `src/types/database.types.ts`
-- **Primary types:** `Survey`, `SurveyStatus`, `SurveyCosting`, `SurveyInput`
-- **Backward-compat aliases:** `Project = Survey`, `ProjectStatus = SurveyStatus`
+- **Primary types:** `Survey`, `SurveyStatus`, `SurveyInput`, `Quotation`, `QuotationSection`
 - **Data functions** in `src/lib/supabase-data.ts` — primary names `getSurveys()`, `getSurvey()`, `createSurvey()`, etc.
 - **Wizard types** will be in `src/types/survey-wizard.types.ts` (to be created)
 
@@ -198,10 +191,10 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 
 - Route folder `src/app/projects/` has NOT been renamed to `surveys/` yet — URL is still `/projects`
 - `client_name` can be null — always use `(project.client_name || '')`
-- `src/components/pricing-calculator.tsx` and `src/app/admin/pricing-items/page.tsx` use LEGACY static pricing data — do not extend these
-- Local Supabase runs on Docker — connection details in `.env.local`
-- `survey-wizard.types.ts` will be the canonical type file for wizard data — always import wizard types from there
-- Database migrations are NOT auto-applied. After pulling new migration files, run: `PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/migrations/<filename>.sql` to apply them.
+- `survey-wizard.types.ts` is the canonical type file for wizard data — always import wizard types from there
+- **Pricing config** is editable via `/admin/rates` — reads/writes the `pricing_config` table directly
+- **Travel overhead** (`src/lib/travel-overhead.ts`) runs after the pricing engine using `hourly_labour_rate` and `vehicle_cost_per_mile` from `pricing_config`
+- Database migrations are NOT auto-applied. After pulling new migration files, run: `PGPASSWORD=<pw> psql -h 100.118.85.77 -p 5432 -U supabase_admin -d postgres -f supabase/migrations/<filename>.sql` to apply them.
 
 ## Build & Dev Commands
 
@@ -234,6 +227,8 @@ npm run lint         # Run ESLint
 - **Report data layer** — `src/lib/report-data.ts` (CRUD operations for survey_reports table)
 - **Report editor UI** — `src/app/survey/[projectId]/report/page.tsx` (section review, inline editing, status workflow)
 - **PDF renderer** — `src/lib/report-pdf-renderer.tsx` + `src/app/api/report-pdf/route.ts` (professional PDF generation)
+- **Pricing config admin** — `src/app/admin/rates/page.tsx` (reads/writes all 14 pricing_config values)
+- **Travel overhead calculator** — `src/lib/travel-overhead.ts` (post-engine travel labour + vehicle mileage)
 
 ## What's Next (Build Order)
 
