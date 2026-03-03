@@ -141,13 +141,21 @@ export async function saveWizardData(
       photos: existingData.photos ?? [],
     }
 
+    const updatePayload: Record<string, unknown> = {
+      survey_data: mergedData,
+      survey_completed: wizardData.wizard_completed,
+      updated_at: new Date().toISOString(),
+    }
+
+    // When the wizard is completed, also transition surveys.status to 'completed'
+    // so the status column reflects the actual state (previously stayed 'draft' forever)
+    if (wizardData.wizard_completed) {
+      updatePayload.status = 'completed'
+    }
+
     const { error } = await supabase
       .from('surveys')
-      .update({
-        survey_data: mergedData,
-        survey_completed: wizardData.wizard_completed,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', surveyId)
 
     if (error) {

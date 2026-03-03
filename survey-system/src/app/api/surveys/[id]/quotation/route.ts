@@ -116,7 +116,7 @@ export async function POST(
       .from('surveys')
       .select(`
         id, project_number, site_address, site_address_line2, site_city, site_county, site_postcode,
-        client_name, customer_id, surveyor_id,
+        client_name, customer_id, surveyor_id, enquiry_id,
         customers ( title, first_name, last_name, address_line1, address_line2, city, county, postcode )
       `)
       .eq('id', surveyId)
@@ -258,6 +258,71 @@ export async function POST(
         )
       })
       .catch(err => console.error('Quotation notification failed:', err))
+
+    // Auto-transition linked enquiry status to 'quoted' (non-blocking)
+    if (survey.enquiry_id) {
+      try {
+        // Forward-only status ordering (duplicated from supabase-data.ts to avoid
+        // importing browser-only module into server context)
+        const STATUS_ORDER: Record<string, number> = {
+          new: 0, assigned: 1, surveyed: 2, quoted: 3, accepted: 4, declined: 4, completed: 5,
+        }
+        const TERMINAL = new Set(['accepted', 'declined', 'completed'])
+
+        const { data: enquiry } = await db
+          .from('enquiries')
+          .select('status')
+          .eq('id', survey.enquiry_id)
+          .single()
+
+        if (enquiry) {
+          const current = enquiry.status as string
+          const canTransition =
+            !TERMINAL.has(current) &&
+            (current === 'on_hold' || (STATUS_ORDER['quoted'] ?? 0) > (STATUS_ORDER[current] ?? -1))
+
+          if (canTransition) {
+            const oldStatus = current
+
+            await db
+              .from('enquiries')
+              .update({ status: 'quoted' })
+              .eq('id', survey.enquiry_id)
+
+            // Log status_change activity
+            await db
+              .from('enquiry_activity')
+              .insert({
+                enquiry_id: survey.enquiry_id,
+                user_id: null,
+                activity_type: 'status_change',
+                title: `Status changed from ${oldStatus} to quoted`,
+                description: null,
+                metadata: { old_status: oldStatus, new_status: 'quoted' },
+              })
+          }
+
+          // Log quotation_generated activity (always, regardless of status transition)
+          await db
+            .from('enquiry_activity')
+            .insert({
+              enquiry_id: survey.enquiry_id,
+              user_id: null,
+              activity_type: 'quotation_generated',
+              title: `Quotation generated — £${totalInclVat.toFixed(2)}`,
+              description: null,
+              metadata: {
+                quotation_id: quotation.id,
+                survey_id: surveyId,
+                total: totalInclVat,
+              },
+            })
+        }
+      } catch (err) {
+        // Enquiry update must never block quotation generation
+        console.error('Enquiry auto-transition failed (non-blocking):', err)
+      }
+    }
 
     return NextResponse.json({
       quotationId: quotation.id,

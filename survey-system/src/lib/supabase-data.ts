@@ -729,6 +729,84 @@ export async function updateEnquiryStatus(
   return updated
 }
 
+// ============================================================================
+// Enquiry Auto-Transition Guard
+// ============================================================================
+
+/**
+ * Forward-only ordering for enquiry status auto-transitions.
+ * Higher number = further along the pipeline.
+ * accepted and declined share the same rank (both are terminal outcomes).
+ */
+const ENQUIRY_STATUS_ORDER: Record<string, number> = {
+  new: 0,
+  assigned: 1,
+  surveyed: 2,
+  quoted: 3,
+  accepted: 4,
+  declined: 4,
+  completed: 5,
+}
+
+/** Statuses that should never be overwritten by auto-transitions. */
+const TERMINAL_STATUSES = new Set<string>(['accepted', 'declined', 'completed'])
+
+/**
+ * Determine whether an automatic status transition should proceed.
+ * Rules:
+ *  - Terminal statuses (accepted, declined, completed) are never overwritten.
+ *  - on_hold is special: transitions still apply (completing a survey while
+ *    on hold should move the enquiry forward).
+ *  - Otherwise, only allow forward movement in the pipeline ordering.
+ */
+export function shouldAutoTransition(
+  currentStatus: EnquiryStatus,
+  targetStatus: EnquiryStatus
+): boolean {
+  if (TERMINAL_STATUSES.has(currentStatus)) return false
+  if (currentStatus === 'on_hold') return true
+
+  const currentOrder = ENQUIRY_STATUS_ORDER[currentStatus] ?? -1
+  const targetOrder = ENQUIRY_STATUS_ORDER[targetStatus] ?? -1
+  return targetOrder > currentOrder
+}
+
+/**
+ * Auto-transition an enquiry's status with forward-only guard.
+ * Fetches the current status, checks shouldAutoTransition, and calls
+ * updateEnquiryStatus only if the transition is valid.
+ * Designed for client-side use (uses browser Supabase client).
+ * Throws on failure — callers should wrap in try/catch if non-blocking.
+ */
+export async function autoTransitionEnquiryStatus(
+  enquiryId: string,
+  targetStatus: EnquiryStatus,
+  userId: string | null
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { data: enquiry, error } = await supabase
+    .from('enquiries')
+    .select('status')
+    .eq('id', enquiryId)
+    .single()
+
+  if (error || !enquiry) {
+    console.error('Auto-transition: failed to fetch enquiry:', error?.message)
+    return
+  }
+
+  if (!shouldAutoTransition(enquiry.status as EnquiryStatus, targetStatus)) {
+    console.log(
+      `Auto-transition skipped: enquiry ${enquiryId} is '${enquiry.status}', target '${targetStatus}' is not forward`
+    )
+    return
+  }
+
+  await updateEnquiryStatus(enquiryId, targetStatus, userId)
+}
+
 /**
  * Assign an enquiry to a team member.
  * If the enquiry is currently 'new', automatically transitions it to 'assigned'.

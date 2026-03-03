@@ -27,6 +27,8 @@ import {
   updateSurveyTags,
 } from '@/lib/survey-wizard-data'
 import { deriveSurveyTags } from '@/lib/survey-tags'
+import { autoTransitionEnquiryStatus } from '@/lib/supabase-data'
+import { getSupabase } from '@/lib/supabase-client'
 import { loadSurveyPhotos } from '@/lib/survey-photo-service'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -231,6 +233,25 @@ export default function SurveyWizardPage() {
 
       setWizardData(completedData)
       setLastSaved(new Date())
+
+      // Auto-transition linked enquiry status to 'surveyed' (non-blocking)
+      try {
+        const supabase = getSupabase()
+        if (supabase) {
+          const { data: survey } = await supabase
+            .from('surveys')
+            .select('enquiry_id')
+            .eq('id', projectId)
+            .single()
+
+          if (survey?.enquiry_id) {
+            await autoTransitionEnquiryStatus(survey.enquiry_id, 'surveyed', null)
+          }
+        }
+      } catch (err) {
+        // Enquiry update must never block survey completion
+        console.error('Enquiry auto-transition failed (non-blocking):', err)
+      }
 
       // Notify admin/office that the survey wizard is complete (fire-and-forget)
       fetch('/api/notifications/trigger', {
