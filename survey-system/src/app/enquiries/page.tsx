@@ -14,6 +14,9 @@ import {
   ChevronUp,
   Calendar,
   CalendarClock,
+  Phone,
+  Mail,
+  CalendarPlus,
 } from 'lucide-react'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -23,7 +26,10 @@ import {
   getEnquiriesByStatus,
   updateEnquiryStatus,
   getOnHoldTemplates,
+  updateEnquiry,
+  logEnquiryActivity,
 } from '@/lib/supabase-data'
+import { createClient } from '@/lib/supabase-client'
 import type {
   Enquiry,
   EnquiryStatus,
@@ -340,16 +346,25 @@ function EnquiryCard({
   isDragging,
   isGhost,
   onCardClick,
+  onFollowUp,
+  onConvertAndBook,
+  hasLinkedSurvey,
 }: {
   enquiry: Enquiry
   isDragging?: boolean
   isGhost?: boolean
   onCardClick?: (enquiry: Enquiry) => void
+  onFollowUp?: (enquiry: Enquiry, date: string | null) => void
+  onConvertAndBook?: (enquiry: Enquiry) => void
+  hasLinkedSurvey?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: enquiry.id,
     data: { enquiry },
   })
+
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const datePickerRef = useRef<HTMLDivElement>(null)
 
   const style: React.CSSProperties = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
@@ -366,6 +381,18 @@ function EnquiryCard({
     }
   }
 
+  // Close date picker on outside click
+  useEffect(() => {
+    if (!showDatePicker) return
+    function handleOutside(e: MouseEvent) {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setShowDatePicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showDatePicker])
+
   const priorityBorder =
     enquiry.priority === 'urgent'
       ? 'border-l-red-500'
@@ -375,6 +402,13 @@ function EnquiryCard({
 
   const typeClasses = SURVEY_TYPE_COLORS[enquiry.survey_type] ?? 'bg-white/10 text-white/60 border-white/20'
 
+  // Follow-up state for calendar icon colour
+  const fuState = getFollowUpState(enquiry.follow_up_date)
+  const calendarColor =
+    fuState.state === 'overdue' ? 'text-red-400'
+      : fuState.state === 'today' ? 'text-amber-400'
+        : 'text-white/30'
+
   return (
     <div
       ref={setNodeRef}
@@ -383,7 +417,7 @@ function EnquiryCard({
       onClick={handleClick}
       style={style}
       className={`
-        relative rounded-lg p-3 cursor-grab active:cursor-grabbing
+        relative rounded-lg p-3 cursor-grab active:cursor-grabbing group/card
         border border-white/10 border-l-[3px] ${priorityBorder}
         transition-all duration-150
         hover:border-white/20 hover:bg-white/[0.06]
@@ -460,6 +494,95 @@ function EnquiryCard({
             <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
           </div>
         </div>
+      </div>
+
+      {/* ── Quick Action Bar ─────────────────────────────── */}
+      <div
+        className="relative z-10 flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.06]
+          opacity-40 group-hover/card:opacity-100 transition-opacity"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Phone */}
+        {enquiry.client_phone && (
+          <a
+            href={`tel:${enquiry.client_phone}`}
+            title={enquiry.client_phone}
+            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        {/* Email */}
+        {enquiry.client_email && (
+          <a
+            href={`mailto:${enquiry.client_email}`}
+            title={enquiry.client_email}
+            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        {/* Follow-up date picker */}
+        <div className="relative" ref={datePickerRef}>
+          <button
+            type="button"
+            onClick={() => setShowDatePicker(prev => !prev)}
+            title={enquiry.follow_up_date
+              ? `Follow-up: ${new Date(enquiry.follow_up_date).toLocaleDateString('en-GB')}`
+              : 'Set follow-up date'}
+            className={`p-1.5 rounded-md hover:bg-white/10 transition-colors ${calendarColor} hover:text-white/80`}
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+          </button>
+
+          {showDatePicker && (
+            <div className="absolute bottom-full mb-1 left-0 z-50 bg-gray-900 border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
+              <input
+                type="date"
+                defaultValue={enquiry.follow_up_date ?? ''}
+                onChange={(e) => {
+                  onFollowUp?.(enquiry, e.target.value || null)
+                  setShowDatePicker(false)
+                }}
+                className="w-full bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-xs text-white/80
+                  focus:outline-none focus:border-blue-400/50 [color-scheme:dark]"
+              />
+              {enquiry.follow_up_date && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onFollowUp?.(enquiry, null)
+                    setShowDatePicker(false)
+                  }}
+                  className="w-full mt-1.5 text-[10px] text-red-400/70 hover:text-red-400 text-center py-1 rounded hover:bg-red-500/10 transition-colors"
+                >
+                  Clear follow-up
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Convert & Book (only if no linked survey) */}
+        {!hasLinkedSurvey && (
+          <button
+            type="button"
+            onClick={() => onConvertAndBook?.(enquiry)}
+            title="Convert &amp; Book Survey"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold
+              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-200 border border-blue-400/20
+              transition-colors"
+          >
+            <CalendarPlus className="w-3 h-3" />
+            <span className="hidden xl:inline">Book</span>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -540,11 +663,20 @@ function MobileEnquiryCard({
   enquiry,
   onMove,
   onCardClick,
+  onFollowUp,
+  onConvertAndBook,
+  hasLinkedSurvey,
 }: {
   enquiry: Enquiry
   onMove: (enquiry: Enquiry, toStatus: EnquiryStatus) => void
   onCardClick?: (enquiry: Enquiry) => void
+  onFollowUp?: (enquiry: Enquiry, date: string | null) => void
+  onConvertAndBook?: (enquiry: Enquiry) => void
+  hasLinkedSurvey?: boolean
 }) {
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const datePickerRef = useRef<HTMLDivElement>(null)
+
   const priorityBorder =
     enquiry.priority === 'urgent'
       ? 'border-l-red-500'
@@ -553,6 +685,25 @@ function MobileEnquiryCard({
         : 'border-l-transparent'
 
   const typeClasses = SURVEY_TYPE_COLORS[enquiry.survey_type] ?? 'bg-white/10 text-white/60 border-white/20'
+
+  // Follow-up state for calendar icon colour
+  const fuState = getFollowUpState(enquiry.follow_up_date)
+  const calendarColor =
+    fuState.state === 'overdue' ? 'text-red-400'
+      : fuState.state === 'today' ? 'text-amber-400'
+        : 'text-white/40'
+
+  // Close date picker on outside tap
+  useEffect(() => {
+    if (!showDatePicker) return
+    function handleOutside(e: MouseEvent) {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setShowDatePicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showDatePicker])
 
   return (
     <div
@@ -642,6 +793,93 @@ function MobileEnquiryCard({
             ))}
         </select>
       </div>
+
+      {/* ── Quick Action Bar (always visible on mobile) ─────────── */}
+      <div
+        className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.06]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Phone */}
+        {enquiry.client_phone && (
+          <a
+            href={`tel:${enquiry.client_phone}`}
+            title={enquiry.client_phone}
+            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        {/* Email */}
+        {enquiry.client_email && (
+          <a
+            href={`mailto:${enquiry.client_email}`}
+            title={enquiry.client_email}
+            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        {/* Follow-up date picker */}
+        <div className="relative" ref={datePickerRef}>
+          <button
+            type="button"
+            onClick={() => setShowDatePicker(prev => !prev)}
+            title={enquiry.follow_up_date
+              ? `Follow-up: ${new Date(enquiry.follow_up_date).toLocaleDateString('en-GB')}`
+              : 'Set follow-up date'}
+            className={`p-1.5 rounded-md hover:bg-white/10 transition-colors ${calendarColor} hover:text-white/80`}
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+          </button>
+
+          {showDatePicker && (
+            <div className="absolute bottom-full mb-1 left-0 z-50 bg-gray-900 border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
+              <input
+                type="date"
+                defaultValue={enquiry.follow_up_date ?? ''}
+                onChange={(e) => {
+                  onFollowUp?.(enquiry, e.target.value || null)
+                  setShowDatePicker(false)
+                }}
+                className="w-full bg-white/5 border border-white/15 rounded-md px-2 py-1.5 text-xs text-white/80
+                  focus:outline-none focus:border-blue-400/50 [color-scheme:dark]"
+              />
+              {enquiry.follow_up_date && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onFollowUp?.(enquiry, null)
+                    setShowDatePicker(false)
+                  }}
+                  className="w-full mt-1.5 text-[10px] text-red-400/70 hover:text-red-400 text-center py-1 rounded hover:bg-red-500/10 transition-colors"
+                >
+                  Clear follow-up
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Convert & Book (only if no linked survey) */}
+        {!hasLinkedSurvey && (
+          <button
+            type="button"
+            onClick={() => onConvertAndBook?.(enquiry)}
+            title="Convert &amp; Book Survey"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold
+              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-200 border border-blue-400/20
+              transition-colors"
+          >
+            <CalendarPlus className="w-3 h-3" />
+            Book
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -657,6 +895,9 @@ function MobileStatusSection({
   onToggle,
   onMove,
   onCardClick,
+  onFollowUp,
+  onConvertAndBook,
+  linkedEnquiryIds,
 }: {
   col: ColumnDef
   enquiries: Enquiry[]
@@ -664,6 +905,9 @@ function MobileStatusSection({
   onToggle: () => void
   onMove: (enquiry: Enquiry, toStatus: EnquiryStatus) => void
   onCardClick?: (enquiry: Enquiry) => void
+  onFollowUp?: (enquiry: Enquiry, date: string | null) => void
+  onConvertAndBook?: (enquiry: Enquiry) => void
+  linkedEnquiryIds: Set<string>
 }) {
   const redCount = enquiries.filter(e => getSlaStatus(e.status, e.status_changed_at) === 'red').length
 
@@ -711,7 +955,15 @@ function MobileStatusSection({
             <p className="text-xs text-white/25 text-center py-4">No enquiries</p>
           ) : (
             enquiries.map((enq) => (
-              <MobileEnquiryCard key={enq.id} enquiry={enq} onMove={onMove} onCardClick={onCardClick} />
+              <MobileEnquiryCard
+                key={enq.id}
+                enquiry={enq}
+                onMove={onMove}
+                onCardClick={onCardClick}
+                onFollowUp={onFollowUp}
+                onConvertAndBook={onConvertAndBook}
+                hasLinkedSurvey={linkedEnquiryIds.has(enq.id)}
+              />
             ))
           )}
         </div>
@@ -954,6 +1206,10 @@ export default function EnquiriesPage() {
 
   // Drawer state
   const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(null)
+  const [drawerConvertFlow, setDrawerConvertFlow] = useState(false)
+
+  // Linked survey IDs — lightweight lookup to decide if "Convert & Book" shows
+  const [linkedEnquiryIds, setLinkedEnquiryIds] = useState<Set<string>>(new Set())
 
   // Sensors: 8px activation distance to separate click from drag
   const sensors = useSensors(
@@ -961,13 +1217,23 @@ export default function EnquiriesPage() {
     useSensor(KeyboardSensor)
   )
 
-  // Load board data
+  // Load board data + linked survey IDs
   const loadBoard = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
       const data = await getEnquiriesByStatus()
       setBoard(data)
+
+      // Lightweight query: which enquiries have a linked survey?
+      const supabase = createClient()
+      const { data: linked } = await supabase
+        .from('surveys')
+        .select('enquiry_id')
+        .not('enquiry_id', 'is', null)
+      if (linked) {
+        setLinkedEnquiryIds(new Set(linked.map((r: { enquiry_id: string }) => r.enquiry_id)))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load enquiries')
     } finally {
@@ -1086,7 +1352,37 @@ export default function EnquiriesPage() {
   // ---------------------------------------------------------------------------
 
   function handleCardClick(enquiry: Enquiry) {
+    setDrawerConvertFlow(false)
     setSelectedEnquiryId(enquiry.id)
+  }
+
+  function handleConvertAndBook(enquiry: Enquiry) {
+    setDrawerConvertFlow(true)
+    setSelectedEnquiryId(enquiry.id)
+  }
+
+  async function handleQuickFollowUp(enquiry: Enquiry, date: string | null) {
+    try {
+      await updateEnquiry(enquiry.id, { follow_up_date: date })
+      await logEnquiryActivity(
+        enquiry.id,
+        'follow_up_set',
+        date ? `Follow-up set: ${new Date(date).toLocaleDateString('en-GB')}` : 'Follow-up cleared',
+        user?.id ?? null
+      )
+      // Update board state locally
+      setBoard(prev => {
+        const next: Record<string, Enquiry[]> = {}
+        for (const [status, enquiries] of Object.entries(prev)) {
+          next[status] = enquiries.map(e =>
+            e.id === enquiry.id ? { ...e, follow_up_date: date } : e
+          )
+        }
+        return next
+      })
+    } catch {
+      showToast('Failed to update follow-up date', 'error')
+    }
   }
 
   // Sync board state from drawer mutations
@@ -1451,6 +1747,9 @@ export default function EnquiriesPage() {
                                   enquiry={enq}
                                   isGhost={activeEnquiry?.id === enq.id}
                                   onCardClick={handleCardClick}
+                                  onFollowUp={handleQuickFollowUp}
+                                  onConvertAndBook={handleConvertAndBook}
+                                  hasLinkedSurvey={linkedEnquiryIds.has(enq.id)}
                                 />
                               ))}
                             </KanbanColumn>
@@ -1480,6 +1779,9 @@ export default function EnquiriesPage() {
                     onToggle={() => toggleMobileSection(col.status)}
                     onMove={handleMobileMove}
                     onCardClick={handleCardClick}
+                    onFollowUp={handleQuickFollowUp}
+                    onConvertAndBook={handleConvertAndBook}
+                    linkedEnquiryIds={linkedEnquiryIds}
                   />
                 ))}
               </div>
@@ -1491,11 +1793,18 @@ export default function EnquiriesPage() {
         {selectedEnquiryId && drawerEnquiry && (
           <EnquiryDrawer
             enquiry={drawerEnquiry}
-            onClose={() => setSelectedEnquiryId(null)}
-            onBoardSync={handleBoardSync}
+            onClose={() => { setSelectedEnquiryId(null); setDrawerConvertFlow(false) }}
+            onBoardSync={(updated, prev) => {
+              handleBoardSync(updated, prev)
+              // If a survey was just created, add to linked set
+              if (drawerConvertFlow) {
+                setLinkedEnquiryIds(prev => new Set([...prev, updated.id]))
+              }
+            }}
             onRequestStatusChange={handleDrawerStatusChange}
             holdTemplates={holdTemplates}
             currentUserId={user?.id ?? null}
+            initialConvertFlow={drawerConvertFlow}
           />
         )}
 

@@ -604,6 +604,8 @@ export type EnquiryDrawerProps = {
   onRequestStatusChange: (enquiry: Enquiry, toStatus: 'on_hold' | 'declined') => void
   holdTemplates: OnHoldMessageTemplate[]
   currentUserId: string | null
+  /** When true, the drawer opens directly into the Convert & Book flow */
+  initialConvertFlow?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -617,6 +619,7 @@ export default function EnquiryDrawer({
   onRequestStatusChange,
   holdTemplates,
   currentUserId,
+  initialConvertFlow = false,
 }: EnquiryDrawerProps) {
   // Slide animation
   const [isVisible, setIsVisible] = useState(false)
@@ -694,6 +697,14 @@ export default function EnquiryDrawer({
   useEffect(() => {
     requestAnimationFrame(() => setIsVisible(true))
   }, [])
+
+  // ── Auto-trigger Convert & Book when opened via card quick action ──
+  useEffect(() => {
+    if (initialConvertFlow) {
+      startConvertFlow()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only on mount — initialConvertFlow won't change while drawer is open
 
   // ── Scroll lock ───────────────────────────────────────────────
   useEffect(() => {
