@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import {
@@ -40,10 +40,12 @@ import {
   ExternalLink,
   Loader2,
   Save,
-  MapPin,
   User as UserIcon,
   Info,
   Clock,
+  Pencil,
+  Check,
+  AlertCircle,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -93,6 +95,24 @@ const SURVEY_TYPE_LABELS: Record<string, string> = {
   comprehensive: 'Comprehensive',
 }
 
+const SURVEY_TYPE_OPTIONS = [
+  { value: 'damp',          label: 'Damp' },
+  { value: 'condensation',  label: 'Condensation' },
+  { value: 'timber',        label: 'Timber' },
+  { value: 'woodworm',      label: 'Woodworm' },
+  { value: 'structural',    label: 'Structural' },
+  { value: 'comprehensive', label: 'Comprehensive' },
+]
+
+const SOURCE_OPTIONS = [
+  { value: '',                label: '— Not set —' },
+  { value: 'Website',         label: 'Website' },
+  { value: 'Phone',           label: 'Phone' },
+  { value: 'Email',           label: 'Email' },
+  { value: 'Referral',        label: 'Referral' },
+  { value: 'Repeat Customer', label: 'Repeat Customer' },
+]
+
 const ALL_STATUSES: EnquiryStatus[] = [
   'new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'on_hold', 'completed',
 ]
@@ -121,16 +141,6 @@ function relativeTime(dateStr: string): string {
   const months = Math.floor(days / 30)
   if (months === 1) return '1 month ago'
   return `${months} months ago`
-}
-
-function formatAddress(enquiry: Enquiry): string {
-  return [
-    enquiry.site_address_1,
-    enquiry.site_address_2,
-    enquiry.site_city,
-    enquiry.site_county,
-    enquiry.site_postcode,
-  ].filter(Boolean).join(', ')
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +185,379 @@ function getDrawerFollowUpState(date: string | null): { state: 'overdue' | 'toda
   if (diffDays === 0) return { state: 'today', daysUntil: 0 }
   if (diffDays <= 3) return { state: 'upcoming', daysUntil: diffDays }
   return { state: 'future', daysUntil: diffDays }
+}
+
+// ---------------------------------------------------------------------------
+// Inline-edit field components
+// ---------------------------------------------------------------------------
+
+/**
+ * Short single-line field (text / email / tel).
+ * Display mode: value as text (or clickable link for email/phone) + hover pencil.
+ * Edit mode: input that saves on blur or Enter, cancels on Escape.
+ */
+function InlineField({
+  label,
+  value,
+  onSave,
+  type = 'text',
+  linkHref,
+  linkIcon,
+  transform,
+  placeholder = 'Not set',
+}: {
+  label: string
+  value: string | null | undefined
+  onSave: (v: string) => Promise<void>
+  type?: 'text' | 'email' | 'tel'
+  linkHref?: string
+  linkIcon?: ReactNode
+  transform?: (v: string) => string
+  placeholder?: string
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'ok' | 'err'>('idle')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!editing) setDraft(value ?? '')
+  }, [value, editing])
+
+  const startEdit = () => {
+    setDraft(value ?? '')
+    setEditing(true)
+    setSaveState('idle')
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  const cancel = () => {
+    setDraft(value ?? '')
+    setEditing(false)
+    setSaveState('idle')
+  }
+
+  const commit = async () => {
+    const finalValue = transform ? transform(draft) : draft
+    if (finalValue === (value ?? '')) { setEditing(false); return }
+    setSaving(true)
+    try {
+      await onSave(finalValue)
+      setSaveState('ok')
+      setEditing(false)
+      setTimeout(() => setSaveState('idle'), 1500)
+    } catch {
+      setSaveState('err')
+      setDraft(value ?? '')
+      setTimeout(() => setSaveState('idle'), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit() }
+    if (e.key === 'Escape') cancel()
+  }
+
+  return (
+    <div className="group">
+      <span className="text-xs text-white/40 block mb-0.5">{label}</span>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type={type}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={handleKeyDown}
+            className="input-field flex-1 text-sm py-1 h-8"
+            placeholder={placeholder}
+          />
+          {saving && <Loader2 className="w-3.5 h-3.5 text-white/40 animate-spin flex-shrink-0" />}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 min-h-[1.5rem]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {linkHref && value ? (
+              <a href={linkHref} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1.5 truncate">
+                {linkIcon}
+                <span className="truncate">{value}</span>
+              </a>
+            ) : (
+              <span className={`text-sm truncate ${value ? 'text-white/80' : 'text-white/20 italic'}`}>
+                {value || placeholder}
+              </span>
+            )}
+            {saveState === 'ok'  && <Check        className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />}
+            {saveState === 'err' && <AlertCircle  className="w-3.5 h-3.5 text-red-400   flex-shrink-0" />}
+          </div>
+          <button
+            type="button"
+            onClick={startEdit}
+            title={`Edit ${label}`}
+            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 rounded text-white/30 hover:text-white/60"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Multi-line textarea field.
+ * Save requires explicit button click — clicking away keeps edit mode open
+ * so the user never loses in-progress text.
+ */
+function InlineTextareaField({
+  label,
+  value,
+  onSave,
+  placeholder = 'Not set',
+  problemExpanded,
+  onToggleExpand,
+}: {
+  label: string
+  value: string | null | undefined
+  onSave: (v: string) => Promise<void>
+  placeholder?: string
+  problemExpanded?: boolean
+  onToggleExpand?: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'ok' | 'err'>('idle')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (!editing) setDraft(value ?? '')
+  }, [value, editing])
+
+  const startEdit = () => {
+    setDraft(value ?? '')
+    setEditing(true)
+    setSaveState('idle')
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
+  const cancel = () => {
+    setDraft(value ?? '')
+    setEditing(false)
+    setSaveState('idle')
+  }
+
+  const commit = async () => {
+    if (draft === (value ?? '')) { setEditing(false); return }
+    setSaving(true)
+    try {
+      await onSave(draft)
+      setSaveState('ok')
+      setEditing(false)
+      setTimeout(() => setSaveState('idle'), 1500)
+    } catch {
+      // Stay in edit mode on failure so work is not lost
+      setSaveState('err')
+      setTimeout(() => setSaveState('idle'), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="group">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-xs text-white/40">{label}</span>
+        <div className="flex items-center gap-1.5">
+          {saveState === 'ok'  && <Check       className="w-3.5 h-3.5 text-green-400" />}
+          {saveState === 'err' && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+          {!editing && (
+            <button
+              type="button"
+              onClick={startEdit}
+              title={`Edit ${label}`}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-white/30 hover:text-white/60"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        <div>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={4}
+            className="input-field w-full resize-none text-sm"
+            placeholder={placeholder}
+          />
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              type="button"
+              onClick={commit}
+              disabled={saving}
+              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              className="text-xs text-white/40 hover:text-white/60 px-2 py-1.5"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {value ? (
+            <>
+              <div className="relative">
+                <p className={`text-sm text-white/70 leading-relaxed ${
+                  !problemExpanded && value.length > 200 ? 'max-h-[4.5em] overflow-hidden' : ''
+                }`}>
+                  {value}
+                </p>
+                {!problemExpanded && value.length > 200 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[rgba(15,23,36,0.98)] to-transparent" />
+                )}
+              </div>
+              {value.length > 200 && (
+                <button
+                  type="button"
+                  onClick={onToggleExpand}
+                  className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                >
+                  {problemExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="text-sm text-white/20 italic">{placeholder}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Dropdown select field — saves immediately on option change.
+ */
+function InlineSelectField({
+  label,
+  value,
+  options,
+  onSave,
+}: {
+  label: string
+  value: string | null | undefined
+  options: { value: string; label: string }[]
+  onSave: (v: string) => Promise<void>
+}) {
+  const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'ok' | 'err'>('idle')
+
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value
+    if (newValue === (value ?? '')) return
+    setSaving(true)
+    setSaveState('idle')
+    try {
+      await onSave(newValue)
+      setSaveState('ok')
+      setTimeout(() => setSaveState('idle'), 1500)
+    } catch {
+      setSaveState('err')
+      setTimeout(() => setSaveState('idle'), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-xs text-white/40">{label}</span>
+        <div className="flex items-center gap-1">
+          {saving && <Loader2 className="w-3 h-3 animate-spin text-white/40" />}
+          {saveState === 'ok'  && <Check       className="w-3.5 h-3.5 text-green-400" />}
+          {saveState === 'err' && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+        </div>
+      </div>
+      <select
+        value={value ?? ''}
+        onChange={handleChange}
+        disabled={saving}
+        className="input-field w-full text-sm"
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/**
+ * Date input field — saves immediately on date selection.
+ */
+function InlineDateField({
+  label,
+  value,
+  onSave,
+}: {
+  label: string
+  value: string | null | undefined
+  onSave: (v: string | null) => Promise<void>
+}) {
+  const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'ok' | 'err'>('idle')
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value || null
+    if (newValue === (value ?? null)) return
+    setSaving(true)
+    setSaveState('idle')
+    try {
+      await onSave(newValue)
+      setSaveState('ok')
+      setTimeout(() => setSaveState('idle'), 1500)
+    } catch {
+      setSaveState('err')
+      setTimeout(() => setSaveState('idle'), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-xs text-white/40">{label}</span>
+        <div className="flex items-center gap-1">
+          {saving && <Loader2 className="w-3 h-3 animate-spin text-white/40" />}
+          {saveState === 'ok'  && <Check       className="w-3.5 h-3.5 text-green-400" />}
+          {saveState === 'err' && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+        </div>
+      </div>
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={handleChange}
+        disabled={saving}
+        className="input-field w-full text-sm"
+      />
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -525,6 +908,43 @@ export default function EnquiryDrawer({
     }
   }
 
+  // ── Inline field save ─────────────────────────────────────────
+  // Handles saving any editable Details-tab field. Fields covered by
+  // updateEnquiry() go through it; site address + survey_type go via
+  // the Supabase client directly (they aren't in updateEnquiry's Pick).
+
+  const saveField = useCallback(async (field: string, newValue: string | null) => {
+    if (field === 'client_name') {
+      const u = await updateEnquiry(enquiry.id, { client_name: newValue ?? '' })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    if (field === 'client_email') {
+      const u = await updateEnquiry(enquiry.id, { client_email: newValue })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    if (field === 'client_phone') {
+      const u = await updateEnquiry(enquiry.id, { client_phone: newValue })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    if (field === 'source') {
+      const u = await updateEnquiry(enquiry.id, { source: newValue })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    if (field === 'proposed_survey_date') {
+      const u = await updateEnquiry(enquiry.id, { proposed_survey_date: newValue })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    if (field === 'reported_problem') {
+      const u = await updateEnquiry(enquiry.id, { reported_problem: newValue })
+      onBoardSync({ ...enquiry, ...u }); return
+    }
+    // Direct Supabase for site address fields and survey_type
+    const supabase = createClient()
+    const { error } = await supabase.from('enquiries').update({ [field]: newValue }).eq('id', enquiry.id)
+    if (error) throw new Error(error.message)
+    onBoardSync({ ...enquiry, [field]: newValue } as Enquiry)
+  }, [enquiry, onBoardSync])
+
   async function handleFollowUpChange(dateValue: string) {
     setSavingFollowUp(true)
     const newDate = dateValue || null
@@ -846,36 +1266,45 @@ export default function EnquiryDrawer({
                 <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
                   Customer Information
                 </h3>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                  <p className="text-sm text-white font-medium">{enquiry.client_name}</p>
-                  {enquiry.client_email && (
-                    <a
-                      href={`mailto:${enquiry.client_email}`}
-                      className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      {enquiry.client_email}
-                    </a>
-                  )}
-                  {enquiry.client_phone && (
-                    <a
-                      href={`tel:${enquiry.client_phone}`}
-                      className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                      {enquiry.client_phone}
-                    </a>
-                  )}
-                  {enquiry.customer_id && (
+                {enquiry.customer_id && (
+                  <div className="flex items-center gap-1.5 mb-2 px-1">
+                    <Info className="w-3 h-3 text-white/30 flex-shrink-0" />
+                    <span className="text-xs text-white/40">Linked to customer record —</span>
                     <a
                       href={`/customers/${enquiry.customer_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors mt-1"
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
                     >
-                      View Customer <ExternalLink className="w-3 h-3" />
+                      View Customer <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                     </a>
-                  )}
+                  </div>
+                )}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                  <InlineField
+                    label="Client Name"
+                    value={enquiry.client_name}
+                    onSave={v => saveField('client_name', v || null)}
+                    placeholder="Enter client name"
+                  />
+                  <InlineField
+                    label="Email"
+                    value={enquiry.client_email}
+                    onSave={v => saveField('client_email', v || null)}
+                    type="email"
+                    linkHref={enquiry.client_email ? `mailto:${enquiry.client_email}` : undefined}
+                    linkIcon={<Mail className="w-3.5 h-3.5" />}
+                    placeholder="Enter email address"
+                  />
+                  <InlineField
+                    label="Phone"
+                    value={enquiry.client_phone}
+                    onSave={v => saveField('client_phone', v || null)}
+                    type="tel"
+                    linkHref={enquiry.client_phone ? `tel:${enquiry.client_phone}` : undefined}
+                    linkIcon={<Phone className="w-3.5 h-3.5" />}
+                    placeholder="Enter phone number"
+                  />
                 </div>
               </section>
 
@@ -884,14 +1313,38 @@ export default function EnquiryDrawer({
                 <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
                   Site Information
                 </h3>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-white/30 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-white/70">{formatAddress(enquiry)}</p>
-                  </div>
-                  <p className="text-lg font-bold text-white tracking-wide pl-6">
-                    {enquiry.site_postcode}
-                  </p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                  <InlineField
+                    label="Address Line 1"
+                    value={enquiry.site_address_1}
+                    onSave={v => saveField('site_address_1', v || null)}
+                    placeholder="Enter address line 1"
+                  />
+                  <InlineField
+                    label="Address Line 2"
+                    value={enquiry.site_address_2}
+                    onSave={v => saveField('site_address_2', v || null)}
+                    placeholder="Enter address line 2"
+                  />
+                  <InlineField
+                    label="City"
+                    value={enquiry.site_city}
+                    onSave={v => saveField('site_city', v || null)}
+                    placeholder="Enter city"
+                  />
+                  <InlineField
+                    label="County"
+                    value={enquiry.site_county}
+                    onSave={v => saveField('site_county', v || null)}
+                    placeholder="Enter county"
+                  />
+                  <InlineField
+                    label="Postcode"
+                    value={enquiry.site_postcode}
+                    onSave={v => saveField('site_postcode', v || null)}
+                    transform={v => v.toUpperCase()}
+                    placeholder="Enter postcode"
+                  />
                 </div>
               </section>
 
@@ -900,54 +1353,32 @@ export default function EnquiryDrawer({
                 <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
                   Enquiry Details
                 </h3>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-white/40">Survey Type</span>
-                    <span className="text-sm text-white/80">
-                      {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? enquiry.survey_type}
-                    </span>
-                  </div>
-                  {enquiry.source && (
-                    <div className="flex justify-between">
-                      <span className="text-xs text-white/40">Source</span>
-                      <span className="text-sm text-white/80 capitalize">{enquiry.source}</span>
-                    </div>
-                  )}
-                  {enquiry.reported_problem && (
-                    <div>
-                      <span className="text-xs text-white/40 block mb-1">Reported Problem</span>
-                      <div className="relative">
-                        <p
-                          className={`text-sm text-white/70 leading-relaxed ${
-                            !problemExpanded && enquiry.reported_problem.length > 200
-                              ? 'max-h-[4.5em] overflow-hidden'
-                              : ''
-                          }`}
-                        >
-                          {enquiry.reported_problem}
-                        </p>
-                        {!problemExpanded && enquiry.reported_problem.length > 200 && (
-                          <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[rgba(15,23,36,0.98)] to-transparent" />
-                        )}
-                      </div>
-                      {enquiry.reported_problem.length > 200 && (
-                        <button
-                          onClick={() => setProblemExpanded(!problemExpanded)}
-                          className="text-xs text-blue-400 hover:text-blue-300 mt-1"
-                        >
-                          {problemExpanded ? 'Show less' : 'Show more'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {enquiry.proposed_survey_date && (
-                    <div className="flex justify-between">
-                      <span className="text-xs text-white/40">Proposed Survey Date</span>
-                      <span className="text-sm text-white/80">
-                        {new Date(enquiry.proposed_survey_date).toLocaleDateString('en-GB')}
-                      </span>
-                    </div>
-                  )}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+                  <InlineSelectField
+                    label="Survey Type"
+                    value={enquiry.survey_type}
+                    options={SURVEY_TYPE_OPTIONS}
+                    onSave={v => saveField('survey_type', v)}
+                  />
+                  <InlineSelectField
+                    label="Source"
+                    value={enquiry.source ?? ''}
+                    options={SOURCE_OPTIONS}
+                    onSave={v => saveField('source', v || null)}
+                  />
+                  <InlineDateField
+                    label="Proposed Survey Date"
+                    value={enquiry.proposed_survey_date}
+                    onSave={v => saveField('proposed_survey_date', v)}
+                  />
+                  <InlineTextareaField
+                    label="Reported Problem"
+                    value={enquiry.reported_problem}
+                    onSave={v => saveField('reported_problem', v || null)}
+                    placeholder="Describe the reported problem"
+                    problemExpanded={problemExpanded}
+                    onToggleExpand={() => setProblemExpanded(!problemExpanded)}
+                  />
                 </div>
               </section>
 
