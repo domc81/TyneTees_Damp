@@ -1150,7 +1150,7 @@ export default function EnquiryDrawer({
           startTime: flowSlot.startTime,
           endTime: flowSlot.endTime,
           notes: null,
-          createdBy: currentUserId || '',
+          createdBy: teamMembers.find(m => m.user_id === currentUserId)?.id || currentUserId || '',
         })
       } catch (bookingErr) {
         // Partial success: survey created but booking failed
