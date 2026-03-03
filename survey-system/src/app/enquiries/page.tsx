@@ -12,6 +12,8 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  Calendar,
+  CalendarClock,
 } from 'lucide-react'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -107,11 +109,48 @@ function formatCurrency(value: number): string {
   return `£${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
-function isFollowUpOverdue(date: string | null): boolean {
-  if (!date) return false
+// SLA threshold config (hours in status before changing tier).
+// Statuses not listed (accepted, declined, completed) have no SLA.
+const SLA_HOURS: Partial<Record<EnquiryStatus, { green: number; amber: number }>> = {
+  new:      { green: 24,  amber: 48  },
+  assigned: { green: 72,  amber: 120 }, // 3d / 5d
+  surveyed: { green: 24,  amber: 48  },
+  quoted:   { green: 120, amber: 240 }, // 5d / 10d
+  on_hold:  { green: 168, amber: 336 }, // 7d / 14d
+}
+
+function getSlaStatus(status: EnquiryStatus, statusChangedAt: string): 'green' | 'amber' | 'red' | null {
+  const thresholds = SLA_HOURS[status]
+  if (!thresholds) return null
+  const hoursInStatus = (Date.now() - new Date(statusChangedAt).getTime()) / 3_600_000
+  if (hoursInStatus < thresholds.green) return 'green'
+  if (hoursInStatus < thresholds.amber) return 'amber'
+  return 'red'
+}
+
+function formatDuration(ms: number): string {
+  const totalMins = Math.floor(ms / 60_000)
+  if (totalMins < 60) return `${totalMins}m`
+  const hrs = Math.floor(totalMins / 60)
+  if (hrs < 24) return `${hrs}h`
+  const days = Math.floor(hrs / 24)
+  const remHrs = hrs % 24
+  return remHrs > 0 ? `${days}d ${remHrs}h` : `${days}d`
+}
+
+type FollowUpState = 'overdue' | 'today' | 'upcoming' | 'none'
+
+function getFollowUpState(date: string | null): { state: FollowUpState; daysUntil: number } {
+  if (!date) return { state: 'none', daysUntil: 0 }
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  return new Date(date) <= today
+  const fu = new Date(date)
+  fu.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((fu.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays < 0) return { state: 'overdue', daysUntil: diffDays }
+  if (diffDays === 0) return { state: 'today', daysUntil: 0 }
+  if (diffDays <= 3) return { state: 'upcoming', daysUntil: diffDays }
+  return { state: 'none', daysUntil: diffDays }
 }
 
 function truncateAddress(addr1: string, postcode: string): string {
@@ -154,6 +193,60 @@ function BoardSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// SLA Indicator dot
+// ---------------------------------------------------------------------------
+
+function SlaIndicator({ status, statusChangedAt }: { status: EnquiryStatus; statusChangedAt: string }) {
+  const sla = getSlaStatus(status, statusChangedAt)
+  if (!sla) return null
+  const durationMs = Date.now() - new Date(statusChangedAt).getTime()
+  const label = `In status for ${formatDuration(durationMs)}`
+  const color = sla === 'green' ? '#22C55E' : sla === 'amber' ? '#F59E0B' : '#EF4444'
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={`inline-block w-2 h-2 rounded-full flex-shrink-0${sla === 'red' ? ' animate-pulse' : ''}`}
+      style={{ backgroundColor: color }}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Follow-Up Indicator
+// ---------------------------------------------------------------------------
+
+function FollowUpIndicator({ date }: { date: string | null }) {
+  const { state, daysUntil } = getFollowUpState(date)
+  if (state === 'none') return null
+  if (state === 'overdue') {
+    return (
+      <span title="Follow-up overdue" className="flex items-center gap-0.5 text-red-400 bg-red-500/10 rounded px-1 py-0.5">
+        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+        <span className="text-[9px] font-semibold">Overdue</span>
+      </span>
+    )
+  }
+  if (state === 'today') {
+    return (
+      <span title="Follow-up due today" className="flex items-center gap-0.5 text-amber-400">
+        <CalendarClock className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="text-[9px] font-semibold">Due today</span>
+      </span>
+    )
+  }
+  return (
+    <span
+      title={`Follow-up in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`}
+      className="flex items-center gap-0.5 text-white/30"
+    >
+      <Calendar className="w-3 h-3 flex-shrink-0" />
+      <span className="text-[9px]">In {daysUntil}d</span>
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Droppable Column
 // ---------------------------------------------------------------------------
 
@@ -171,6 +264,7 @@ function KanbanColumn({
   const { setNodeRef } = useDroppable({ id: col.status })
 
   const totalValue = enquiries.reduce((sum, e) => sum + (e.estimated_value ?? 0), 0)
+  const redCount = enquiries.filter(e => getSlaStatus(e.status, e.status_changed_at) === 'red').length
 
   return (
     <div
@@ -187,15 +281,23 @@ function KanbanColumn({
       >
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-white">{col.label}</h3>
-          <span
-            className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{
-              backgroundColor: `${col.color}25`,
-              color: col.color,
-            }}
-          >
-            {enquiries.length}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {redCount > 0 && (
+              <span className="flex items-center gap-1 text-red-400 text-xs font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse inline-block" />
+                {redCount}
+              </span>
+            )}
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: `${col.color}25`,
+                color: col.color,
+              }}
+            >
+              {enquiries.length}
+            </span>
+          </div>
         </div>
         {totalValue > 0 && (
           <p className="text-xs text-white/40">{formatCurrency(totalValue)}</p>
@@ -271,7 +373,6 @@ function EnquiryCard({
         ? 'border-l-orange-500'
         : 'border-l-transparent'
 
-  const followUpOverdue = isFollowUpOverdue(enquiry.follow_up_date)
   const typeClasses = SURVEY_TYPE_COLORS[enquiry.survey_type] ?? 'bg-white/10 text-white/60 border-white/20'
 
   return (
@@ -300,10 +401,13 @@ function EnquiryCard({
         }}
       />
 
-      {/* Client name */}
-      <p className="text-sm font-semibold text-white relative z-10 mb-1">
-        {enquiry.client_name}
-      </p>
+      {/* Client name + SLA dot */}
+      <div className="flex items-center justify-between mb-1 relative z-10">
+        <p className="text-sm font-semibold text-white truncate pr-2">
+          {enquiry.client_name}
+        </p>
+        <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
+      </div>
 
       {/* Address */}
       <p className="text-xs text-white/40 relative z-10 mb-2 leading-tight">
@@ -343,11 +447,7 @@ function EnquiryCard({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {followUpOverdue && (
-            <span title="Follow-up overdue">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            </span>
-          )}
+          <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
             <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
@@ -367,7 +467,6 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
         ? 'border-l-orange-500'
         : 'border-l-transparent'
 
-  const followUpOverdue = isFollowUpOverdue(enquiry.follow_up_date)
   const typeClasses = SURVEY_TYPE_COLORS[enquiry.survey_type] ?? 'bg-white/10 text-white/60 border-white/20'
 
   return (
@@ -382,7 +481,10 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
         backdropFilter: 'blur(20px)',
       }}
     >
-      <p className="text-sm font-semibold text-white mb-1">{enquiry.client_name}</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-semibold text-white truncate pr-2">{enquiry.client_name}</p>
+        <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
+      </div>
       <p className="text-xs text-white/40 mb-2 leading-tight">
         {truncateAddress(enquiry.site_address_1, enquiry.site_postcode)}
       </p>
@@ -412,9 +514,7 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          {followUpOverdue && (
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-          )}
+          <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
             <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
@@ -445,7 +545,6 @@ function MobileEnquiryCard({
         ? 'border-l-orange-500'
         : 'border-l-transparent'
 
-  const followUpOverdue = isFollowUpOverdue(enquiry.follow_up_date)
   const typeClasses = SURVEY_TYPE_COLORS[enquiry.survey_type] ?? 'bg-white/10 text-white/60 border-white/20'
 
   return (
@@ -458,8 +557,11 @@ function MobileEnquiryCard({
         ${enquiry.priority === 'urgent' ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}
       `}
     >
-      {/* Client name */}
-      <p className="text-sm font-semibold text-white mb-1">{enquiry.client_name}</p>
+      {/* Client name + SLA dot */}
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-semibold text-white truncate pr-2">{enquiry.client_name}</p>
+        <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
+      </div>
 
       {/* Address */}
       <p className="text-xs text-white/40 mb-2 leading-tight">
@@ -496,11 +598,7 @@ function MobileEnquiryCard({
               <span className="text-[10px]">Unassigned</span>
             </div>
           )}
-          {followUpOverdue && (
-            <span title="Follow-up overdue">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-            </span>
-          )}
+          <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
             <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
@@ -553,6 +651,8 @@ function MobileStatusSection({
   onMove: (enquiry: Enquiry, toStatus: EnquiryStatus) => void
   onCardClick?: (enquiry: Enquiry) => void
 }) {
+  const redCount = enquiries.filter(e => getSlaStatus(e.status, e.status_changed_at) === 'red').length
+
   return (
     <div className="rounded-xl border border-white/10 overflow-hidden">
       {/* Section header */}
@@ -569,12 +669,20 @@ function MobileStatusSection({
           style={{ backgroundColor: col.color }}
         />
         <span className="text-sm font-semibold text-white flex-1">{col.label}</span>
-        <span
-          className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: `${col.color}25`, color: col.color }}
-        >
-          {enquiries.length}
-        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {redCount > 0 && (
+            <span className="flex items-center gap-1 text-red-400 text-xs font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse inline-block" />
+              {redCount}
+            </span>
+          )}
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: `${col.color}25`, color: col.color }}
+          >
+            {enquiries.length}
+          </span>
+        </div>
         {isExpanded ? (
           <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0" />
         ) : (

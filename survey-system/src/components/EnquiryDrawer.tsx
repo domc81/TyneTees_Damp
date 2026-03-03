@@ -43,6 +43,7 @@ import {
   MapPin,
   User as UserIcon,
   Info,
+  Clock,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -130,6 +131,50 @@ function formatAddress(enquiry: Enquiry): string {
     enquiry.site_county,
     enquiry.site_postcode,
   ].filter(Boolean).join(', ')
+}
+
+// ---------------------------------------------------------------------------
+// SLA helpers (drawer timing display — mirrors thresholds in enquiries/page.tsx)
+// ---------------------------------------------------------------------------
+
+const DRAWER_SLA_HOURS: Partial<Record<EnquiryStatus, { green: number; amber: number }>> = {
+  new:      { green: 24,  amber: 48  },
+  assigned: { green: 72,  amber: 120 },
+  surveyed: { green: 24,  amber: 48  },
+  quoted:   { green: 120, amber: 240 },
+  on_hold:  { green: 168, amber: 336 },
+}
+
+function getDrawerSlaStatus(status: EnquiryStatus, statusChangedAt: string): 'green' | 'amber' | 'red' | null {
+  const thresholds = DRAWER_SLA_HOURS[status]
+  if (!thresholds) return null
+  const hoursInStatus = (Date.now() - new Date(statusChangedAt).getTime()) / 3_600_000
+  if (hoursInStatus < thresholds.green) return 'green'
+  if (hoursInStatus < thresholds.amber) return 'amber'
+  return 'red'
+}
+
+function formatDrawerDuration(ms: number): string {
+  const totalMins = Math.floor(ms / 60_000)
+  if (totalMins < 60) return `${totalMins}m`
+  const hrs = Math.floor(totalMins / 60)
+  if (hrs < 24) return `${hrs}h`
+  const days = Math.floor(hrs / 24)
+  const remHrs = hrs % 24
+  return remHrs > 0 ? `${days}d ${remHrs}h` : `${days}d`
+}
+
+function getDrawerFollowUpState(date: string | null): { state: 'overdue' | 'today' | 'upcoming' | 'future' | 'none'; daysUntil: number } {
+  if (!date) return { state: 'none', daysUntil: 0 }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const fu = new Date(date)
+  fu.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((fu.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays < 0) return { state: 'overdue', daysUntil: diffDays }
+  if (diffDays === 0) return { state: 'today', daysUntil: 0 }
+  if (diffDays <= 3) return { state: 'upcoming', daysUntil: diffDays }
+  return { state: 'future', daysUntil: diffDays }
 }
 
 // ---------------------------------------------------------------------------
@@ -905,6 +950,67 @@ export default function EnquiryDrawer({
                   )}
                 </div>
               </section>
+
+              {/* Timing */}
+              {(() => {
+                const sla = getDrawerSlaStatus(enquiry.status, enquiry.status_changed_at)
+                const slaColor = sla === 'red' ? '#EF4444' : sla === 'amber' ? '#F59E0B' : sla === 'green' ? '#22C55E' : undefined
+                const timeInStatus = formatDrawerDuration(Date.now() - new Date(enquiry.status_changed_at).getTime())
+                const enquiryAge = formatDrawerDuration(Date.now() - new Date(enquiry.created_at).getTime())
+                const fuData = enquiry.follow_up_date ? getDrawerFollowUpState(enquiry.follow_up_date) : null
+                const fuColor = fuData?.state === 'overdue' ? '#EF4444' : fuData?.state === 'today' ? '#F59E0B' : 'rgba(255,255,255,0.6)'
+                const fuText = fuData?.state === 'overdue'
+                  ? `Overdue (${Math.abs(fuData.daysUntil)}d ago)`
+                  : fuData?.state === 'today'
+                    ? 'Due today'
+                    : fuData?.state === 'upcoming'
+                      ? `In ${fuData.daysUntil} day${fuData.daysUntil === 1 ? '' : 's'}`
+                      : enquiry.follow_up_date
+                        ? new Date(enquiry.follow_up_date).toLocaleDateString('en-GB')
+                        : null
+                return (
+                  <section>
+                    <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
+                      Timing
+                    </h3>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-white/40 flex items-center gap-1.5">
+                          <Clock className="w-3 h-3" />
+                          Time in status
+                        </span>
+                        <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: slaColor ?? 'rgba(255,255,255,0.7)' }}>
+                          {sla && (
+                            <span
+                              className={`inline-block w-2 h-2 rounded-full flex-shrink-0${sla === 'red' ? ' animate-pulse' : ''}`}
+                              style={{ backgroundColor: slaColor }}
+                            />
+                          )}
+                          {timeInStatus}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-white/40 flex items-center gap-1.5">
+                          <Clock className="w-3 h-3" />
+                          Enquiry age
+                        </span>
+                        <span className="text-sm text-white/60">{enquiryAge}</span>
+                      </div>
+                      {fuData && fuData.state !== 'none' && fuText && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-white/40 flex items-center gap-1.5">
+                            <CalendarClock className="w-3 h-3" />
+                            Follow-up
+                          </span>
+                          <span className="text-sm font-medium" style={{ color: fuColor }}>
+                            {fuText}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )
+              })()}
 
               {/* Internal */}
               <section>
