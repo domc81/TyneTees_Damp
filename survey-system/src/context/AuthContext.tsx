@@ -56,87 +56,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase])
 
-  const applySession = useCallback(async (newSession: Session | null) => {
-    setSession(newSession)
-    setUser(newSession?.user ?? null)
-
-    if (!newSession?.user) {
-      console.log('[Auth] No session/user — clearing state')
-      setProfile(null)
-      setProfileError(null)
-      setIsLoading(false)
-      return
-    }
-
-    const userProfile = await fetchProfile(newSession.user.id)
-
-    if (!userProfile) {
-      console.warn('[Auth] No profile found or fetch failed — allowing login without profile')
-      setProfile(null)
-      setProfileError(null)
-      setIsLoading(false)
-      return
-    }
-
-    if (!userProfile.is_active) {
-      console.warn('[Auth] Profile is deactivated — signing out')
-      setProfile(null)
-      setProfileError('Your account has been deactivated. Contact your administrator.')
-      await supabase.auth.signOut()
-      setSession(null)
-      setUser(null)
-      setIsLoading(false)
-      return
-    }
-
-    console.log('[Auth] Valid active profile loaded, role:', userProfile.role)
-    setProfile(userProfile)
-    setProfileError(null)
-    setIsLoading(false)
-  }, [fetchProfile, supabase])
-
+  // Effect 1: Auth state listener — synchronous state updates only, no REST calls.
+  // This avoids deadlocking on Supabase's internal initializePromise.
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
 
     console.log('[Auth] Initializing auth...')
 
-    // Subscribe to auth changes. The INITIAL_SESSION event fires during
-    // subscription but we deliberately ignore it here — fetching the profile
-    // from inside that callback would deadlock because the Supabase client's
-    // initializePromise hasn't resolved yet, and any REST call (like
-    // .from().select()) internally awaits it.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, eventSession) => {
-        if (event === 'INITIAL_SESSION') {
-          // Skip — handled by getSession() below, outside the callback
-          console.log('[Auth] INITIAL_SESSION event received (skipping — handled by getSession)')
-          return
-        }
-
+      (event, eventSession) => {
         console.log('[Auth] onAuthStateChange event:', event)
-        await applySession(eventSession)
+        setSession(eventSession)
+        setUser(eventSession?.user ?? null)
+
+        if (!eventSession?.user) {
+          setProfile(null)
+          setProfileError(null)
+          setIsLoading(false)
+        }
       }
     )
-
-    // getSession() awaits initializePromise at the top level (not inside a
-    // callback), so it properly waits for auth initialization to complete
-    // before we make any REST API calls for the profile.
-    supabase.auth.getSession().then(async ({ data: { session: initialSession }, error }) => {
-      if (error) {
-        console.error('[Auth] getSession error:', error.message)
-        setIsLoading(false)
-        return
-      }
-      console.log('[Auth] getSession resolved: has session =', !!initialSession)
-      await applySession(initialSession)
-    })
 
     return () => {
       subscription.unsubscribe()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Effect 2: Profile fetch — fires when user.id changes.
+  // Runs in a separate React render cycle, well after auth initialization
+  // has completed, so supabase.from().select() won't deadlock.
+  useEffect(() => {
+    if (!user) return
+
+    let cancelled = false
+
+    fetchProfile(user.id).then(async (userProfile) => {
+      if (cancelled) return
+
+      if (!userProfile) {
+        console.warn('[Auth] No profile found or fetch failed — allowing login without profile')
+        setProfile(null)
+        setProfileError(null)
+        setIsLoading(false)
+        return
+      }
+
+      if (!userProfile.is_active) {
+        console.warn('[Auth] Profile is deactivated — signing out')
+        setProfile(null)
+        setProfileError('Your account has been deactivated. Contact your administrator.')
+        await supabase.auth.signOut()
+        setSession(null)
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
+
+      console.log('[Auth] Valid active profile loaded, role:', userProfile.role)
+      setProfile(userProfile)
+      setProfileError(null)
+      setIsLoading(false)
+    })
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const signOut = async () => {
     await supabase.auth.signOut()
