@@ -5,9 +5,16 @@ import { getSupabase } from './supabase-client'
 import type {
   Customer,
   Enquiry,
+  EnquiryActivity,
+  EnquiryActivityType,
+  EnquiryPriority,
+  EnquiryStatus,
+  OnHoldReason,
+  OnHoldMessageTemplate,
   Survey,
   Surveyor,
   SurveyRoom,
+  SurveyType,
   Photo,
   MaterialsCatalogItem,
 } from '@/types/database.types'
@@ -16,9 +23,16 @@ import type {
 export type {
   Customer,
   Enquiry,
+  EnquiryActivity,
+  EnquiryActivityType,
+  EnquiryPriority,
+  EnquiryStatus,
+  OnHoldReason,
+  OnHoldMessageTemplate,
   Survey,
   Surveyor,
   SurveyRoom,
+  SurveyType,
   Photo,
   MaterialsCatalogItem,
 }
@@ -348,6 +362,417 @@ export async function getEnquiry(id: string): Promise<Enquiry | null> {
   }
 
   return data
+}
+
+// ============================================================================
+// Enquiry Pipeline Functions (migration 20260303000001)
+// ============================================================================
+
+/**
+ * Generic activity logger for enquiry_activity table.
+ * Called internally by other pipeline functions and can be called directly
+ * for note_added, call_logged, etc.
+ * userId is null for system-generated events.
+ */
+export async function logEnquiryActivity(
+  enquiryId: string,
+  activityType: EnquiryActivityType,
+  title: string,
+  userId?: string | null,
+  description?: string | null,
+  metadata?: Record<string, unknown>
+): Promise<EnquiryActivity | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  const { data, error } = await supabase
+    .from('enquiry_activity')
+    .insert({
+      enquiry_id: enquiryId,
+      user_id: userId ?? null,
+      activity_type: activityType,
+      title,
+      description: description ?? null,
+      metadata: metadata ?? {},
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error logging enquiry activity:', error)
+    return null
+  }
+
+  return data
+}
+
+/**
+ * Create a new enquiry and log a 'created' activity entry.
+ * Generates enquiry_number in format CF-{TYPE}-{YEAR}-{SEQUENCE}.
+ * Attempts customer matching by email; sets customer_id if found.
+ * Retries up to 3 times on unique constraint violation (race condition guard).
+ */
+export async function createEnquiry(data: {
+  client_name: string
+  client_email?: string
+  client_phone?: string
+  site_address_1: string
+  site_address_2?: string
+  site_city?: string
+  site_county?: string
+  site_postcode: string
+  survey_type: SurveyType
+  proposed_survey_date?: string
+  source?: string
+  notes?: string
+  reported_problem?: string
+  priority?: EnquiryPriority
+  estimated_value?: number
+  follow_up_date?: string
+}): Promise<Enquiry> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  // Attempt customer match by email (phone matching skipped — formatting is unreliable)
+  let customer_id: string | null = null
+  if (data.client_email?.trim()) {
+    const { data: match } = await supabase
+      .from('customers')
+      .select('id')
+      .ilike('email', data.client_email.trim())
+      .maybeSingle()
+    customer_id = match?.id ?? null
+  }
+
+  // Build enquiry_number prefix: CF-{TYPE_UPPER}-{YEAR}-
+  const year = new Date().getFullYear()
+  const typeCode = data.survey_type.toUpperCase()
+  const prefix = `CF-${typeCode}-${year}-`
+
+  // Find the highest existing sequence for this type+year
+  const { data: latest } = await supabase
+    .from('enquiries')
+    .select('enquiry_number')
+    .like('enquiry_number', `${prefix}%`)
+    .order('enquiry_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let nextSequence = 1
+  if (latest?.enquiry_number) {
+    const seqStr = latest.enquiry_number.slice(prefix.length)
+    const parsed = parseInt(seqStr, 10)
+    if (!isNaN(parsed)) nextSequence = parsed + 1
+  }
+
+  const insertBase = {
+    customer_id,
+    client_name: data.client_name,
+    client_email: data.client_email || null,
+    client_phone: data.client_phone || null,
+    site_address_1: data.site_address_1,
+    site_address_2: data.site_address_2 || null,
+    site_city: data.site_city || null,
+    site_county: data.site_county || null,
+    site_postcode: data.site_postcode,
+    survey_type: data.survey_type,
+    proposed_survey_date: data.proposed_survey_date || null,
+    source: data.source || null,
+    notes: data.notes || null,
+    reported_problem: data.reported_problem || null,
+    priority: (data.priority ?? 'medium') as EnquiryPriority,
+    estimated_value: data.estimated_value ?? null,
+    follow_up_date: data.follow_up_date || null,
+    status: 'new' as EnquiryStatus,
+    enquiry_date: new Date().toISOString().split('T')[0],
+  }
+
+  // Try up to 3 times, incrementing sequence on unique constraint collision
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const enquiry_number = `${prefix}${(nextSequence + attempt).toString().padStart(4, '0')}`
+
+    const { data: created, error } = await supabase
+      .from('enquiries')
+      .insert({ ...insertBase, enquiry_number })
+      .select()
+      .single()
+
+    if (!error && created) {
+      // Log the creation event (fire-and-forget style — don't fail if this errors)
+      await logEnquiryActivity(
+        created.id,
+        'created',
+        `Enquiry ${enquiry_number} created for ${data.client_name}`,
+        null,
+        null,
+        { client_name: data.client_name, survey_type: data.survey_type, enquiry_number }
+      )
+      return created
+    }
+
+    // Only retry on unique constraint violation (23505)
+    if (error?.code !== '23505') {
+      throw new Error(`Failed to create enquiry: ${error?.message}`)
+    }
+  }
+
+  throw new Error('Failed to create enquiry after 3 attempts (sequence conflict)')
+}
+
+/**
+ * General-purpose update for non-status fields (notes, priority, follow_up_date, etc.).
+ * Does NOT handle status changes — use updateEnquiryStatus() for that.
+ */
+export async function updateEnquiry(
+  id: string,
+  updates: Partial<Pick<Enquiry,
+    | 'notes'
+    | 'priority'
+    | 'follow_up_date'
+    | 'estimated_value'
+    | 'reported_problem'
+    | 'client_name'
+    | 'client_email'
+    | 'client_phone'
+    | 'source'
+    | 'proposed_survey_date'
+    | 'internal_reference'
+  >>
+): Promise<Enquiry> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  const { data, error } = await supabase
+    .from('enquiries')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating enquiry:', error)
+    throw new Error(`Failed to update enquiry: ${error.message}`)
+  }
+
+  return data
+}
+
+/**
+ * Single point of truth for all enquiry status changes.
+ * Every status transition MUST go through this function.
+ * Automatically handles hold_reason/loss_reason side effects.
+ * The status_changed_at timestamp is set by a DB trigger.
+ */
+export async function updateEnquiryStatus(
+  id: string,
+  newStatus: EnquiryStatus,
+  userId: string | null,
+  options?: {
+    holdReason?: OnHoldReason
+    holdReasonNote?: string
+    lossReason?: string
+  }
+): Promise<Enquiry> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  // Fetch current enquiry to capture old status for the activity log
+  const { data: current, error: fetchError } = await supabase
+    .from('enquiries')
+    .select('id, status, hold_reason, hold_reason_note')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !current) {
+    throw new Error(`Enquiry not found: ${id}`)
+  }
+
+  const oldStatus = current.status
+
+  // Build the update payload
+  const updatePayload: Record<string, unknown> = { status: newStatus }
+
+  if (newStatus === 'on_hold') {
+    updatePayload.hold_reason = options?.holdReason ?? null
+    updatePayload.hold_reason_note = options?.holdReasonNote ?? null
+  } else if (oldStatus === 'on_hold') {
+    // Moving away from on_hold — clear hold fields
+    updatePayload.hold_reason = null
+    updatePayload.hold_reason_note = null
+  }
+
+  if (newStatus === 'declined' && options?.lossReason) {
+    updatePayload.loss_reason = options.lossReason
+  }
+
+  const { data: updated, error } = await supabase
+    .from('enquiries')
+    .update(updatePayload)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to update enquiry status: ${error.message}`)
+  }
+
+  // Log the status change activity
+  const activityMeta: Record<string, unknown> = { old_status: oldStatus, new_status: newStatus }
+  if (options?.holdReason) activityMeta.hold_reason = options.holdReason
+  if (options?.lossReason) activityMeta.loss_reason = options.lossReason
+
+  await logEnquiryActivity(
+    id,
+    'status_change',
+    `Status changed from ${oldStatus} to ${newStatus}`,
+    userId,
+    null,
+    activityMeta
+  )
+
+  return updated
+}
+
+/**
+ * Assign an enquiry to a team member.
+ * If the enquiry is currently 'new', automatically transitions it to 'assigned'.
+ * Logs both assignment_change and (if status changes) status_change activities.
+ */
+export async function assignEnquiry(
+  enquiryId: string,
+  assigneeId: string,
+  userId: string | null
+): Promise<Enquiry> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  // Fetch current enquiry and old assignee details
+  const { data: current, error: fetchError } = await supabase
+    .from('enquiries')
+    .select('id, status, assigned_to')
+    .eq('id', enquiryId)
+    .single()
+
+  if (fetchError || !current) {
+    throw new Error(`Enquiry not found: ${enquiryId}`)
+  }
+
+  // Look up the assignee's display name
+  const { data: assigneeProfile } = await supabase
+    .from('user_profiles')
+    .select('id, display_name')
+    .eq('id', assigneeId)
+    .single()
+
+  // Update assigned_to
+  const { data: updated, error } = await supabase
+    .from('enquiries')
+    .update({ assigned_to: assigneeId })
+    .eq('id', enquiryId)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to assign enquiry: ${error.message}`)
+  }
+
+  // Log assignment activity
+  await logEnquiryActivity(
+    enquiryId,
+    'assignment_change',
+    `Enquiry assigned to ${assigneeProfile?.display_name ?? assigneeId}`,
+    userId,
+    null,
+    {
+      old_assignee_id: current.assigned_to,
+      new_assignee_id: assigneeId,
+      new_assignee_name: assigneeProfile?.display_name ?? null,
+    }
+  )
+
+  // If status is 'new', automatically transition to 'assigned'
+  if (current.status === 'new') {
+    return updateEnquiryStatus(enquiryId, 'assigned', userId)
+  }
+
+  return updated
+}
+
+/**
+ * Fetch all activity entries for an enquiry, ordered newest first.
+ * Joins user_profiles to include the acting user's display_name.
+ */
+export async function getEnquiryActivities(enquiryId: string): Promise<EnquiryActivity[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('enquiry_activity')
+    .select('*, user:user_profiles!user_id(display_name)')
+    .eq('enquiry_id', enquiryId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching enquiry activities:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Fetch all active on-hold message templates, ordered by display_order.
+ */
+export async function getOnHoldTemplates(): Promise<OnHoldMessageTemplate[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('on_hold_message_templates')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching on-hold templates:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Fetch all enquiries grouped by status for the Kanban pipeline board.
+ * Joins assignee (user_profiles) and customer (customers) for display.
+ * Within each status, enquiries are ordered oldest first (longest waiting at top).
+ */
+export async function getEnquiriesByStatus(): Promise<Record<string, Enquiry[]>> {
+  const supabase = getSupabase()
+  if (!supabase) return {}
+
+  const { data, error } = await supabase
+    .from('enquiries')
+    .select(`
+      *,
+      assignee:user_profiles!assigned_to(id, display_name),
+      customer_data:customers!customer_id(id, first_name, last_name, email)
+    `)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching enquiries by status:', error)
+    return {}
+  }
+
+  // Group by status in JavaScript
+  const grouped: Record<string, Enquiry[]> = {}
+  for (const enquiry of data || []) {
+    const status = enquiry.status as string
+    if (!grouped[status]) grouped[status] = []
+    grouped[status].push(enquiry as Enquiry)
+  }
+
+  return grouped
 }
 
 // ============================================================================

@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { createEnquiry } from '@/lib/supabase-data'
+import type { SurveyType, EnquiryPriority } from '@/types/database.types'
 
 const surveyTypes = [
   { value: 'damp', label: 'Damp Survey', description: 'Rising damp, penetrating damp, tanking' },
@@ -23,10 +25,19 @@ const surveyTypes = [
   { value: 'comprehensive', label: 'Comprehensive', description: 'Full property survey' },
 ]
 
+const priorityOptions = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' },
+]
+
 export default function NewEnquiryPage() {
   const router = useRouter()
 
   const [step, setStep] = useState<'client' | 'site' | 'booking'>('client')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     client_name: '',
@@ -38,32 +49,64 @@ export default function NewEnquiryPage() {
     site_city: '',
     site_county: '',
     site_postcode: '',
-    survey_type: 'damp' as const,
+    survey_type: 'damp',
     proposed_survey_date: '',
     source: '',
+    reported_problem: '',
     notes: '',
+    priority: 'medium',
   })
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value })
+    // Clear any existing error when the user edits
+    if (errorMessage) setErrorMessage(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Creating enquiry:', formData)
+    setIsSubmitting(true)
+    setErrorMessage(null)
 
-    // Notify admin/office about the new enquiry (fire-and-forget)
-    fetch('/api/notifications/trigger', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event_type: 'enquiry_created',
-        enquiry_name: formData.client_name,
-        enquiry_email: formData.client_email,
-      }),
-    }).catch(err => console.error('Notification trigger failed:', err))
+    try {
+      const enquiry = await createEnquiry({
+        client_name: formData.client_name,
+        client_email: formData.client_email || undefined,
+        client_phone: formData.client_phone || undefined,
+        site_address_1: formData.site_address_1,
+        // site_address_3 has no DB column — omit it silently
+        site_address_2: [formData.site_address_2, formData.site_address_3]
+          .filter(Boolean)
+          .join(', ') || undefined,
+        site_city: formData.site_city || undefined,
+        site_county: formData.site_county || undefined,
+        site_postcode: formData.site_postcode,
+        survey_type: formData.survey_type as SurveyType,
+        proposed_survey_date: formData.proposed_survey_date || undefined,
+        source: formData.source || undefined,
+        reported_problem: formData.reported_problem || undefined,
+        notes: formData.notes || undefined,
+        priority: formData.priority as EnquiryPriority,
+      })
 
-    router.push('/enquiries')
+      // Notify admin/office about the new enquiry (fire-and-forget)
+      fetch('/api/notifications/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: 'enquiry_created',
+          enquiry_id: enquiry.id,
+          enquiry_name: enquiry.client_name,
+          enquiry_email: enquiry.client_email,
+        }),
+      }).catch(err => console.error('Notification trigger failed:', err))
+
+      router.push('/enquiries')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create enquiry. Please try again.'
+      setErrorMessage(message)
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -88,6 +131,12 @@ export default function NewEnquiryPage() {
           <div className="h-1 w-16 bg-white/10 rounded" />
           <ProgressStep number="3" label="Booking" active={step === 'booking'} />
         </div>
+
+        {errorMessage && (
+          <div className="mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {step === 'client' && (
@@ -192,17 +241,32 @@ export default function NewEnquiryPage() {
                 </h3>
               </div>
               <div className="p-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Survey Type *</label>
-                  <select
-                    value={formData.survey_type}
-                    onChange={(e) => handleInputChange('survey_type', e.target.value)}
-                    className="input-select"
-                  >
-                    {surveyTypes.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Survey Type *</label>
+                    <select
+                      value={formData.survey_type}
+                      onChange={(e) => handleInputChange('survey_type', e.target.value)}
+                      className="input-select"
+                    >
+                      {surveyTypes.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Priority</label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => handleInputChange('priority', e.target.value)}
+                      className="input-select"
+                    >
+                      {priorityOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <FormField
@@ -229,27 +293,48 @@ export default function NewEnquiryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Notes</label>
+                  <label className="block text-sm font-medium text-white/80 mb-2">Reported Problem / Defect</label>
+                  <textarea
+                    value={formData.reported_problem}
+                    onChange={(e) => handleInputChange('reported_problem', e.target.value)}
+                    className="input-field resize-none"
+                    rows={3}
+                    placeholder="Customer's description of the problem in their own words..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">Internal Notes</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     className="input-field resize-none"
-                    rows={4}
-                    placeholder="Additional notes for the surveyor..."
+                    rows={3}
+                    placeholder="Office notes, not shared with the customer..."
                   />
                 </div>
               </div>
               <div className="px-6 py-4 border-t border-white/10 flex justify-between">
-                <button type="button" onClick={() => setStep('site')} className="btn-secondary">
+                <button type="button" onClick={() => setStep('site')} className="btn-secondary" disabled={isSubmitting}>
                   Back
                 </button>
-                <div className="flex gap-3">
-                  <button type="button" className="btn-ghost">Save Draft</button>
-                  <button type="submit" className="btn-primary flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Create Enquiry
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Create Enquiry
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}

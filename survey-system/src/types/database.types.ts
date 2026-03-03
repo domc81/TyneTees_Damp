@@ -19,6 +19,31 @@ export type EnquiryStatus =
   | 'on_hold'
   | 'completed'
 
+export type EnquiryPriority = 'low' | 'medium' | 'high' | 'urgent'
+
+export type OnHoldReason =
+  | 'awaiting_supplier'
+  | 'awaiting_customer_info'
+  | 'scheduling_conflict'
+  | 'specialist_assessment'
+  | 'customer_requested'
+  | 'other'
+
+export type EnquiryActivityType =
+  | 'status_change'
+  | 'assignment_change'
+  | 'note_added'
+  | 'call_logged'
+  | 'email_sent'
+  | 'survey_created'
+  | 'quotation_generated'
+  | 'quotation_sent'
+  | 'customer_notified'
+  | 'follow_up_set'
+  | 'priority_changed'
+  | 'on_hold_reason_set'
+  | 'created'
+
 export type SurveyType =
   | 'damp'
   | 'timber'
@@ -73,6 +98,44 @@ export interface Enquiry {
   enquiry_date: string
   proposed_survey_date?: string | null
   notes?: string | null
+  reported_problem?: string | null
+  // Pipeline columns (migration 20260303000001)
+  customer_id: string | null
+  assigned_to: string | null
+  priority: EnquiryPriority
+  follow_up_date: string | null
+  estimated_value: number | null
+  loss_reason: string | null
+  hold_reason: OnHoldReason | null
+  hold_reason_note: string | null
+  status_changed_at: string
+  created_at: string
+  updated_at: string
+  // Joined data (populated by queries with joins, not stored in DB)
+  assignee?: { id: string; display_name: string } | null
+  customer_data?: { id: string; first_name: string; last_name: string; email: string } | null
+}
+
+export interface EnquiryActivity {
+  id: string
+  enquiry_id: string
+  user_id: string | null
+  activity_type: EnquiryActivityType
+  title: string
+  description: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  // Joined (populated by getEnquiryActivities)
+  user?: { display_name: string } | null
+}
+
+export interface OnHoldMessageTemplate {
+  id: string
+  reason_key: OnHoldReason
+  display_label: string
+  customer_message: string
+  display_order: number
+  is_active: boolean
   created_at: string
   updated_at: string
 }
