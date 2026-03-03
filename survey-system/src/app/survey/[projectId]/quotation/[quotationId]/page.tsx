@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import {
   ArrowLeft,
   Copy,
@@ -156,6 +157,7 @@ export default function QuotationManagementPage() {
   const companyProfile = useCompanyProfile()
   const { isAdmin, isOffice } = useAuth()
   const canSend = isAdmin || isOffice
+  const goBack = useSmartBack(`/survey/${projectId}/costing`)
 
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [sections, setSections] = useState<QuotationSection[]>([])
@@ -361,9 +363,9 @@ export default function QuotationManagementPage() {
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-white mb-2">Quotation Not Found</h2>
               <p className="text-white/70 mb-6">{error || 'This quotation could not be loaded.'}</p>
-              <Link href={`/survey/${projectId}/costing`} className="btn-secondary inline-block">
-                Back to Costing
-              </Link>
+              <button type="button" onClick={goBack} className="btn-secondary">
+                Back
+              </button>
             </Card>
           </div>
         </Layout>
@@ -409,13 +411,14 @@ export default function QuotationManagementPage() {
 
           {/* ── Page Header ─────────────────────────────────────────────── */}
           <div>
-            <Link
-              href={`/survey/${projectId}/costing`}
+            <button
+              type="button"
+              onClick={goBack}
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Costing
-            </Link>
+              Back
+            </button>
 
             <div className="flex flex-col sm:flex-row sm:items-start gap-4">
               {/* Quotation identity */}

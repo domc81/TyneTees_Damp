@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import {
   ArrowLeft,
   Loader2,
@@ -99,6 +100,7 @@ export default function ReportEditorPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.projectId as string
+  const goBack = useSmartBack(`/surveys/${projectId}`)
 
   // State
   const [isLoading, setIsLoading] = useState(true)
@@ -451,8 +453,8 @@ export default function ReportEditorPage() {
           <h2 className="text-xl font-semibold text-white mb-2">Error Generating Report</h2>
           <p className="text-white/70 mb-6">{error}</p>
           <div className="flex gap-3 justify-center">
-            <Button variant="ghost" onClick={() => router.push(`/surveys/${projectId}`)}>
-              Back to Survey
+            <Button variant="ghost" onClick={goBack}>
+              Back
             </Button>
             <Button variant="primary" onClick={handleGenerateReport}>
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -481,13 +483,14 @@ export default function ReportEditorPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             {/* Back button */}
-            <Link
-              href={`/surveys/${projectId}`}
+            <button
+              type="button"
+              onClick={goBack}
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Back to Survey</span>
-            </Link>
+              <span className="hidden sm:inline">Back</span>
+            </button>
 
             {/* Title */}
             <div className="text-center">

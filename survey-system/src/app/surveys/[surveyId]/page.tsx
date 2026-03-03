@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import {
   ArrowLeft,
   Droplets,
@@ -141,6 +142,7 @@ function formatSlotDate(dateStr: string): string {
 }
 
 export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
+  const goBack = useSmartBack('/surveys')
   const { user, profile } = useAuth()
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -220,9 +222,9 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
               <h2 className="text-xl font-semibold text-white">
                 {error || 'Survey not found'}
               </h2>
-              <Link href="/surveys" className="btn-primary mt-6 inline-block">
-                Back to Surveys
-              </Link>
+              <button type="button" onClick={goBack} className="btn-primary mt-6">
+                Back
+              </button>
             </div>
           </div>
         </Layout>
@@ -298,13 +300,14 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
         <div className="space-y-6">
           {/* ── Header ── */}
           <div>
-            <Link
-              href="/surveys"
+            <button
+              type="button"
+              onClick={goBack}
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Surveys
-            </Link>
+              Back
+            </button>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">

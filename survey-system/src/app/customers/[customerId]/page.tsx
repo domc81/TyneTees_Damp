@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import {
   ArrowLeft,
   User,
@@ -105,6 +106,7 @@ function formatCurrency(amount: number): string {
 export default function CustomerDetailPage({ params }: { params: { customerId: string } }) {
   const { customerId } = params
   const router = useRouter()
+  const goBack = useSmartBack('/customers')
   const [customer, setCustomer] = useState<CustomerDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -240,9 +242,9 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Customer Not Found</h3>
               <p className="text-white/60 mb-6">The requested customer does not exist.</p>
-              <Link href="/customers" className="btn-primary inline-flex items-center gap-2">
-                <ArrowLeft className="w-4 h-4" /> Back to Customers
-              </Link>
+              <button type="button" onClick={goBack} className="btn-primary inline-flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
             </div>
           </div>
         </Layout>
@@ -259,12 +261,13 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
-              <Link
-                href="/customers"
+              <button
+                type="button"
+                onClick={goBack}
                 className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-2"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Customers
-              </Link>
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mt-2">
                 {customer.title ? `${customer.title} ` : ''}
                 {customer.first_name} {customer.last_name}

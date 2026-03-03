@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Save, Clock, Loader2, AlertCircle } from 'lucide-react'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import WizardStepper from '@/components/wizard/WizardStepper'
@@ -43,6 +44,7 @@ export default function SurveyWizardPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.projectId as string
+  const goBack = useSmartBack(`/surveys/${projectId}`)
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0)
@@ -373,13 +375,14 @@ export default function SurveyWizardPage() {
           {/* Page header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <Link
-                href={`/surveys/${projectId}`}
+              <button
+                type="button"
+                onClick={goBack}
                 className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Survey
-              </Link>
+                Back
+              </button>
               <h2 className="text-2xl font-bold text-white mt-2">Survey Wizard</h2>
               <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import {
   ArrowLeft,
   ChevronDown,
@@ -329,6 +330,7 @@ function CategorySection({
 
 export default function InstallerInfoPage({ params }: { params: { projectId: string } }) {
   const surveyId = params.projectId
+  const goBack = useSmartBack(`/surveys/${surveyId}`)
   const { isAdmin, isSurveyor, isOffice, isLoading: authLoading } = useAuth()
 
   // Can edit if admin or surveyor; office can only view
@@ -541,9 +543,9 @@ export default function InstallerInfoPage({ params }: { params: { projectId: str
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-white/30 mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-white">{error}</h2>
-              <Link href={`/surveys/${surveyId}`} className="btn-primary mt-6 inline-block">
-                Back to Survey
-              </Link>
+              <button type="button" onClick={goBack} className="btn-primary mt-6">
+                Back
+              </button>
             </div>
           </div>
         </Layout>
@@ -557,13 +559,14 @@ export default function InstallerInfoPage({ params }: { params: { projectId: str
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* ── Header ── */}
           <div>
-            <Link
-              href={`/surveys/${surveyId}`}
+            <button
+              type="button"
+              onClick={goBack}
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Survey
-            </Link>
+              Back
+            </button>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">

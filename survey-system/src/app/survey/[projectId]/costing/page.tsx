@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, Fi
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import { generateCostingFromSurvey } from '@/lib/survey-mapping'
 import {
   loadPricingConfig,
@@ -268,6 +269,7 @@ export default function CostingReviewPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.projectId as string
+  const goBack = useSmartBack(`/surveys/${projectId}`)
 
   // State
   const [isLoading, setIsLoading] = useState(true)
@@ -637,9 +639,9 @@ export default function CostingReviewPage() {
           <div className="flex gap-3 justify-center">
             <Button
               variant="ghost"
-              onClick={() => router.push(`/surveys/${projectId}`)}
+              onClick={goBack}
             >
-              Back to Survey
+              Back
             </Button>
             <Button
               variant="primary"
@@ -658,13 +660,14 @@ export default function CostingReviewPage() {
       <Layout>
         <div className="space-y-6">
           <div>
-            <Link
-              href={`/surveys/${projectId}`}
+            <button
+              type="button"
+              onClick={goBack}
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Survey
-            </Link>
+              Back
+            </button>
             <h2 className="text-2xl font-bold text-white mt-2">Survey Costing</h2>
             <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
           </div>
@@ -956,9 +959,9 @@ export default function CostingReviewPage() {
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
               variant="ghost"
-              onClick={() => router.push(`/surveys/${projectId}`)}
+              onClick={goBack}
             >
-              Back to Survey
+              Back
             </Button>
             <Button
               variant="secondary"
