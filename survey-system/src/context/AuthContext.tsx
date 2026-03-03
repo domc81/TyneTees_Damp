@@ -38,8 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sessionCallIdRef = useRef(0)
   const supabase = createClient()
 
-  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    console.log('[Auth] Fetching profile for user:', userId)
+  const fetchProfileOnce = useCallback(async (userId: string, attempt: number): Promise<UserProfile | null> => {
     try {
       const profileQuery = supabase
         .from('user_profiles')
@@ -49,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => {
-          console.error('[Auth] Profile fetch timed out after', PROFILE_FETCH_TIMEOUT_MS, 'ms')
+          console.error(`[Auth] Profile fetch timed out after ${PROFILE_FETCH_TIMEOUT_MS} ms (attempt ${attempt})`)
           resolve(null)
         }, PROFILE_FETCH_TIMEOUT_MS)
       })
@@ -63,20 +62,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = result as { data: UserProfile | null; error: { message: string } | null }
 
       if (error) {
-        console.error('[Auth] Profile fetch error:', error.message)
+        console.error(`[Auth] Profile fetch error (attempt ${attempt}):`, error.message)
         return null
       }
       if (!data) {
-        console.warn('[Auth] Profile fetch returned no data')
+        console.warn(`[Auth] Profile fetch returned no data (attempt ${attempt})`)
         return null
       }
       console.log('[Auth] Profile loaded:', data.role, 'active:', data.is_active)
       return data
     } catch (err: unknown) {
-      console.error('[Auth] Profile fetch unexpected error:', err)
+      console.error(`[Auth] Profile fetch unexpected error (attempt ${attempt}):`, err)
       return null
     }
   }, [supabase])
+
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    console.log('[Auth] Fetching profile for user:', userId)
+
+    const firstAttempt = await fetchProfileOnce(userId, 1)
+    if (firstAttempt) return firstAttempt
+
+    // Retry once after a short delay — handles cold connections and transient failures
+    console.log('[Auth] First profile fetch failed, retrying in 2s...')
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    return fetchProfileOnce(userId, 2)
+  }, [fetchProfileOnce])
 
   const handleSession = useCallback(async (newSession: Session | null) => {
     const callId = ++sessionCallIdRef.current
