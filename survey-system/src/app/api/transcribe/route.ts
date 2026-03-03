@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createServerClient } from '@/lib/supabase-server'
 
 interface TranscriptionResult {
   text: string
@@ -31,6 +32,13 @@ interface DeepgramResponse {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require authenticated session
+    const supabase = createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+    }
+
     // Check for Deepgram API key
     const apiKey = process.env.DEEPGRAM_API_KEY
     if (!apiKey) {

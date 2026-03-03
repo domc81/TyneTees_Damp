@@ -285,6 +285,53 @@ export async function getEnquiries(): Promise<Enquiry[]> {
   return data || []
 }
 
+export interface EnquiryListOptions {
+  search?: string
+  status?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface EnquiryListResult {
+  enquiries: Enquiry[]
+  totalCount: number
+}
+
+export async function getEnquiryList(options: EnquiryListOptions = {}): Promise<EnquiryListResult> {
+  const supabase = getSupabase()
+  if (!supabase) return { enquiries: [], totalCount: 0 }
+
+  const { search = '', status = 'all', page = 1, pageSize = 25 } = options
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('enquiries')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (search.trim()) {
+    const term = search.trim()
+    query = query.or(
+      `client_name.ilike.%${term}%,client_email.ilike.%${term}%,client_phone.ilike.%${term}%,enquiry_number.ilike.%${term}%`
+    )
+  }
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  const { data, error, count } = await query
+
+  if (error) {
+    console.error('Error fetching enquiry list:', error)
+    return { enquiries: [], totalCount: 0 }
+  }
+
+  return { enquiries: data || [], totalCount: count ?? 0 }
+}
+
 export async function getEnquiry(id: string): Promise<Enquiry | null> {
   const supabase = getSupabase()
   if (!supabase) return null

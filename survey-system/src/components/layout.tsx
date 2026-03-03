@@ -14,16 +14,18 @@ import {
   Menu,
   ChevronRight,
   LogOut,
+  Inbox,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { NotificationBell } from '@/components/NotificationBell'
 
-const navItems = [
+const navItems: { icon: typeof LayoutDashboard; label: string; href: string; roles?: string[] }[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
   { icon: UserCircle, label: 'Customers', href: '/customers' },
+  { icon: Inbox, label: 'Enquiries', href: '/enquiries', roles: ['admin', 'office'] },
   { icon: Package, label: 'Materials', href: '/materials' },
   { icon: Users, label: 'Team', href: '/admin/team' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },
@@ -38,7 +40,7 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { signOut } = useAuth()
+  const { signOut, isAdmin, isOffice } = useAuth()
   const companyProfile = useCompanyProfile()
 
   const handleSignOut = async () => {
@@ -72,7 +74,11 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems.filter((item) => {
+            if (!item.roles) return true
+            const userRole = isAdmin ? 'admin' : isOffice ? 'office' : 'surveyor'
+            return item.roles.includes(userRole)
+          }).map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (

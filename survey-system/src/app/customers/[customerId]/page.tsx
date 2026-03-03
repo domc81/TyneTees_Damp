@@ -622,7 +622,7 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
                         {customer.quotations.map((q) => (
                           <tr
                             key={q.id}
-                            onClick={() => router.push(`/surveys/${q.survey_id}/quotation`)}
+                            onClick={() => router.push(`/survey/${q.survey_id}/quotation/${q.id}`)}
                             className="cursor-pointer"
                           >
                             <td className="font-mono text-sm text-white/70">{q.quotation_number}</td>

@@ -101,7 +101,7 @@ export async function notifySurveyCreated(
     title: 'New Survey Created',
     message: `${createdByName} created survey ${label} for ${customer}.`,
     survey_id: survey.id,
-    link_url: `/projects/${survey.id}`,
+    link_url: `/surveys/${survey.id}`,
   }))
 
   await insertNotifications(rows)
@@ -120,7 +120,7 @@ export async function notifySurveyAssigned(
     title: 'Survey Assigned to You',
     message: `You have been assigned survey ${label} for ${customer}.`,
     survey_id: survey.id,
-    link_url: `/projects/${survey.id}`,
+    link_url: `/surveys/${survey.id}`,
   })
 }
 
@@ -139,7 +139,7 @@ export async function notifySurveyCompleted(
     title: 'Survey Completed',
     message: `Survey ${label} for ${customer} has been completed.`,
     survey_id: survey.id,
-    link_url: `/projects/${survey.id}`,
+    link_url: `/surveys/${survey.id}`,
   }))
 
   await insertNotifications(rows)

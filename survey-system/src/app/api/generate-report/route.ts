@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createServerClient } from '@/lib/supabase-server'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 interface SectionRequest {
@@ -29,6 +30,13 @@ interface GeneratedSection {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require authenticated session
+    const supabase = createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+    }
+
     const body: GenerateReportRequest = await request.json()
     const { surveyId, sections } = body
 

@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createServerClient } from '@/lib/supabase-server'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
 
 interface PolishRequest {
@@ -16,6 +17,13 @@ interface PolishRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require authenticated session
+    const supabase = createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+    }
+
     const apiKey = process.env.OPENROUTER_API_KEY
     if (!apiKey) {
       console.error('OPENROUTER_API_KEY not configured')
