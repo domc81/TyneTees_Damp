@@ -402,12 +402,19 @@ function EnquiryCard({
       />
 
       {/* Client name + SLA dot */}
-      <div className="flex items-center justify-between mb-1 relative z-10">
+      <div className="flex items-center justify-between mb-0.5 relative z-10">
         <p className="text-sm font-semibold text-white truncate pr-2">
           {enquiry.client_name}
         </p>
         <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
       </div>
+
+      {/* Enquiry number */}
+      {enquiry.enquiry_number && (
+        <p className="text-[10px] font-mono text-white/30 relative z-10 mb-1.5 leading-tight">
+          {enquiry.enquiry_number}
+        </p>
+      )}
 
       {/* Address */}
       <p className="text-xs text-white/40 relative z-10 mb-2 leading-tight">
@@ -558,10 +565,17 @@ function MobileEnquiryCard({
       `}
     >
       {/* Client name + SLA dot */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-0.5">
         <p className="text-sm font-semibold text-white truncate pr-2">{enquiry.client_name}</p>
         <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
       </div>
+
+      {/* Enquiry number */}
+      {enquiry.enquiry_number && (
+        <p className="text-[10px] font-mono text-white/30 mb-1.5 leading-tight">
+          {enquiry.enquiry_number}
+        </p>
+      )}
 
       {/* Address */}
       <p className="text-xs text-white/40 mb-2 leading-tight">

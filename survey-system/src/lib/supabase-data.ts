@@ -950,6 +950,119 @@ export async function getEnquiriesByStatus(): Promise<Record<string, Enquiry[]>>
 }
 
 // ============================================================================
+// Dashboard: Lightweight Pipeline Stats
+// ============================================================================
+
+export interface EnquiryPipelineStats {
+  statusCounts: Record<string, number>
+  statusValues: Record<string, number>
+  redCounts: Record<string, number>
+  totals: {
+    active: number        // new + assigned + surveyed + quoted
+    pipelineValue: number // sum estimated_value for all 5 active statuses
+    redTotal: number
+    accepted: number
+    declined: number
+  }
+}
+
+// Red threshold mirrors SLA_HOURS[status].amber from the Kanban board
+const PIPELINE_RED_HOURS: Partial<Record<string, number>> = {
+  new:      48,
+  assigned: 120,
+  surveyed: 48,
+  quoted:   240,
+}
+
+export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
+  const empty: EnquiryPipelineStats = {
+    statusCounts: {}, statusValues: {}, redCounts: {},
+    totals: { active: 0, pipelineValue: 0, redTotal: 0, accepted: 0, declined: 0 },
+  }
+  const supabase = getSupabase()
+  if (!supabase) return empty
+
+  const { data, error } = await supabase
+    .from('enquiries')
+    .select('status, estimated_value, status_changed_at')
+    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined'])
+
+  if (error) {
+    console.error('Error fetching pipeline stats:', error)
+    return empty
+  }
+
+  const statusCounts: Record<string, number> = {}
+  const statusValues: Record<string, number> = {}
+  const redCounts: Record<string, number> = {}
+
+  for (const row of data || []) {
+    const s = row.status as string
+    statusCounts[s] = (statusCounts[s] ?? 0) + 1
+    statusValues[s] = (statusValues[s] ?? 0) + (row.estimated_value ?? 0)
+    const redHours = PIPELINE_RED_HOURS[s]
+    if (redHours && row.status_changed_at) {
+      const hoursInStatus = (Date.now() - new Date(row.status_changed_at).getTime()) / 3_600_000
+      if (hoursInStatus >= redHours) {
+        redCounts[s] = (redCounts[s] ?? 0) + 1
+      }
+    }
+  }
+
+  const active = ['new', 'assigned', 'surveyed', 'quoted'].reduce((s, k) => s + (statusCounts[k] ?? 0), 0)
+  const pipelineValue = ['new', 'assigned', 'surveyed', 'quoted', 'accepted'].reduce((s, k) => s + (statusValues[k] ?? 0), 0)
+  const redTotal = Object.values(redCounts).reduce((s, c) => s + c, 0)
+
+  return {
+    statusCounts,
+    statusValues,
+    redCounts,
+    totals: { active, pipelineValue, redTotal, accepted: statusCounts['accepted'] ?? 0, declined: statusCounts['declined'] ?? 0 },
+  }
+}
+
+// ============================================================================
+// Dashboard: Recent Enquiry Activity Feed
+// ============================================================================
+
+export interface RecentActivityItem {
+  id: string
+  enquiry_id: string
+  enquiry_number: string | null
+  client_name: string | null
+  activity_type: EnquiryActivityType
+  title: string
+  created_at: string
+}
+
+export async function getRecentEnquiryActivity(limit = 5): Promise<RecentActivityItem[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('enquiry_activity')
+    .select('id, enquiry_id, activity_type, title, created_at, enquiry:enquiries!enquiry_id(enquiry_number, client_name)')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Error fetching recent activity:', error)
+    return []
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    enquiry_id: row.enquiry_id,
+    enquiry_number: row.enquiry?.enquiry_number ?? null,
+    client_name: row.enquiry?.client_name ?? null,
+    activity_type: row.activity_type as EnquiryActivityType,
+    title: row.title,
+    created_at: row.created_at,
+  }))
+}
+
+// ============================================================================
 // Projects
 // ============================================================================
 
