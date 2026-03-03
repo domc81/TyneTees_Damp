@@ -126,8 +126,8 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </aside>
 
-      {/* Desktop notification bell — fixed top-right, hidden on mobile (mobile uses header slot) */}
-      <div className="hidden lg:flex fixed top-4 right-6 z-30">
+      {/* Single NotificationBell — fixed position, responsive placement for both mobile and desktop */}
+      <div className="fixed top-3 right-4 lg:top-4 lg:right-6 z-30">
         <NotificationBell />
       </div>
 
@@ -143,7 +143,8 @@ export default function Layout({ children }: LayoutProps) {
               <Menu className="w-6 h-6" />
             </button>
             <CompanyLogo className="h-6" />
-            <NotificationBell />
+            {/* Spacer balances the 3-item flex layout (hamburger | logo | bell-sized gap) */}
+            <div className="w-9 h-9" />
           </div>
         </header>
 
