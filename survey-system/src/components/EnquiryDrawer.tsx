@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import {
   getEnquiryActivities,
@@ -10,7 +9,13 @@ import {
   assignEnquiry,
   logEnquiryActivity,
   createSurveyFromEnquiry,
+  updateSurvey,
 } from '@/lib/supabase-data'
+import { createBooking, getBookingBySurveyId } from '@/lib/calendar-data'
+import type { SurveyBooking } from '@/lib/calendar-data'
+import { SlotPicker } from '@/components/calendar/SlotPicker'
+import type { SelectedSlot } from '@/components/calendar/SlotPicker'
+import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
 import type {
   Enquiry,
   EnquiryStatus,
@@ -46,6 +51,9 @@ import {
   Pencil,
   Check,
   AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Calendar,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -118,6 +126,9 @@ const ALL_STATUSES: EnquiryStatus[] = [
 ]
 
 const ALL_PRIORITIES: EnquiryPriority[] = ['low', 'medium', 'high', 'urgent']
+
+// Convert & Book flow step labels
+const FLOW_STEP_LABELS = ['Review', 'Surveyor', 'Schedule', 'Confirm'] as const
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -571,7 +582,10 @@ type LinkedSurvey = {
   project_number: string
   survey_date: string | null
   status: string
+  surveyor_id: string | null
 }
+
+type FlowStep = 1 | 2 | 3 | 4
 
 type LinkedQuotation = {
   id: string
@@ -623,6 +637,7 @@ export default function EnquiryDrawer({
   const [linkedQuotations, setLinkedQuotations] = useState<LinkedQuotation[]>([])
   const [linkedLoaded, setLinkedLoaded] = useState(false)
   const [linkedLoading, setLinkedLoading] = useState(false)
+  const [linkedBooking, setLinkedBooking] = useState<SurveyBooking | null>(null)
 
   // Dropdowns
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
@@ -654,11 +669,18 @@ export default function EnquiryDrawer({
   // Problem text expand
   const [problemExpanded, setProblemExpanded] = useState(false)
 
-  // Convert to Survey
-  const [showConvertDialog, setShowConvertDialog] = useState(false)
-  const [converting, setConverting] = useState(false)
-  const [convertError, setConvertError] = useState<string | null>(null)
-  const router = useRouter()
+  // Convert & Book flow
+  const [showConvertFlow, setShowConvertFlow] = useState(false)
+  const [flowStep, setFlowStep] = useState<FlowStep>(1)
+  const [flowSurveyorId, setFlowSurveyorId] = useState<string | null>(null)
+  const [flowSurveyorName, setFlowSurveyorName] = useState('')
+  const [flowSlot, setFlowSlot] = useState<SelectedSlot | null>(null)
+  const [flowLoading, setFlowLoading] = useState(false)
+  const [flowSuccess, setFlowSuccess] = useState(false)
+  const [flowError, setFlowError] = useState<string | null>(null)
+  const [flowPartialSuccess, setFlowPartialSuccess] = useState(false)
+  const [flowCreatedSurvey, setFlowCreatedSurvey] = useState<{ id: string; project_number: string } | null>(null)
+  const [flowExistingSurveyId, setFlowExistingSurveyId] = useState<string | null>(null)
 
   // Refs for click-outside
   const statusRef = useRef<HTMLDivElement>(null)
@@ -730,6 +752,17 @@ export default function EnquiryDrawer({
       setCallSummary('')
       setCallDetails('')
       setProblemExpanded(false)
+      setShowConvertFlow(false)
+      setFlowStep(1)
+      setFlowSurveyorId(null)
+      setFlowSurveyorName('')
+      setFlowSlot(null)
+      setFlowSuccess(false)
+      setFlowError(null)
+      setFlowPartialSuccess(false)
+      setFlowCreatedSurvey(null)
+      setFlowExistingSurveyId(null)
+      setLinkedBooking(null)
     }
     // Sync editable fields with current enquiry prop
     setEditingNotes(enquiry.notes ?? '')
@@ -774,19 +807,22 @@ export default function EnquiryDrawer({
 
     const { data: surveys } = await supabase
       .from('surveys')
-      .select('id, project_number, survey_date, status')
+      .select('id, project_number, survey_date, status, surveyor_id')
       .eq('enquiry_id', enquiry.id)
 
     setLinkedSurveys((surveys as LinkedSurvey[]) ?? [])
 
     if (surveys && surveys.length > 0) {
       const surveyIds = surveys.map((s: LinkedSurvey) => s.id)
-      const { data: quotations } = await supabase
-        .from('quotations')
-        .select('id, quotation_number, total_incl_vat, status, survey_id')
-        .in('survey_id', surveyIds)
-
-      setLinkedQuotations((quotations as LinkedQuotation[]) ?? [])
+      const [quotationsResult, bookingResult] = await Promise.all([
+        supabase
+          .from('quotations')
+          .select('id, quotation_number, total_incl_vat, status, survey_id')
+          .in('survey_id', surveyIds),
+        getBookingBySurveyId(surveys[0].id),
+      ])
+      setLinkedQuotations((quotationsResult.data as LinkedQuotation[]) ?? [])
+      setLinkedBooking(bookingResult)
     }
 
     setLinkedLoaded(true)
@@ -1026,20 +1062,103 @@ export default function EnquiryDrawer({
     }
   }
 
-  async function handleConvertToSurvey() {
-    setConverting(true)
-    setConvertError(null)
+  // ── Convert & Book flow handlers ──────────────────────────────
+
+  function startConvertFlow(existingSurveyId?: string | null) {
+    setFlowStep(existingSurveyId ? 2 : 1)
+    setFlowExistingSurveyId(existingSurveyId ?? null)
+    setFlowSurveyorId(null)
+    setFlowSurveyorName('')
+    setFlowSlot(null)
+    setFlowLoading(false)
+    setFlowSuccess(false)
+    setFlowError(null)
+    setFlowPartialSuccess(false)
+    setFlowCreatedSurvey(null)
+    setShowConvertFlow(true)
+  }
+
+  function cancelConvertFlow() {
+    setShowConvertFlow(false)
+  }
+
+  async function handleFlowConfirm() {
+    if (!flowSlot) return
+    setFlowLoading(true)
+    setFlowError(null)
+
+    let createdSurvey: { id: string; project_number: string } | null = null
+
     try {
-      const { survey } = await createSurveyFromEnquiry(enquiry.id, currentUserId)
-      // Update the board: enquiry may have moved to 'assigned'
-      if (enquiry.status === 'new') {
-        onBoardSync({ ...enquiry, status: 'assigned' }, enquiry.status)
+      if (flowExistingSurveyId) {
+        // Survey already exists — fetch its project_number for the success state
+        const supabase = createClient()
+        const { data } = await supabase
+          .from('surveys')
+          .select('id, project_number')
+          .eq('id', flowExistingSurveyId)
+          .single()
+        createdSurvey = data as { id: string; project_number: string }
+      } else {
+        // Create customer + survey from enquiry
+        const { survey } = await createSurveyFromEnquiry(enquiry.id, currentUserId)
+        createdSurvey = { id: survey.id, project_number: survey.project_number }
+        if (enquiry.status === 'new') {
+          onBoardSync({ ...enquiry, status: 'assigned' }, enquiry.status)
+        }
       }
-      router.push(`/surveys/${survey.id}`)
+
+      if (!createdSurvey) throw new Error('Failed to resolve survey')
+
+      // Assign surveyor + survey date
+      await updateSurvey(createdSurvey.id, {
+        surveyor_id: flowSlot.surveyorId,
+        survey_date: flowSlot.date,
+      })
+
+      // Build customer address for the booking record
+      const fullAddress = [
+        enquiry.site_address_1,
+        enquiry.site_address_2,
+        enquiry.site_city,
+        enquiry.site_county,
+        enquiry.site_postcode,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
+      try {
+        await createBooking({
+          surveyId: createdSurvey.id,
+          surveyorId: flowSlot.surveyorId,
+          customerName: enquiry.client_name || '',
+          customerPhone: enquiry.client_phone || null,
+          customerEmail: enquiry.client_email || null,
+          customerAddress: fullAddress || null,
+          bookingDate: flowSlot.date,
+          startTime: flowSlot.startTime,
+          endTime: flowSlot.endTime,
+          notes: null,
+          createdBy: currentUserId || '',
+        })
+      } catch (bookingErr) {
+        // Partial success: survey created but booking failed
+        setFlowCreatedSurvey(createdSurvey)
+        setFlowPartialSuccess(true)
+        setFlowError(bookingErr instanceof Error ? bookingErr.message : 'Booking creation failed')
+        setLinkedLoaded(false)
+        return
+      }
+
+      setFlowCreatedSurvey(createdSurvey)
+      setFlowSuccess(true)
+      setLinkedLoaded(false)
+
     } catch (err) {
-      console.error('Convert to survey failed:', err)
-      setConvertError(err instanceof Error ? err.message : 'Failed to create survey')
-      setConverting(false)
+      console.error('Convert & Book failed:', err)
+      setFlowError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } finally {
+      setFlowLoading(false)
     }
   }
 
@@ -1235,30 +1354,342 @@ export default function EnquiryDrawer({
           </div>
         </div>
 
-        {/* ─────────────────── Tab Bar (sticky) ─────────────────── */}
-        <div className="flex-shrink-0 border-b border-white/10 px-4 lg:px-5">
-          <div className="flex gap-0">
-            {(['details', 'activity', 'linked'] as TabId[]).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${
-                  activeTab === tab
-                    ? 'text-white border-blue-500'
-                    : 'text-white/40 border-transparent hover:text-white/60'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+        {/* ─────────────────── Convert & Book Step Indicator ─────────────────── */}
+        {showConvertFlow && (
+          <div className="flex-shrink-0 border-b border-white/10 px-4 lg:px-5 py-3">
+            <div className="flex items-center justify-center gap-1">
+              {FLOW_STEP_LABELS.map((label, i) => {
+                const step = (i + 1) as FlowStep
+                const isCurrent = !flowSuccess && !flowPartialSuccess && step === flowStep
+                const isCompleted = flowSuccess || flowPartialSuccess || step < flowStep
+                const isClickable = isCompleted && !flowSuccess && !flowPartialSuccess && !flowLoading
+                return (
+                  <div key={step} className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => { if (isClickable) setFlowStep(step) }}
+                      disabled={!isClickable}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg transition-colors ${
+                        isCurrent
+                          ? 'text-blue-400'
+                          : isCompleted
+                            ? 'text-white/60 hover:text-white/80 cursor-pointer'
+                            : 'text-white/25 cursor-default'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${
+                        isCurrent ? 'bg-blue-400' : isCompleted ? 'bg-white/40' : 'bg-white/15'
+                      }`} />
+                      <span className="hidden sm:inline">{label}</span>
+                    </button>
+                    {i < FLOW_STEP_LABELS.length - 1 && (
+                      <div className="w-4 h-px bg-white/10 mx-1" />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ─────────────────── Tab Bar (sticky) ─────────────────── */}
+        {!showConvertFlow && (
+          <div className="flex-shrink-0 border-b border-white/10 px-4 lg:px-5">
+            <div className="flex gap-0">
+              {(['details', 'activity', 'linked'] as TabId[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${
+                    activeTab === tab
+                      ? 'text-white border-blue-500'
+                      : 'text-white/40 border-transparent hover:text-white/60'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─────────────────── Tab Content (scrollable) ─────────────────── */}
         <div className="flex-1 overflow-y-auto">
 
+          {/* ────── Convert & Book Flow ────── */}
+          {showConvertFlow && (
+            <div className="p-4 lg:p-5">
+
+              {/* ── Success state ── */}
+              {flowSuccess && flowCreatedSurvey && flowSlot && (
+                <div className="space-y-5 text-center py-6">
+                  <CheckCircle2 className="w-14 h-14 text-green-400 mx-auto" />
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">Survey Booked</h3>
+                    <p className="text-sm text-white/50">Everything has been set up successfully.</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-left">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Survey</span>
+                      <span className="text-sm text-white/80 font-medium">{flowCreatedSurvey.project_number}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Surveyor</span>
+                      <span className="text-sm text-white/80">{flowSlot.surveyorName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Date</span>
+                      <span className="text-sm text-white/80">
+                        {new Date(flowSlot.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Time</span>
+                      <span className="text-sm text-white/80">{flowSlot.startTime} – {flowSlot.endTime}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={cancelConvertFlow} className="btn-secondary flex-1 text-sm py-2">
+                      Close
+                    </button>
+                    <a
+                      href={`/projects/${flowCreatedSurvey.id}`}
+                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5"
+                    >
+                      View Survey <ChevronRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Partial success (survey created, booking failed) ── */}
+              {flowPartialSuccess && flowCreatedSurvey && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-400/20 bg-amber-500/5">
+                    <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-300 mb-1">Survey created, booking failed</p>
+                      <p className="text-xs text-white/50 leading-relaxed">
+                        Survey <span className="text-white/70 font-medium">{flowCreatedSurvey.project_number}</span> was created successfully,
+                        but the booking could not be scheduled. You can schedule it from the survey page.
+                      </p>
+                      {flowError && (
+                        <p className="text-xs text-amber-300/60 mt-2">Error: {flowError}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={cancelConvertFlow} className="btn-secondary flex-1 text-sm py-2">
+                      Close
+                    </button>
+                    <a
+                      href={`/projects/${flowCreatedSurvey.id}`}
+                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5"
+                    >
+                      Go to Survey <ChevronRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 1: Review ── */}
+              {!flowSuccess && !flowPartialSuccess && flowStep === 1 && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-blue-400/15 bg-blue-500/5 p-3">
+                    <p className="text-xs text-blue-300/70">
+                      Need to change something? Cancel and edit in the Details tab first.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+                      <h4 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Customer</h4>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-white/40">Name</span>
+                        <span className="text-sm text-white/80">{enquiry.client_name || '—'}</span>
+                      </div>
+                      {enquiry.client_email && (
+                        <div className="flex justify-between">
+                          <span className="text-xs text-white/40">Email</span>
+                          <span className="text-sm text-white/70">{enquiry.client_email}</span>
+                        </div>
+                      )}
+                      {enquiry.client_phone && (
+                        <div className="flex justify-between">
+                          <span className="text-xs text-white/40">Phone</span>
+                          <span className="text-sm text-white/70">{enquiry.client_phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+                      <h4 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Site Address</h4>
+                      <p className="text-sm text-white/80">
+                        {[enquiry.site_address_1, enquiry.site_address_2, enquiry.site_city, enquiry.site_county, enquiry.site_postcode]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+                      <h4 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Survey Details</h4>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-white/40">Type</span>
+                        <span className="text-sm text-white/80">{SURVEY_TYPE_LABELS[enquiry.survey_type] ?? enquiry.survey_type} Survey</span>
+                      </div>
+                      {enquiry.proposed_survey_date && (
+                        <div className="flex justify-between">
+                          <span className="text-xs text-white/40">Proposed Date</span>
+                          <span className="text-sm text-white/70">
+                            {new Date(enquiry.proposed_survey_date + 'T12:00:00').toLocaleDateString('en-GB')}
+                          </span>
+                        </div>
+                      )}
+                      {enquiry.reported_problem && (
+                        <div className="space-y-1">
+                          <span className="text-xs text-white/40">Problem</span>
+                          <p className="text-sm text-white/60 leading-relaxed">
+                            {enquiry.reported_problem.length > 120
+                              ? enquiry.reported_problem.slice(0, 120) + '…'
+                              : enquiry.reported_problem}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={cancelConvertFlow} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
+                    <button onClick={() => setFlowStep(2)} className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5">
+                      Next <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 2: Select Surveyor ── */}
+              {!flowSuccess && !flowPartialSuccess && flowStep === 2 && (
+                <div className="space-y-5">
+                  <SurveyorSelect
+                    onSelect={(id, name) => { setFlowSurveyorId(id); setFlowSurveyorName(name) }}
+                    selectedId={flowSurveyorId}
+                    label="Assign Surveyor"
+                  />
+                  {flowSurveyorId && (
+                    <p className="text-xs text-white/40">
+                      Selected: <span className="text-white/70 font-medium">{flowSurveyorName}</span>
+                    </p>
+                  )}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => flowExistingSurveyId ? cancelConvertFlow() : setFlowStep(1)}
+                      className="btn-secondary flex-1 text-sm py-2"
+                    >
+                      {flowExistingSurveyId ? 'Cancel' : 'Back'}
+                    </button>
+                    <button
+                      onClick={() => setFlowStep(3)}
+                      disabled={!flowSurveyorId}
+                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 3: Schedule ── */}
+              {!flowSuccess && !flowPartialSuccess && flowStep === 3 && (
+                <div className="space-y-4">
+                  <p className="text-xs text-white/40">
+                    Showing availability for <span className="text-white/70 font-medium">{flowSurveyorName}</span>.
+                    You can change the surveyor using the selector below.
+                  </p>
+                  <SlotPicker
+                    onSlotSelected={setFlowSlot}
+                    selectedSlot={flowSlot}
+                    defaultSurveyorId={flowSurveyorId}
+                  />
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setFlowStep(2)} className="btn-secondary flex-1 text-sm py-2">Back</button>
+                    <button
+                      onClick={() => setFlowStep(4)}
+                      disabled={!flowSlot}
+                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 4: Confirm ── */}
+              {!flowSuccess && !flowPartialSuccess && flowStep === 4 && flowSlot && (
+                <div className="space-y-5">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                    {!flowExistingSurveyId && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-white/40">Survey</span>
+                        <span className="text-sm text-white/80">
+                          New {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? enquiry.survey_type} Survey
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Customer</span>
+                      <span className="text-sm text-white/80">{enquiry.client_name || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Site</span>
+                      <span className="text-sm text-white/80 text-right max-w-[55%]">
+                        {[enquiry.site_address_1, enquiry.site_postcode].filter(Boolean).join(', ') || '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Surveyor</span>
+                      <span className="text-sm text-white/80">{flowSlot.surveyorName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Date</span>
+                      <span className="text-sm text-white/80">
+                        {new Date(flowSlot.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-white/40">Time</span>
+                      <span className="text-sm text-white/80">{flowSlot.startTime} – {flowSlot.endTime}</span>
+                    </div>
+                  </div>
+
+                  {flowError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">
+                      <p className="text-sm text-red-300">{flowError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button onClick={() => setFlowStep(3)} disabled={flowLoading} className="btn-secondary flex-1 text-sm py-2">
+                      Back
+                    </button>
+                    <button
+                      onClick={handleFlowConfirm}
+                      disabled={flowLoading}
+                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-2"
+                    >
+                      {flowLoading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</>
+                      ) : (
+                        <><Check className="w-4 h-4" /> Confirm & Book</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ────── Details Tab ────── */}
-          {activeTab === 'details' && (
+          {!showConvertFlow && activeTab === 'details' && (
             <div className="p-4 lg:p-5 space-y-5">
 
               {/* Customer Information */}
@@ -1559,7 +1990,7 @@ export default function EnquiryDrawer({
           )}
 
           {/* ────── Activity Tab ────── */}
-          {activeTab === 'activity' && (
+          {!showConvertFlow && activeTab === 'activity' && (
             <div className="p-4 lg:p-5">
 
               {/* Quick action buttons */}
@@ -1721,7 +2152,7 @@ export default function EnquiryDrawer({
           )}
 
           {/* ────── Linked Tab ────── */}
-          {activeTab === 'linked' && (
+          {!showConvertFlow && activeTab === 'linked' && (
             <div className="p-4 lg:p-5 space-y-4">
 
               {linkedLoading && (
@@ -1769,11 +2200,11 @@ export default function EnquiryDrawer({
                     </div>
                     {linkedSurveys.length > 0 ? (
                       linkedSurveys.map(survey => (
-                        <div key={survey.id} className="space-y-1.5">
+                        <div key={survey.id} className="space-y-2">
                           <p className="text-sm text-white/80 font-medium">{survey.project_number}</p>
                           {survey.survey_date && (
                             <p className="text-xs text-white/40">
-                              {new Date(survey.survey_date).toLocaleDateString('en-GB')}
+                              {new Date(survey.survey_date + 'T12:00:00').toLocaleDateString('en-GB')}
                             </p>
                           )}
                           <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/50 capitalize">
@@ -1783,21 +2214,45 @@ export default function EnquiryDrawer({
                             href={`/projects/${survey.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"
                           >
                             View Survey <ExternalLink className="w-3 h-3" />
                           </a>
+
+                          {/* Booking info or schedule button */}
+                          {linkedBooking ? (
+                            <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Booking</p>
+                              <p className="text-sm text-white/80">
+                                {new Date(linkedBooking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
+                                  weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                                })}
+                              </p>
+                              <p className="text-xs text-white/50">{linkedBooking.start_time} – {linkedBooking.end_time}</p>
+                              {linkedBooking.surveyor_name && (
+                                <p className="text-xs text-white/50">Surveyor: {linkedBooking.surveyor_name}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startConvertFlow(survey.id)}
+                              className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 w-full justify-center mt-2"
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              Schedule Booking
+                            </button>
+                          )}
                         </div>
                       ))
                     ) : (
                       <div className="space-y-3">
                         <p className="text-xs text-white/25">No survey linked</p>
                         <button
-                          onClick={() => { setConvertError(null); setShowConvertDialog(true) }}
+                          onClick={() => startConvertFlow()}
                           className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 w-full justify-center"
                         >
                           <ClipboardCheck className="w-3.5 h-3.5" />
-                          Convert to {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? ''} Survey
+                          Convert &amp; Book Survey
                         </button>
                       </div>
                     )}
@@ -1845,78 +2300,6 @@ export default function EnquiryDrawer({
         </div>
       </div>
 
-      {/* ─────────────────── Convert to Survey Confirmation Dialog ─────────────────── */}
-      {showConvertDialog && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div
-            className="max-w-md w-full mx-4 rounded-2xl border border-white/15 shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, rgba(15,23,36,0.99) 0%, rgba(8,14,24,1) 100%)' }}
-          >
-            <div className="p-6 space-y-4">
-              <h3 className="text-lg font-bold text-white">Convert to Survey</h3>
-
-              <div className="text-sm text-white/60 space-y-2">
-                <p>This will:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Create a customer record (if needed)</li>
-                  <li>Create a new survey from this enquiry</li>
-                  <li>Link them together</li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-xs text-white/40">Customer</span>
-                  <span className="text-sm text-white/80">{enquiry.client_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-white/40">Site</span>
-                  <span className="text-sm text-white/80 text-right max-w-[250px]">
-                    {enquiry.site_address_1}{enquiry.site_postcode ? `, ${enquiry.site_postcode}` : ''}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-white/40">Type</span>
-                  <span className="text-sm text-white/80">
-                    {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? enquiry.survey_type} Survey
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-white/40">
-                You will be redirected to the new survey to assign a surveyor and schedule it.
-              </p>
-
-              {convertError && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">
-                  <p className="text-sm text-red-300">{convertError}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setShowConvertDialog(false)}
-                  disabled={converting}
-                  className="btn-secondary text-sm px-4 py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConvertToSurvey}
-                  disabled={converting}
-                  className="btn-primary text-sm px-4 py-2 flex items-center gap-2"
-                >
-                  {converting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>
-                  ) : (
-                    <><ClipboardCheck className="w-4 h-4" /> Create Survey</>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
