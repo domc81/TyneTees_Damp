@@ -711,7 +711,7 @@ function MobileStatusSection({
 // ---------------------------------------------------------------------------
 
 function OnHoldModal({
-  enquiry: _enquiry,
+  enquiry,
   templates,
   onConfirm,
   onCancel,
@@ -725,6 +725,7 @@ function OnHoldModal({
   const [note, setNote] = useState('')
 
   const selectedTemplate = templates.find((t) => t.reason_key === selectedReason)
+  const hasEmail = !!enquiry.client_email
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -744,9 +745,15 @@ function OnHoldModal({
       >
         <div>
           <h2 className="text-lg font-bold text-white">Place Enquiry On Hold</h2>
-          <p className="text-sm text-white/50 mt-1">
-            The customer will be automatically notified with the reason you select.
-          </p>
+          {hasEmail ? (
+            <p className="text-sm text-white/50 mt-1">
+              The customer will be automatically notified with the reason you select.
+            </p>
+          ) : (
+            <p className="text-sm text-amber-400/80 mt-1">
+              Note: No email address is recorded for this customer. They will need to be notified manually.
+            </p>
+          )}
         </div>
 
         {/* Reason dropdown */}
@@ -782,8 +789,8 @@ function OnHoldModal({
           />
         </div>
 
-        {/* Message preview */}
-        {selectedTemplate && (
+        {/* Message preview — only if email will be sent */}
+        {selectedTemplate && hasEmail && (
           <div>
             <p className="text-xs font-medium text-white/40 mb-1.5">Customer will receive:</p>
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
@@ -806,7 +813,7 @@ function OnHoldModal({
             disabled={!selectedReason}
             className="btn-primary px-5 py-2.5 text-sm"
           >
-            Confirm &amp; Notify
+            {hasEmail ? 'Confirm & Notify' : 'Confirm'}
           </button>
         </div>
       </div>
@@ -915,8 +922,9 @@ export default function EnquiriesPage() {
     toStatus: 'on_hold' | 'declined'
   } | null>(null)
 
-  // Error toast
+  // Toast (supports error, success, and warning variants)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastType, setToastType] = useState<'error' | 'success' | 'warning'>('error')
 
   // Filter state (Task A)
   const [searchQuery, setSearchQuery] = useState('')
@@ -965,6 +973,11 @@ export default function EnquiriesPage() {
       setHoldTemplates(templates)
     })
   }, [])
+
+  function showToast(message: string, type: 'error' | 'success' | 'warning' = 'error') {
+    setToastType(type)
+    setToastMessage(message)
+  }
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -1151,7 +1164,7 @@ export default function EnquiriesPage() {
     updateEnquiryStatus(enquiry.id, to, user?.id ?? null, options)
       .catch(() => {
         setBoard(prevBoard)
-        setToastMessage(`Failed to move "${enquiry.client_name}" — reverted`)
+        showToast(`Failed to move "${enquiry.client_name}" — reverted`)
       })
   }
 
@@ -1177,6 +1190,28 @@ export default function EnquiriesPage() {
       return next
     })
     setPendingDrag(null)
+
+    // Attempt to send email notification (non-blocking — status change is already done)
+    if (enquiry.client_email) {
+      fetch(`/api/enquiries/${enquiry.id}/notify-on-hold`, { method: 'POST' })
+        .then(async (res) => {
+          if (res.ok) {
+            showToast('Enquiry placed on hold. Customer notified by email.', 'success')
+          } else {
+            const body = await res.json().catch(() => ({ error: 'Unknown error' }))
+            showToast(
+              `Enquiry placed on hold. Email notification failed — please notify the customer manually. (${body.error || 'Unknown error'})`,
+              'warning'
+            )
+          }
+        })
+        .catch(() => {
+          showToast(
+            'Enquiry placed on hold. Email notification failed — please notify the customer manually.',
+            'warning'
+          )
+        })
+    }
   }
 
   function handleDeclinedConfirm(lossReason: string) {
@@ -1469,11 +1504,23 @@ export default function EnquiriesPage() {
           />
         )}
 
-        {/* Error toast */}
+        {/* Toast */}
         {toastMessage && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200]">
-            <div className="rounded-xl border border-red-400/30 bg-red-500/15 backdrop-blur-lg px-5 py-3 shadow-lg">
-              <p className="text-sm text-red-300">{toastMessage}</p>
+            <div className={`rounded-xl border backdrop-blur-lg px-5 py-3 shadow-lg ${
+              toastType === 'success'
+                ? 'border-emerald-400/30 bg-emerald-500/15'
+                : toastType === 'warning'
+                ? 'border-amber-400/30 bg-amber-500/15'
+                : 'border-red-400/30 bg-red-500/15'
+            }`}>
+              <p className={`text-sm ${
+                toastType === 'success'
+                  ? 'text-emerald-300'
+                  : toastType === 'warning'
+                  ? 'text-amber-300'
+                  : 'text-red-300'
+              }`}>{toastMessage}</p>
             </div>
           </div>
         )}

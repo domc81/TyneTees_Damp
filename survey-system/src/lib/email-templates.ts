@@ -657,3 +657,50 @@ export async function quotationDeclinedEmail(data: QuotationDeclinedEmailData): 
 
   return { subject, html: wrapInBrandedLayout(body, branding) }
 }
+
+// ── Enquiry on-hold notification ────────────────────────────────────────
+
+export interface EnquiryOnHoldEmailData {
+  customerName: string
+  customerMessage: string // reason-specific message from on_hold_message_templates
+}
+
+export async function enquiryOnHoldEmail(data: EnquiryOnHoldEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `${branding.companyName} — Update on your enquiry`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      An update on your enquiry with ${escapeHtml(branding.companyName)}.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for your recent enquiry with ${escapeHtml(branding.companyName)}.
+    </p>
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      ${escapeHtml(data.customerMessage)}
+    </p>
+
+    <p style="margin:0 0 20px 0;font-size:14px;color:#374151;line-height:1.6;">
+      If you have any questions in the meantime, please don&apos;t hesitate to contact us.
+    </p>
+
+    ${branding.companyPhone ? `<p style="margin:0 0 20px 0;">
+      <a href="tel:${branding.companyPhone.replace(/\\s/g, '')}"
+         style="font-size:16px;font-weight:700;color:#1e3a5f;text-decoration:none;">
+        ${escapeHtml(branding.companyPhone)}
+      </a>
+    </p>` : ''}
+
+    ${branding.companyEmail ? `<p style="margin:0 0 20px 0;font-size:14px;color:#374151;">
+      <a href="mailto:${branding.companyEmail}" style="color:#1e3a5f;">${escapeHtml(branding.companyEmail)}</a>
+    </p>` : ''}
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
