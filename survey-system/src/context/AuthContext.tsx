@@ -20,9 +20,6 @@ type AuthContextType = {
   refreshProfile: () => Promise<void>
 }
 
-const AUTH_TIMEOUT_MS = 20000
-const PROFILE_FETCH_TIMEOUT_MS = 15000
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -32,71 +29,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
   const initializedRef = useRef(false)
-  // Counter to prevent stale auth events from overwriting newer state.
-  // When multiple auth events fire concurrently (e.g. _recoverAndRefresh + INITIAL_SESSION),
-  // only the latest handleSession call is allowed to write state.
-  const sessionCallIdRef = useRef(0)
   const supabase = createClient()
 
-  const fetchProfileOnce = useCallback(async (userId: string, attempt: number): Promise<UserProfile | null> => {
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    console.log('[Auth] Fetching profile for user:', userId)
     try {
-      const profileQuery = supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
         .single()
 
-      const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => {
-          console.error(`[Auth] Profile fetch timed out after ${PROFILE_FETCH_TIMEOUT_MS} ms (attempt ${attempt})`)
-          resolve(null)
-        }, PROFILE_FETCH_TIMEOUT_MS)
-      })
-
-      const result = await Promise.race([profileQuery, timeoutPromise])
-
-      // Timeout resolved with null
-      if (!result) return null
-
-      // Query resolved — extract data/error
-      const { data, error } = result as { data: UserProfile | null; error: { message: string } | null }
-
       if (error) {
-        console.error(`[Auth] Profile fetch error (attempt ${attempt}):`, error.message)
+        console.error('[Auth] Profile fetch error:', error.message)
         return null
       }
       if (!data) {
-        console.warn(`[Auth] Profile fetch returned no data (attempt ${attempt})`)
+        console.warn('[Auth] Profile fetch returned no data')
         return null
       }
       console.log('[Auth] Profile loaded:', data.role, 'active:', data.is_active)
       return data
     } catch (err: unknown) {
-      console.error(`[Auth] Profile fetch unexpected error (attempt ${attempt}):`, err)
+      console.error('[Auth] Profile fetch unexpected error:', err)
       return null
     }
   }, [supabase])
 
-  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    console.log('[Auth] Fetching profile for user:', userId)
-
-    const firstAttempt = await fetchProfileOnce(userId, 1)
-    if (firstAttempt) return firstAttempt
-
-    // Retry once after a short delay — handles cold connections and transient failures
-    console.log('[Auth] First profile fetch failed, retrying in 2s...')
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    return fetchProfileOnce(userId, 2)
-  }, [fetchProfileOnce])
-
-  const handleSession = useCallback(async (newSession: Session | null) => {
-    const callId = ++sessionCallIdRef.current
-    console.log('[Auth] handleSession called, callId:', callId, 'has session:', !!newSession, 'user:', newSession?.user?.email)
+  const applySession = useCallback(async (newSession: Session | null) => {
     setSession(newSession)
     setUser(newSession?.user ?? null)
 
     if (!newSession?.user) {
-      console.log('[Auth] No session/user — clearing state, finishing load')
+      console.log('[Auth] No session/user — clearing state')
       setProfile(null)
       setProfileError(null)
       setIsLoading(false)
@@ -104,13 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const userProfile = await fetchProfile(newSession.user.id)
-
-    // If a newer handleSession call started while we were fetching,
-    // discard this result — the newer call will handle state.
-    if (callId !== sessionCallIdRef.current) {
-      console.log('[Auth] Discarding stale result from callId:', callId, '(current:', sessionCallIdRef.current, ')')
-      return
-    }
 
     if (!userProfile) {
       console.warn('[Auth] No profile found or fetch failed — allowing login without profile')
@@ -143,36 +101,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     console.log('[Auth] Initializing auth...')
 
-    // Safety timeout — if auth hasn't resolved in 8s, stop loading
-    const safetyTimeout = setTimeout(() => {
-      console.error('[Auth] Safety timeout reached after', AUTH_TIMEOUT_MS, 'ms — forcing isLoading=false')
-      setIsLoading(false)
-    }, AUTH_TIMEOUT_MS)
-
-    // Listen for auth state changes (fires INITIAL_SESSION on subscribe)
+    // Subscribe to auth changes. The INITIAL_SESSION event fires during
+    // subscription but we deliberately ignore it here — fetching the profile
+    // from inside that callback would deadlock because the Supabase client's
+    // initializePromise hasn't resolved yet, and any REST call (like
+    // .from().select()) internally awaits it.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, eventSession) => {
+        if (event === 'INITIAL_SESSION') {
+          // Skip — handled by getSession() below, outside the callback
+          console.log('[Auth] INITIAL_SESSION event received (skipping — handled by getSession)')
+          return
+        }
+
         console.log('[Auth] onAuthStateChange event:', event)
-        clearTimeout(safetyTimeout)
-        await handleSession(session)
+        await applySession(eventSession)
       }
     )
 
-    // Fallback: explicitly get session in case onAuthStateChange doesn't fire
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    // getSession() awaits initializePromise at the top level (not inside a
+    // callback), so it properly waits for auth initialization to complete
+    // before we make any REST API calls for the profile.
+    supabase.auth.getSession().then(async ({ data: { session: initialSession }, error }) => {
       if (error) {
         console.error('[Auth] getSession error:', error.message)
-        clearTimeout(safetyTimeout)
         setIsLoading(false)
         return
       }
-      console.log('[Auth] getSession result: has session =', !!session)
-      // Only use this if onAuthStateChange hasn't already handled it
-      // (onAuthStateChange fires first in most cases, this is a safety net)
+      console.log('[Auth] getSession resolved: has session =', !!initialSession)
+      await applySession(initialSession)
     })
 
     return () => {
-      clearTimeout(safetyTimeout)
       subscription.unsubscribe()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
