@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import {
   getEnquiryActivities,
@@ -8,6 +9,7 @@ import {
   updateEnquiryStatus,
   assignEnquiry,
   logEnquiryActivity,
+  createSurveyFromEnquiry,
 } from '@/lib/supabase-data'
 import type {
   Enquiry,
@@ -223,6 +225,12 @@ export default function EnquiryDrawer({
 
   // Problem text expand
   const [problemExpanded, setProblemExpanded] = useState(false)
+
+  // Convert to Survey
+  const [showConvertDialog, setShowConvertDialog] = useState(false)
+  const [converting, setConverting] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
+  const router = useRouter()
 
   // Refs for click-outside
   const statusRef = useRef<HTMLDivElement>(null)
@@ -550,6 +558,23 @@ export default function EnquiryDrawer({
       console.error('Log call failed:', err)
     } finally {
       setSavingActivity(false)
+    }
+  }
+
+  async function handleConvertToSurvey() {
+    setConverting(true)
+    setConvertError(null)
+    try {
+      const { survey } = await createSurveyFromEnquiry(enquiry.id, currentUserId)
+      // Update the board: enquiry may have moved to 'assigned'
+      if (enquiry.status === 'new') {
+        onBoardSync({ ...enquiry, status: 'assigned' }, enquiry.status)
+      }
+      router.push(`/surveys/${survey.id}`)
+    } catch (err) {
+      console.error('Convert to survey failed:', err)
+      setConvertError(err instanceof Error ? err.message : 'Failed to create survey')
+      setConverting(false)
     }
   }
 
@@ -1228,8 +1253,16 @@ export default function EnquiryDrawer({
                         </div>
                       ))
                     ) : (
-                      /* Surveys link via enquiry_id FK — populated when conversion flow creates a survey */
-                      <p className="text-xs text-white/25">No survey linked</p>
+                      <div className="space-y-3">
+                        <p className="text-xs text-white/25">No survey linked</p>
+                        <button
+                          onClick={() => { setConvertError(null); setShowConvertDialog(true) }}
+                          className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 w-full justify-center"
+                        >
+                          <ClipboardCheck className="w-3.5 h-3.5" />
+                          Convert to {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? ''} Survey
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -1274,6 +1307,79 @@ export default function EnquiryDrawer({
           )}
         </div>
       </div>
+
+      {/* ─────────────────── Convert to Survey Confirmation Dialog ─────────────────── */}
+      {showConvertDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div
+            className="max-w-md w-full mx-4 rounded-2xl border border-white/15 shadow-2xl"
+            style={{ background: 'linear-gradient(135deg, rgba(15,23,36,0.99) 0%, rgba(8,14,24,1) 100%)' }}
+          >
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-bold text-white">Convert to Survey</h3>
+
+              <div className="text-sm text-white/60 space-y-2">
+                <p>This will:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Create a customer record (if needed)</li>
+                  <li>Create a new survey from this enquiry</li>
+                  <li>Link them together</li>
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs text-white/40">Customer</span>
+                  <span className="text-sm text-white/80">{enquiry.client_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-white/40">Site</span>
+                  <span className="text-sm text-white/80 text-right max-w-[250px]">
+                    {enquiry.site_address_1}{enquiry.site_postcode ? `, ${enquiry.site_postcode}` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-white/40">Type</span>
+                  <span className="text-sm text-white/80">
+                    {SURVEY_TYPE_LABELS[enquiry.survey_type] ?? enquiry.survey_type} Survey
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-white/40">
+                You will be redirected to the new survey to assign a surveyor and schedule it.
+              </p>
+
+              {convertError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">
+                  <p className="text-sm text-red-300">{convertError}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowConvertDialog(false)}
+                  disabled={converting}
+                  className="btn-secondary text-sm px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConvertToSurvey}
+                  disabled={converting}
+                  className="btn-primary text-sm px-4 py-2 flex items-center gap-2"
+                >
+                  {converting ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>
+                  ) : (
+                    <><ClipboardCheck className="w-4 h-4" /> Create Survey</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -23,7 +23,16 @@ import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useAuth } from '@/context/AuthContext'
-import type { Customer } from '@/types/database.types'
+import type { Customer, SurveyType } from '@/types/database.types'
+
+const SURVEY_TYPE_OPTIONS: { value: SurveyType; label: string }[] = [
+  { value: 'damp', label: 'Damp' },
+  { value: 'condensation', label: 'Condensation' },
+  { value: 'timber', label: 'Timber' },
+  { value: 'woodworm', label: 'Woodworm' },
+  { value: 'structural', label: 'Structural' },
+  { value: 'comprehensive', label: 'Comprehensive' },
+]
 
 /** Format "YYYY-MM-DD" for human display: "Mon 3 Mar 2026" */
 function formatSlotDate(dateStr: string): string {
@@ -44,6 +53,7 @@ function NewSurveyContent() {
 
   const [formData, setFormData] = useState({
     customer_id: preSelectedCustomerId || '',
+    survey_type: 'damp' as SurveyType,
     site_address: '',
     site_address_line2: '',
     site_city: '',
@@ -121,7 +131,7 @@ function NewSurveyContent() {
         site_city: formData.site_city,
         site_county: formData.site_county,
         site_postcode: formData.site_postcode,
-        survey_type: 'damp',
+        survey_type: formData.survey_type,
         status: 'draft',
         notes: formData.notes,
         reported_defect: formData.reported_defect,
@@ -290,6 +300,34 @@ function NewSurveyContent() {
                         Create Customer
                       </Link>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Survey Type */}
+              <div className="glass-card mt-6">
+                <div className="px-6 py-5 border-b border-white/10">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-white/40" />
+                    Survey Type
+                  </h3>
+                </div>
+                <div className="p-6">
+                  <div className="max-w-xs">
+                    <label className="block text-sm font-medium text-white/80 mb-2">
+                      Type of Survey <span className="text-red-400 ml-1">*</span>
+                    </label>
+                    <select
+                      className="w-full p-3 rounded-lg bg-white/10 border border-white/15 text-white focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition-all"
+                      value={formData.survey_type}
+                      onChange={(e) => handleInputChange('survey_type', e.target.value)}
+                    >
+                      {SURVEY_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

@@ -179,6 +179,102 @@ export async function updateCustomer(
   return data
 }
 
+/**
+ * Find or create a customer record from an enquiry's inline text fields.
+ * Idempotent: calling twice for the same enquiry won't create duplicates.
+ *
+ * Resolution order:
+ *  1. If enquiry already has customer_id → return that customer
+ *  2. If client_email exists → case-insensitive match on customers.email
+ *  3. Otherwise → auto-create a new customer from the enquiry's fields
+ *
+ * Side effect: sets enquiry.customer_id when a match/create happens.
+ */
+export async function findOrCreateCustomerFromEnquiry(
+  enquiry: Enquiry
+): Promise<Customer> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  // 1. Already linked — fetch and return the customer directly
+  if (enquiry.customer_id) {
+    const { data: existing, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', enquiry.customer_id)
+      .single()
+
+    if (error || !existing) {
+      throw new Error(`Linked customer ${enquiry.customer_id} not found`)
+    }
+    return existing
+  }
+
+  // 2. Try email match (case-insensitive)
+  if (enquiry.client_email?.trim()) {
+    const { data: emailMatch } = await supabase
+      .from('customers')
+      .select('*')
+      .ilike('email', enquiry.client_email.trim())
+      .maybeSingle()
+
+    if (emailMatch) {
+      // Link the enquiry to this existing customer
+      await supabase
+        .from('enquiries')
+        .update({ customer_id: emailMatch.id })
+        .eq('id', enquiry.id)
+
+      return emailMatch
+    }
+  }
+
+  // 3. Auto-create a new customer from enquiry fields
+  const TITLES = ['mr', 'mrs', 'ms', 'dr', 'miss']
+  const nameParts = (enquiry.client_name || '').trim().split(/\s+/)
+  let title: string | undefined
+  let firstName = ''
+  let lastName = ''
+
+  if (nameParts.length > 0 && TITLES.includes(nameParts[0].toLowerCase())) {
+    title = nameParts[0]            // e.g. "Mr"
+    firstName = nameParts[1] || ''  // e.g. "John"
+    lastName = nameParts.slice(2).join(' ') || '' // e.g. "Smith"
+  } else {
+    firstName = nameParts[0] || ''
+    lastName = nameParts.slice(1).join(' ') || ''
+  }
+
+  const newCustomer = await createCustomer({
+    first_name: firstName || 'Unknown',
+    last_name: lastName,
+    email: enquiry.client_email?.trim() || `no-email-${enquiry.id.slice(0, 8)}@placeholder.local`,
+    phone: enquiry.client_phone?.trim() || '',
+    address_line1: enquiry.site_address_1 || '',
+    address_line2: enquiry.site_address_2 || undefined,
+    city: enquiry.site_city || '',
+    county: enquiry.site_county || undefined,
+    postcode: enquiry.site_postcode || '',
+  })
+
+  // Set title if parsed (createCustomer doesn't accept title, so update separately)
+  if (title) {
+    await supabase
+      .from('customers')
+      .update({ title })
+      .eq('id', newCustomer.id)
+    newCustomer.title = title
+  }
+
+  // Link the enquiry to the newly created customer
+  await supabase
+    .from('enquiries')
+    .update({ customer_id: newCustomer.id })
+    .eq('id', enquiry.id)
+
+  return newCustomer
+}
+
 // ============================================================================
 // Surveyors (now backed by user_profiles WHERE is_surveyor = true)
 // ============================================================================
@@ -923,6 +1019,120 @@ export async function createSurveyFromForm(data: {
   }
 
   return project
+}
+
+/**
+ * Generate a project number in TT-{YYYY}-{NNNN} format.
+ * Queries the surveys table for the current count and increments.
+ * Shared between createSurveyFromForm() (above) and createSurveyFromEnquiry().
+ */
+async function generateProjectNumber(): Promise<string> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  const { count } = await supabase
+    .from('surveys')
+    .select('*', { count: 'exact', head: true })
+
+  const nextNum = (count || 0) + 1
+  const year = new Date().getFullYear()
+  return `TT-${year}-${nextNum.toString().padStart(4, '0')}`
+}
+
+/**
+ * Convert an enquiry into a survey. Full orchestration:
+ *  1. Fetch the enquiry
+ *  2. Guard against duplicate conversion (idempotent)
+ *  3. Resolve/create customer via findOrCreateCustomerFromEnquiry()
+ *  4. Insert survey with enquiry_id FK
+ *  5. Log 'survey_created' activity on the enquiry
+ *  6. Advance enquiry status to 'assigned' if currently 'new'
+ *  7. Return { survey, customer }
+ */
+export async function createSurveyFromEnquiry(
+  enquiryId: string,
+  userId: string | null
+): Promise<{ survey: Survey; customer: Customer }> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  // 1. Fetch the full enquiry
+  const { data: enquiry, error: fetchErr } = await supabase
+    .from('enquiries')
+    .select('*')
+    .eq('id', enquiryId)
+    .single()
+
+  if (fetchErr || !enquiry) {
+    throw new Error(`Enquiry not found: ${enquiryId}`)
+  }
+
+  // 2. Guard: if a survey already exists for this enquiry, return it
+  const { data: existingSurveys } = await supabase
+    .from('surveys')
+    .select('*')
+    .eq('enquiry_id', enquiryId)
+
+  if (existingSurveys && existingSurveys.length > 0) {
+    const existingSurvey = existingSurveys[0]
+    // Also resolve the customer for the return value
+    const customer = await findOrCreateCustomerFromEnquiry(enquiry as Enquiry)
+    return { survey: existingSurvey, customer }
+  }
+
+  // 3. Resolve or create customer
+  const customer = await findOrCreateCustomerFromEnquiry(enquiry as Enquiry)
+
+  // Build full name from the customer record
+  const titlePrefix = customer.title ? `${customer.title} ` : ''
+  const clientName = `${titlePrefix}${customer.first_name} ${customer.last_name}`.trim()
+
+  // 4. Generate project number and insert survey
+  const projectNumber = await generateProjectNumber()
+
+  const { data: survey, error: insertErr } = await supabase
+    .from('surveys')
+    .insert({
+      enquiry_id: enquiryId,
+      customer_id: customer.id,
+      client_name: clientName,
+      project_number: projectNumber,
+      survey_type: enquiry.survey_type,
+      status: 'draft',
+      site_address: enquiry.site_address_1,
+      site_address_line2: enquiry.site_address_2 || null,
+      site_city: enquiry.site_city || null,
+      site_county: enquiry.site_county || null,
+      site_postcode: enquiry.site_postcode,
+      survey_date: enquiry.proposed_survey_date || null,
+      reported_problem: enquiry.reported_problem || null,
+      notes: enquiry.notes || null,
+      survey_data: {},
+    })
+    .select()
+    .single()
+
+  if (insertErr || !survey) {
+    console.error('Error creating survey from enquiry:', insertErr)
+    throw new Error(`Failed to create survey: ${insertErr?.message ?? 'unknown'}`)
+  }
+
+  // 5. Log activity on the enquiry
+  await logEnquiryActivity(
+    enquiryId,
+    'survey_created',
+    `Survey created — ${projectNumber}`,
+    userId,
+    null,
+    { survey_id: survey.id, project_number: projectNumber, customer_id: customer.id }
+  )
+
+  // 6. Advance enquiry status to 'assigned' if currently 'new'
+  if (enquiry.status === 'new') {
+    await updateEnquiryStatus(enquiryId, 'assigned', userId)
+  }
+
+  return { survey, customer }
 }
 
 export async function updateSurvey(
