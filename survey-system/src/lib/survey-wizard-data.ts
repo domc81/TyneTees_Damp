@@ -163,7 +163,6 @@ export async function saveWizardData(
       throw new Error(`Failed to save wizard data: ${error.message}`)
     }
 
-    console.log('Wizard data saved successfully')
   } catch (error) {
     console.error('Error in saveWizardData:', error)
     throw error
@@ -318,7 +317,6 @@ export async function deleteRoom(roomId: string): Promise<void> {
       throw new Error(`Failed to delete room: ${error.message}`)
     }
 
-    console.log(`Room ${roomId} deleted successfully`)
   } catch (error) {
     console.error('Error in deleteRoom:', error)
     throw error
@@ -377,7 +375,6 @@ export async function saveAllRooms(
       await deleteRoom(roomToDelete.id)
     }
 
-    console.log(`Saved ${savedRooms.length} rooms, deleted ${roomsToDelete.length} rooms`)
     return savedRooms
   } catch (error) {
     console.error('Error in saveAllRooms:', error)

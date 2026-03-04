@@ -798,9 +798,6 @@ export async function autoTransitionEnquiryStatus(
   }
 
   if (!shouldAutoTransition(enquiry.status as EnquiryStatus, targetStatus)) {
-    console.log(
-      `Auto-transition skipped: enquiry ${enquiryId} is '${enquiry.status}', target '${targetStatus}' is not forward`
-    )
     return
   }
 

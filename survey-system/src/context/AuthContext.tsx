@@ -32,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    console.log('[Auth] Fetching profile for user:', userId)
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -48,7 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('[Auth] Profile fetch returned no data')
         return null
       }
-      console.log('[Auth] Profile loaded:', data.role, 'active:', data.is_active)
       return data
     } catch (err: unknown) {
       console.error('[Auth] Profile fetch unexpected error:', err)
@@ -62,11 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initializedRef.current) return
     initializedRef.current = true
 
-    console.log('[Auth] Initializing auth...')
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, eventSession) => {
-        console.log('[Auth] onAuthStateChange event:', event)
         setSession(eventSession)
         setUser(eventSession?.user ?? null)
 
@@ -114,7 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      console.log('[Auth] Valid active profile loaded, role:', userProfile.role)
       setProfile(userProfile)
       setProfileError(null)
       setIsLoading(false)

@@ -174,7 +174,6 @@ export default function MaterialsAdminPage() {
             <MaterialFormModal
               onClose={() => setShowAddForm(false)}
               onSave={(data) => {
-                console.log('Adding material:', data)
                 alert('Material saved (demo mode - data not persisted)')
                 setShowAddForm(false)
               }}
@@ -276,7 +275,6 @@ export default function MaterialsAdminPage() {
                             <button
                               onClick={() => {
                                 if (confirm(`Delete "${material.name}"?`)) {
-                                  console.log('Deleting:', material.id)
                                   alert('Deleted (demo mode)')
                                 }
                               }}
@@ -309,7 +307,6 @@ export default function MaterialsAdminPage() {
             material={materialsData.find(m => m.id === editingId)}
             onClose={() => setEditingId(null)}
             onSave={(data) => {
-              console.log('Updating material:', editingId, data)
               alert('Material updated (demo mode - data not persisted)')
               setEditingId(null)
             }}

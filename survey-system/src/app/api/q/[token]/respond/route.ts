@@ -451,9 +451,6 @@ async function autoTransitionLinkedEnquiry(
 
   // Check forward-only guard (reuses the same pure function as client-side)
   if (!shouldAutoTransition(enquiry.status as EnquiryStatus, targetStatus)) {
-    console.log(
-      `[quotation-respond] Auto-transition skipped: enquiry ${survey.enquiry_id} is '${enquiry.status}', target '${targetStatus}' is not forward`
-    )
     return
   }
 

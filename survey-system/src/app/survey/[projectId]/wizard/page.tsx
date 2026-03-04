@@ -135,7 +135,6 @@ export default function SurveyWizardPage() {
       }))
 
       setLastSaved(new Date())
-      console.log('Auto-save completed successfully')
     } catch (err) {
       console.error('Auto-save failed:', err)
       setError('Failed to save changes. Your data may not be saved.')

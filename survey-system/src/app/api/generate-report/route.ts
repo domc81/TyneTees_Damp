@@ -234,9 +234,6 @@ Generate the narrative content for this section now. Output ONLY the report text
   const finishReason = data.choices[0].finish_reason
   let content = data.choices[0].message.content.trim()
 
-  // Log response details for debugging
-  console.log(`Section ${sectionKey}: ${content.length} chars, finish_reason: ${finishReason}`)
-
   // Check if response was truncated
   if (finishReason === 'length') {
     console.warn(`LLM response was truncated for section ${sectionKey} due to max_tokens limit`)

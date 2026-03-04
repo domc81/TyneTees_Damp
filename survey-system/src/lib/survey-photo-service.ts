@@ -76,10 +76,6 @@ export async function compressImage(
               lastModified: Date.now(),
             })
 
-            console.log(
-              `Image compressed: ${(file.size / 1024).toFixed(0)}KB -> ${(compressedFile.size / 1024).toFixed(0)}KB`
-            )
-
             resolve(compressedFile)
           },
           'image/jpeg',
@@ -198,7 +194,6 @@ export async function uploadSurveyPhoto(
 
   try {
     // Step 1: Compress the image
-    console.log('Compressing image...')
     const compressedFile = await compressImage(capture.file)
 
     // Step 2: Get image dimensions from compressed file
@@ -214,7 +209,6 @@ export async function uploadSurveyPhoto(
     const storagePath = `${surveyId}/${capture.step}/${fileName}`
 
     // Step 5: Upload to Supabase Storage
-    console.log('Uploading to storage:', storagePath)
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('survey-photos')
       .upload(storagePath, compressedFile, {
@@ -270,7 +264,6 @@ export async function uploadSurveyPhoto(
     photos.push(newPhoto)
 
     // Step 10: Update survey_data with new photos array
-    console.log(`Saving photo metadata for ${photoId}...`)
     const { data: updateData, error: updateError } = await supabase
       .from('surveys')
       .update({
@@ -293,11 +286,8 @@ export async function uploadSurveyPhoto(
       console.error('Survey update returned no data - metadata may not have been saved')
       // Don't rollback here as the update might have succeeded
       // This is a warning scenario
-    } else {
-      console.log('Photo metadata saved successfully:', photoId)
     }
 
-    console.log('Photo uploaded successfully:', photoId)
     return newPhoto
   } catch (error) {
     console.error('Photo upload failed:', error)
@@ -331,12 +321,10 @@ export async function loadSurveyPhotos(surveyId: string): Promise<SurveyPhoto[]>
 
     // If no metadata exists, try to reconstruct from storage
     if (photos.length === 0) {
-      console.log('No photo metadata found, attempting recovery from storage...')
       photos = await recoverPhotosFromStorage(surveyId)
 
       // If photos were recovered, save them back to survey_data
       if (photos.length > 0) {
-        console.log(`Recovered ${photos.length} photos, saving metadata...`)
         await supabase
           .from('surveys')
           .update({
@@ -439,7 +427,6 @@ async function recoverPhotosFromStorage(surveyId: string): Promise<SurveyPhoto[]
       }
     }
 
-    console.log(`Recovered ${recoveredPhotos.length} photos from storage`)
     return recoveredPhotos
   } catch (error) {
     console.error('Photo recovery failed:', error)
@@ -503,7 +490,6 @@ export async function deleteSurveyPhoto(
       throw new Error(`Failed to update survey data: ${updateError.message}`)
     }
 
-    console.log('Photo deleted successfully:', photo.id)
   } catch (error) {
     console.error('Photo deletion failed:', error)
     throw error

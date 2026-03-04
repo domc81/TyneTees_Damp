@@ -229,7 +229,6 @@ Severity: Critical = blocks core workflow, High = broken visible feature, Medium
 | 6 | Costing section saves fire-and-forget, no error handling | Medium | `costing/page.tsx:387` |
 | 7 | Realtime notifications not working (table not in publication + filter mismatch) | Medium | `NotificationBell.tsx` |
 | 8 | `enquiries.source` casing mismatch between creation form (lowercase) and drawer edit (Title Case) | Low | `enquiries/new/page.tsx` vs `EnquiryDrawer.tsx` |
-| 9 | 25+ debug `console.log` statements in production | Low | Multiple files |
 | 10 | 16 `alert()` calls in production (should be toasts) | Low | 7 files |
 
 ---
@@ -365,7 +364,7 @@ Verified bugs from the audit that should be fixed before building new features:
 3. Fix customer detail quotation link (needs quotation ID in route)
 4. ~~Add quotation accepted → enquiry `accepted` auto-transition~~ (done — prompt 17)
 5. ~~Upgrade Next.js 14.2.0 → 14.2.35 (critical security patch)~~ (done — prompt 18)
-6. Remove 25+ debug console.logs from production
+6. ~~Remove 25+ debug console.logs from production~~
 7. Replace 16 alert() calls with toast notifications
 8. Fix `enquiries.source` casing mismatch (standardise on one format)
 9. Fix EnquiryDrawer inline edit error handling (surface errors to user)
@@ -421,6 +420,7 @@ Sequential log of prompts executed against the codebase.
 | 16 | 4 Mar 2026 | fix: dead route links in drawer, notifications, customer page | Fixed 4 `/projects/` links in EnquiryDrawer, 3 in notifications-server, 1 wrong quotation route in customer detail |
 | 17 | 4 Mar 2026 | feat: quotation accept/decline auto-transitions enquiry status | Public respond endpoint now transitions linked enquiry to accepted/declined with activity logging |
 | 18 | 4 Mar 2026 | chore: upgrade Next.js 14.2.0 → 14.2.35 (security patch) | Patch-level upgrade to fix CVE-2025-29927 cache poisoning vulnerability |
+| 19 | 4 Mar 2026 | chore: remove debug console.logs from production | Removed 28 debug console.log statements across 9 files |
 
 ---
 
