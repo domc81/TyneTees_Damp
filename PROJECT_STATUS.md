@@ -18,7 +18,7 @@ Survey management platform for a damp proofing company. Handles the full lifecyc
 
 | Component | Detail |
 |-----------|--------|
-| Framework | Next.js 14.2.0, App Router, `output: 'standalone'` |
+| Framework | Next.js 14.2.35, App Router, `output: 'standalone'` |
 | Database | Supabase (self-hosted PostgreSQL 15) — 42 tables, RLS enabled |
 | Auth | Supabase Auth, client-side ProtectedRoute, middleware does JWT refresh only |
 | Storage | Supabase Storage (`survey-photos`, `company-assets` buckets) |
@@ -254,7 +254,6 @@ Severity: Critical = blocks core workflow, High = broken visible feature, Medium
 
 | Item | Risk | Detail |
 |------|------|--------|
-| **Next.js 14.2.0 critical vulnerability** | Security | Cache poisoning + auth bypass. Upgrade to 14.2.35+ (patch-level, low risk). |
 | **7 API routes with no role checks** | Security | Includes LLM/transcription endpoints (API credit exposure) and company profile writes. |
 | **RLS policies too broad** | Security | Most tables grant full access to all authenticated users. Surveyors can read/write everything via dev tools. Acceptable for now, must fix before team growth or external access. |
 | **Broken RLS join in quotation_acceptances** | Security | Policy references a join path that doesn't resolve correctly. |
@@ -365,7 +364,7 @@ Verified bugs from the audit that should be fixed before building new features:
 2. Fix 3 notification link_urls (`/projects/` → `/surveys/`)
 3. Fix customer detail quotation link (needs quotation ID in route)
 4. ~~Add quotation accepted → enquiry `accepted` auto-transition~~ (done — prompt 17)
-5. Upgrade Next.js 14.2.0 → 14.2.35+ (critical security patch)
+5. ~~Upgrade Next.js 14.2.0 → 14.2.35 (critical security patch)~~ (done — prompt 18)
 6. Remove 25+ debug console.logs from production
 7. Replace 16 alert() calls with toast notifications
 8. Fix `enquiries.source` casing mismatch (standardise on one format)
@@ -421,6 +420,7 @@ Sequential log of prompts executed against the codebase.
 | 15 | 4 Mar 2026 | System audit (6 prompts) | docs/SYSTEM_AUDIT_04_03_2026.md |
 | 16 | 4 Mar 2026 | fix: dead route links in drawer, notifications, customer page | Fixed 4 `/projects/` links in EnquiryDrawer, 3 in notifications-server, 1 wrong quotation route in customer detail |
 | 17 | 4 Mar 2026 | feat: quotation accept/decline auto-transitions enquiry status | Public respond endpoint now transitions linked enquiry to accepted/declined with activity logging |
+| 18 | 4 Mar 2026 | chore: upgrade Next.js 14.2.0 → 14.2.35 (security patch) | Patch-level upgrade to fix CVE-2025-29927 cache poisoning vulnerability |
 
 ---
 
