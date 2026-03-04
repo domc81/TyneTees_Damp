@@ -1464,7 +1464,7 @@ export default function EnquiryDrawer({
                       Close
                     </button>
                     <a
-                      href={`/projects/${flowCreatedSurvey.id}`}
+                      href={`/surveys/${flowCreatedSurvey.id}`}
                       className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5"
                     >
                       View Survey <ChevronRight className="w-4 h-4" />
@@ -1494,7 +1494,7 @@ export default function EnquiryDrawer({
                       Close
                     </button>
                     <a
-                      href={`/projects/${flowCreatedSurvey.id}`}
+                      href={`/surveys/${flowCreatedSurvey.id}`}
                       className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5"
                     >
                       Go to Survey <ChevronRight className="w-4 h-4" />
@@ -2222,7 +2222,7 @@ export default function EnquiryDrawer({
                             {survey.status.replace('_', ' ')}
                           </span>
                           <a
-                            href={`/projects/${survey.id}`}
+                            href={`/surveys/${survey.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"
@@ -2289,7 +2289,7 @@ export default function EnquiryDrawer({
                             </span>
                             {linkedSurvey && (
                               <a
-                                href={`/projects/${linkedSurvey.id}/costing`}
+                                href={`/survey/${linkedSurvey.id}/costing`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"
