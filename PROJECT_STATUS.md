@@ -59,7 +59,7 @@ Full CRM pipeline from phone call to decision.
 | Inline editable fields (all enquiry data) | Working | `EnquiryDrawer.tsx` |
 | Convert & Book flow (4-step: review → surveyor → slot → confirm) | Working | `EnquiryDrawer.tsx` |
 | Card quick actions (phone, email, follow-up, convert & book) | Working | `enquiries/page.tsx` |
-| Auto-transitions (new→assigned, surveyed, quoted) | Working | `supabase-data.ts`, `wizard/page.tsx`, `quotation/route.ts` |
+| Auto-transitions (new→assigned, surveyed, quoted, accepted, declined) | Working | `supabase-data.ts`, `wizard/page.tsx`, `quotation/route.ts`, `q/[token]/respond` |
 | SLA traffic lights (per-status thresholds) | Working | `enquiries/page.tsx`, `EnquiryDrawer.tsx` |
 | Column urgency counts (red badge) | Working | `enquiries/page.tsx` |
 | On-hold email notification (templated) | Working | `/api/enquiries/[id]/notify-on-hold` |
@@ -67,7 +67,6 @@ Full CRM pipeline from phone call to decision.
 | Dashboard recent activity feed | Working | `page.tsx` (RecentActivityFeed) |
 
 **Known gaps:**
-- Missing auto-transition: quotation accepted → enquiry `accepted` (public `/api/q/[token]/respond` doesn't update enquiry status)
 - Wizard auto-transition passes `null` as userId (logs "System" not surveyor name)
 - SLA thresholds duplicated in two files (`enquiries/page.tsx` and `EnquiryDrawer.tsx`)
 
@@ -223,7 +222,7 @@ Severity: Critical = blocks core workflow, High = broken visible feature, Medium
 | # | Bug | Severity | Location |
 |---|-----|----------|----------|
 | 1 | EnquiryDrawer inline edits fail silently — 8 catch blocks swallow errors with no user feedback | High | `EnquiryDrawer.tsx` |
-| 2 | Quotation acceptance doesn't auto-transition enquiry to `accepted` | Medium | `/api/q/[token]/respond` |
+| ~~2~~ | ~~Fixed~~ | — | — |
 | 3 | Wizard auto-save writes stale step number | Medium | `wizard/page.tsx` |
 | 4 | CF CSV hardcoded £35/hr hourly rate | Medium | `cf-csv-export.ts` |
 | 5 | Report generator crashes on missing company profile | Medium | `report-generator.ts:1033` |
@@ -365,7 +364,7 @@ Verified bugs from the audit that should be fixed before building new features:
 1. Fix 4 dead links in EnquiryDrawer (`/projects/` → `/surveys/` and `/survey/`)
 2. Fix 3 notification link_urls (`/projects/` → `/surveys/`)
 3. Fix customer detail quotation link (needs quotation ID in route)
-4. Add quotation accepted → enquiry `accepted` auto-transition
+4. ~~Add quotation accepted → enquiry `accepted` auto-transition~~ (done — prompt 17)
 5. Upgrade Next.js 14.2.0 → 14.2.35+ (critical security patch)
 6. Remove 25+ debug console.logs from production
 7. Replace 16 alert() calls with toast notifications
@@ -421,6 +420,7 @@ Sequential log of prompts executed against the codebase.
 | 14 | 4 Mar 2026 | Notification bell overlap fix | Layout right padding |
 | 15 | 4 Mar 2026 | System audit (6 prompts) | docs/SYSTEM_AUDIT_04_03_2026.md |
 | 16 | 4 Mar 2026 | fix: dead route links in drawer, notifications, customer page | Fixed 4 `/projects/` links in EnquiryDrawer, 3 in notifications-server, 1 wrong quotation route in customer detail |
+| 17 | 4 Mar 2026 | feat: quotation accept/decline auto-transitions enquiry status | Public respond endpoint now transitions linked enquiry to accepted/declined with activity logging |
 
 ---
 

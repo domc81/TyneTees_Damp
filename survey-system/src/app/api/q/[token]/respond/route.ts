@@ -20,6 +20,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { hashTermsContent } from '@/lib/terms-hash'
+import { shouldAutoTransition } from '@/lib/supabase-data'
+import type { EnquiryStatus } from '@/types/database.types'
 import { isNotificationEnabled } from '@/lib/notification-preferences'
 import {
   notifyQuotationAccepted,
@@ -289,6 +291,11 @@ export async function POST(
         })
         .eq('id', quotation.id)
 
+      // ── Auto-transition linked enquiry (fire-and-forget) ──────────────────
+
+      autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'accepted')
+        .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
+
       // ── Notify office (fire-and-forget) ────────────────────────────────────
 
       const customerName = quotation.customer_name || 'A customer'
@@ -381,6 +388,10 @@ export async function POST(
       })
       .eq('id', quotation.id)
 
+    // Auto-transition linked enquiry (fire-and-forget)
+    autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'declined')
+      .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
+
     // Notify office (fire-and-forget)
     const customerNameDecline = quotation.customer_name || 'A customer'
 
@@ -411,6 +422,60 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+// ─── Enquiry auto-transition (server-side, uses service-role client) ─────────
+
+async function autoTransitionLinkedEnquiry(
+  supabase: ReturnType<typeof createClient>,
+  surveyId: string,
+  targetStatus: 'accepted' | 'declined'
+): Promise<void> {
+  // Look up the survey to find the linked enquiry
+  const { data: survey } = await supabase
+    .from('surveys')
+    .select('enquiry_id')
+    .eq('id', surveyId)
+    .single()
+
+  if (!survey?.enquiry_id) return // No linked enquiry — silently skip
+
+  // Fetch current enquiry status
+  const { data: enquiry } = await supabase
+    .from('enquiries')
+    .select('status')
+    .eq('id', survey.enquiry_id)
+    .single()
+
+  if (!enquiry) return
+
+  // Check forward-only guard (reuses the same pure function as client-side)
+  if (!shouldAutoTransition(enquiry.status as EnquiryStatus, targetStatus)) {
+    console.log(
+      `[quotation-respond] Auto-transition skipped: enquiry ${survey.enquiry_id} is '${enquiry.status}', target '${targetStatus}' is not forward`
+    )
+    return
+  }
+
+  const oldStatus = enquiry.status
+
+  // Update enquiry status
+  await supabase
+    .from('enquiries')
+    .update({ status: targetStatus })
+    .eq('id', survey.enquiry_id)
+
+  // Log activity (matches logEnquiryActivity pattern from supabase-data.ts)
+  await supabase
+    .from('enquiry_activity')
+    .insert({
+      enquiry_id: survey.enquiry_id,
+      user_id: null, // System-generated (public endpoint, no auth user)
+      activity_type: 'status_change',
+      title: `Status changed from ${oldStatus} to ${targetStatus}`,
+      description: `Customer ${targetStatus} quotation via online link`,
+      metadata: { old_status: oldStatus, new_status: targetStatus, source: 'quotation_response' },
+    })
 }
 
 // ─── Email helpers (run asynchronously, never throw to caller) ───────────────
