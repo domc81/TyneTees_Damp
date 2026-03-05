@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSmartBack } from '@/hooks/useSmartBack'
@@ -262,7 +263,7 @@ export default function ReportEditorPage() {
       setEditingSection(null)
     } catch (err) {
       console.error('Error saving section:', err)
-      alert('Failed to save section. Please try again.')
+      toast.error('Failed to save section. Please try again.')
     } finally {
       setSavingSection(false)
     }
@@ -284,7 +285,7 @@ export default function ReportEditorPage() {
       })
     } catch (err) {
       console.error('Error regenerating section:', err)
-      alert('Failed to regenerate section. Please try again.')
+      toast.error('Failed to regenerate section. Please try again.')
     } finally {
       setRegeneratingSection(null)
     }
@@ -307,7 +308,7 @@ export default function ReportEditorPage() {
       setReport({ ...report, status: newStatus })
     } catch (err) {
       console.error('Error updating status:', err)
-      alert('Failed to update report status. Please try again.')
+      toast.error('Failed to update report status. Please try again.')
     }
   }
 
@@ -337,7 +338,7 @@ export default function ReportEditorPage() {
       }).catch(err => console.error('Notification trigger failed:', err))
     } catch (err) {
       console.error('Error publishing report:', err)
-      alert('Failed to publish report. Please try again.')
+      toast.error('Failed to publish report. Please try again.')
     } finally {
       setIsPublishing(false)
     }
@@ -362,7 +363,7 @@ export default function ReportEditorPage() {
       })
     } catch (err) {
       console.error('Error unpublishing report:', err)
-      alert('Failed to unpublish report. Please try again.')
+      toast.error('Failed to unpublish report. Please try again.')
     }
   }
 

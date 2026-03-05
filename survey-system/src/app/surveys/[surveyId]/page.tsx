@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { useSmartBack } from '@/hooks/useSmartBack'
 import {
@@ -270,7 +271,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
       setSelectedSlot(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
-      alert(`Failed to book appointment: ${message}`)
+      toast.error('Failed to book appointment. Please try again.')
     } finally {
       setIsBooking(false)
     }

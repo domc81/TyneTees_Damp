@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { cache } from 'react'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { CompanyProfileProvider } from '@/context/CompanyProfileContext'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
@@ -53,6 +54,7 @@ export default async function RootLayout({
             {children}
           </CompanyProfileProvider>
         </AuthProvider>
+        <Toaster richColors position="top-right" theme="dark" />
       </body>
     </html>
   )

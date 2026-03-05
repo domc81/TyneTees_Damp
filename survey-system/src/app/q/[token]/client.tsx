@@ -1,5 +1,7 @@
 'use client'
 
+import { toast } from 'sonner'
+
 // =============================================================================
 // Public Quotation — Client Components
 //
@@ -72,7 +74,7 @@ export function QuotationActions({
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
-      alert('Could not generate the PDF. Please use the Print option, or contact us directly.')
+      toast.error('Could not generate the PDF. Please use the Print option, or contact us directly.')
     } finally {
       setIsDownloading(false)
     }

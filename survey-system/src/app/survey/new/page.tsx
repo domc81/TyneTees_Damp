@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState, useEffect, useMemo } from 'react'
+import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -202,13 +203,9 @@ function NewSurveyContent() {
             message.includes('overlap') ||
             message.includes('conflict')
           ) {
-            alert(
-              'This time slot was just booked by someone else. Please select a different time.\n\nYour survey has been created — you can add a booking from the calendar.'
-            )
+            toast.warning('This time slot was just booked by someone else. Please select a different time. Your survey has been created — you can add a booking from the calendar.')
           } else {
-            alert(
-              `Booking could not be created: ${message}\n\nYour survey has been created — you can add a booking later.`
-            )
+            toast.warning('Booking could not be created. Your survey has been created — you can add a booking later.')
           }
         }
       }
@@ -216,9 +213,7 @@ function NewSurveyContent() {
       router.push(`/surveys/${newSurvey.id}`)
     } catch (error) {
       console.error('Survey creation failed:', error)
-      const errorMessage =
-        error instanceof Error ? error.message : JSON.stringify(error, null, 2)
-      alert(`Failed to create survey: ${errorMessage}`)
+      toast.error('Failed to create survey. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -228,7 +223,7 @@ function NewSurveyContent() {
     e.preventDefault()
 
     if (!formData.customer_id || !formData.site_address || !formData.site_postcode) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields.')
       return
     }
 

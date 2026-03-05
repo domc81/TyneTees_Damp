@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import {
   Package,
@@ -174,7 +175,7 @@ export default function MaterialsAdminPage() {
             <MaterialFormModal
               onClose={() => setShowAddForm(false)}
               onSave={(data) => {
-                alert('Material saved (demo mode - data not persisted)')
+                toast.info('Materials management coming soon')
                 setShowAddForm(false)
               }}
             />
@@ -275,7 +276,7 @@ export default function MaterialsAdminPage() {
                             <button
                               onClick={() => {
                                 if (confirm(`Delete "${material.name}"?`)) {
-                                  alert('Deleted (demo mode)')
+                                  toast.info('Materials management coming soon')
                                 }
                               }}
                               className="p-1.5 rounded hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-colors"
@@ -307,7 +308,7 @@ export default function MaterialsAdminPage() {
             material={materialsData.find(m => m.id === editingId)}
             onClose={() => setEditingId(null)}
             onSave={(data) => {
-              alert('Material updated (demo mode - data not persisted)')
+              toast.info('Materials management coming soon')
               setEditingId(null)
             }}
           />

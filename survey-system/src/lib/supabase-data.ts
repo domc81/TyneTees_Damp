@@ -1,6 +1,7 @@
 // Supabase Data Layer — canonical query functions for all tables
 // Replaces localStorage with real database operations
 
+import { toast } from 'sonner'
 import { getSupabase } from './supabase-client'
 import type {
   Customer,
@@ -1202,7 +1203,7 @@ export async function createSurveyFromForm(data: {
 
   if (error) {
     console.error('Error creating project from form:', JSON.stringify(error, null, 2))
-    alert(`Supabase Error: ${JSON.stringify(error, null, 2)}`)
+    toast.error('Failed to create survey. Please try again.')
     return null
   }
 

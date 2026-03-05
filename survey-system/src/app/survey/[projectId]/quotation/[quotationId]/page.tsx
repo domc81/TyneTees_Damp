@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useSmartBack } from '@/hooks/useSmartBack'
@@ -329,7 +330,7 @@ export default function QuotationManagementPage() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
-      alert('Could not generate the PDF. Please try again.')
+      toast.error('Could not generate the PDF. Please try again.')
     } finally {
       setIsDownloadingPdf(false)
     }
