@@ -1,3 +1,5 @@
+// NOTE: Existing enquiries may have lowercase source values from before this fix.
+// Consider a migration: UPDATE enquiries SET source = initcap(source) WHERE source = lower(source);
 'use client'
 
 import { useState } from 'react'
@@ -284,11 +286,11 @@ export default function NewEnquiryPage() {
                     className="input-select"
                   >
                     <option value="">Select source...</option>
-                    <option value="website">Website</option>
-                    <option value="phone">Phone</option>
-                    <option value="email">Email</option>
-                    <option value="referral">Referral</option>
-                    <option value="repeat">Repeat Customer</option>
+                    <option value="Website">Website</option>
+                    <option value="Phone">Phone</option>
+                    <option value="Email">Email</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Repeat Customer">Repeat Customer</option>
                   </select>
                 </div>
 

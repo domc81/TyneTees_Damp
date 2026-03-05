@@ -228,7 +228,7 @@ Severity: Critical = blocks core workflow, High = broken visible feature, Medium
 | 5 | Report generator crashes on missing company profile | Medium | `report-generator.ts:1033` |
 | 6 | Costing section saves fire-and-forget, no error handling | Medium | `costing/page.tsx:387` |
 | 7 | Realtime notifications not working (table not in publication + filter mismatch) | Medium | `NotificationBell.tsx` |
-| 8 | `enquiries.source` casing mismatch between creation form (lowercase) and drawer edit (Title Case) | Low | `enquiries/new/page.tsx` vs `EnquiryDrawer.tsx` |
+| ~~8~~ | ~~Fixed~~ | — | — |
 | ~~10~~ | ~~Fixed~~ | — | — |
 
 ---
@@ -366,7 +366,7 @@ Verified bugs from the audit that should be fixed before building new features:
 5. ~~Upgrade Next.js 14.2.0 → 14.2.35 (critical security patch)~~ (done — prompt 18)
 6. ~~Remove 25+ debug console.logs from production~~
 7. ~~Replace 16 alert() calls with toast notifications~~
-8. Fix `enquiries.source` casing mismatch (standardise on one format)
+8. ~~Fix `enquiries.source` casing mismatch (standardise on one format)~~
 9. Fix EnquiryDrawer inline edit error handling (surface errors to user)
 10. Add Realtime publication for notifications table + fix filter mismatch
 
@@ -422,6 +422,7 @@ Sequential log of prompts executed against the codebase.
 | 18 | 4 Mar 2026 | chore: upgrade Next.js 14.2.0 → 14.2.35 (security patch) | Patch-level upgrade to fix CVE-2025-29927 cache poisoning vulnerability |
 | 19 | 4 Mar 2026 | chore: remove debug console.logs from production | Removed 28 debug console.log statements across 9 files |
 | 20 | 5 Mar 2026 | fix: replace 16 alert() calls with sonner toast notifications | Installed sonner, added Toaster to layout, replaced all alert() with contextual toasts |
+| 21 | 5 Mar 2026 | fix: standardise enquiries.source to Title Case | Aligned creation form and drawer edit source values; migration note added for existing data |
 
 ---
 
