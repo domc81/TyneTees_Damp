@@ -1,6 +1,6 @@
 # PROJECT STATUS — Tyne Tees Damp Proofing Platform
 
-**Last updated:** 4 March 2026
+**Last updated:** 5 March 2026
 **Maintainers:** Dominic (product owner) + architectural translator
 **Source audit:** `survey-system/docs/SYSTEM_AUDIT_04_03_2026.md`
 
@@ -221,7 +221,7 @@ Severity: Critical = blocks core workflow, High = broken visible feature, Medium
 
 | # | Bug | Severity | Location |
 |---|-----|----------|----------|
-| 1 | EnquiryDrawer inline edits fail silently — 8 catch blocks swallow errors with no user feedback | High | `EnquiryDrawer.tsx` |
+| ~~1~~ | ~~Fixed~~ | — | — |
 | ~~2~~ | ~~Fixed~~ | — | — |
 | 3 | Wizard auto-save writes stale step number | Medium | `wizard/page.tsx` |
 | 4 | CF CSV hardcoded £35/hr hourly rate | Medium | `cf-csv-export.ts` |
@@ -367,7 +367,7 @@ Verified bugs from the audit that should be fixed before building new features:
 6. ~~Remove 25+ debug console.logs from production~~
 7. ~~Replace 16 alert() calls with toast notifications~~
 8. ~~Fix `enquiries.source` casing mismatch (standardise on one format)~~
-9. Fix EnquiryDrawer inline edit error handling (surface errors to user)
+~~9. Fix EnquiryDrawer inline edit error handling (surface errors to user)~~
 10. Add Realtime publication for notifications table + fix filter mismatch
 
 ### Near-Term Features
@@ -423,6 +423,7 @@ Sequential log of prompts executed against the codebase.
 | 19 | 4 Mar 2026 | chore: remove debug console.logs from production | Removed 28 debug console.log statements across 9 files |
 | 20 | 5 Mar 2026 | fix: replace 16 alert() calls with sonner toast notifications | Installed sonner, added Toaster to layout, replaced all alert() with contextual toasts |
 | 21 | 5 Mar 2026 | fix: standardise enquiries.source to Title Case | Aligned creation form and drawer edit source values; migration note added for existing data |
+| 22 | 5 Mar 2026 | fix: EnquiryDrawer inline edit error handling with toast feedback | Added toast.error to 10 catch blocks, state revert on failure, console.error preserved |
 
 ---
 

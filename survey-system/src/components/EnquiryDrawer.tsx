@@ -25,6 +25,7 @@ import type {
   OnHoldReason,
   OnHoldMessageTemplate,
 } from '@/types/database.types'
+import { toast } from 'sonner'
 import {
   X,
   ArrowLeft,
@@ -258,7 +259,9 @@ function InlineField({
       setSaveState('ok')
       setEditing(false)
       setTimeout(() => setSaveState('idle'), 1500)
-    } catch {
+    } catch (err) {
+      console.error(`Failed to update ${label}:`, err)
+      toast.error(`Failed to update ${label.toLowerCase()}`)
       setSaveState('err')
       setDraft(value ?? '')
       setTimeout(() => setSaveState('idle'), 2000)
@@ -370,8 +373,10 @@ function InlineTextareaField({
       setSaveState('ok')
       setEditing(false)
       setTimeout(() => setSaveState('idle'), 1500)
-    } catch {
+    } catch (err) {
       // Stay in edit mode on failure so work is not lost
+      console.error(`Failed to update ${label}:`, err)
+      toast.error(`Failed to update ${label.toLowerCase()}`)
       setSaveState('err')
       setTimeout(() => setSaveState('idle'), 2000)
     } finally {
@@ -486,7 +491,9 @@ function InlineSelectField({
       await onSave(newValue)
       setSaveState('ok')
       setTimeout(() => setSaveState('idle'), 1500)
-    } catch {
+    } catch (err) {
+      console.error(`Failed to update ${label}:`, err)
+      toast.error(`Failed to update ${label.toLowerCase()}`)
       setSaveState('err')
       setTimeout(() => setSaveState('idle'), 2000)
     } finally {
@@ -542,7 +549,9 @@ function InlineDateField({
       await onSave(newValue)
       setSaveState('ok')
       setTimeout(() => setSaveState('idle'), 1500)
-    } catch {
+    } catch (err) {
+      console.error(`Failed to update ${label}:`, err)
+      toast.error(`Failed to update ${label.toLowerCase()}`)
       setSaveState('err')
       setTimeout(() => setSaveState('idle'), 2000)
     } finally {
@@ -869,6 +878,7 @@ export default function EnquiryDrawer({
       onBoardSync({ ...enquiry, status: newStatus }, previousStatus)
     } catch (err) {
       console.error('Status update failed:', err)
+      toast.error('Failed to update status')
     } finally {
       setSavingStatus(false)
     }
@@ -896,6 +906,7 @@ export default function EnquiryDrawer({
       }
     } catch (err) {
       console.error('Priority update failed:', err)
+      toast.error('Failed to update priority')
     } finally {
       setSavingPriority(false)
     }
@@ -923,6 +934,7 @@ export default function EnquiryDrawer({
       }
     } catch (err) {
       console.error('Assignment failed:', err)
+      toast.error('Failed to update assignee')
     } finally {
       setSavingAssignment(false)
     }
@@ -936,6 +948,7 @@ export default function EnquiryDrawer({
       setNotesChanged(false)
     } catch (err) {
       console.error('Notes save failed:', err)
+      toast.error('Failed to save notes')
     } finally {
       setSavingNotes(false)
     }
@@ -950,6 +963,7 @@ export default function EnquiryDrawer({
       setValueChanged(false)
     } catch (err) {
       console.error('Value save failed:', err)
+      toast.error('Failed to save estimated value')
     } finally {
       setSavingValue(false)
     }
@@ -1011,6 +1025,7 @@ export default function EnquiryDrawer({
       }
     } catch (err) {
       console.error('Follow-up save failed:', err)
+      toast.error('Failed to save follow-up date')
     } finally {
       setSavingFollowUp(false)
     }
