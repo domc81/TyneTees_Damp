@@ -132,7 +132,8 @@ export async function POST(
       || 'Customer'
 
     // 4. Check notification preferences
-    const emailEnabled = await isNotificationEnabled('report_sent', 'email')
+    // Use 'report_published' (customer-facing) not 'report_sent' (internal-only)
+    const emailEnabled = await isNotificationEnabled('report_published', 'email')
     if (!emailEnabled) {
       return NextResponse.json({
         success: true,
