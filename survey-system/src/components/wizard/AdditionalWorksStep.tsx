@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronUp,
   Wind,
-  Hammer,
   PaintBucket,
   Wind as Airbrick,
   Droplets as Spray,
@@ -21,7 +20,6 @@ interface AdditionalWorksStepProps {
   data: Partial<AdditionalWorks>
   onChange: (data: Partial<AdditionalWorks>) => void
   hasCondensation: boolean
-  hasTimberOrDamp: boolean
   hasDampTimberOrWoodworm: boolean
 }
 
@@ -46,13 +44,11 @@ export default function AdditionalWorksStep({
   data,
   onChange,
   hasCondensation,
-  hasTimberOrDamp,
   hasDampTimberOrWoodworm,
 }: AdditionalWorksStepProps) {
   // Collapsible section state
   const [expandedSections, setExpandedSections] = useState({
     condensation: hasCondensation,
-    joist: hasTimberOrDamp,
     plastering: true,
     airbricks: false,
     spray: false,
@@ -455,127 +451,6 @@ export default function AdditionalWorksStep({
               placeholder="Number of boards"
             />
           </div>
-        </div>
-      )}
-
-      {/* Joist & Flooring Extras - only shown when hasTimberOrDamp */}
-      {hasTimberOrDamp && (
-        <div className="glass-card overflow-hidden">
-          <button
-            onClick={() => toggleSection('joist')}
-            className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Hammer className="w-5 h-5 text-amber-300" />
-              <h5 className="font-semibold text-white">Joist & Flooring Extras</h5>
-            </div>
-            {expandedSections.joist ? (
-              <ChevronUp className="w-5 h-5 text-white/50" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-white/50" />
-            )}
-          </button>
-
-          {expandedSections.joist && (
-            <div className="p-4 pt-0 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Joist Endwraps
-                  </label>
-                  <input
-                    type="number"
-                    value={data.joist_endwrap_count || ''}
-                    onChange={(e) => handleChange('joist_endwrap_count', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Wall Plates
-                  </label>
-                  <input
-                    type="number"
-                    value={data.wall_plate_count || ''}
-                    onChange={(e) => handleChange('wall_plate_count', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Bower Beam Pairs
-                  </label>
-                  <input
-                    type="number"
-                    value={data.bower_beam_pairs || ''}
-                    onChange={(e) => handleChange('bower_beam_pairs', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Flitch Plate Pairs
-                  </label>
-                  <input
-                    type="number"
-                    value={data.flitch_plate_pairs || ''}
-                    onChange={(e) => handleChange('flitch_plate_pairs', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              {/* Insulation */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-                <label className="text-sm font-medium text-white">Warmline Insulation Needed</label>
-                <button
-                  onClick={() => {
-                    const newValue = !data.need_insulation
-                    handleChange('need_insulation', newValue)
-                    if (!newValue) {
-                      handleChange('warmline_insulation_area', undefined)
-                    }
-                  }}
-                  className={`
-                    relative inline-flex h-6 w-11 items-center rounded-full
-                    transition-colors duration-300
-                    ${data.need_insulation ? 'bg-brand-500' : 'bg-white/20'}
-                  `}
-                >
-                  <span
-                    className={`
-                      inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
-                      transition-transform duration-300
-                      ${data.need_insulation ? 'translate-x-6' : 'translate-x-1'}
-                    `}
-                  />
-                </button>
-              </div>
-
-              {data.need_insulation && (
-                <div className="pl-4">
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Insulation Area (m²)
-                  </label>
-                  <input
-                    type="number"
-                    value={data.warmline_insulation_area || ''}
-                    onChange={(e) => handleChange('warmline_insulation_area', parseFloat(e.target.value) || undefined)}
-                    className="input-field"
-                    step="0.1"
-                    min="0"
-                  />
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 

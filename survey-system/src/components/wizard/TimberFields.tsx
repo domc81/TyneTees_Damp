@@ -534,6 +534,81 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
                     />
                   </div>
                 </div>
+
+                {/* Joist Accessories */}
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Joist Accessories</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Endwrap Joists (LM)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.endwrap_joists_lm || ''}
+                        onChange={(e) => handleChange('endwrap_joists_lm', parseFloat(e.target.value) || undefined)}
+                        className="input-field"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Wall Plate 100×25 (LM)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.wall_plate_lm || ''}
+                        onChange={(e) => handleChange('wall_plate_lm', parseFloat(e.target.value) || undefined)}
+                        className="input-field"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Bower Beam Pairs
+                      </label>
+                      <input
+                        type="number"
+                        value={data.bower_beams_count || ''}
+                        onChange={(e) => handleChange('bower_beams_count', parseInt(e.target.value) || undefined)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-2">
+                        Flitch Plate Pairs
+                      </label>
+                      <input
+                        type="number"
+                        value={data.flitch_plates_count || ''}
+                        onChange={(e) => handleChange('flitch_plates_count', parseInt(e.target.value) || undefined)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      Warmline Insulation Area (m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.warmline_insulation_area || ''}
+                      onChange={(e) => handleChange('warmline_insulation_area', parseFloat(e.target.value) || undefined)}
+                      className="input-field"
+                      step="0.1"
+                      min="0"
+                      placeholder="Leave blank if not needed"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

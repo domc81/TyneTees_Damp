@@ -655,6 +655,11 @@ function mapTimberSurvey(
   let totalClearSubFloorDebrisArea = 0
   let totalStaircaseOpenRearSteps = 0
   let totalStaircaseClosedRearSteps = 0
+  let totalEndwrapJoistsLm = 0
+  let totalWallPlateLm = 0
+  let totalBowerBeamsCount = 0
+  let totalFlitchPlatesCount = 0
+  let totalWarmlineInsulationArea = 0
   const joistEntries: { size: string; totalLength: number }[] = []
   const flooringByType: Record<string, number> = {}
 
@@ -688,6 +693,13 @@ function mapTimberSurvey(
     totalProtectiveTreatmentArea += timberData.protective_treatment_area || 0
     totalStaircaseOpenRearSteps += timberData.staircase_open_rear_steps || 0
     totalStaircaseClosedRearSteps += timberData.staircase_closed_rear_steps || 0
+
+    // Joist accessories (per-room)
+    totalEndwrapJoistsLm += timberData.endwrap_joists_lm || 0
+    totalWallPlateLm += timberData.wall_plate_lm || 0
+    totalBowerBeamsCount += timberData.bower_beams_count || 0
+    totalFlitchPlatesCount += timberData.flitch_plates_count || 0
+    totalWarmlineInsulationArea += timberData.warmline_insulation_area || 0
 
     // Joist entries (aggregate by size)
     for (const entry of timberData.joist_entries || []) {
@@ -746,22 +758,26 @@ function mapTimberSurvey(
     }
   }
 
-  // Joist extras from additional works
-  const joist_endwrapInput = createLineInput(lookup, 'floor_joists_decking', 'treat_and_endwrap_joist', additionalWorks.joist_endwrap_count || 0)
+  // Joist extras — per-room with additional_works fallback for existing surveys
+  const endwrapQty = totalEndwrapJoistsLm || additionalWorks.joist_endwrap_count || 0
+  const joist_endwrapInput = createLineInput(lookup, 'floor_joists_decking', 'treat_and_endwrap_joist', endwrapQty)
   if (joist_endwrapInput) inputs.push(joist_endwrapInput)
 
-  const wallPlateInput = createLineInput(lookup, 'floor_joists_decking', 'wall_plate_100x25', additionalWorks.wall_plate_count || 0)
+  const wallPlateQty = totalWallPlateLm || additionalWorks.wall_plate_count || 0
+  const wallPlateInput = createLineInput(lookup, 'floor_joists_decking', 'wall_plate_100x25', wallPlateQty)
   if (wallPlateInput) inputs.push(wallPlateInput)
 
-  const bowerBeamInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams_pair', additionalWorks.bower_beam_pairs || 0)
+  const bowerBeamQty = totalBowerBeamsCount || additionalWorks.bower_beam_pairs || 0
+  const bowerBeamInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams_pair', bowerBeamQty)
   if (bowerBeamInput) inputs.push(bowerBeamInput)
 
-  const flitchPlateInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates_pair', additionalWorks.flitch_plate_pairs || 0)
+  const flitchPlateQty = totalFlitchPlatesCount || additionalWorks.flitch_plate_pairs || 0
+  const flitchPlateInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates_pair', flitchPlateQty)
   if (flitchPlateInput) inputs.push(flitchPlateInput)
 
-  // Insulation
-  if (additionalWorks.need_insulation) {
-    const insulationArea = additionalWorks.warmline_insulation_area || totalFlooringArea
+  // Insulation — per-room with additional_works fallback
+  const insulationArea = totalWarmlineInsulationArea || (additionalWorks.need_insulation ? (additionalWorks.warmline_insulation_area || totalFlooringArea) : 0)
+  if (insulationArea > 0) {
     const insulationInput = createLineInput(lookup, 'floor_joists_decking', 'provide_insulation_to_suspended_flooring', insulationArea)
     if (insulationInput) inputs.push(insulationInput)
   }

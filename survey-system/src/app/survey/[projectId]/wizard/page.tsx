@@ -319,9 +319,6 @@ export default function SurveyWizardPage() {
 
   // Compute flags for AdditionalWorksStep
   const hasCondensation = rooms.some((r) => r.issues_identified?.includes('condensation'))
-  const hasTimberOrDamp = rooms.some((r) =>
-    r.issues_identified?.some((i) => i === 'damp' || i === 'timber_decay')
-  )
   const hasDampTimberOrWoodworm = rooms.some((r) =>
     r.issues_identified?.some((i) => i === 'damp' || i === 'timber_decay' || i === 'woodworm')
   )
@@ -365,7 +362,6 @@ export default function SurveyWizardPage() {
             data={wizardData.additional_works || {}}
             onChange={handleAdditionalWorksChange}
             hasCondensation={hasCondensation}
-            hasTimberOrDamp={hasTimberOrDamp}
             hasDampTimberOrWoodworm={hasDampTimberOrWoodworm}
           />
         )

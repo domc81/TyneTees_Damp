@@ -289,6 +289,13 @@ export interface TimberRoomData {
   flooring_type?: FlooringType
   flooring_area?: number // m²
 
+  // Joist Accessories (per-room)
+  endwrap_joists_lm?: number // Linear metres of joist endwrap
+  wall_plate_lm?: number // Linear metres of wall plate 100×25
+  bower_beams_count?: number // Count of bower beam pairs
+  flitch_plates_count?: number // Count of flitch plate pairs
+  warmline_insulation_area?: number // m² of warmline insulation
+
   // Ceiling Work (if affected)
   ceiling_affected: boolean
   ceiling_area?: number // m²
