@@ -594,6 +594,20 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-white/70 mb-2">
+              Clear Sub-Floor Debris (m²)
+            </label>
+            <input
+              type="number"
+              value={data.clear_sub_floor_debris_area || ''}
+              onChange={(e) => handleChange('clear_sub_floor_debris_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
               Grind Back Mortar Courses (m²)
             </label>
             <input

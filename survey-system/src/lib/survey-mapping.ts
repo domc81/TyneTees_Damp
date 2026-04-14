@@ -652,6 +652,7 @@ function mapTimberSurvey(
   let totalWireScrubArea = 0
   let totalMasonrySterilantArea = 0
   let totalProtectiveTreatmentArea = 0
+  let totalClearSubFloorDebrisArea = 0
   let totalStaircaseOpenRearSteps = 0
   let totalStaircaseClosedRearSteps = 0
   const joistEntries: { size: string; totalLength: number }[] = []
@@ -676,6 +677,9 @@ function mapTimberSurvey(
     if (timberData.ceiling_affected) {
       totalCeilingArea += timberData.ceiling_area || 0
     }
+
+    // Sub-floor debris clearance
+    totalClearSubFloorDebrisArea += timberData.clear_sub_floor_debris_area || 0
 
     // Masonry preparation areas
     totalGrindBackMortarArea += timberData.grind_back_mortar_area || 0
@@ -789,6 +793,10 @@ function mapTimberSurvey(
   // Masonry sterilant (Wykabor 20 brush-applied to exposed masonry after timber removal)
   const masonrySterilantInput = createLineInput(lookup, 'timber_treatments', 'masonry_sterilant_wyakbor_20_brush_applied', totalMasonrySterilantArea)
   if (masonrySterilantInput) inputs.push(masonrySterilantInput)
+
+  // Clear debris from sub-floor
+  const clearDebrisInput = createLineInput(lookup, 'timber_treatments', 'clear_debris_from_sub_floor', totalClearSubFloorDebrisArea)
+  if (clearDebrisInput) inputs.push(clearDebrisInput)
 
   // Protective treatment for new replacement timbers (DP-O)
   const protectiveTreatmentInput = createLineInput(lookup, 'timber_treatments', 'protective_treatment_following_new_timbers_installation_dp_o', totalProtectiveTreatmentArea)
