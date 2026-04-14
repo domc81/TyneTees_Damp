@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AdditionalWorks, DuctingType } from '@/types/survey-wizard.types'
+import { AdditionalWorks, CondensationPIV } from '@/types/survey-wizard.types'
 import {
   Package,
   ChevronDown,
@@ -22,23 +22,6 @@ interface AdditionalWorksStepProps {
   hasCondensation: boolean
   hasDampTimberOrWoodworm: boolean
 }
-
-const DUCTING_TYPES: { value: DuctingType; label: string; group: string }[] = [
-  // Round ducting
-  { value: 'rigid_duct', label: 'Rigid Duct (1m)', group: 'Round' },
-  { value: 'round_1m', label: 'Round Duct (1m)', group: 'Round' },
-  { value: 'duct_elbow', label: 'Round Elbow', group: 'Round' },
-  { value: 'duct_connector', label: 'Round Straight Connector', group: 'Round' },
-  { value: 'flexible_duct', label: 'Insulated Flexi (3m)', group: 'Round' },
-  // Flat ducting
-  { value: 'flat_1m', label: 'Flat Channel (1m)', group: 'Flat' },
-  { value: 'flat_to_round_adaptor', label: 'Flat-to-Round Adaptor', group: 'Flat' },
-  { value: 'flat_straight_connector', label: 'Flat Straight Connector', group: 'Flat' },
-  { value: 'flat_horizontal_bend', label: 'Flat Horizontal Bend', group: 'Flat' },
-  { value: 'flat_vertical_bend', label: 'Flat Vertical Bend', group: 'Flat' },
-  // Other
-  { value: 'grille', label: 'Grille', group: 'Other' },
-]
 
 export default function AdditionalWorksStep({
   data,
@@ -64,30 +47,27 @@ export default function AdditionalWorksStep({
     onChange({ ...data, [field]: value })
   }
 
-  // Ducting components helpers
-  const getDuctingCount = (type: DuctingType): number => {
-    const component = (data.ducting_components || []).find((c) => c.type === type)
-    return component?.count || 0
+  // PIV helper — reads from condensation_piv with defaults
+  const piv: CondensationPIV = {
+    piv_recommended: false,
+    piv_type: null,
+    piv_unit_count: 0,
+    core_hole_count: 0,
+    electrical_pack_count: 0,
+    sarkvent_count: 0,
+    ducting_components_as_exists: false,
+    joinery_ducting_boxwork_lm: 0,
+    ...data.condensation_piv,
   }
 
-  const setDuctingCount = (type: DuctingType, count: number) => {
-    const components = data.ducting_components || []
-    const existing = components.find((c) => c.type === type)
-
-    if (existing) {
-      // Update existing
-      const updated = components.map((c) => (c.type === type ? { ...c, count } : c))
-      handleChange('ducting_components', updated.filter((c) => c.count > 0))
-    } else if (count > 0) {
-      // Add new
-      handleChange('ducting_components', [...components, { type, count }])
-    }
+  const handlePIVChange = (field: keyof CondensationPIV, value: any) => {
+    onChange({
+      ...data,
+      condensation_piv: { ...piv, [field]: value },
+    })
   }
 
-  const pivType = data.piv_type as string | undefined
-  const isPIVSelected = pivType && pivType !== 'none'
-  const isLoftPIV = pivType === 'loft_heated' || pivType === 'loft_unheated'
-  const isWallMountedPIV = pivType === 'wall_mounted'
+  const isLoftPIV = piv.piv_type === 'loft_heated' || piv.piv_type === 'loft_unheated'
 
   return (
     <div className="space-y-4">
@@ -124,85 +104,196 @@ export default function AdditionalWorksStep({
 
           {expandedSections.condensation && (
             <div className="p-4 pt-0 space-y-4">
-              {/* PIV Type */}
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  PIV (Positive Input Ventilation) Type
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {[
-                    { value: 'loft_heated', label: 'Loft Heated' },
-                    { value: 'loft_unheated', label: 'Loft Unheated' },
-                    { value: 'wall_mounted', label: 'Wall Mounted' },
-                    { value: 'none', label: 'None' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleChange('piv_type', option.value as any)}
-                      className={`
-                        px-3 py-2 rounded-lg text-xs font-medium transition-all
-                        ${
-                          pivType === option.value
-                            ? 'bg-purple-500/30 border border-purple-400 text-white'
-                            : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
-                        }
-                      `}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+              {/* Is PIV Recommended? */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                <div>
+                  <label className="text-sm font-medium text-white">Is PIV Recommended?</label>
+                  <p className="text-xs text-white/50">Positive Input Ventilation — whole property system</p>
                 </div>
+                <button
+                  onClick={() => handlePIVChange('piv_recommended', !piv.piv_recommended)}
+                  className={`
+                    relative inline-flex h-6 w-11 items-center rounded-full
+                    transition-colors duration-300
+                    ${piv.piv_recommended ? 'bg-purple-500' : 'bg-white/20'}
+                  `}
+                >
+                  <span
+                    className={`
+                      inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                      transition-transform duration-300
+                      ${piv.piv_recommended ? 'translate-x-6' : 'translate-x-1'}
+                    `}
+                  />
+                </button>
               </div>
 
-              {/* PIV Count and Electrical Pack - shown when PIV selected */}
-              {isPIVSelected && (
-                <div className="grid grid-cols-2 gap-3">
+              {piv.piv_recommended && (
+                <>
+                  {/* PIV Type */}
                   <div>
                     <label className="block text-sm font-medium text-white/70 mb-2">
-                      PIV Unit Count
+                      PIV Type
                     </label>
-                    <input
-                      type="number"
-                      value={data.piv_count || ''}
-                      onChange={(e) => handleChange('piv_count', parseInt(e.target.value) || undefined)}
-                      className="input-field"
-                      min="0"
-                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'loft_heated', label: 'Loft Heated' },
+                        { value: 'loft_unheated', label: 'Loft Unheated' },
+                        { value: 'wall_mounted', label: 'Wall Mounted' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => handlePIVChange('piv_type', option.value)}
+                          className={`
+                            px-3 py-2 rounded-lg text-xs font-medium transition-all
+                            ${
+                              piv.piv_type === option.value
+                                ? 'bg-purple-500/30 border border-purple-400 text-white'
+                                : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                            }
+                          `}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
-                      Electrical Packs
-                    </label>
-                    <input
-                      type="number"
-                      value={(data.piv_electrical_pack as any) || ''}
-                      onChange={(e) => handleChange('piv_electrical_pack', parseInt(e.target.value) || undefined as any)}
-                      className="input-field"
-                      min="0"
-                    />
-                  </div>
-                </div>
+                  {/* Loft PIV fields */}
+                  {isLoftPIV && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-2">
+                            PIV Unit Count *
+                          </label>
+                          <input
+                            type="number"
+                            value={piv.piv_unit_count || ''}
+                            onChange={(e) => handlePIVChange('piv_unit_count', parseInt(e.target.value) || 0)}
+                            className="input-field"
+                            min="1"
+                          />
+                          {piv.piv_unit_count < 1 && (
+                            <p className="text-xs text-red-400 mt-1">At least 1 PIV unit is required</p>
+                          )}
+                        </div>
+                        <div className="flex items-end pb-2">
+                          <p className="text-sm text-white/50 italic">No Core Hole — not required for loft units</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-2">
+                            Electrical Pack Count
+                          </label>
+                          <input
+                            type="number"
+                            value={piv.electrical_pack_count || ''}
+                            onChange={(e) => handlePIVChange('electrical_pack_count', parseInt(e.target.value) || 0)}
+                            className="input-field"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-2">
+                            Sarkvent Count
+                          </label>
+                          <input
+                            type="number"
+                            value={piv.sarkvent_count || ''}
+                            onChange={(e) => handlePIVChange('sarkvent_count', parseInt(e.target.value) || 0)}
+                            className="input-field"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wall Mounted PIV fields */}
+                  {piv.piv_type === 'wall_mounted' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-2">
+                            PIV Unit Count *
+                          </label>
+                          <input
+                            type="number"
+                            value={piv.piv_unit_count || ''}
+                            onChange={(e) => handlePIVChange('piv_unit_count', parseInt(e.target.value) || 0)}
+                            className="input-field"
+                            min="1"
+                          />
+                          {piv.piv_unit_count < 1 && (
+                            <p className="text-xs text-red-400 mt-1">At least 1 PIV unit is required</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-2">
+                            Core Hole Count
+                          </label>
+                          <input
+                            type="number"
+                            value={piv.core_hole_count || ''}
+                            onChange={(e) => handlePIVChange('core_hole_count', parseInt(e.target.value) || 0)}
+                            className="input-field"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white/70 mb-2">
+                          Electrical Pack Count
+                        </label>
+                        <input
+                          type="number"
+                          value={piv.electrical_pack_count || ''}
+                          onChange={(e) => handlePIVChange('electrical_pack_count', parseInt(e.target.value) || 0)}
+                          className="input-field"
+                          min="0"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                        <label className="text-sm font-medium text-white">Ducting Components As Exists</label>
+                        <button
+                          onClick={() => handlePIVChange('ducting_components_as_exists', !piv.ducting_components_as_exists)}
+                          className={`
+                            relative inline-flex h-6 w-11 items-center rounded-full
+                            transition-colors duration-300
+                            ${piv.ducting_components_as_exists ? 'bg-purple-500' : 'bg-white/20'}
+                          `}
+                        >
+                          <span
+                            className={`
+                              inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                              transition-transform duration-300
+                              ${piv.ducting_components_as_exists ? 'translate-x-6' : 'translate-x-1'}
+                            `}
+                          />
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white/70 mb-2">
+                          Joinery Ducting Boxwork (linear metres)
+                        </label>
+                        <input
+                          type="number"
+                          value={piv.joinery_ducting_boxwork_lm || ''}
+                          onChange={(e) => handlePIVChange('joinery_ducting_boxwork_lm', parseFloat(e.target.value) || 0)}
+                          className="input-field"
+                          step="0.1"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Sarkvents - shown for loft PIV */}
-              {isLoftPIV && (
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Sarkvents Count
-                  </label>
-                  <input
-                    type="number"
-                    value={data.sarkvents_count || ''}
-                    onChange={(e) => handleChange('sarkvents_count', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-              )}
-
-              {/* Loft Hatch Options - shown for loft PIV */}
-              {isLoftPIV && (
+              {/* Loft Access - shown for loft PIV types */}
+              {piv.piv_recommended && isLoftPIV && (
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-white/70">
                     Loft Access
@@ -217,7 +308,6 @@ export default function AdditionalWorksStep({
                         onChange({
                           ...data,
                           loft_hatch_new_required: newValue || undefined,
-                          // Mutually exclusive: clear enlarge when selecting new
                           ...(newValue ? { loft_hatch_enlarge_required: undefined } : {}),
                         })
                       }}
@@ -246,7 +336,6 @@ export default function AdditionalWorksStep({
                         onChange({
                           ...data,
                           loft_hatch_enlarge_required: newValue || undefined,
-                          // Mutually exclusive: clear new when selecting enlarge
                           ...(newValue ? { loft_hatch_new_required: undefined } : {}),
                         })
                       }}
@@ -267,162 +356,6 @@ export default function AdditionalWorksStep({
                   </div>
                 </div>
               )}
-
-              {/* Wall-Mounted PIV extras - shown for wall mounted PIV */}
-              {isWallMountedPIV && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Electrical Packs (Wall PIV)
-                      </label>
-                      <input
-                        type="number"
-                        value={data.wall_mounted_electrical_pack_count || ''}
-                        onChange={(e) => handleChange('wall_mounted_electrical_pack_count', parseInt(e.target.value) || undefined)}
-                        className="input-field"
-                        min="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Core Holes (107mm, Wall PIV)
-                      </label>
-                      <input
-                        type="number"
-                        value={data.wall_mounted_core_hole_count || ''}
-                        onChange={(e) => handleChange('wall_mounted_core_hole_count', parseInt(e.target.value) || undefined)}
-                        className="input-field"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">
-                      Ducting Components
-                    </label>
-                    <div className="space-y-4">
-                      {['Round', 'Flat', 'Other'].map((group) => {
-                        const groupItems = DUCTING_TYPES.filter((d) => d.group === group)
-                        if (groupItems.length === 0) return null
-                        return (
-                          <div key={group}>
-                            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">{group} Ducting</p>
-                            <div className="space-y-2">
-                              {groupItems.map((duct) => (
-                                <div key={duct.value} className="flex items-center gap-3">
-                                  <label className="text-sm text-white/70 w-48">{duct.label}</label>
-                                  <input
-                                    type="number"
-                                    value={getDuctingCount(duct.value) || ''}
-                                    onChange={(e) => setDuctingCount(duct.value, parseInt(e.target.value) || 0)}
-                                    className="input-field flex-1"
-                                    min="0"
-                                    placeholder="Count"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Joinery Ducting Boxwork - only for wall-mounted PIV */}
-              {isWallMountedPIV && (
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Joinery Ducting Boxwork (metres)
-                  </label>
-                  <input
-                    type="number"
-                    value={data.joinery_ducting_metres || ''}
-                    onChange={(e) => handleChange('joinery_ducting_metres', parseFloat(e.target.value) || undefined)}
-                    className="input-field"
-                    step="0.1"
-                    min="0"
-                    placeholder="Min charge 2.4m"
-                  />
-                  <p className="text-xs text-white/40 mt-1">Minimum charge of 2.4 metres applies</p>
-                </div>
-              )}
-
-              {/* Fan Equipment */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Fan Electrical Packs
-                  </label>
-                  <input
-                    type="number"
-                    value={data.fan_electrical_pack_total || ''}
-                    onChange={(e) => handleChange('fan_electrical_pack_total', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Fan Grilles
-                  </label>
-                  <input
-                    type="number"
-                    value={data.fan_grille_count || ''}
-                    onChange={(e) => handleChange('fan_grille_count', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
-                    Core Holes
-                  </label>
-                  <input
-                    type="number"
-                    value={data.fan_core_hole_count || ''}
-                    onChange={(e) => handleChange('fan_core_hole_count', parseInt(e.target.value) || undefined)}
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              {/* Cpass Passive Vents */}
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  Cpass Passive Vents (each requires one 107mm core hole)
-                </label>
-                <input
-                  type="number"
-                  value={data.cpass_vent_count || ''}
-                  onChange={(e) => handleChange('cpass_vent_count', parseInt(e.target.value) || undefined)}
-                  className="input-field"
-                  min="0"
-                  placeholder="Number of vents"
-                />
-              </div>
-
-              {/* Dryaire CVents */}
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  Dryaire CVents (each requires one 107mm core hole)
-                </label>
-                <input
-                  type="number"
-                  value={data.cvent_count || ''}
-                  onChange={(e) => handleChange('cvent_count', parseInt(e.target.value) || undefined)}
-                  className="input-field"
-                  min="0"
-                  placeholder="Number of CVents"
-                />
-              </div>
             </div>
           )}
         </div>
