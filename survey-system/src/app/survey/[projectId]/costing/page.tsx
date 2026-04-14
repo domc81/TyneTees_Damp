@@ -122,6 +122,15 @@ function SectionCard({
 }) {
   const baseTotal = sectionTotal?.sectionTotal || 0
   const adjustedDisplayTotal = baseTotal * (1 + adjPct / 100)
+
+  // Local string state for the adjustment input — allows typing "-", ".", etc. on Android
+  const [adjText, setAdjText] = useState(adjPct === 0 ? '0' : String(adjPct))
+  useEffect(() => {
+    const parsed = parseFloat(adjText)
+    if (isNaN(parsed) || parsed !== adjPct) {
+      setAdjText(adjPct === 0 ? '0' : String(adjPct))
+    }
+  }, [adjPct])
   // Dim content (not header) when this optional section is excluded
   const dimContent = isOptional && !isIncluded
 
@@ -237,10 +246,22 @@ function SectionCard({
                       Section Adjustment %
                     </label>
                     <input
-                      type="number"
-                      step="0.5"
-                      value={adjPct}
-                      onChange={(e) => onAdjustmentChange(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="decimal"
+                      value={adjText}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return
+                        setAdjText(raw)
+                        const num = parseFloat(raw)
+                        if (!isNaN(num)) onAdjustmentChange(num)
+                      }}
+                      onBlur={() => {
+                        const num = parseFloat(adjText)
+                        const final = isNaN(num) ? 0 : num
+                        setAdjText(final === 0 ? '0' : String(final))
+                        onAdjustmentChange(final)
+                      }}
                       className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white text-right focus:outline-none focus:border-brand-300/50 focus:ring-1 focus:ring-brand-300/20"
                     />
                   </div>
