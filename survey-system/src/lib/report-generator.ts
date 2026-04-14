@@ -169,11 +169,11 @@ function getTreatmentLabel(code: string | undefined): string {
 function formatFlooringType(code: string | undefined): string {
   if (!code) return 'timber'
   const map: Record<string, string> = {
-    tongue_and_groove: 'tongue and groove',
-    square_edge: 'square edge',
-    chipboard: 'chipboard',
-    plywood: 'plywood',
-    other: 'timber',
+    weyrock_18mm: 'Weyrock 18mm',
+    weyrock_22mm: 'Weyrock 22mm',
+    std_tg_floorboards: 'standard tongue and groove',
+    victorian_tg_floorboards: 'Victorian tongue and groove',
+    engineered_flooring_sheet: 'engineered flooring sheet',
   }
   return map[code] || code.replace(/_/g, ' ')
 }

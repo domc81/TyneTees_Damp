@@ -351,11 +351,11 @@ export type FungalFinding =
   | 'none'
 
 export type FlooringType =
-  | 'tongue_and_groove'
-  | 'square_edge'
-  | 'chipboard'
-  | 'plywood'
-  | 'other'
+  | 'weyrock_18mm'
+  | 'weyrock_22mm'
+  | 'std_tg_floorboards'
+  | 'victorian_tg_floorboards'
+  | 'engineered_flooring_sheet'
 
 // =============================================================================
 // Woodworm Room Data (Infestation Assessment + Treatment Areas)

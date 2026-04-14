@@ -655,6 +655,7 @@ function mapTimberSurvey(
   let totalStaircaseOpenRearSteps = 0
   let totalStaircaseClosedRearSteps = 0
   const joistEntries: { size: string; totalLength: number }[] = []
+  const flooringByType: Record<string, number> = {}
 
   for (const room of timberRooms) {
     const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
@@ -665,6 +666,11 @@ function mapTimberSurvey(
 
     // Flooring area
     totalFlooringArea += timberData.flooring_area || 0
+
+    // Flooring installation — aggregate area by type
+    if (timberData.flooring_type && timberData.flooring_area && timberData.flooring_area > 0) {
+      flooringByType[timberData.flooring_type] = (flooringByType[timberData.flooring_type] || 0) + timberData.flooring_area
+    }
 
     // Ceiling area (if affected)
     if (timberData.ceiling_affected) {
@@ -754,6 +760,24 @@ function mapTimberSurvey(
     const insulationArea = additionalWorks.warmline_insulation_area || totalFlooringArea
     const insulationInput = createLineInput(lookup, 'floor_joists_decking', 'provide_insulation_to_suspended_flooring', insulationArea)
     if (insulationInput) inputs.push(insulationInput)
+  }
+
+  // === FLOORING INSTALLATION ===
+
+  const flooringTypeToLineKey: Record<string, string> = {
+    'weyrock_18mm': 'install_weyrock_flooring_18mm_m2',
+    'weyrock_22mm': 'install_weyrock_flooring_22mm_m2',
+    'std_tg_floorboards': 'install_std_tg_floorboards_m2',
+    'victorian_tg_floorboards': 'install_victorian_tg_floorboards_m2',
+    'engineered_flooring_sheet': 'install_engineered_flooring_sheet_m2',
+  }
+
+  for (const [flooringType, area] of Object.entries(flooringByType)) {
+    const lineKey = flooringTypeToLineKey[flooringType]
+    if (lineKey) {
+      const flooringInput = createLineInput(lookup, 'floor_joists_decking', lineKey, area)
+      if (flooringInput) inputs.push(flooringInput)
+    }
   }
 
   // === TIMBER TREATMENTS ===

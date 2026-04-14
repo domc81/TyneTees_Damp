@@ -511,12 +511,12 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
                       onChange={(e) => handleChange('flooring_type', e.target.value as FlooringType)}
                       className="input-field"
                     >
-                      <option value="">Select type...</option>
-                      <option value="tongue_and_groove">Tongue & Groove</option>
-                      <option value="square_edge">Square Edge</option>
-                      <option value="chipboard">Chipboard</option>
-                      <option value="plywood">Plywood</option>
-                      <option value="other">Other</option>
+                      <option value="">No replacement</option>
+                      <option value="weyrock_18mm">Weyrock 18mm (£18.00/m²)</option>
+                      <option value="weyrock_22mm">Weyrock 22mm (£22.00/m²)</option>
+                      <option value="std_tg_floorboards">Standard T&G Floorboards (£46.30/m²)</option>
+                      <option value="victorian_tg_floorboards">Victorian T&G Floorboards (£52.80/m²)</option>
+                      <option value="engineered_flooring_sheet">Engineered Flooring Sheet (£49.99/m²)</option>
                     </select>
                   </div>
 
