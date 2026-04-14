@@ -32,7 +32,14 @@ interface TimberFieldsProps {
   onChange: (data: Partial<TimberRoomData>) => void
 }
 
-const JOIST_SIZES = ['4x2', '6x2', '8x2', '9x2', '4x3', '6x3', '8x3']
+const JOIST_SIZES: { key: string; label: string }[] = [
+  { key: '4x2', label: '4x2" (100×50mm)' },
+  { key: '5x2', label: '5x2" (125×50mm)' },
+  { key: '6x2', label: '6x2" (150×50mm)' },
+  { key: '7x2', label: '7x2" (175×50mm)' },
+  { key: '8x2', label: '8x2" (200×50mm)' },
+  { key: '9x2', label: '9x2" (225×50mm)' },
+]
 
 export default function TimberFields({ data, onChange }: TimberFieldsProps) {
   // Collapsible section state
@@ -437,9 +444,9 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
                           onChange={(e) => updateJoistEntry(index, { size: e.target.value })}
                           className="input-field text-sm"
                         >
-                          {JOIST_SIZES.map((size) => (
-                            <option key={size} value={size}>
-                              {size}"
+                          {JOIST_SIZES.map(({ key, label }) => (
+                            <option key={key} value={key}>
+                              {label}
                             </option>
                           ))}
                         </select>
