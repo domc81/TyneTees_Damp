@@ -512,11 +512,11 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
                       className="input-field"
                     >
                       <option value="">No replacement</option>
-                      <option value="weyrock_18mm">Weyrock 18mm (£18.00/m²)</option>
-                      <option value="weyrock_22mm">Weyrock 22mm (£22.00/m²)</option>
-                      <option value="std_tg_floorboards">Standard T&G Floorboards (£46.30/m²)</option>
-                      <option value="victorian_tg_floorboards">Victorian T&G Floorboards (£52.80/m²)</option>
-                      <option value="engineered_flooring_sheet">Engineered Flooring Sheet (£49.99/m²)</option>
+                      <option value="weyrock_18mm">Weyrock 18mm</option>
+                      <option value="weyrock_22mm">Weyrock 22mm</option>
+                      <option value="std_tg_floorboards">Standard T&G Floorboards</option>
+                      <option value="victorian_tg_floorboards">Victorian T&G Floorboards</option>
+                      <option value="engineered_flooring_sheet">Engineered Flooring Sheet</option>
                     </select>
                   </div>
 
