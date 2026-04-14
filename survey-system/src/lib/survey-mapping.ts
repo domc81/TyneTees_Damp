@@ -1091,31 +1091,19 @@ function mapWoodwormSurvey(
 /**
  * Map additional works that apply across all survey types
  */
-function mapAdditionalWorks(
+/**
+ * Map type-specific additional works items.
+ *
+ * Only emits items that belong exclusively to one survey type (guarded by type
+ * checks). Shared job-level items (airbricks, asbestos, plastering extras) are
+ * handled by mapSharedAdditionalWorks which runs once.
+ */
+function mapTypeSpecificAdditionalWorks(
   additionalWorks: AdditionalWorks,
   lookup: TemplateLookup,
   surveyType: string
 ): LineInput[] {
   const inputs: LineInput[] = []
-
-  // NOTE: Antinox floor protection moved to mapSitePreparation (job-level)
-
-  // === AIRBRICKS (line keys differ between damp and other survey types) ===
-
-  const airbrickCleanKey = surveyType === 'damp'
-    ? 'clean_out_airbrick'
-    : 'clean_out_airbrickfit_new_face'
-  const airbrickCleanInput = createLineInput(lookup, 'airbricks', airbrickCleanKey, additionalWorks.airbrick_clean_count || 0)
-  if (airbrickCleanInput) inputs.push(airbrickCleanInput)
-
-  const airbrickUpgradeKey = surveyType === 'damp'
-    ? 'lift_upgrade_airbrick'
-    : 'liftupgrade_existing_airbrickfit_new_face'
-  const airbrickUpgradeInput = createLineInput(lookup, 'airbricks', airbrickUpgradeKey, additionalWorks.airbrick_upgrade_count || 0)
-  if (airbrickUpgradeInput) inputs.push(airbrickUpgradeInput)
-
-  const airbrickNewInput = createLineInput(lookup, 'airbricks', 'install_additional_airbrick', additionalWorks.airbrick_new_count || 0)
-  if (airbrickNewInput) inputs.push(airbrickNewInput)
 
   // === DRAINS (damp only) ===
 
@@ -1134,44 +1122,7 @@ function mapAdditionalWorks(
     if (aquabanInput) inputs.push(aquabanInput)
   }
 
-  // === ASBESTOS TESTING (all types) ===
-
-  const asbestosInput = createLineInput(lookup, 'asbestos_testing', 'asbestos_testing', additionalWorks.asbestos_test_count || 0)
-  if (asbestosInput) inputs.push(asbestosInput)
-
-  // NOTE: Skip hire moved to mapSitePreparation (job-level)
-
-  // === PLASTERING EXTRAS (damp, timber, woodworm) ===
-
-  if (surveyType !== 'condensation') {
-    // Plastering line keys differ between damp and timber/woodworm
-    const stopBeadKey = surveyType === 'damp'
-      ? 'plastering_stop_bead'
-      : 'plastering_stop_bead_3m_length'
-    const stopBeadInput = createLineInput(lookup, 'plastering', stopBeadKey, additionalWorks.stop_bead_count || 0)
-    if (stopBeadInput) inputs.push(stopBeadInput)
-
-    const cornerBead24Key = surveyType === 'damp'
-      ? 'thin_coat_angle_2_4m'
-      : 'plastering_thin_coat_anglecorner_bead_24m_length'
-    const cornerBead24Input = createLineInput(lookup, 'plastering', cornerBead24Key, additionalWorks.corner_bead_24_count || 0)
-    if (cornerBead24Input) inputs.push(cornerBead24Input)
-
-    const cornerBead30Key = surveyType === 'damp'
-      ? 'thin_coat_angle_3m'
-      : 'plastering_thin_coat_anglecorner_bead_3m_length'
-    const cornerBead30Input = createLineInput(lookup, 'plastering', cornerBead30Key, additionalWorks.corner_bead_30_count || 0)
-    if (cornerBead30Input) inputs.push(cornerBead30Input)
-
-    const difficultyKey = surveyType === 'damp'
-      ? 'difficulty_hours_plastering'
-      : 'difficulty_hours_fireplace_corners_etc'
-    const plasteringDifficultyInput = createLineInput(lookup, 'plastering', difficultyKey, additionalWorks.difficulty_hours_plastering || 0)
-    if (plasteringDifficultyInput) inputs.push(plasteringDifficultyInput)
-  }
-
   // === SPRAY TREATMENTS (timber, woodworm) ===
-  // timber/woodworm use timber_treatments section (spray_treatments is damp-only)
 
   if (surveyType === 'timber') {
     const sprayAreaInput = createLineInput(lookup, 'timber_treatments', 'fog_subfloor_void_m2', additionalWorks.spray_treatment_area || 0)
@@ -1184,6 +1135,95 @@ function mapAdditionalWorks(
   }
 
   return inputs
+}
+
+// =============================================================================
+// SHARED ADDITIONAL WORKS (job-level items emitted once)
+// =============================================================================
+
+/**
+ * Map additional works items that apply once per job regardless of survey types.
+ *
+ * Airbricks, asbestos testing, and plastering extras are property-level work —
+ * they should only appear once even when multiple survey types are active.
+ * Template keys vary by survey type, so the primary type determines which
+ * template variant to use (priority: damp > timber > woodworm > condensation).
+ */
+function mapSharedAdditionalWorks(
+  additionalWorks: AdditionalWorks,
+  surveyTypesPresent: Set<string>,
+  lookupCache: TemplateLookupCache
+): { primaryType: string; inputs: LineInput[] } {
+  // Determine primary type for template key selection
+  let primaryType: string
+  let lookup: TemplateLookup
+  if (surveyTypesPresent.has('damp')) {
+    primaryType = 'damp'
+    lookup = lookupCache.damp
+  } else if (surveyTypesPresent.has('timber')) {
+    primaryType = 'timber'
+    lookup = lookupCache.timber
+  } else if (surveyTypesPresent.has('woodworm')) {
+    primaryType = 'woodworm'
+    lookup = lookupCache.woodworm
+  } else {
+    primaryType = 'condensation'
+    lookup = lookupCache.condensation
+  }
+
+  const inputs: LineInput[] = []
+
+  // === AIRBRICKS (line keys differ between damp and other survey types) ===
+
+  const airbrickCleanKey = primaryType === 'damp'
+    ? 'clean_out_airbrick'
+    : 'clean_out_airbrickfit_new_face'
+  const airbrickCleanInput = createLineInput(lookup, 'airbricks', airbrickCleanKey, additionalWorks.airbrick_clean_count || 0)
+  if (airbrickCleanInput) inputs.push(airbrickCleanInput)
+
+  const airbrickUpgradeKey = primaryType === 'damp'
+    ? 'lift_upgrade_airbrick'
+    : 'liftupgrade_existing_airbrickfit_new_face'
+  const airbrickUpgradeInput = createLineInput(lookup, 'airbricks', airbrickUpgradeKey, additionalWorks.airbrick_upgrade_count || 0)
+  if (airbrickUpgradeInput) inputs.push(airbrickUpgradeInput)
+
+  const airbrickNewInput = createLineInput(lookup, 'airbricks', 'install_additional_airbrick', additionalWorks.airbrick_new_count || 0)
+  if (airbrickNewInput) inputs.push(airbrickNewInput)
+
+  // === ASBESTOS TESTING ===
+
+  const asbestosInput = createLineInput(lookup, 'asbestos_testing', 'asbestos_testing', additionalWorks.asbestos_test_count || 0)
+  if (asbestosInput) inputs.push(asbestosInput)
+
+  // === PLASTERING EXTRAS (not for condensation-only surveys) ===
+
+  if (primaryType !== 'condensation') {
+    const stopBeadKey = primaryType === 'damp'
+      ? 'plastering_stop_bead'
+      : 'plastering_stop_bead_3m_length'
+    const stopBeadInput = createLineInput(lookup, 'plastering', stopBeadKey, additionalWorks.stop_bead_count || 0)
+    if (stopBeadInput) inputs.push(stopBeadInput)
+
+    const cornerBead24Key = primaryType === 'damp'
+      ? 'thin_coat_angle_2_4m'
+      : 'plastering_thin_coat_anglecorner_bead_24m_length'
+    const cornerBead24Input = createLineInput(lookup, 'plastering', cornerBead24Key, additionalWorks.corner_bead_24_count || 0)
+    if (cornerBead24Input) inputs.push(cornerBead24Input)
+
+    const cornerBead30Key = primaryType === 'damp'
+      ? 'thin_coat_angle_3m'
+      : 'plastering_thin_coat_anglecorner_bead_3m_length'
+    const cornerBead30Input = createLineInput(lookup, 'plastering', cornerBead30Key, additionalWorks.corner_bead_30_count || 0)
+    if (cornerBead30Input) inputs.push(cornerBead30Input)
+
+    const difficultyKey = primaryType === 'damp'
+      ? 'difficulty_hours_plastering'
+      : 'difficulty_hours_fireplace_corners_etc'
+    const plasteringDifficultyInput = createLineInput(lookup, 'plastering', difficultyKey, additionalWorks.difficulty_hours_plastering || 0)
+    if (plasteringDifficultyInput) inputs.push(plasteringDifficultyInput)
+  }
+
+  return { primaryType, inputs }
 }
 
 // =============================================================================
@@ -1321,29 +1361,38 @@ export function mapSurveyToLineInputs(
     }
   }
 
-  // Map each survey type
+  const additionalWorks = wizardData.additional_works || {}
+
+  // Map each survey type (room-level + type-specific additional works)
   if (surveyTypesPresent.has('damp')) {
     const inputs = mapDampSurvey(wizardData, rooms, lookupCache.damp)
-    const additionalInputs = mapAdditionalWorks(wizardData.additional_works || {}, lookupCache.damp, 'damp')
-    result.damp = [...inputs, ...additionalInputs]
+    const typeSpecific = mapTypeSpecificAdditionalWorks(additionalWorks, lookupCache.damp, 'damp')
+    result.damp = [...inputs, ...typeSpecific]
   }
 
   if (surveyTypesPresent.has('condensation')) {
     const inputs = mapCondensationSurvey(wizardData, rooms, lookupCache.condensation)
-    const additionalInputs = mapAdditionalWorks(wizardData.additional_works || {}, lookupCache.condensation, 'condensation')
-    result.condensation = [...inputs, ...additionalInputs]
+    const typeSpecific = mapTypeSpecificAdditionalWorks(additionalWorks, lookupCache.condensation, 'condensation')
+    result.condensation = [...inputs, ...typeSpecific]
   }
 
   if (surveyTypesPresent.has('timber')) {
     const inputs = mapTimberSurvey(wizardData, rooms, lookupCache.timber)
-    const additionalInputs = mapAdditionalWorks(wizardData.additional_works || {}, lookupCache.timber, 'timber')
-    result.timber = [...inputs, ...additionalInputs]
+    const typeSpecific = mapTypeSpecificAdditionalWorks(additionalWorks, lookupCache.timber, 'timber')
+    result.timber = [...inputs, ...typeSpecific]
   }
 
   if (surveyTypesPresent.has('woodworm')) {
     const inputs = mapWoodwormSurvey(wizardData, rooms, lookupCache.woodworm)
-    const additionalInputs = mapAdditionalWorks(wizardData.additional_works || {}, lookupCache.woodworm, 'woodworm')
-    result.woodworm = [...inputs, ...additionalInputs]
+    const typeSpecific = mapTypeSpecificAdditionalWorks(additionalWorks, lookupCache.woodworm, 'woodworm')
+    result.woodworm = [...inputs, ...typeSpecific]
+  }
+
+  // Shared additional works: airbricks, asbestos, plastering extras — emitted once
+  // Appended to the primary survey type's results for display under that tab
+  const shared = mapSharedAdditionalWorks(additionalWorks, surveyTypesPresent, lookupCache)
+  if (shared.inputs.length > 0 && result[shared.primaryType]) {
+    result[shared.primaryType] = [...result[shared.primaryType], ...shared.inputs]
   }
 
   // Job-level items: skip hire, antinox, bag & cart, disposal — emitted once
