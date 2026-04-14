@@ -75,11 +75,10 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           <label className="text-sm font-medium text-white">Black Mould Present</label>
           <button
             onClick={() => {
-              const newValue = !data.black_mould_present
-              handleChange('black_mould_present', newValue)
-              // Clear severity if mould is not present
-              if (!newValue) {
-                handleChange('mould_severity', undefined)
+              if (data.black_mould_present) {
+                handleMultiChange({ black_mould_present: false, mould_severity: undefined })
+              } else {
+                handleChange('black_mould_present', true)
               }
             }}
             className={`
