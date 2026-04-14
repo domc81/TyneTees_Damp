@@ -22,7 +22,12 @@ interface SiteDetailsStepProps {
 
 export default function SiteDetailsStep({ data, onChange, surveyId, photos, onPhotosChange }: SiteDetailsStepProps) {
   const handleChange = (field: keyof SiteDetails, value: any) => {
-    onChange({ ...data, [field]: value })
+    // Clear flat_floor_number when property type changes away from 'flat'
+    if (field === 'property_type' && value !== 'flat') {
+      onChange({ ...data, [field]: value, flat_floor_number: undefined })
+    } else {
+      onChange({ ...data, [field]: value })
+    }
   }
 
   // Filter photos for this step
@@ -160,6 +165,30 @@ export default function SiteDetailsStep({ data, onChange, surveyId, photos, onPh
               ))}
             </select>
           </div>
+
+          {data.property_type === 'flat' && (
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                <span className="flex items-center gap-2">
+                  <Home className="w-4 h-4" />
+                  Floor Number *
+                </span>
+              </label>
+              <select
+                value={data.flat_floor_number || ''}
+                onChange={(e) => handleChange('flat_floor_number', e.target.value)}
+                className="input-field"
+                required
+              >
+                <option value="">Select floor...</option>
+                {['Ground', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'].map((floor) => (
+                  <option key={floor} value={floor}>
+                    {floor === 'Ground' ? 'Ground Floor' : `Floor ${floor}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-white/80 mb-2">

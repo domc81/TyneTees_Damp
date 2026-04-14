@@ -30,6 +30,7 @@ export interface SiteDetails {
   property_type: PropertyType
   construction_type: ConstructionType
   approx_build_year: string // e.g., "1920s", "1950-1960", "2000+"
+  flat_floor_number?: string // Floor number when property_type is 'flat' (e.g., "Ground", "1", "2")
 }
 
 export type WeatherCondition =
