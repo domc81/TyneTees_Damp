@@ -45,9 +45,9 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           Evidence
         </h5>
 
-        {/* Condensation on Windows */}
+        {/* Condensation visible on internal surfaces */}
         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-          <label className="text-sm font-medium text-white">Condensation on Windows</label>
+          <label className="text-sm font-medium text-white">Condensation visible on internal surfaces</label>
           <button
             onClick={() => handleChange('condensation_on_windows', !data.condensation_on_windows)}
             className={`

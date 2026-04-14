@@ -259,7 +259,7 @@ export function RoomFindingsSection({
                         </thead>
                         <tbody>
                           <tr className={tbodyRow}>
-                            <td className={td}>Condensation on windows</td>
+                            <td className={td}>Condensation visible on internal surfaces</td>
                             <td className={`px-3 py-2.5 ${boolColour(condensation.condensation_on_windows, true)}`}>
                               {condensation.condensation_on_windows ? 'Yes' : 'No'}
                             </td>
