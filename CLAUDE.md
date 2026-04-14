@@ -13,15 +13,19 @@ Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costi
 
 - **Framework:** Next.js 14.2.35 (App Router, `src/` directory, standalone output)
 - **Language:** TypeScript 5.3+
-- **Styling:** Tailwind CSS 3.4
+- **Styling:** Tailwind CSS 3.4 with custom brand theme
 - **Database:** Supabase (PostgreSQL) — self-hosted Docker instance (container prefix `y04kk0w`)
 - **Auth:** Supabase Auth with RLS policies + role-based access (admin, office, surveyor)
 - **Email:** Resend (transactional emails — quotations, reports, booking confirmations)
 - **Speech-to-text:** Deepgram (survey observation transcription)
-- **LLM:** OpenRouter (report narrative generation — Llama 3.1 70B)
-- **PDF:** @react-pdf/renderer (quotation + report PDF generation)
+- **LLM:** OpenRouter → `x-ai/grok-4.1-fast` (report narrative generation + observation polishing)
+- **PDF:** @react-pdf/renderer (quotation PDF generation)
 - **Drag-and-drop:** @dnd-kit (enquiry pipeline Kanban board)
 - **Calendar:** FullCalendar (booking/availability management)
+- **Animations:** framer-motion
+- **Icons:** lucide-react
+- **Forms:** react-hook-form + zod validation
+- **Toasts:** sonner
 - **Package manager:** npm
 - **Node:** 22 (Alpine, for Docker build)
 
@@ -29,9 +33,9 @@ Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costi
 
 - **Deployment:** Coolify (auto-deploy on push to `main`) → Traefik → Cloudflare
 - **App container:** `es4ws4gosc4g84gkosk4c008` (Next.js standalone)
-- **Supabase container prefix:** `y04kk0wwoswogw0oowcs04gw` (14 containers, all healthy)
+- **Supabase container prefix:** `y04kk0wwoswogw0oowcs04gw` (14 containers)
 - **Supabase API:** `https://api.ttdp.dc81.io` (via Kong gateway)
-- **Dockerfile:** Multi-stage build (node:22-alpine), standalone output mode
+- **Dockerfile:** Multi-stage build (node:22-alpine), standalone output mode, port 3000
 
 ### Credentials
 
@@ -45,7 +49,21 @@ All read from `/home/dominic/.credentials/` at runtime — **never hardcode or c
 | `.cloudflare-credentials` | Cloudflare API access |
 | `coolify_api_token` | Coolify API bearer token |
 
-The `.env.local` at `survey-system/.env.local` is owned by `root:dc81-secrets` and injected by Coolify at build time. The `.env.local.example` shows the shape.
+The `.env.local` at `survey-system/.env.local` is owned by `root:dc81-secrets` and injected by Coolify at build time.
+
+### Environment Variables
+
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase API base URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Admin Supabase access (API routes) |
+| `OPENROUTER_API_KEY` | Server | LLM calls (report generation, observation polishing) |
+| `DEEPGRAM_API_KEY` | Server | Speech-to-text transcription |
+| `RESEND_API_KEY` | Server | Email sending (fallback — also loadable from platform_settings) |
+| `CRON_SECRET` | Server | Authenticates cron-triggered API routes |
+| `NEXT_PUBLIC_APP_URL` | Public | App base URL for email links |
+| `NEXT_PUBLIC_SITE_URL` | Public | Site URL fallback for report/email links |
 
 ### Database Access
 
@@ -66,27 +84,30 @@ TyneTees_Damp/
 ├── CLAUDE.md                       # This file
 ├── survey-system/                  # Next.js application root
 │   ├── src/
-│   │   ├── app/                    # App Router pages
+│   │   ├── app/
 │   │   │   ├── page.tsx            # Dashboard (stats, pipeline widget, activity feed)
 │   │   │   ├── layout.tsx          # Root layout with AuthProvider + CompanyProfileProvider
+│   │   │   ├── globals.css         # Global styles
+│   │   │   ├── icon.tsx            # Dynamic favicon
 │   │   │   ├── error.tsx           # Error boundary
 │   │   │   ├── not-found.tsx       # Custom 404
 │   │   │   ├── admin/
+│   │   │   │   ├── page.tsx        # Admin landing page
 │   │   │   │   ├── availability/   # Surveyor availability management
 │   │   │   │   ├── materials/      # Materials catalogue admin
 │   │   │   │   ├── rates/          # Pricing config (reads/writes pricing_config table)
 │   │   │   │   └── team/           # Team/surveyor management (profiles)
-│   │   │   ├── api/                # API routes (see API Routes section)
+│   │   │   ├── api/                # API routes (21 route files — see API Routes section)
 │   │   │   ├── calendar/           # Booking calendar (FullCalendar)
 │   │   │   ├── customers/          # Customer CRUD (list, [customerId] detail, new)
-│   │   │   ├── enquiries/          # Enquiry pipeline Kanban + new enquiry form
+│   │   │   ├── enquiries/          # Enquiry pipeline Kanban + new enquiry form (has layout.tsx)
 │   │   │   ├── materials/          # Materials catalogue view
-│   │   │   ├── q/[token]/          # Public quotation accept/decline page
-│   │   │   ├── report/[reportId]/  # Public report view page
+│   │   │   ├── q/[token]/          # Public quotation page (page.tsx + client.tsx + CSS)
+│   │   │   ├── report/[reportId]/  # Public report view (page.tsx + client.tsx + CSS)
 │   │   │   ├── settings/           # Settings hub + company profile + notification prefs
 │   │   │   ├── survey/
 │   │   │   │   ├── new/            # New survey creation
-│   │   │   │   └── [projectId]/
+│   │   │   │   └── [projectId]/    # Note: param is [projectId] (historical) — refers to survey ID
 │   │   │   │       ├── costing/    # Auto-calculated costing review
 │   │   │   │       ├── installer-info/ # Installer information/photos
 │   │   │   │       ├── quotation/[quotationId]/ # Quotation view + send
@@ -99,56 +120,22 @@ TyneTees_Damp/
 │   │   │   └── update-password/
 │   │   ├── components/
 │   │   │   ├── layout.tsx          # Sidebar nav with role-based items + NotificationBell
-│   │   │   ├── ProtectedRoute.tsx  # Auth guard
+│   │   │   ├── ProtectedRoute.tsx  # Auth guard (client-side route protection)
 │   │   │   ├── CompanyLogo.tsx     # Dynamic company logo
 │   │   │   ├── EnquiryDrawer.tsx   # Enquiry detail drawer (tabs, inline edit, activity)
 │   │   │   ├── NotificationBell.tsx # Realtime notification bell
-│   │   │   ├── calendar/           # Calendar components
-│   │   │   ├── installer-info/     # Installer info components
-│   │   │   ├── report/             # Report editor components
-│   │   │   ├── ui/                 # UI primitives (button, card, input, etc.)
-│   │   │   └── wizard/             # Survey wizard step components
-│   │   │       ├── WizardStepper.tsx
-│   │   │       ├── SiteDetailsStep.tsx
-│   │   │       ├── ExternalInspectionStep.tsx
-│   │   │       ├── RoomInspectionStep.tsx
-│   │   │       ├── DampFields.tsx, CondensationFields.tsx, TimberFields.tsx, WoodwormFields.tsx
-│   │   │       ├── AdditionalWorksStep.tsx
-│   │   │       └── ReviewStep.tsx
+│   │   │   ├── calendar/           # SlotPicker, SurveyorSelect
+│   │   │   ├── installer-info/     # InstallerPhotoUpload
+│   │   │   ├── report/             # 19 report section components (see Report Components)
+│   │   │   ├── ui/                 # Primitives: button, card, input, index
+│   │   │   └── wizard/             # 12 wizard components (see Wizard Components)
 │   │   ├── context/
 │   │   │   ├── AuthContext.tsx      # Auth state + profile + role-based flags
 │   │   │   └── CompanyProfileContext.tsx # Company profile provider
-│   │   ├── lib/
-│   │   │   ├── supabase-client.ts   # Browser Supabase client
-│   │   │   ├── supabase-server.ts   # Server-side Supabase client
-│   │   │   ├── supabase-data.ts     # Canonical data layer (all Supabase queries)
-│   │   │   ├── pricing-engine.ts    # Calculation engine (8 formula types)
-│   │   │   ├── pricing-data.ts      # Pricing data loading + orchestration
-│   │   │   ├── survey-mapping.ts    # Wizard data → pricing inputs (room aggregation)
-│   │   │   ├── survey-wizard-data.ts # Wizard persistence (load/save/auto-save)
-│   │   │   ├── survey-photo-service.ts # Photo upload/management
-│   │   │   ├── survey-tags.ts       # Survey type tagging
-│   │   │   ├── travel-overhead.ts   # Post-engine travel & vehicle overhead
-│   │   │   ├── report-generator.ts  # Report generation (boilerplate + LLM narrative)
-│   │   │   ├── report-data.ts       # Report CRUD operations
-│   │   │   ├── report-publish.ts    # Report publish/share
-│   │   │   ├── quotation-pdf-renderer.tsx # Quotation PDF layout
-│   │   │   ├── cf-csv-export.ts     # CF CSV export logic
-│   │   │   ├── cf-export-config.ts  # CF export configuration
-│   │   │   ├── calendar-data.ts     # Calendar/booking queries
-│   │   │   ├── calendar-types.ts    # Calendar TypeScript types
-│   │   │   ├── customer-data.ts     # Customer-specific queries
-│   │   │   ├── email-service.ts     # Resend email sending
-│   │   │   ├── email-templates.ts   # HTML email templates
-│   │   │   ├── email-config.ts      # Email configuration
-│   │   │   ├── company-profile.ts   # Company profile helpers
-│   │   │   ├── installer-info-categories.ts # Installer info category definitions
-│   │   │   ├── installer-info-data.ts # Installer info queries
-│   │   │   ├── notifications-server.ts # Server-side notification creation
-│   │   │   ├── notification-preferences.ts # Notification pref helpers
-│   │   │   ├── cron-auth.ts         # Cron route authentication
-│   │   │   ├── terms-hash.ts        # T&C hash generation
-│   │   │   └── __tests__/           # Test files (cf-csv-export.test.ts)
+│   │   ├── hooks/
+│   │   │   └── useSmartBack.ts     # Smart back navigation
+│   │   ├── middleware.ts           # Supabase SSR session management + token rotation
+│   │   ├── lib/                    # 31 library files (see Lib Files section)
 │   │   └── types/
 │   │       ├── database.types.ts    # Canonical DB TypeScript types
 │   │       ├── survey-wizard.types.ts # Wizard data model types
@@ -156,8 +143,8 @@ TyneTees_Damp/
 │   │       ├── survey-photo.types.ts  # Photo capture & storage types
 │   │       └── installer-info.types.ts # Installer info types
 │   ├── supabase/
-│   │   ├── migrations/              # 35 SQL migrations (see Database State)
-│   │   ├── functions/               # Edge functions (generate-report, send-quotation)
+│   │   ├── migrations/              # 34 SQL migrations
+│   │   ├── functions/               # Edge functions (legacy — app uses API routes instead)
 │   │   ├── config.toml
 │   │   ├── seed.sql
 │   │   └── setup-authentication.sql
@@ -165,70 +152,108 @@ TyneTees_Damp/
 │   ├── Dockerfile                   # Multi-stage Node 22 Alpine build
 │   ├── docker-compose.yml           # Local dev Postgres (NOT used in production)
 │   ├── package.json
-│   ├── next.config.mjs              # standalone output, 10MB server actions
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
+│   ├── next.config.mjs              # standalone output, 10MB server actions, ignoreBuildErrors
+│   ├── tailwind.config.ts           # Brand theme, custom animations, glass effects
+│   ├── postcss.config.mjs
+│   └── tsconfig.json                # strict mode, @/* path alias → ./src/*
 ├── supabase/
-│   └── migrations/                  # Legacy migration location
+│   └── migrations/                  # 1 root-level migration (allow_published_status)
 ├── workbook_extraction/             # Excel workbook analysis scripts
-├── docs/                            # Specification docs (in survey-system/docs/)
 └── *.xlsm, *.xls, *.csv            # Original Excel workbooks & exports
 ```
 
+### Wizard Components (12 files)
+
+`WizardStepper`, `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`
+
+### Report Components (19 files)
+
+`CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
+
+### Lib Files (31 files)
+
+**Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
+
+**Pricing:** `pricing-engine.ts` (8 formula types), `pricing-data.ts` (data loading + orchestration), `survey-mapping.ts` (wizard data → pricing inputs), `travel-overhead.ts` (post-engine travel & vehicle overhead)
+
+**Survey:** `survey-wizard-data.ts` (wizard persistence/auto-save), `survey-photo-service.ts` (photo upload/management), `survey-tags.ts` (survey type tagging)
+
+**Reports:** `report-generator.ts` (boilerplate + LLM narrative), `report-data.ts` (report CRUD), `report-publish.ts` (publish/share)
+
+**PDF:** `quotation-pdf-renderer.tsx` (quotation PDF layout via @react-pdf/renderer)
+
+**Email:** `email-service.ts` (Resend sending + communication_log), `email-templates.ts` (HTML templates), `email-config.ts` (config loading from platform_settings)
+
+**Calendar:** `calendar-data.ts` (booking queries), `calendar-types.ts` (TypeScript types)
+
+**Customer:** `customer-data.ts` (customer-specific queries)
+
+**Company:** `company-profile.ts` (company profile helpers)
+
+**Installer Info:** `installer-info-categories.ts` (category definitions), `installer-info-data.ts` (queries)
+
+**Notifications:** `notifications-server.ts` (server-side creation), `notification-preferences.ts` (preference helpers)
+
+**CSV Export:** `cf-csv-export.ts`, `cf-export-config.ts`
+
+**Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
+
+**Tests:** `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
+
 ## API Routes
 
-| Route | Method | Purpose |
-|---|---|---|
-| `/api/admin/team` | GET/POST | Team member CRUD |
-| `/api/bookings` | GET/POST | Booking management |
-| `/api/bookings/notify` | POST | Booking notification emails |
-| `/api/cron/booking-reminders` | GET | Daily booking reminder (cron) |
-| `/api/enquiries` | GET/POST | Enquiry CRUD |
-| `/api/enquiries/[id]` | GET/PATCH | Single enquiry operations |
-| `/api/enquiries/[id]/notify-on-hold` | POST | On-hold customer notification |
-| `/api/generate-report` | POST | LLM report narrative generation |
-| `/api/notifications` | GET/POST | In-app notification management |
-| `/api/notifications/trigger` | POST | Programmatic notification creation |
-| `/api/polish-observation` | POST | LLM polish survey observations |
-| `/api/q/[token]` | GET | Public quotation view |
-| `/api/q/[token]/pdf` | GET | Public quotation PDF download |
-| `/api/q/[token]/respond` | POST | Quotation accept/decline |
-| `/api/q/[token]/view` | POST | Track quotation view |
-| `/api/quotation-pdf/[quotationId]` | GET | Internal quotation PDF |
-| `/api/quotations` | POST | Create quotation |
-| `/api/quotations/[id]` | GET/PATCH | Quotation CRUD |
-| `/api/quotations/[id]/send` | POST | Send quotation email |
-| `/api/report/[reportId]` | GET | Report data |
-| `/api/report/[reportId]/view` | POST | Track report view |
-| `/api/reports/[id]` | GET/PATCH | Report CRUD |
-| `/api/reports/[id]/send` | POST | Send report email |
-| `/api/settings/company` | GET/POST | Company profile |
-| `/api/settings/company/logo` | POST | Logo upload |
-| `/api/settings/notifications` | GET/POST | Notification preferences |
-| `/api/settings/notifications/test-email` | POST | Test email delivery |
-| `/api/surveys` | GET/POST | Survey CRUD |
-| `/api/surveys/[id]` | GET/PATCH | Single survey operations |
-| `/api/surveys/[id]/quotation` | POST | Generate quotation from survey |
-| `/api/transcribe` | POST | Deepgram speech-to-text |
+21 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
 
-## Database State
+| Route | Purpose |
+|---|---|
+| `/api/admin/team` | Team member CRUD (service role) |
+| `/api/bookings/notify` | Booking notification emails |
+| `/api/cron/booking-reminders` | Daily booking reminder (cron, requires CRON_SECRET) |
+| `/api/enquiries/[id]/notify-on-hold` | On-hold customer email notification |
+| `/api/generate-report` | LLM report narrative generation (OpenRouter) |
+| `/api/notifications/trigger` | Programmatic in-app notification creation |
+| `/api/polish-observation` | LLM polish voice-transcribed observations (OpenRouter) |
+| `/api/q/[token]/pdf` | Public quotation PDF download |
+| `/api/q/[token]/respond` | Public quotation accept/decline |
+| `/api/q/[token]/view` | Track public quotation view |
+| `/api/quotation-pdf/[quotationId]` | Internal quotation PDF generation |
+| `/api/quotations/[id]/send` | Send quotation email |
+| `/api/report/[reportId]` | Public report data fetch |
+| `/api/report/[reportId]/view` | Track public report view |
+| `/api/reports/[id]/send` | Send report email |
+| `/api/settings/company` | Company profile CRUD |
+| `/api/settings/company/logo` | Logo upload |
+| `/api/settings/notifications` | Notification preference CRUD |
+| `/api/settings/notifications/test-email` | Test email delivery |
+| `/api/surveys/[id]/quotation` | Generate quotation from survey |
+| `/api/transcribe` | Deepgram speech-to-text |
 
-### Migrations (35 files)
+**Public routes** (excluded from auth middleware): `/api/q/*`, `/api/report/*`
 
-`00000000000000_initial_schema.sql` through `20260303000002_fix_notifications_replica_identity.sql`. Covers: complete schema, seed data, user profiles, password management, storage buckets, installer info, costing corrections (multiple), formula fixes, quotation schema, section inclusions, company profile, survey tags, surveyor identity, calendar/bookings/availability, notifications, communication log, report/quotation view tracking, quotation acceptances, enquiry pipeline, and realtime fixes.
+## Middleware
+
+`src/middleware.ts` — Supabase SSR session management. Runs on all routes except `_next/static`, `_next/image`, `favicon.ico`, `api/q/` (public quotation), and `api/report/` (public report). Handles JWT refresh via `getUser()`. Route protection is handled client-side by `ProtectedRoute.tsx`, not middleware.
+
+## Database
+
+### Migrations
+
+35 total: 34 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
+
+Range: `00000000000000_initial_schema.sql` through `20260303000002_fix_notifications_replica_identity.sql`. Applied manually via `docker exec`.
 
 ### Active Tables
 
 **CRM & Pipeline:**
-- `enquiries` — enquiry records with pipeline columns (status, priority, sla, follow_up_date, on_hold_reason, decline_reason)
-- `enquiry_activity` — enquiry activity/timeline log
+- `enquiries` — pipeline records (status, priority, sla, follow_up_date, on_hold_reason, decline_reason)
+- `enquiry_activity` — activity/timeline log
 - `on_hold_templates` — predefined on-hold message templates
 - `customers` — customer master data
-- `communication_log` — customer communication records
+- `communication_log` — email/call communication records
 
 **User & Team:**
 - `user_profiles` — user accounts with roles (admin, office, surveyor)
-- `platform_settings` — per-user settings (notification preferences)
+- `platform_settings` — per-user settings (notification preferences, Resend API key override)
 
 **Surveys:**
 - `surveys` — survey jobs with `survey_type`, `status`, `survey_data` JSONB, `tags` TEXT[]
@@ -250,13 +275,13 @@ TyneTees_Damp/
 - `costing_section_adjustments` — per-section price adjustment %
 
 **Quotations:**
-- `quotations` — generated quotations with status workflow (draft → sent → viewed → accepted/declined)
-- `quotation_sections` — quotation line items
+- `quotations` — status workflow: draft → sent → viewed → accepted/declined
+- `quotation_sections` — quotation line items with optional/included flags
 - `quotation_acceptances` — e-signature consent records (immutable audit trail)
 
 **Reports:**
 - `report_templates` — 4 default templates (one per survey type)
-- `survey_reports` — generated report instances (draft → generated → reviewed → finalised)
+- `survey_reports` — status workflow: draft → generated → reviewed → finalised → published
 - `report_view_events` — report view tracking
 
 **Calendar & Bookings:**
@@ -271,9 +296,6 @@ TyneTees_Damp/
 - `company_profile` — company details, logo, T&C text
 - `section_inclusions` — per-survey-type section inclusion settings
 
-**Survey Outputs (schema exists, not yet populated):**
-- `survey_customer_summary`, `survey_overheads`, `survey_caf1`, `survey_subcontractor_costs`
-
 ### Key Pricing Config Values
 
 | Key | Value |
@@ -287,8 +309,8 @@ TyneTees_Damp/
 
 ### Formula Types in costing_line_templates
 
-- `standard` — material = unit_cost × quantity, labour = rate × quantity
-- `ceiling_coverage` — CEIL(quantity / coverage) × (unit_cost / coverage × wastage)
+- `standard` — material = unit_cost x quantity, labour = rate x quantity
+- `ceiling_coverage` — CEIL(quantity / coverage) x (unit_cost / coverage x wastage)
 - `dpc_injection` — cream cost + drill plug cost based on wall depth
 - `compound_material` — multi-material mix (e.g. dubbing coat = SBR + sand + cement)
 - `fixed_price` — flat rate item (e.g. PIV units)
@@ -332,6 +354,7 @@ Kanban board with drag-and-drop columns: New → Contacted → Booked → Survey
 - **Data functions** in `src/lib/supabase-data.ts` — primary data layer for all Supabase queries
 - **Wizard types** in `src/types/survey-wizard.types.ts`
 - **Report types** in `src/types/survey-report.types.ts`
+- **Path alias:** `@/*` maps to `./src/*`
 - **Auth context** exports: `session`, `user`, `profile`, `role`, `isAdmin`, `isOffice`, `isSurveyor`, `mustChangePassword`
 
 ## Important Notes
@@ -345,6 +368,8 @@ Kanban board with drag-and-drop columns: New → Contacted → Booked → Survey
 - **TypeScript build errors are ignored** (`ignoreBuildErrors: true` in next.config.mjs) — use `npm run lint` for checks
 - Toast notifications use `sonner` — never use `alert()` calls
 - **Enquiry source values** are stored in Title Case
+- **Server actions** body size limit is 10MB (for photo uploads)
+- **Edge functions** in `supabase/functions/` are legacy — all LLM/email operations use Next.js API routes
 
 ## Build & Dev Commands
 
@@ -361,11 +386,11 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Dashboard:** Survey stats, enquiry pipeline widget, recent activity feed
 - **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book
 - **Customer Management:** List, create, edit, detail with history and communication log
-- **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save
+- **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture
 - **Pricing Engine:** 8 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature
-- **Reports:** LLM narrative generation (OpenRouter), section editor, status workflow, email sending, public view
+- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view
 - **Calendar:** Booking management with FullCalendar, surveyor availability, booking notifications, daily reminders
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management
 - **Settings:** Company profile, logo upload, notification preferences, email testing
@@ -374,6 +399,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Installer Info:** Per-survey installer information and photos
 - **CF CSV Export:** Export logic with test coverage
 - **Transcription:** Deepgram speech-to-text for survey observations
+- **Observation Polishing:** LLM cleanup of voice-transcribed notes
 
 ## External API Access Available
 
@@ -381,13 +407,13 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Coolify** — Deployment management (API token at `coolify_api_token`)
 - **Resend** — Transactional email (credentials at `.resend-credentials`)
 - **Deepgram** — Speech-to-text (credentials at `.deepgram-credentials`)
-- **OpenRouter** — LLM API access (key in `.env.local`)
+- **OpenRouter** — LLM API access (key in `.env.local`, model: `x-ai/grok-4.1-fast`)
 
 ## Reference Documents
 
-- `survey-system/PROJECT_STATE.md` — build progress tracker (stale — last updated Feb 2026)
 - `survey-system/DATABASE.md` — database documentation
 - `survey-system/DEVELOPMENT.md` — development setup guide
 - `survey-system/AUTHENTICATION.md` — auth setup docs
 - `survey-system/SUPER_ADMIN_SETUP.md` — admin account setup
+- `survey-system/PROJECT_STATE.md` — build progress tracker (stale — last updated Feb 2026)
 - `workbook_extraction/output/` — workbook analysis (damp, condensation, timber, woodworm)
