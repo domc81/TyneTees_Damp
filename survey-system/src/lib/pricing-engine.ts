@@ -348,8 +348,8 @@ export function calcDpcInjection(
     ?? config['default_labour_markup']
     ?? 1.00
 
-  // Calculate labour (depth × 0.35 hours per LM)
-  const labourHours = linearMeters * wallDepth * LABOUR_HOURS_PER_DEPTH
+  // Calculate labour (depth × 0.35 hours — independent of linear metres)
+  const labourHours = wallDepth * LABOUR_HOURS_PER_DEPTH
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 
