@@ -197,14 +197,14 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
       <div className="glass-card p-4 space-y-3">
         <h5 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <Package className="w-4 h-4 text-red-300" />
-          Loft Insulation
+          Fogging Loft Area
         </h5>
         <p className="text-xs text-white/50">
-          Where roof timbers are treated, insulation must be lifted, the area fogged, and insulation relaid
+          Enter loft floor area to fog. Optionally include lifting and/or relaying insulation.
         </p>
         <div>
           <label className="block text-sm font-medium text-white/70 mb-2">
-            Loft Insulation Area (m²)
+            Fogging Loft Area (m²)
           </label>
           <input
             type="number"
@@ -213,9 +213,54 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
             className="input-field"
             step="0.1"
             min="0"
-            placeholder="Loft floor area requiring insulation lift"
+            placeholder="Loft floor area to fog"
           />
         </div>
+
+        {/* Lifting / Relaying toggles — only shown when fogging area > 0 */}
+        {(data.loft_insulation_area || 0) > 0 && (
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+              <label className="text-sm font-medium text-white">Include Lifting Loft Insulation</label>
+              <button
+                onClick={() => handleChange('include_lifting_loft_insulation', !data.include_lifting_loft_insulation)}
+                className={`
+                  relative inline-flex h-6 w-11 items-center rounded-full
+                  transition-colors duration-300
+                  ${data.include_lifting_loft_insulation ? 'bg-red-500' : 'bg-white/20'}
+                `}
+              >
+                <span
+                  className={`
+                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    transition-transform duration-300
+                    ${data.include_lifting_loft_insulation ? 'translate-x-6' : 'translate-x-1'}
+                  `}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+              <label className="text-sm font-medium text-white">Include Relaying Loft Insulation</label>
+              <button
+                onClick={() => handleChange('include_relaying_loft_insulation', !data.include_relaying_loft_insulation)}
+                className={`
+                  relative inline-flex h-6 w-11 items-center rounded-full
+                  transition-colors duration-300
+                  ${data.include_relaying_loft_insulation ? 'bg-red-500' : 'bg-white/20'}
+                `}
+              >
+                <span
+                  className={`
+                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    transition-transform duration-300
+                    ${data.include_relaying_loft_insulation ? 'translate-x-6' : 'translate-x-1'}
+                  `}
+                />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Staircase Fogging */}

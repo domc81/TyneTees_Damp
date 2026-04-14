@@ -865,6 +865,8 @@ function mapWoodwormSurvey(
   let totalWWStaircaseOpenRearSteps = 0
   let totalWWStaircaseClosedRearSteps = 0
   let totalLoftInsulationArea = 0
+  let totalLiftingArea = 0
+  let totalRelayingArea = 0
 
   for (const room of woodwormRooms) {
     const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
@@ -877,6 +879,12 @@ function mapWoodwormSurvey(
     totalWWStaircaseOpenRearSteps += woodwormData.staircase_open_rear_steps || 0
     totalWWStaircaseClosedRearSteps += woodwormData.staircase_closed_rear_steps || 0
     totalLoftInsulationArea += woodwormData.loft_insulation_area || 0
+    if (woodwormData.include_lifting_loft_insulation) {
+      totalLiftingArea += woodwormData.loft_insulation_area || 0
+    }
+    if (woodwormData.include_relaying_loft_insulation) {
+      totalRelayingArea += woodwormData.loft_insulation_area || 0
+    }
   }
 
   // === TIMBER TREATMENTS ===
@@ -901,15 +909,19 @@ function mapWoodwormSurvey(
   const wwStaircaseClosedInput = createLineInput(lookup, 'timber_treatments', 'fogging_staircase_rear_closed_drill_and_plug_per_step', totalWWStaircaseClosedRearSteps)
   if (wwStaircaseClosedInput) inputs.push(wwStaircaseClosedInput)
 
-  // Loft insulation — lift, fog, and relay (all three use the same area quantity)
+  // Loft — fogging always included when area > 0; lifting/relaying only when toggled on
   if (totalLoftInsulationArea > 0) {
-    const liftInsulationInput = createLineInput(lookup, 'timber_treatments', 'lifting_loft_insulation', totalLoftInsulationArea)
-    if (liftInsulationInput) inputs.push(liftInsulationInput)
-
     const fogLoftInput = createLineInput(lookup, 'timber_treatments', 'fogging_loft_area_calculated_from_floor_area_of_loft', totalLoftInsulationArea)
     if (fogLoftInput) inputs.push(fogLoftInput)
+  }
 
-    const relayInsulationInput = createLineInput(lookup, 'timber_treatments', 'relaying_loft_insulation', totalLoftInsulationArea)
+  if (totalLiftingArea > 0) {
+    const liftInsulationInput = createLineInput(lookup, 'timber_treatments', 'lifting_loft_insulation', totalLiftingArea)
+    if (liftInsulationInput) inputs.push(liftInsulationInput)
+  }
+
+  if (totalRelayingArea > 0) {
+    const relayInsulationInput = createLineInput(lookup, 'timber_treatments', 'relaying_loft_insulation', totalRelayingArea)
     if (relayInsulationInput) inputs.push(relayInsulationInput)
   }
 
