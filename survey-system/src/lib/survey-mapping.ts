@@ -417,8 +417,12 @@ function mapDampSurvey(
 /**
  * Map condensation survey data to line inputs
  *
- * Room-count driven rather than area-based. Maps PIV units, fans,
- * humidistat vents, and mould treatment based on room selections.
+ * PIV is property-level (from additional_works.condensation_piv).
+ * Extraction is room-level (from each room's CondensationRoomData).
+ * Mould treatment is aggregated across rooms by severity.
+ *
+ * Falls back to deprecated field paths for old surveys that predate the
+ * new PIV/extraction data structures.
  */
 function mapCondensationSurvey(
   wizardData: SurveyWizardData,
@@ -427,24 +431,36 @@ function mapCondensationSurvey(
 ): LineInput[] {
   const inputs: LineInput[] = []
   const additionalWorks = wizardData.additional_works || {}
+  const condensationPiv = additionalWorks.condensation_piv
 
   // Filter rooms with condensation issues
   const condensationRooms = rooms.filter(r => r.issues_identified?.includes('condensation'))
-  if (condensationRooms.length === 0 && !additionalWorks.piv_count) return inputs
 
-  // Aggregate condensation data
+  // Early return: no condensation rooms and no PIV (new or legacy)
+  if (condensationRooms.length === 0 && !condensationPiv?.piv_recommended && !additionalWorks.piv_count) return inputs
+
+  // === AGGREGATE ROOM DATA ===
+
   let totalMouldArea = 0
-  let fanCount = 0
+
+  // New extraction aggregators (room-level)
+  let totalPassiveVents = 0
+  let totalPassiveCoreHoles = 0
+  let totalCVents = 0
+  let totalFans = 0
+  let totalFanElecPacks = 0
+  let totalFanCoreHoles = 0
+  let totalFanGrilles = 0
+  let hasNewExtractionData = false
+
+  // Legacy fan aggregator
+  let legacyFanCount = 0
 
   for (const room of condensationRooms) {
     const condData = room.room_data?.condensation as CondensationRoomData | undefined
     if (!condData) continue
 
-    if (condData.fan_recommended) {
-      fanCount += condData.fan_count || 1
-    }
-
-    // Mould severity affects area
+    // Mould severity → estimated area
     if (condData.black_mould_present && condData.mould_severity) {
       const areaBySeverity = {
         light: 3,
@@ -453,16 +469,106 @@ function mapCondensationSurvey(
       }
       totalMouldArea += areaBySeverity[condData.mould_severity] || 6
     }
+
+    // New extraction structure (extraction_needed field present)
+    if (condData.extraction_needed !== undefined) {
+      hasNewExtractionData = true
+      if (condData.extraction_needed) {
+        if (condData.extraction_type === 'passive') {
+          totalPassiveVents += condData.cpass_passive_vent_count || 0
+          totalCVents += condData.dryaire_cvent_count || 0
+          if (condData.core_hole_required) {
+            totalPassiveCoreHoles += condData.core_hole_count || 0
+          }
+        } else if (condData.extraction_type === 'active') {
+          totalFans += condData.trickle_boost_fan_count || 0
+          totalFanElecPacks += condData.electrical_pack_count || 0
+          totalFanCoreHoles += condData.core_hole_count_active || 0
+          totalFanGrilles += condData.fan_grille_count || 0
+        }
+      }
+    } else {
+      // Legacy: old room-level fan fields
+      if (condData.fan_recommended) {
+        legacyFanCount += condData.fan_count || 1
+      }
+    }
   }
 
-  // === PIV UNITS ===
+  // === PIV UNITS (property-level) ===
 
-  const pivCount = additionalWorks.piv_count || 0
-  const pivType = additionalWorks.piv_type || 'none'
+  const useNewPiv = condensationPiv?.piv_recommended && condensationPiv.piv_type && condensationPiv.piv_type !== 'none'
 
-  if (pivCount > 0 && pivType !== 'none') {
+  if (useNewPiv) {
+    // --- New PIV structure (CondensationPIV on additional_works) ---
+    const pivType = condensationPiv!.piv_type!
+    const pivCount = condensationPiv!.piv_unit_count || 0
+
+    if (pivCount > 0) {
+      if (pivType === 'loft_heated' || pivType === 'loft_unheated') {
+        // C7 fix: check directly for 'loft_unheated' (not legacy product name)
+        const pivLineKey = pivType === 'loft_unheated'
+          ? 'va_pozidry_loft_unit_unheated'
+          : 'va_pozidry_loft_unit_heated'
+
+        const pivInput = createLineInput(lookup, 'piv_loft', pivLineKey, pivCount)
+        if (pivInput) inputs.push(pivInput)
+
+        // Electrical packs (explicit count)
+        const elecCount = condensationPiv!.electrical_pack_count || 0
+        if (elecCount > 0) {
+          const elecInput = createLineInput(lookup, 'piv_loft', 'electrical_pack_fused_spur_cable_jb', elecCount)
+          if (elecInput) inputs.push(elecInput)
+        }
+
+        // Sarkvents (loft types only)
+        const sarkCount = condensationPiv!.sarkvent_count || 0
+        if (sarkCount > 0) {
+          const sarkInput = createLineInput(lookup, 'piv_loft', 'sarkvents', sarkCount)
+          if (sarkInput) inputs.push(sarkInput)
+        }
+
+        // Loft Hatch — new or enlarge (mutually exclusive)
+        if (additionalWorks.loft_hatch_new_required) {
+          const loftHatchNewInput = createLineInput(lookup, 'loft_hatch_new', 'new_loft_hatch_with_sturdy_fold_down_ladder_with_handrail_an', 1)
+          if (loftHatchNewInput) inputs.push(loftHatchNewInput)
+        } else if (additionalWorks.loft_hatch_enlarge_required) {
+          const loftHatchEnlargeInput = createLineInput(lookup, 'loft_hatch_enlarge', 'existing_loft_hatch_enlarge_loft_hatch', 1)
+          if (loftHatchEnlargeInput) inputs.push(loftHatchEnlargeInput)
+        }
+      } else if (pivType === 'wall_mounted') {
+        const wallPivInput = createLineInput(lookup, 'piv_wall', 'va_pozidry_compact_wall_mounted_unit', pivCount)
+        if (wallPivInput) inputs.push(wallPivInput)
+
+        // Electrical packs (wall-mounted)
+        const wallElecCount = condensationPiv!.electrical_pack_count || 0
+        if (wallElecCount > 0) {
+          const wallElecInput = createLineInput(lookup, 'piv_wall', 'electrical_pack_fused_spur_cable_jb_piv_wall', wallElecCount)
+          if (wallElecInput) inputs.push(wallElecInput)
+        }
+
+        // Core holes (wall-mounted only)
+        const coreCount = condensationPiv!.core_hole_count || 0
+        if (coreCount > 0) {
+          const coreInput = createLineInput(lookup, 'piv_wall', 'diamond_core_107mm_hole', coreCount)
+          if (coreInput) inputs.push(coreInput)
+        }
+
+        // Joinery ducting boxwork (wall-mounted only, min charge 2.4m)
+        const joineryLm = condensationPiv!.joinery_ducting_boxwork_lm || 0
+        if (joineryLm > 0) {
+          const joineryQty = Math.max(joineryLm, 2.4)
+          const joineryInput = createLineInput(lookup, 'joinery_ducting', 'joinery_to_box_in_ducting_per_metre_min_charge_24_metres', joineryQty)
+          if (joineryInput) inputs.push(joineryInput)
+        }
+      }
+    }
+  } else if ((additionalWorks.piv_count || 0) > 0 && additionalWorks.piv_type && additionalWorks.piv_type !== 'none') {
+    // --- Legacy PIV structure (deprecated flat fields on additional_works) ---
+    const pivCount = additionalWorks.piv_count!
+    const pivType = additionalWorks.piv_type!
+
     if (pivType === 'loft_heated' || pivType === 'loft_unheated') {
-      // Determine PIV line key based on heated vs unheated selection
       const pivLineKey = pivType === 'loft_unheated'
         ? 'va_pozidry_loft_unit_unheated'
         : 'va_pozidry_loft_unit_heated'
@@ -470,20 +576,17 @@ function mapCondensationSurvey(
       const pivInput = createLineInput(lookup, 'piv_loft', pivLineKey, pivCount)
       if (pivInput) inputs.push(pivInput)
 
-      // Electrical pack per PIV
       if (additionalWorks.piv_electrical_pack) {
         const electricalInput = createLineInput(lookup, 'piv_loft', 'electrical_pack_fused_spur_cable_jb', pivCount)
         if (electricalInput) inputs.push(electricalInput)
       }
 
-      // Sarkvents
       const sarkventCount = additionalWorks.sarkvents_count || 0
       if (sarkventCount > 0) {
         const sarkventInput = createLineInput(lookup, 'piv_loft', 'sarkvents', sarkventCount)
         if (sarkventInput) inputs.push(sarkventInput)
       }
 
-      // Loft Hatch — new or enlarge (mutually exclusive)
       if (additionalWorks.loft_hatch_new_required) {
         const loftHatchNewInput = createLineInput(lookup, 'loft_hatch_new', 'new_loft_hatch_with_sturdy_fold_down_ladder_with_handrail_an', 1)
         if (loftHatchNewInput) inputs.push(loftHatchNewInput)
@@ -492,27 +595,32 @@ function mapCondensationSurvey(
         if (loftHatchEnlargeInput) inputs.push(loftHatchEnlargeInput)
       }
     } else if (pivType === 'wall_mounted') {
-      // Wall-mounted PIV unit
       const wallPivInput = createLineInput(lookup, 'piv_wall', 'va_pozidry_compact_wall_mounted_unit', pivCount)
       if (wallPivInput) inputs.push(wallPivInput)
 
-      // Electrical pack for wall-mounted PIV
       const wallElecCount = additionalWorks.wall_mounted_electrical_pack_count || 0
       if (wallElecCount > 0) {
         const wallElecInput = createLineInput(lookup, 'piv_wall', 'electrical_pack_fused_spur_cable_jb_piv_wall', wallElecCount)
         if (wallElecInput) inputs.push(wallElecInput)
       }
 
-      // Core hole for wall-mounted PIV
       const wallCoreCount = additionalWorks.wall_mounted_core_hole_count || 0
       if (wallCoreCount > 0) {
         const wallCoreInput = createLineInput(lookup, 'piv_wall', 'diamond_core_107mm_hole', wallCoreCount)
         if (wallCoreInput) inputs.push(wallCoreInput)
       }
     }
+
+    // Legacy joinery ducting
+    const joineryDuctingMetres = additionalWorks.joinery_ducting_metres || 0
+    if (joineryDuctingMetres > 0) {
+      const joineryQuantity = Math.max(joineryDuctingMetres, 2.4)
+      const joineryInput = createLineInput(lookup, 'joinery_ducting', 'joinery_to_box_in_ducting_per_metre_min_charge_24_metres', joineryQuantity)
+      if (joineryInput) inputs.push(joineryInput)
+    }
   }
 
-  // === DUCTING COMPONENTS ===
+  // === DUCTING COMPONENTS (unchanged — same structure on additionalWorks) ===
 
   for (const component of additionalWorks.ducting_components || []) {
     let lineKey = ''
@@ -558,57 +666,88 @@ function mapCondensationSurvey(
     }
   }
 
-  // === HUMIDISTAT FANS ===
+  // === EXTRACTION — ACTIVE (humidistat fans) ===
 
-  if (fanCount > 0) {
-    const fanInput = createLineInput(lookup, 'humidistat_fan', 'trickle_and_boost_humidistat_fan_greenwood', fanCount)
+  if (hasNewExtractionData) {
+    // New: room-level aggregated fan counts
+    if (totalFans > 0) {
+      const fanInput = createLineInput(lookup, 'humidistat_fan', 'trickle_and_boost_humidistat_fan_greenwood', totalFans)
+      if (fanInput) inputs.push(fanInput)
+
+      if (totalFanElecPacks > 0) {
+        const fanElecInput = createLineInput(lookup, 'humidistat_fan', 'electrical_pack_fused_spur_cable_jb_humidistat_fan', totalFanElecPacks)
+        if (fanElecInput) inputs.push(fanElecInput)
+      }
+
+      if (totalFanGrilles > 0) {
+        const grilleInput = createLineInput(lookup, 'humidistat_fan', 'grille_humidistat_fan', totalFanGrilles)
+        if (grilleInput) inputs.push(grilleInput)
+      }
+
+      if (totalFanCoreHoles > 0) {
+        const coreHoleInput = createLineInput(lookup, 'humidistat_fan', 'diamond_core_107mm_hole_humidistat_fan', totalFanCoreHoles)
+        if (coreHoleInput) inputs.push(coreHoleInput)
+      }
+    }
+  } else if (legacyFanCount > 0) {
+    // Legacy: fan_recommended + fan_count from rooms, accessories from additional_works
+    const fanInput = createLineInput(lookup, 'humidistat_fan', 'trickle_and_boost_humidistat_fan_greenwood', legacyFanCount)
     if (fanInput) inputs.push(fanInput)
 
-    // Electrical pack per fan
-    const fanElectricalCount = additionalWorks.fan_electrical_pack_total || fanCount
+    const fanElectricalCount = additionalWorks.fan_electrical_pack_total || legacyFanCount
     const fanElectricalInput = createLineInput(lookup, 'humidistat_fan', 'electrical_pack_fused_spur_cable_jb_humidistat_fan', fanElectricalCount)
     if (fanElectricalInput) inputs.push(fanElectricalInput)
 
-    // Grilles
-    const grilleCount = additionalWorks.fan_grille_count || fanCount
+    const grilleCount = additionalWorks.fan_grille_count || legacyFanCount
     const grilleInput = createLineInput(lookup, 'humidistat_fan', 'grille_humidistat_fan', grilleCount)
     if (grilleInput) inputs.push(grilleInput)
 
-    // Core holes
-    const coreHoleCount = additionalWorks.fan_core_hole_count || fanCount
+    const coreHoleCount = additionalWorks.fan_core_hole_count || legacyFanCount
     const coreHoleInput = createLineInput(lookup, 'humidistat_fan', 'diamond_core_107mm_hole_humidistat_fan', coreHoleCount)
     if (coreHoleInput) inputs.push(coreHoleInput)
   }
 
-  // === CPASS PASSIVE VENTS ===
+  // === EXTRACTION — PASSIVE (Cpass vents + CVents) ===
 
-  const cpassVentCount = additionalWorks.cpass_vent_count || 0
-  if (cpassVentCount > 0) {
-    const ventInput = createLineInput(lookup, 'passive_vent', 'dryaire_cpass_plasmo_insulated_pullcord_passive_vent', cpassVentCount)
-    if (ventInput) inputs.push(ventInput)
+  if (hasNewExtractionData) {
+    // New: room-level aggregated passive vent counts
+    if (totalPassiveVents > 0) {
+      const ventInput = createLineInput(lookup, 'passive_vent', 'dryaire_cpass_plasmo_insulated_pullcord_passive_vent', totalPassiveVents)
+      if (ventInput) inputs.push(ventInput)
 
-    const coreHoleInput = createLineInput(lookup, 'passive_vent', 'diamond_core_107mm_hole_passive_vent', cpassVentCount)
-    if (coreHoleInput) inputs.push(coreHoleInput)
-  }
+      if (totalPassiveCoreHoles > 0) {
+        const coreInput = createLineInput(lookup, 'passive_vent', 'diamond_core_107mm_hole_passive_vent', totalPassiveCoreHoles)
+        if (coreInput) inputs.push(coreInput)
+      }
+    }
 
-  // === DRYAIRE CVENTS ===
+    if (totalCVents > 0) {
+      const cventInput = createLineInput(lookup, 'dryaire_cvent', 'dryaire_cvent', totalCVents)
+      if (cventInput) inputs.push(cventInput)
 
-  const cventCount = additionalWorks.cvent_count || 0
-  if (cventCount > 0) {
-    const cventInput = createLineInput(lookup, 'dryaire_cvent', 'dryaire_cvent', cventCount)
-    if (cventInput) inputs.push(cventInput)
+      // Each CVent needs a core hole
+      const cventCoreInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', totalCVents)
+      if (cventCoreInput) inputs.push(cventCoreInput)
+    }
+  } else {
+    // Legacy: passive vents from additional_works
+    const cpassVentCount = additionalWorks.cpass_vent_count || 0
+    if (cpassVentCount > 0) {
+      const ventInput = createLineInput(lookup, 'passive_vent', 'dryaire_cpass_plasmo_insulated_pullcord_passive_vent', cpassVentCount)
+      if (ventInput) inputs.push(ventInput)
 
-    const cventCoreHoleInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', cventCount)
-    if (cventCoreHoleInput) inputs.push(cventCoreHoleInput)
-  }
+      const coreHoleInput = createLineInput(lookup, 'passive_vent', 'diamond_core_107mm_hole_passive_vent', cpassVentCount)
+      if (coreHoleInput) inputs.push(coreHoleInput)
+    }
 
-  // === JOINERY DUCTING BOXWORK ===
+    const cventCount = additionalWorks.cvent_count || 0
+    if (cventCount > 0) {
+      const cventInput = createLineInput(lookup, 'dryaire_cvent', 'dryaire_cvent', cventCount)
+      if (cventInput) inputs.push(cventInput)
 
-  const joineryDuctingMetres = additionalWorks.joinery_ducting_metres || 0
-  if (joineryDuctingMetres > 0) {
-    const joineryQuantity = Math.max(joineryDuctingMetres, 2.4)
-    const joineryInput = createLineInput(lookup, 'joinery_ducting', 'joinery_to_box_in_ducting_per_metre_min_charge_24_metres', joineryQuantity)
-    if (joineryInput) inputs.push(joineryInput)
+      const cventCoreHoleInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', cventCount)
+      if (cventCoreHoleInput) inputs.push(cventCoreHoleInput)
+    }
   }
 
   // === MOULD TREATMENT ===
