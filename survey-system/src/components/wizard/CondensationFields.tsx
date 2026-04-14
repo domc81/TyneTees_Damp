@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { CondensationRoomData, MouldSeverity } from '@/types/survey-wizard.types'
+import { CondensationRoomData, ExtractionType, MouldSeverity } from '@/types/survey-wizard.types'
 import { Wind, Droplet, Fan, AlertCircle } from 'lucide-react'
 
 interface CondensationFieldsProps {
@@ -21,6 +21,10 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
   }, [rhReading])
   const handleChange = (field: keyof CondensationRoomData, value: any) => {
     onChange({ ...data, [field]: value })
+  }
+
+  const handleMultiChange = (updates: Partial<CondensationRoomData>) => {
+    onChange({ ...data, ...updates })
   }
 
   return (
@@ -163,91 +167,231 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
         </div>
       </div>
 
-      {/* Recommendations */}
+      {/* Extraction */}
       <div className="glass-card p-4 space-y-3">
         <h5 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <Fan className="w-4 h-4 text-purple-300" />
-          Recommendations (Room-Specific)
+          Extraction
         </h5>
 
-        <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-400/30 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-purple-300 mt-0.5 shrink-0" />
-          <p className="text-xs text-white/70">
-            Equipment quantities will be captured in Additional Works (Step 4). Here, indicate if
-            this room would benefit from ventilation improvements.
-          </p>
-        </div>
-
-        {/* PIV Recommended */}
+        {/* Extraction Needed */}
         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-          <div>
-            <label className="text-sm font-medium text-white">PIV Recommended</label>
-            <p className="text-xs text-white/50">Positive Input Ventilation</p>
-          </div>
-          <button
-            onClick={() => handleChange('piv_recommended', !data.piv_recommended)}
-            className={`
-              relative inline-flex h-6 w-11 items-center rounded-full
-              transition-colors duration-300
-              ${data.piv_recommended ? 'bg-brand-500' : 'bg-white/20'}
-            `}
-          >
-            <span
-              className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
-                transition-transform duration-300
-                ${data.piv_recommended ? 'translate-x-6' : 'translate-x-1'}
-              `}
-            />
-          </button>
-        </div>
-
-        {/* Fan Recommended */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-          <div>
-            <label className="text-sm font-medium text-white">Fan Recommended</label>
-            <p className="text-xs text-white/50">Extractor fan</p>
-          </div>
+          <label className="text-sm font-medium text-white">Extraction Needed</label>
           <button
             onClick={() => {
-              const newValue = !data.fan_recommended
-              handleChange('fan_recommended', newValue)
-              // Clear fan count if not recommended
-              if (!newValue) {
-                handleChange('fan_count', undefined)
+              if (data.extraction_needed) {
+                handleMultiChange({
+                  extraction_needed: false,
+                  extraction_type: undefined,
+                  cpass_passive_vent_count: undefined,
+                  dryaire_cvent_count: undefined,
+                  core_hole_required: undefined,
+                  core_hole_count: undefined,
+                  trickle_boost_fan_count: undefined,
+                  electrical_pack_count: undefined,
+                  core_hole_count_active: undefined,
+                  fan_grille_count: undefined,
+                })
+              } else {
+                handleChange('extraction_needed', true)
               }
             }}
             className={`
               relative inline-flex h-6 w-11 items-center rounded-full
               transition-colors duration-300
-              ${data.fan_recommended ? 'bg-brand-500' : 'bg-white/20'}
+              ${data.extraction_needed ? 'bg-brand-500' : 'bg-white/20'}
             `}
           >
             <span
               className={`
                 inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
                 transition-transform duration-300
-                ${data.fan_recommended ? 'translate-x-6' : 'translate-x-1'}
+                ${data.extraction_needed ? 'translate-x-6' : 'translate-x-1'}
               `}
             />
           </button>
         </div>
 
-        {/* Fan Count - only shown when fan_recommended is true */}
-        {data.fan_recommended && (
-          <div className="pl-4 pt-2">
-            <label className="block text-sm font-medium text-white/70 mb-2">
-              Number of Fans for This Room
-            </label>
-            <input
-              type="number"
-              value={data.fan_count || ''}
-              onChange={(e) => handleChange('fan_count', parseInt(e.target.value) || undefined)}
-              className="input-field"
-              min="0"
-              placeholder="e.g., 1"
-            />
-          </div>
+        {data.extraction_needed && (
+          <>
+            {/* Active / Passive selection */}
+            <div className="pl-4 pt-2">
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Extraction Type
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['passive', 'active'] as ExtractionType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      handleMultiChange({
+                        extraction_type: type,
+                        cpass_passive_vent_count: undefined,
+                        dryaire_cvent_count: undefined,
+                        core_hole_required: undefined,
+                        core_hole_count: undefined,
+                        trickle_boost_fan_count: undefined,
+                        electrical_pack_count: undefined,
+                        core_hole_count_active: undefined,
+                        fan_grille_count: undefined,
+                      })
+                    }}
+                    className={`
+                      px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize
+                      ${
+                        data.extraction_type === type
+                          ? 'bg-purple-500/30 border border-purple-400 text-white'
+                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                      }
+                    `}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Passive sub-fields */}
+            {data.extraction_type === 'passive' && (
+              <div className="pl-4 space-y-3 border-l-2 border-purple-500/30 ml-2">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Cpass Passive Vents
+                  </label>
+                  <input
+                    type="number"
+                    value={data.cpass_passive_vent_count ?? 0}
+                    onChange={(e) => handleChange('cpass_passive_vent_count', parseInt(e.target.value) || 0)}
+                    className="input-field"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Dryaire CVents
+                  </label>
+                  <input
+                    type="number"
+                    value={data.dryaire_cvent_count ?? 0}
+                    onChange={(e) => handleChange('dryaire_cvent_count', parseInt(e.target.value) || 0)}
+                    className="input-field"
+                    min="0"
+                  />
+                </div>
+
+                {/* Core Hole Required gate */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                  <label className="text-sm font-medium text-white">Core Hole Required</label>
+                  <button
+                    onClick={() => {
+                      if (data.core_hole_required) {
+                        handleMultiChange({ core_hole_required: false, core_hole_count: undefined })
+                      } else {
+                        handleChange('core_hole_required', true)
+                      }
+                    }}
+                    className={`
+                      relative inline-flex h-6 w-11 items-center rounded-full
+                      transition-colors duration-300
+                      ${data.core_hole_required ? 'bg-brand-500' : 'bg-white/20'}
+                    `}
+                  >
+                    <span
+                      className={`
+                        inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                        transition-transform duration-300
+                        ${data.core_hole_required ? 'translate-x-6' : 'translate-x-1'}
+                      `}
+                    />
+                  </button>
+                </div>
+
+                {data.core_hole_required && (
+                  <div className="pl-4">
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      Core Hole Count
+                    </label>
+                    <input
+                      type="number"
+                      value={data.core_hole_count ?? ''}
+                      onChange={(e) => handleChange('core_hole_count', parseInt(e.target.value) || undefined)}
+                      className="input-field"
+                      min="1"
+                      placeholder="e.g., 1"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Active sub-fields */}
+            {data.extraction_type === 'active' && (
+              <div className="pl-4 space-y-3 border-l-2 border-purple-500/30 ml-2">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Trickle & Boost Humidstat Fan Units
+                  </label>
+                  <input
+                    type="number"
+                    value={data.trickle_boost_fan_count ?? ''}
+                    onChange={(e) => handleChange('trickle_boost_fan_count', parseInt(e.target.value) || undefined)}
+                    className="input-field"
+                    min="1"
+                    placeholder="Required — min. 1"
+                  />
+                  {(data.trickle_boost_fan_count == null || data.trickle_boost_fan_count < 1) && (
+                    <p className="mt-1 text-xs text-amber-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      At least 1 fan unit required for active extraction
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Electrical Packs
+                  </label>
+                  <input
+                    type="number"
+                    value={data.electrical_pack_count ?? 0}
+                    onChange={(e) => handleChange('electrical_pack_count', parseInt(e.target.value) || 0)}
+                    className="input-field"
+                    min="0"
+                  />
+                  <p className="mt-1 text-xs text-white/50">0 = none needed</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Core Holes
+                  </label>
+                  <input
+                    type="number"
+                    value={data.core_hole_count_active ?? 0}
+                    onChange={(e) => handleChange('core_hole_count_active', parseInt(e.target.value) || 0)}
+                    className="input-field"
+                    min="0"
+                  />
+                  <p className="mt-1 text-xs text-white/50">0 = none needed</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">
+                    Fan Grilles
+                  </label>
+                  <input
+                    type="number"
+                    value={data.fan_grille_count ?? 0}
+                    onChange={(e) => handleChange('fan_grille_count', parseInt(e.target.value) || 0)}
+                    className="input-field"
+                    min="0"
+                  />
+                  <p className="mt-1 text-xs text-white/50">0 = none needed</p>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
