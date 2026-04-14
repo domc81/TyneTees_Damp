@@ -241,7 +241,7 @@ export type FloorTreatment =
   | 'none'
 
 // =============================================================================
-// Condensation Room Data (Evidence + Recommendations)
+// Condensation Room Data (Evidence + Extraction)
 // =============================================================================
 
 export interface CondensationRoomData {
@@ -252,11 +252,32 @@ export interface CondensationRoomData {
   ventilation_adequate: boolean
   humidity_reading?: number // % RH
 
-  // Recommendations (room-specific)
+  // --- Extraction (room-level) ---
+  extraction_needed?: boolean // "Extraction Needed" gate question
+  extraction_type?: ExtractionType // 'active' | 'passive', only if extraction_needed
+
+  // Passive extraction fields (all independent, default 0)
+  cpass_passive_vent_count?: number
+  dryaire_cvent_count?: number
+  core_hole_required?: boolean
+  core_hole_count?: number // only if core_hole_required
+
+  // Active extraction fields (all independent, default 0)
+  trickle_boost_fan_count?: number // must be >= 1 if extraction_type is 'active'
+  electrical_pack_count?: number
+  core_hole_count_active?: number
+  fan_grille_count?: number
+
+  // --- DEPRECATED: old room-level recommendations (will be removed after UI + mapping migration) ---
+  /** @deprecated PIV is now property-level — see CondensationPIV on AdditionalWorks */
   piv_recommended: boolean
+  /** @deprecated Replaced by extraction_needed + extraction_type */
   fan_recommended: boolean
-  fan_count?: number // How many fans in this room
+  /** @deprecated Replaced by trickle_boost_fan_count */
+  fan_count?: number
 }
+
+export type ExtractionType = 'active' | 'passive'
 
 export type MouldSeverity =
   | 'light'
@@ -414,31 +435,64 @@ export type InfestationSeverity =
   | 'severe'
 
 // =============================================================================
-// Additional Works (Whole-Property Items — Step 5)
+// Condensation PIV (Property-Level — configured in Step 4)
+// =============================================================================
+
+export interface CondensationPIV {
+  piv_recommended: boolean // gate question
+  piv_type: PIVType | null // 'loft_heated' | 'loft_unheated' | 'wall_mounted' | null
+  piv_unit_count: number // required if piv_recommended, must be >= 1
+  core_hole_count: number // 0 = no core holes; only applicable for wall_mounted
+  electrical_pack_count: number // 0 = none needed
+  sarkvent_count: number // loft types only, 0 = none
+  // Wall-mounted only:
+  ducting_components_as_exists: boolean // use existing ducting layout
+  joinery_ducting_boxwork_lm: number // 0 = none
+}
+
+// =============================================================================
+// Additional Works (Whole-Property Items — Step 4)
 // =============================================================================
 
 export interface AdditionalWorks {
-  // Condensation Equipment (whole-house)
-  piv_type?: PIVType
-  piv_count?: number
-  piv_electrical_pack?: boolean
-  sarkvents_count?: number
-  ducting_components?: DuctingComponent[]
-  wall_mounted_electrical_pack_count?: number
-  wall_mounted_core_hole_count?: number
-  fan_electrical_pack_total?: number
-  fan_grille_count?: number
-  fan_core_hole_count?: number
+  // --- Condensation PIV (property-level, new structure) ---
+  condensation_piv?: CondensationPIV
 
   // Loft Hatch (condensation — only for loft PIV installations)
   loft_hatch_new_required?: boolean
   loft_hatch_enlarge_required?: boolean
 
+  // Ducting Components (condensation — PIV ducting runs)
+  ducting_components?: DuctingComponent[]
+
+  // --- DEPRECATED: old condensation equipment fields (will be removed after UI + mapping migration) ---
+  /** @deprecated Replaced by condensation_piv.piv_type */
+  piv_type?: PIVType
+  /** @deprecated Replaced by condensation_piv.piv_unit_count */
+  piv_count?: number
+  /** @deprecated Replaced by condensation_piv.electrical_pack_count */
+  piv_electrical_pack?: boolean
+  /** @deprecated Replaced by condensation_piv.sarkvent_count */
+  sarkvents_count?: number
+  /** @deprecated Replaced by condensation_piv.electrical_pack_count */
+  wall_mounted_electrical_pack_count?: number
+  /** @deprecated Replaced by condensation_piv.core_hole_count */
+  wall_mounted_core_hole_count?: number
+  /** @deprecated Fan equipment now captured at room level via CondensationRoomData extraction fields */
+  fan_electrical_pack_total?: number
+  /** @deprecated Fan equipment now captured at room level via CondensationRoomData.fan_grille_count */
+  fan_grille_count?: number
+  /** @deprecated Fan equipment now captured at room level via CondensationRoomData.core_hole_count_active */
+  fan_core_hole_count?: number
+
   // Joinery (condensation — ducting boxwork for wall-mounted PIV)
+  /** @deprecated Replaced by condensation_piv.joinery_ducting_boxwork_lm */
   joinery_ducting_metres?: number
 
   // Passive Vents (condensation)
+  /** @deprecated Passive vents now captured at room level via CondensationRoomData.cpass_passive_vent_count */
   cpass_vent_count?: number
+  /** @deprecated CVents now captured at room level via CondensationRoomData.dryaire_cvent_count */
   cvent_count?: number
 
   // Joist & Flooring Extras
