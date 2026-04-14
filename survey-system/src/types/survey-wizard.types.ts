@@ -177,6 +177,11 @@ export interface DampRoomData {
   dpc_wall_length?: number // Total linear metres
   dpc_wall_depth?: number // Brick courses (e.g., 4, 5, 6)
 
+  // Strip-Out (manual M² inputs — independent of wall measurements)
+  strip_out_plaster_area?: number // m² of plaster/render to remove from walls
+  strip_out_stud_walls_area?: number // m² of stud walls to remove
+  strip_out_ceilings_area?: number // m² of plaster/stud to remove from ceilings
+
   // Wall Treatment
   wall_treatment?: WallTreatment
   membrane_height?: MembraneHeight // Only for membrane treatment

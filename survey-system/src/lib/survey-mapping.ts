@@ -178,8 +178,9 @@ function mapDampSurvey(
   let totalSockets = 0
   let totalSkirtingLength = 0
   let totalWallpaperArea = 0
-  let totalWallAreaWithWallpaper = 0
-  let totalWallAreaWithoutWallpaper = 0
+  let totalStripOutPlasterArea = 0
+  let totalStripOutStudWallsArea = 0
+  let totalStripOutCeilingsArea = 0
   let totalDpcLength = 0
   let dpcWallDepth: number | undefined
   let totalMembraneArea = 0
@@ -207,15 +208,17 @@ function mapDampSurvey(
 
       if (wall.has_wallpaper) {
         totalWallpaperArea += wallArea
-        totalWallAreaWithWallpaper += wallArea
-      } else {
-        totalWallAreaWithoutWallpaper += wallArea
       }
 
       totalRadiators += wall.radiator_count || 0
       totalSockets += wall.socket_count || 0
       totalSkirtingLength += wall.skirting_length || 0
     }
+
+    // Strip-out (manual M² inputs)
+    totalStripOutPlasterArea += dampData.strip_out_plaster_area || 0
+    totalStripOutStudWallsArea += dampData.strip_out_stud_walls_area || 0
+    totalStripOutCeilingsArea += dampData.strip_out_ceilings_area || 0
 
     // DPC requirements
     if (dampData.dpc_required) {
@@ -278,12 +281,19 @@ function mapDampSurvey(
   const wallpaperInput = createLineInput(lookup, 'preparatory_work', 'strip_wallpaper', totalWallpaperArea)
   if (wallpaperInput) inputs.push(wallpaperInput)
 
-  // === STRIP OUT ===
+  // === STRIP OUT (manual M² inputs from surveyor) ===
 
-  // Remove plaster from walls
-  const stripoutArea = totalWallAreaWithWallpaper + totalWallAreaWithoutWallpaper
-  const plasterRemovalInput = createLineInput(lookup, 'strip_out', 'remove_plaster_walls', stripoutArea)
+  // Remove plaster/render from walls
+  const plasterRemovalInput = createLineInput(lookup, 'strip_out', 'remove_plaster_walls', totalStripOutPlasterArea)
   if (plasterRemovalInput) inputs.push(plasterRemovalInput)
+
+  // Remove stud walls
+  const studWallRemovalInput = createLineInput(lookup, 'strip_out', 'remove_stud_walls', totalStripOutStudWallsArea)
+  if (studWallRemovalInput) inputs.push(studWallRemovalInput)
+
+  // Plaster & stud removal from ceilings
+  const ceilingRemovalInput = createLineInput(lookup, 'strip_out', 'plaster_removal_ceilings', totalStripOutCeilingsArea)
+  if (ceilingRemovalInput) inputs.push(ceilingRemovalInput)
 
   // Strip existing floor
   const stripFloorInput = createLineInput(lookup, 'strip_out', 'strip_timber_floor_gf', totalStripFloorArea)
@@ -1182,22 +1192,26 @@ function mapAdditionalWorks(
 
 /**
  * Calculate debris bags from damp strip-out work.
- * Bags = ceil(total wall area × 2 bags per m²)
+ * Matches workbook R34: SUM(all 5 strip-out areas) × 2 bags per m²
  */
 function calcDampDebrisBags(rooms: SurveyRoomRow[]): number {
   const dampRooms = rooms.filter(r => r.issues_identified?.includes('damp'))
-  let stripoutArea = 0
+  let totalStripOutArea = 0
 
   for (const room of dampRooms) {
     const dampData = room.room_data?.damp as DampRoomData | undefined
     if (!dampData) continue
 
-    for (const wall of dampData.walls || []) {
-      stripoutArea += wall.length * wall.height
+    totalStripOutArea += dampData.strip_out_plaster_area || 0
+    totalStripOutArea += dampData.strip_out_stud_walls_area || 0
+    totalStripOutArea += dampData.strip_out_ceilings_area || 0
+    if (dampData.strip_existing_floor) {
+      totalStripOutArea += dampData.strip_floor_area || 0
     }
+    totalStripOutArea += dampData.sub_floor_area || 0
   }
 
-  return stripoutArea > 0 ? Math.ceil(stripoutArea * 2) : 0
+  return totalStripOutArea > 0 ? Math.ceil(totalStripOutArea * 2) : 0
 }
 
 /**

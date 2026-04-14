@@ -20,6 +20,7 @@ import {
   Package,
   PaintBucket,
   Clock,
+  Wrench,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PhotoCapture from './PhotoCapture'
@@ -40,6 +41,7 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
   const [expandedSections, setExpandedSections] = useState({
     walls: true,
     dpc: true,
+    stripOut: false,
     wallTreatment: true,
     floorTreatment: false,
     plastering: false,
@@ -587,6 +589,75 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Strip-Out Section */}
+      <div className="glass-card overflow-hidden">
+        <button
+          onClick={() => toggleSection('stripOut')}
+          className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-blue-300" />
+            <h5 className="font-semibold text-white">Strip-Out</h5>
+          </div>
+          {expandedSections.stripOut ? (
+            <ChevronUp className="w-5 h-5 text-white/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-white/50" />
+          )}
+        </button>
+
+        {expandedSections.stripOut && (
+          <div className="p-4 pt-0 space-y-3">
+            <p className="text-xs text-white/50 mb-2">
+              Enter strip-out areas based on your assessment. Include any plaster removal needed for DPC access.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Remove plaster/render — Walls (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.strip_out_plaster_area || ''}
+                  onChange={(e) => handleChange('strip_out_plaster_area', parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Removal of stud walls (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.strip_out_stud_walls_area || ''}
+                  onChange={(e) => handleChange('strip_out_stud_walls_area', parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Plaster & stud removal — Ceilings (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.strip_out_ceilings_area || ''}
+                  onChange={(e) => handleChange('strip_out_ceilings_area', parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
