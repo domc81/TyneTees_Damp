@@ -14,6 +14,8 @@ import {
   Layers,
   Package,
   X,
+  HelpCircle,
+  Info,
 } from 'lucide-react'
 import {
   loadAllCostingTemplatesAdmin,
@@ -85,6 +87,74 @@ const toDecimal = (p: number) => p / 100
 
 type MaterialMap = Record<string, { name: string; unit_cost: number }>
 type ChangeMap = Record<string, Record<string, any>>
+
+// ---------------------------------------------------------------------------
+// Tooltip component (hover on desktop, tap on mobile)
+// ---------------------------------------------------------------------------
+
+function Tooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-flex ml-1 align-middle">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="text-white/30 hover:text-white/60 transition-colors focus:outline-none"
+        aria-label="More info"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 rounded-lg bg-slate-800 border border-white/15 text-xs text-white/80 leading-relaxed shadow-xl whitespace-normal">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800" />
+        </div>
+      )}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Column header tooltip content
+// ---------------------------------------------------------------------------
+
+const COLUMN_TOOLTIPS: Record<string, string> = {
+  unit_cost:
+    'Material cost per unit of work (per m², per LM, per each). For items linked to the materials catalogue, this is calculated automatically from the material purchase price ÷ coverage rate. For labour-only items, this is £0.',
+  labour_hrs:
+    'Hours of labour required per unit of work. Multiplied by the base hourly rate (currently set in Pricing Configuration) to calculate labour cost.',
+  wastage:
+    'Percentage added to the material cost to account for cutting waste, spillage, and breakage. Only applies to the material cost, not labour. Example: 10% wastage on a £5.00 material = £5.00 × 1.10 = £5.50 per unit.',
+  mat_markup:
+    'Material markup percentage. Added on top of the material cost (after wastage) as your margin. Example: 30% markup on £5.50 material = £5.50 × 1.30 = £7.15 charged to customer.',
+  lab_markup:
+    'Labour markup percentage. Added on top of the base labour cost as your margin. 100% means the labour charge to the customer is double the base hourly rate. Example: base rate £30.63 × 2.00 = £61.26/hr charged.',
+  coverage:
+    'Only for coverage-based items. The area (m²) that one unit of material covers. Used to calculate how many units are needed. Example: coverage 7 means one unit covers 7m², so a 15m² job needs CEIL(15/7) = 3 units.',
+  formula:
+    'The calculation method for this line item. Standard = simple unit cost × quantity. Ceiling Coverage = rounds up to whole units of material. Others have specialised calculations.',
+  active:
+    'Toggle off to exclude this item from all future costings. The template stays in the system but won\'t be used in new calculations.',
+}
+
+// ---------------------------------------------------------------------------
+// Formula param tooltip content
+// ---------------------------------------------------------------------------
+
+const PARAM_TOOLTIPS: Record<string, string> = {
+  base_cream_cost: 'Purchase price of DPC injection cream per unit',
+  cream_divisor: 'Coverage adjustment factor',
+  holes_per_meter: 'Number of drill holes per linear metre',
+  drill_cost: 'Cost per drill plug',
+  labour_hours_per_depth: 'Labour hours per brick course depth',
+  threshold: 'Number of bags before per-bag surcharge applies',
+  min_charge: 'Minimum flat charge for disposal',
+  per_bag_over: 'Additional cost per bag over the threshold',
+  hours_per_bag: 'Labour hours required per bag of debris',
+  material_cost_per_bag: 'Material/disposal cost per bag',
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -343,6 +413,9 @@ export default function CostingAdminPage() {
             </p>
           </div>
 
+          {/* How pricing works — collapsible */}
+          <HowPricingWorks />
+
           {/* Tabs */}
           <div className="flex flex-wrap gap-2">
             {SURVEY_TYPE_TABS.map(tab => {
@@ -450,14 +523,14 @@ export default function CostingAdminPage() {
                         <tr className="text-left text-white/50 text-xs uppercase tracking-wider">
                           <th className="px-4 py-2 min-w-[220px]">Description</th>
                           <th className="px-2 py-2 w-16">UOM</th>
-                          <th className="px-2 py-2 w-20">Formula</th>
-                          <th className="px-2 py-2 w-24">Unit Cost</th>
-                          <th className="px-2 py-2 w-24">Labour hrs</th>
-                          <th className="px-2 py-2 w-20">Wastage</th>
-                          <th className="px-2 py-2 w-20">Mat %</th>
-                          <th className="px-2 py-2 w-20">Lab %</th>
-                          <th className="px-2 py-2 w-24">Coverage</th>
-                          <th className="px-2 py-2 w-16 text-center">Active</th>
+                          <th className="px-2 py-2 w-20">Formula<Tooltip text={COLUMN_TOOLTIPS.formula} /></th>
+                          <th className="px-2 py-2 w-24">Unit Cost<Tooltip text={COLUMN_TOOLTIPS.unit_cost} /></th>
+                          <th className="px-2 py-2 w-24">Labour hrs<Tooltip text={COLUMN_TOOLTIPS.labour_hrs} /></th>
+                          <th className="px-2 py-2 w-20">Wastage<Tooltip text={COLUMN_TOOLTIPS.wastage} /></th>
+                          <th className="px-2 py-2 w-20">Mat %<Tooltip text={COLUMN_TOOLTIPS.mat_markup} /></th>
+                          <th className="px-2 py-2 w-20">Lab %<Tooltip text={COLUMN_TOOLTIPS.lab_markup} /></th>
+                          <th className="px-2 py-2 w-24">Coverage<Tooltip text={COLUMN_TOOLTIPS.coverage} /></th>
+                          <th className="px-2 py-2 w-16 text-center">Active<Tooltip text={COLUMN_TOOLTIPS.active} /></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -507,6 +580,49 @@ export default function CostingAdminPage() {
         </div>
       </Layout>
     </ProtectedRoute>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// How Pricing Works — collapsible explainer
+// ---------------------------------------------------------------------------
+
+function HowPricingWorks() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="section-card overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors text-left"
+      >
+        <Info className="w-4 h-4 text-brand-400 shrink-0" />
+        <span className="text-sm font-medium text-white/80">How pricing works</span>
+        {open ? (
+          <ChevronDown className="w-4 h-4 text-white/40 ml-auto" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-white/40 ml-auto" />
+        )}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 text-sm text-white/60 leading-relaxed border-t border-white/10 pt-3 space-y-3">
+          <p>Each line item on a quotation is calculated as:</p>
+          <div className="bg-white/5 rounded-lg p-3 font-mono text-xs text-white/70 space-y-1">
+            <p><span className="text-blue-300">Material</span> = Quantity × Unit Cost × Wastage × (1 + Material Markup)</p>
+            <p><span className="text-green-300">Labour</span> = Quantity × Labour Hrs × Hourly Rate × (1 + Labour Markup)</p>
+            <p><span className="text-white/90">Line Total</span> = Material + Labour</p>
+          </div>
+          <p>
+            The base hourly rate and default markups are set in{' '}
+            <Link href="/admin/rates" className="text-brand-400 hover:text-brand-300 underline">
+              Settings → Pricing Configuration
+            </Link>
+            . Individual templates can override the defaults.
+            Items linked to the Materials Catalogue automatically update their unit cost
+            when the source material price changes.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -689,6 +805,7 @@ function TemplateRow({
                 {' '}({'\u00a3'}{mat.unit_cost.toFixed(2)})
                 {' '}&rarr; CPCU {'\u00a3'}{dynamicCPCU?.toFixed(4)}/m\u00b2
               </span>
+              <span className="text-xs text-blue-400/50 italic">Price auto-updates from Materials Catalogue</span>
               {cpcuMismatch && (
                 <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
                   <AlertCircle className="w-3 h-3" />
@@ -728,7 +845,10 @@ function TemplateRow({
             <div className="flex flex-wrap gap-4 ml-2">
               {editableParams.map(param => (
                 <div key={param.key} className="flex flex-col gap-1">
-                  <label className="text-xs text-white/40">{param.label}</label>
+                  <label className="text-xs text-white/40">
+                    {param.label}
+                    {PARAM_TOOLTIPS[param.key] && <Tooltip text={PARAM_TOOLTIPS[param.key]} />}
+                  </label>
                   <input
                     type="number"
                     step={param.step}
