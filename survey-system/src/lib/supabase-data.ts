@@ -1482,6 +1482,150 @@ export async function getMaterial(id: string): Promise<MaterialsCatalogItem | nu
 }
 
 // ============================================================================
+// Materials Catalog CRUD (Admin)
+// ============================================================================
+
+/**
+ * Create a new material in the catalog.
+ * Returns the new row on success, null on error.
+ */
+export async function createMaterial(
+  data: Omit<MaterialsCatalogItem, 'id' | 'created_at' | 'updated_at' | 'is_active'>
+): Promise<MaterialsCatalogItem | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  const { data: row, error } = await supabase
+    .from('materials_catalog')
+    .insert({ ...data, is_active: true })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating material:', error)
+    return null
+  }
+  return row
+}
+
+/**
+ * Update an existing material. Accepts a partial object of changed fields.
+ */
+export async function updateMaterial(
+  id: string,
+  data: Partial<Omit<MaterialsCatalogItem, 'id' | 'created_at'>>
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  const { error } = await supabase
+    .from('materials_catalog')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error updating material:', error)
+    return false
+  }
+  return true
+}
+
+/**
+ * Delete a material. If templates reference its product_key, soft-delete
+ * (set is_active = false). Otherwise hard-delete.
+ * Returns { deleted: boolean; soft: boolean } or null on error.
+ */
+export async function deleteMaterial(
+  id: string,
+  productKey: string | null | undefined
+): Promise<{ deleted: boolean; soft: boolean } | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+
+  // Check if any templates reference this product_key
+  let hasRefs = false
+  if (productKey) {
+    const refs = await getTemplatesReferencingMaterial(productKey)
+    hasRefs = refs.length > 0
+  }
+
+  if (hasRefs) {
+    // Soft delete — deactivate
+    const { error } = await supabase
+      .from('materials_catalog')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) {
+      console.error('Error soft-deleting material:', error)
+      return null
+    }
+    return { deleted: true, soft: true }
+  } else {
+    // Hard delete
+    const { error } = await supabase
+      .from('materials_catalog')
+      .delete()
+      .eq('id', id)
+    if (error) {
+      console.error('Error deleting material:', error)
+      return null
+    }
+    return { deleted: true, soft: false }
+  }
+}
+
+/**
+ * Check if a product_key already exists in materials_catalog.
+ * Optionally exclude a specific material ID (for edit mode).
+ */
+export async function isProductKeyUnique(
+  productKey: string,
+  excludeId?: string
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  let query = supabase
+    .from('materials_catalog')
+    .select('id')
+    .eq('product_key', productKey)
+
+  if (excludeId) {
+    query = query.neq('id', excludeId)
+  }
+
+  const { data } = await query
+  return !data || data.length === 0
+}
+
+/**
+ * Find costing templates that reference a material by product_key
+ * (via formula_params @> {"product_key": "..."}). Used to show impact
+ * before editing or deleting a material.
+ */
+export async function getTemplatesReferencingMaterial(
+  productKey: string
+): Promise<Array<{ description: string; survey_type: string }>> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('costing_line_templates')
+    .select('description, costing_sections(survey_type)')
+    .contains('formula_params', { product_key: productKey })
+
+  if (error) {
+    console.error('Error finding referencing templates:', error)
+    return []
+  }
+
+  return (data || []).map((row: any) => ({
+    description: row.description || '',
+    survey_type: (row.costing_sections as any)?.survey_type || '',
+  }))
+}
+
+// ============================================================================
 // Structured Survey Data (Phase 10)
 // ============================================================================
 

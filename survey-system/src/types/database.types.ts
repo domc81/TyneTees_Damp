@@ -257,6 +257,9 @@ export interface MaterialsCatalogItem {
   is_active: boolean
   created_at: string
   updated_at: string
+  product_key?: string | null
+  coverage_m2?: number | null
+  unit_size?: string | null
 }
 
 // --- Quotation ---
