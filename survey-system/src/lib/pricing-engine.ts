@@ -205,6 +205,7 @@ export function calcCeilingCoverage(
   materials: MaterialLookup
 ): LineResult {
   const quantity = input.inputQuantity
+  const params = template.formula_params ?? {}
 
   // Get coverage rate (must be in template)
   const coverageRate = template.coverage_rate ?? 1
@@ -215,11 +216,16 @@ export function calcCeilingCoverage(
   // Calculate units needed (round UP)
   const unitsNeeded = Math.ceil(quantity / coverageRate)
 
-  // Get base unit cost (check formula_params for cost_per_coverage_unit first)
+  // Dynamic CPCU: when product_key is set, derive cost per m² from catalogue
+  // unit_cost ÷ coverage_rate so material price changes flow through automatically.
+  // Falls back to legacy cost_per_coverage_unit or base_unit_cost if material not found.
+  const catalogPrice = params.product_key ? materials[params.product_key] : undefined
+  const dynamicCPCU = catalogPrice != null ? catalogPrice / coverageRate : undefined
+
   const baseUnitCost = input.overrides?.unit_cost
-    ?? template.formula_params?.cost_per_coverage_unit
+    ?? dynamicCPCU
+    ?? params.cost_per_coverage_unit
     ?? template.base_unit_cost
-    ?? (template.formula_params?.product_key ? materials[template.formula_params.product_key] : 0)
     ?? 0
 
   // Get wastage factor
@@ -254,7 +260,6 @@ export function calcCeilingCoverage(
     ?? 1.00
 
   // Calculate labour (based on actual area, not units)
-  const params = template.formula_params ?? {}
   let labourHours: number
   if (params.labour_block_size && params.labour_hours_per_block) {
     // Block-based rounding: e.g. skimming charges in 15m² blocks at 4 hrs/block
