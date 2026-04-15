@@ -548,6 +548,154 @@ export async function loadSectionOptionalFlags(
 }
 
 // =============================================================================
+// Admin — Costing Template Management
+// =============================================================================
+
+/**
+ * Admin template row — all editable fields plus display context
+ */
+export interface AdminTemplate {
+  id: string
+  line_key: string
+  description: string
+  uom: string
+  cost_formula: string
+  base_unit_cost: number
+  labour_rate_per_unit: number
+  wastage_factor: number
+  material_markup: number
+  labour_markup: number
+  coverage_rate: number | null
+  is_active: boolean
+  formula_params: Record<string, any>
+  display_order: number
+  section_id: string
+  section_key: string
+  section_name: string
+  survey_type: string
+}
+
+/**
+ * Section with its templates for the admin page
+ */
+export interface AdminSection {
+  id: string
+  section_key: string
+  section_name: string
+  survey_type: string
+  display_order: number
+  templates: AdminTemplate[]
+}
+
+/**
+ * Load ALL costing sections and templates across every survey type.
+ * Returns sections sorted by survey_type then display_order, with templates
+ * sorted by display_order within each section.
+ */
+export async function loadAllCostingTemplatesAdmin(): Promise<AdminSection[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('costing_sections')
+    .select(`
+      id, section_key, section_name, survey_type, display_order,
+      costing_line_templates (
+        id, line_key, description, uom, cost_formula,
+        base_unit_cost, labour_rate_per_unit, wastage_factor,
+        material_markup, labour_markup, coverage_rate,
+        is_active, formula_params, display_order
+      )
+    `)
+    .order('display_order')
+
+  if (error || !data) {
+    console.error('Error loading admin templates:', error)
+    return []
+  }
+
+  return data.map((s: any) => ({
+    id: s.id,
+    section_key: s.section_key,
+    section_name: s.section_name,
+    survey_type: s.survey_type,
+    display_order: s.display_order,
+    templates: (s.costing_line_templates || [])
+      .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+      .map((t: any) => ({
+        id: t.id,
+        line_key: t.line_key,
+        description: t.description ?? '',
+        uom: t.uom ?? '',
+        cost_formula: t.cost_formula,
+        base_unit_cost: Number(t.base_unit_cost) || 0,
+        labour_rate_per_unit: Number(t.labour_rate_per_unit) || 0,
+        wastage_factor: Number(t.wastage_factor) || 1,
+        material_markup: Number(t.material_markup) || 0,
+        labour_markup: Number(t.labour_markup) || 0,
+        coverage_rate: t.coverage_rate != null ? Number(t.coverage_rate) : null,
+        is_active: t.is_active ?? true,
+        formula_params: t.formula_params || {},
+        display_order: t.display_order || 0,
+        section_id: s.id,
+        section_key: s.section_key,
+        section_name: s.section_name,
+        survey_type: s.survey_type,
+      })),
+  }))
+}
+
+/**
+ * Batch-update costing_line_templates. Each entry is a template ID plus an
+ * object of changed column values. Runs updates in parallel.
+ * Returns true if ALL succeed, false if any fail.
+ */
+export async function updateCostingLineTemplateBatch(
+  updates: Array<{ id: string; changes: Record<string, any> }>
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  const results = await Promise.all(
+    updates.map(({ id, changes }) =>
+      supabase.from('costing_line_templates').update(changes).eq('id', id)
+    )
+  )
+
+  const failed = results.filter(r => r.error)
+  if (failed.length > 0) {
+    failed.forEach(r => console.error('Template update error:', r.error))
+    return false
+  }
+  return true
+}
+
+/**
+ * Load material product_key → { name, unit_cost } map for admin display.
+ */
+export async function loadMaterialNamesMap(): Promise<
+  Record<string, { name: string; unit_cost: number }>
+> {
+  const supabase = getSupabase()
+  if (!supabase) return {}
+
+  const { data, error } = await supabase
+    .from('materials_catalog')
+    .select('product_key, name, unit_cost')
+    .eq('is_active', true)
+
+  if (error || !data) return {}
+
+  const map: Record<string, { name: string; unit_cost: number }> = {}
+  for (const row of data) {
+    if (row.product_key) {
+      map[row.product_key] = { name: row.name, unit_cost: Number(row.unit_cost) }
+    }
+  }
+  return map
+}
+
+// =============================================================================
 // High-Level Calculation Function
 // =============================================================================
 
