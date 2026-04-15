@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -94,9 +94,20 @@ type ChangeMap = Record<string, Record<string, any>>
 
 function Tooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.top - 8, left: rect.left + rect.width / 2 })
+    }
+  }, [open])
+
   return (
-    <span className="relative inline-flex ml-1 align-middle">
+    <span className="inline-flex ml-1 align-middle">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setOpen(true)}
@@ -106,8 +117,11 @@ function Tooltip({ text }: { text: string }) {
       >
         <HelpCircle className="w-3.5 h-3.5" />
       </button>
-      {open && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 rounded-lg bg-slate-800 border border-white/15 text-xs text-white/80 leading-relaxed shadow-xl whitespace-normal">
+      {open && pos && (
+        <div
+          className="fixed z-[9999] w-64 p-2.5 rounded-lg bg-slate-800 border border-white/15 text-xs text-white/80 leading-relaxed shadow-xl whitespace-normal"
+          style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -100%)' }}
+        >
           {text}
           <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800" />
         </div>
