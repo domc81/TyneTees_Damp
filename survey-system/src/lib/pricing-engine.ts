@@ -600,9 +600,10 @@ export function calcBagAndCart(
 ): LineResult {
   const quantity = input.inputQuantity
 
-  // Bag and cart formula constants (workbook col N = labour, col H = material)
-  const HOURS_PER_BAG = 0.01
-  const MATERIAL_COST_PER_BAG = 1.00
+  // Bag and cart formula constants — read from formula_params, fallback to workbook values
+  const params = template.formula_params ?? {}
+  const HOURS_PER_BAG = params.hours_per_bag ?? 0.01           // workbook col N: ~36 seconds per bag
+  const MATERIAL_COST_PER_BAG = params.material_cost_per_bag ?? 1.00  // workbook col H: £1 per bag
 
   // Calculate labour hours
   const labourHours = quantity * HOURS_PER_BAG
