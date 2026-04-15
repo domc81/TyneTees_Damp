@@ -1,6 +1,20 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  useFloating,
+  autoUpdate,
+  offset,
+  flip,
+  shift,
+  useHover,
+  useClick,
+  useDismiss,
+  useInteractions,
+  FloatingArrow,
+  arrow,
+} from '@floating-ui/react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -94,37 +108,48 @@ type ChangeMap = Record<string, Record<string, any>>
 
 function Tooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const arrowRef = useRef<SVGSVGElement>(null)
 
-  useEffect(() => {
-    if (open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect()
-      setPos({ top: rect.top - 8, left: rect.left + rect.width / 2 })
-    }
-  }, [open])
+  const { refs, floatingStyles, context } = useFloating({
+    open,
+    onOpenChange: setOpen,
+    placement: 'top',
+    middleware: [
+      offset(8),
+      flip({ fallbackPlacements: ['bottom', 'left', 'right'] }),
+      shift({ padding: 8 }),
+      arrow({ element: arrowRef }),
+    ],
+    whileElementsMounted: autoUpdate,
+  })
+
+  const hover = useHover(context)
+  const click = useClick(context)
+  const dismiss = useDismiss(context)
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, click, dismiss])
 
   return (
     <span className="inline-flex ml-1 align-middle">
       <button
-        ref={btnRef}
+        ref={refs.setReference}
         type="button"
-        onClick={() => setOpen(o => !o)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
         className="text-white/30 hover:text-white/60 transition-colors focus:outline-none"
         aria-label="More info"
+        {...getReferenceProps()}
       >
         <HelpCircle className="w-3.5 h-3.5" />
       </button>
-      {open && pos && (
+      {open && createPortal(
         <div
-          className="fixed z-[9999] w-64 p-2.5 rounded-lg bg-slate-800 border border-white/15 text-xs text-white/80 leading-relaxed shadow-xl whitespace-normal"
-          style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -100%)' }}
+          ref={refs.setFloating}
+          style={floatingStyles}
+          className="z-[9999] w-64 p-2.5 rounded-lg bg-slate-800 border border-white/15 text-xs text-white/80 leading-relaxed shadow-xl whitespace-normal"
+          {...getFloatingProps()}
         >
           {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800" />
-        </div>
+          <FloatingArrow ref={arrowRef} context={context} className="fill-slate-800" width={12} height={6} />
+        </div>,
+        document.body
       )}
     </span>
   )
