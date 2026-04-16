@@ -411,9 +411,14 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 
 ## Reference Documents
 
-- `survey-system/DATABASE.md` — database documentation
-- `survey-system/DEVELOPMENT.md` — development setup guide
-- `survey-system/AUTHENTICATION.md` — auth setup docs
-- `survey-system/SUPER_ADMIN_SETUP.md` — admin account setup
-- `survey-system/PROJECT_STATE.md` — build progress tracker (stale — last updated Feb 2026)
-- `workbook_extraction/output/` — workbook analysis (damp, condensation, timber, woodworm)
+All documentation lives in `docs/`:
+
+- `docs/setup/` — DATABASE, DEVELOPMENT, AUTHENTICATION, SUPER_ADMIN_SETUP, CALENDAR_BOOKING_PREREQUISITES
+- `docs/audits/` — system, routing, costings, materials, reports, wizard, CSV, communications audits
+- `docs/investigations/` — enquiry pipeline, DPC stripout, legacy dependencies, survey type migration
+- `docs/plans/` — implementation plans (survey type migration, auth login)
+- `docs/workbook-analysis/` — Excel workbook analysis (damp, condensation, timber, woodworm)
+- `docs/guides/` — admin guides (pricing)
+- `docs/PROJECT_STATE.md` — build progress tracker (stale — last updated Feb 2026)
+- `docs/PROJECT_STATUS.md` — project status overview
+- `docs/COMPLETE_DOCUMENTATION.md` — full platform documentation
