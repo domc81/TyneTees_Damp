@@ -1,5 +1,8 @@
 # CLAUDE.md — TyneTees Damp Proofing Survey System
 
+@./AGENTS.md
+@../CLAUDE.md
+
 ## Project Overview
 
 Web platform for a Newcastle damp proofing contractor. Translating 4 Excel costing workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26) into a web application. MVP: Lead Gen + CRM + Survey System with automated pricing.
@@ -409,16 +412,24 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Deepgram** — Speech-to-text (credentials at `.deepgram-credentials`)
 - **OpenRouter** — LLM API access (key in `.env.local`, model: `x-ai/grok-4.1-fast`)
 
-## Reference Documents
+## Claude-specific policy
 
-All documentation lives in `docs/`:
+- Preferred tools: Edit/Grep/Glob over bash equivalents (per server CLAUDE.md)
+- Run `npm run build` from `survey-system/` before any push to validate routes compile
+- Run `npm run lint` to catch issues — the build ignores type errors (`ignoreBuildErrors: true`)
+- Spawn the `Explore` subagent for codebase-wide searches of 3+ queries
+- Never start dev servers or use Playwright against this app — commit and push, let Coolify deploy
+- All LLM calls go through OpenRouter (model: `x-ai/grok-4.1-fast`) — never call Anthropic API directly
+- Skills: none project-specific
+- MCP servers: none project-specific
 
-- `docs/setup/` — DATABASE, DEVELOPMENT, AUTHENTICATION, SUPER_ADMIN_SETUP, CALENDAR_BOOKING_PREREQUISITES
-- `docs/audits/` — system, routing, costings, materials, reports, wizard, CSV, communications audits
-- `docs/investigations/` — enquiry pipeline, DPC stripout, legacy dependencies, survey type migration
-- `docs/plans/` — implementation plans (survey type migration, auth login)
-- `docs/workbook-analysis/` — Excel workbook analysis (damp, condensation, timber, woodworm)
-- `docs/guides/` — admin guides (pricing)
-- `docs/PROJECT_STATE.md` — build progress tracker (stale — last updated Feb 2026)
-- `docs/PROJECT_STATUS.md` — project status overview
-- `docs/COMPLETE_DOCUMENTATION.md` — full platform documentation
+## References
+
+- Server-wide context: `/root/CLAUDE.md` (imported via `@../CLAUDE.md`)
+- Deployment playbook: `/home/dominic/app-dc81/docs/DEPLOYMENT_PLAYBOOK.md`
+- This project's architecture: `docs/ARCHITECTURE.md`
+- This project's deploy procedure: `docs/DEPLOYMENT.md`
+- Current focus: `docs/PROJECT_STATE.md`
+- Setup guides: `docs/setup/`
+- Workbook analysis: `docs/workbook-analysis/`
+- Audits archive: `docs/audits/`
