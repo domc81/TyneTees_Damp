@@ -714,9 +714,10 @@ function buildSection(
 // =============================================================================
 
 export async function generateReport(
-  surveyId: string
+  surveyId: string,
+  supabaseOverride?: any
 ): Promise<SurveyReport> {
-  const supabase = getSupabase()
+  const supabase = supabaseOverride || getSupabase()
   if (!supabase) {
     throw new Error('Supabase client not available')
   }

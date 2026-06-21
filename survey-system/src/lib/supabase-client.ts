@@ -24,3 +24,9 @@ export function createClient() {
 
 // Export a lazy accessor instead of auto-initializing
 export const getSupabase = () => createClient()
+
+// Allow temporary override of the singleton for server-side admin operations
+// (e.g. regenerating reports with a service-role client)
+export function setSupabaseOverride(client: ReturnType<typeof createBrowserClient> | null) {
+  supabaseInstance = client
+}
