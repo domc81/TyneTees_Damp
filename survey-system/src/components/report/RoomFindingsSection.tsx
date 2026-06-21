@@ -219,7 +219,6 @@ export function RoomFindingsSection({
                         <thead>
                           <tr className={theadRow}>
                             <th className={th}>Wall</th>
-                            <th className={th}>Treatment Area</th>
                             <th className={th}>Treatment Type</th>
                             <th className={th}>Moisture Reading</th>
                           </tr>
@@ -228,11 +227,6 @@ export function RoomFindingsSection({
                           {walls.map((wall, idx) => (
                             <tr key={idx} className={tbodyRow}>
                               <td className={td}>{wall.wall_position}</td>
-                              <td className={td}>
-                                {wall.treatment_area_length}m &times;{' '}
-                                {wall.treatment_area_height}m (
-                                {wall.treatment_area_m2}m²)
-                              </td>
                               <td className={tdBold}>{wall.treatment_type}</td>
                               <td className={td}>
                                 {wall.moisture_reading || '—'}
@@ -366,65 +360,9 @@ export function RoomFindingsSection({
                                 : 'None identified'}
                             </td>
                           </tr>
-                          {timber.fungal_treatment_area > 0 && (
-                            <tr className={tbodyRow}>
-                              <td className={td}>Treatment area</td>
-                              <td className={td}>{timber.fungal_treatment_area}m²</td>
-                            </tr>
-                          )}
                         </tbody>
                       </table>
                     </div>
-
-                    {/* Timber replacement schedule */}
-                    {timber.timber_replacement_needed &&
-                      timber.joist_entries.length > 0 && (
-                        <div className="mt-3">
-                          <p className={subHeading}>Timber Replacement Schedule</p>
-                          <div className={tableContainer}>
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className={theadRow}>
-                                  <th className={th}>Joist Size</th>
-                                  <th className={th}>Quantity</th>
-                                  <th className={th}>Length</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {timber.joist_entries.map((j, idx) => (
-                                  <tr key={idx} className={tbodyRow}>
-                                    <td className={td}>{j.size}</td>
-                                    <td className={td}>{j.quantity}</td>
-                                    <td className={td}>{j.length}m</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-
-                    {/* Flooring and ceiling notes */}
-                    {(timber.flooring_area > 0 ||
-                      (timber.ceiling_affected && timber.ceiling_area > 0)) && (
-                      <div className="mt-2 space-y-1">
-                        {timber.flooring_area > 0 && (
-                          <p className="text-xs text-[#374151]">
-                            Replacement flooring:{' '}
-                            <span className="font-medium">
-                              {formatLabel(timber.flooring_type || 'timber')}
-                            </span>{' '}
-                            — {timber.flooring_area}m²
-                          </p>
-                        )}
-                        {timber.ceiling_affected && timber.ceiling_area > 0 && (
-                          <p className="text-xs text-[#374151]">
-                            Ceiling renewal required:{' '}
-                            <span className="font-medium">{timber.ceiling_area}m²</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -467,24 +405,6 @@ export function RoomFindingsSection({
                               {woodworm.structural_damage ? 'Yes' : 'No'}
                             </td>
                           </tr>
-                          {woodworm.spray_floor_area > 0 && (
-                            <tr className={tbodyRow}>
-                              <td className={td}>Floor spray area</td>
-                              <td className={td}>{woodworm.spray_floor_area}m²</td>
-                            </tr>
-                          )}
-                          {woodworm.spray_timber_area > 0 && (
-                            <tr className={tbodyRow}>
-                              <td className={td}>Timber spray area</td>
-                              <td className={td}>{woodworm.spray_timber_area}m²</td>
-                            </tr>
-                          )}
-                          {woodworm.paste_treatment_area > 0 && (
-                            <tr className={tbodyRow}>
-                              <td className={td}>Paste treatment area</td>
-                              <td className={td}>{woodworm.paste_treatment_area}m²</td>
-                            </tr>
-                          )}
                         </tbody>
                       </table>
                     </div>

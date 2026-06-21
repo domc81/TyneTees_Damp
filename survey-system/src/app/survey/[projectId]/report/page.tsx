@@ -1465,6 +1465,25 @@ function WoodwormTreatmentEditorView({
           <p className="text-sm text-white/60 mt-0.5">{speciesNote.statusLabel}</p>
         </div>
       )}
+
+      {/* Loft insulation note */}
+      {data?.loftInsulationNote && (
+        <div className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-3">
+          <p className="text-xs font-semibold text-blue-300 uppercase tracking-wide mb-1">
+            Loft Insulation
+          </p>
+          <p className="text-sm text-white/80">{data.loftInsulationNote as string}</p>
+        </div>
+      )}
+
+      {/* Reference images indicator */}
+      {(data?.equipmentImages as unknown[])?.length > 0 && (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs text-white/50">
+            Customer report includes {((data.equipmentImages as unknown[]).length) + (data.beetleImage ? 1 : 0)} reference images (beetle identification and treatment equipment)
+          </p>
+        </div>
+      )}
     </div>
   )
 }

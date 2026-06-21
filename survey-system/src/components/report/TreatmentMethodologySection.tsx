@@ -31,7 +31,7 @@ const METHODOLOGY_HEADER_COLOURS: Record<
   dry_rot_treatment:     { bg: 'bg-[#4A2D1E]', text: 'text-white' },
 }
 
-function MethodologyBlock({ methodology }: { methodology: TreatmentMethodology }) {
+export function MethodologyBlock({ methodology }: { methodology: TreatmentMethodology }) {
   const colours =
     METHODOLOGY_HEADER_COLOURS[methodology.id] ?? {
       bg: 'bg-[#374151]',

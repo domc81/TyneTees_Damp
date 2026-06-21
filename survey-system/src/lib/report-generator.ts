@@ -368,11 +368,10 @@ const METHODOLOGY_MEMBRANE: TreatmentMethodology = {
     'Remove existing plaster to all affected wall surfaces',
     'Remove skirting boards from affected areas',
     'Prepare wall surfaces — remove all loose material and clean down to a sound substrate',
-    'Install cavity drain membrane to manufacturer\'s specifications, mechanically fixed at regular centres',
-    'Seal all joints and edges using approved jointing tape and sealant to prevent water bypass',
+    'Install cavity drain membrane, installed to manufacturers recommended specifications',
+    'Seal all joints and edges using approved jointing tape and sealant to manufacturers specifications',
     'Install plasterboard over the membrane, fixed back to the solid wall at regular centres',
     'Apply multi-finish skim coat plaster to achieve a smooth finished surface',
-    'Reinstate skirting boards to all treated areas',
     'Remove and dispose of all arising waste materials via licensed carrier',
   ],
 }
@@ -457,11 +456,9 @@ const METHODOLOGY_WOODWORM_SPRAY: TreatmentMethodology = {
     'Identification of affected timbers and extent of infestation',
     'Assessment of structural integrity of affected timbers',
     'Preparation of treatment area — clearing of loose debris, removal of dust and cobwebs',
-    'Masking and protection of electrical fittings, pipes, and adjacent surfaces',
     'Application of micro-emulsion insecticide treatment (permethrin-based) to all accessible timbers using low-pressure spray equipment',
     'Application of insecticidal paste to timbers where spray access is restricted',
     'Treatment of all flight holes and surrounding timber surfaces',
-    'Post-treatment inspection and sign-off',
     'Issue of treatment guarantee certificate',
   ],
 }
@@ -501,6 +498,10 @@ interface WoodwormTreatmentData {
   methodology: TreatmentMethodology
   safetyPoints: string[]
   speciesNote: { name: string; statusLabel: string } | null
+  anobiumDescription: string | null
+  beetleImage: { src: string; alt: string; attribution: string } | null
+  equipmentImages: { src: string; alt: string; caption: string }[]
+  loftInsulationNote: string | null
 }
 
 function buildWoodwormTreatmentContent(
@@ -546,11 +547,68 @@ function buildWoodwormTreatmentContent(
   // accounts for the vast majority of UK domestic infestations).
   const hasAnobium = speciesSet.has('common_furniture_beetle')
   const noSpeciesRecorded = speciesSet.size === 0
-  const anobiumText = hasAnobium || noSpeciesRecorded ? `\n\n${ANOBIUM_DESCRIPTION}` : ''
+  const showAnobium = hasAnobium || noSpeciesRecorded
+  const anobiumText = showAnobium ? `\n\n${ANOBIUM_DESCRIPTION}` : ''
 
   const speciesText = speciesNote
     ? `\n\nSPECIES IDENTIFICATION\nSpecies: ${speciesNote.name}\n${speciesNote.statusLabel}${anobiumText}`
     : anobiumText
+
+  // Beetle reference image — shown alongside Anobium description
+  const beetleImage = showAnobium
+    ? {
+        src: '/images/woodworm/beetle-anobium-punctatum.jpg',
+        alt: 'Common Furniture Beetle (Anobium punctatum)',
+        attribution: 'Image: CSIRO, CC BY 3.0',
+      }
+    : null
+
+  // Treatment equipment reference images — always included
+  const equipmentImages = [
+    {
+      src: '/images/woodworm/protective-clothing.jpg',
+      alt: 'Protective clothing worn during treatment',
+      caption: 'Protective Clothing',
+    },
+    {
+      src: '/images/woodworm/spray-equipment.jpg',
+      alt: 'Spray equipment used for timber treatment',
+      caption: 'Spray Application Equipment',
+    },
+    {
+      src: '/images/woodworm/fogging-application.jpg',
+      alt: 'Fogging treatment being applied to timber',
+      caption: 'Fogging Application',
+    },
+  ]
+
+  // Loft insulation handling note — conditional on loft insulation work
+  let loftInsulationNote: string | null = null
+  const hasLoftInsulation = woodwormRooms.some((room) => {
+    const ww = room.room_data?.woodworm as WoodwormRoomData | undefined
+    return ww && (ww.loft_insulation_area || 0) > 0
+  })
+  if (hasLoftInsulation) {
+    const hasLifting = woodwormRooms.some((room) => {
+      const ww = room.room_data?.woodworm as WoodwormRoomData | undefined
+      return ww?.include_lifting_loft_insulation
+    })
+    const hasRelaying = woodwormRooms.some((room) => {
+      const ww = room.room_data?.woodworm as WoodwormRoomData | undefined
+      return ww?.include_relaying_loft_insulation
+    })
+    let noteText = 'Where loft insulation is present in areas requiring treatment, the insulation will need to be lifted to allow full access to roof timbers and the loft floor area.'
+    if (hasLifting && hasRelaying) {
+      noteText += ' Our quotation includes for the careful lifting of existing loft insulation prior to treatment and relaying of insulation once treatment works are complete.'
+    } else if (hasLifting) {
+      noteText += ' Our quotation includes for the careful lifting of existing loft insulation prior to treatment. Relaying of insulation is not included and should be arranged separately.'
+    } else {
+      noteText += ' The lifting and relaying of loft insulation is not included within our quotation and should be arranged separately by the customer.'
+    }
+    loftInsulationNote = noteText
+  }
+
+  const loftText = loftInsulationNote ? `\n\nLOFT INSULATION\n${loftInsulationNote}` : ''
 
   const content =
     `${METHODOLOGY_WOODWORM_SPRAY.title}\n\n` +
@@ -559,7 +617,8 @@ function buildWoodwormTreatmentContent(
     `---\n\n` +
     `IMPORTANT SAFETY INFORMATION — Exclusion Zone\n\n` +
     `${safetyText}` +
-    speciesText
+    speciesText +
+    loftText
 
   return {
     content,
@@ -567,6 +626,10 @@ function buildWoodwormTreatmentContent(
       methodology: METHODOLOGY_WOODWORM_SPRAY,
       safetyPoints: WOODWORM_SAFETY_POINTS,
       speciesNote,
+      anobiumDescription: showAnobium ? ANOBIUM_DESCRIPTION : null,
+      beetleImage,
+      equipmentImages,
+      loftInsulationNote,
     },
   }
 }
@@ -1518,12 +1581,10 @@ export async function generateReport(
           items.push({ number: scopeItemNumber++, description: 'Remove skirting boards to affected areas', urgency: 'high', length: lengthStr })
           items.push({ number: scopeItemNumber++, description: 'Install cavity drain membrane system to affected walls', urgency: 'high', area: areaStr })
           items.push({ number: scopeItemNumber++, description: 'Fix new plasterboard to membrane and apply multi-finish skim plaster', urgency: 'high', area: areaStr })
-          items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
         } else if (treatmentCode === 'injection') {
           items.push({ number: scopeItemNumber++, description: 'Strip existing plaster to affected area', urgency: 'high', area: areaStr })
           items.push({ number: scopeItemNumber++, description: 'Injection of chemical damp proof course to mortar course at 150mm above external ground level', urgency: 'high', length: lengthStr })
           items.push({ number: scopeItemNumber++, description: 'Apply renovation plaster to treated walls', urgency: 'high', area: areaStr })
-          items.push({ number: scopeItemNumber++, description: 'Reinstate skirting boards to treated areas', urgency: 'medium' })
         } else if (treatmentCode === 'tanking') {
           items.push({ number: scopeItemNumber++, description: 'Prepare substrate — remove existing plaster finishes to affected walls', urgency: 'high', area: areaStr })
           items.push({ number: scopeItemNumber++, description: 'Apply cementitious tanking system to affected walls', urgency: 'high', area: areaStr })
@@ -1564,25 +1625,25 @@ export async function generateReport(
         }
         if ((timberData.fungal_treatment_area || 0) > 0) {
           const area = `${(timberData.fungal_treatment_area as number).toFixed(1)}m²`
-          items.push({ number: scopeItemNumber++, description: `Apply fungicidal spray treatment to all exposed masonry and timber (${area})`, urgency: 'high', area })
+          items.push({ number: scopeItemNumber++, description: 'Apply fungicidal spray treatment to all exposed masonry and timber', urgency: 'high', area })
           totalAffectedArea += timberData.fungal_treatment_area as number
         }
         if (timberData.timber_replacement_needed && timberData.joist_entries?.length > 0) {
           hasStripOut = true
           for (const joistEntry of timberData.joist_entries as Array<{ size: string; quantity: number; length: number }>) {
-            items.push({ number: scopeItemNumber++, description: `Supply and install ${joistEntry.quantity}x ${joistEntry.size} replacement joists at ${joistEntry.length}m each`, urgency: 'high' })
+            items.push({ number: scopeItemNumber++, description: 'Supply and install replacement joists to match existing specification', urgency: 'high' })
           }
         }
         if ((timberData.flooring_area || 0) > 0) {
           const area = `${(timberData.flooring_area as number).toFixed(1)}m²`
           const flooringLabel = formatFlooringType(timberData.flooring_type)
-          items.push({ number: scopeItemNumber++, description: `Supply and install replacement ${flooringLabel} flooring (${area})`, urgency: 'high', area })
+          items.push({ number: scopeItemNumber++, description: `Supply and install replacement ${flooringLabel} flooring`, urgency: 'high', area })
           totalAffectedArea += timberData.flooring_area as number
           hasStripOut = true
         }
         if (timberData.ceiling_affected && (timberData.ceiling_area || 0) > 0) {
           const area = `${(timberData.ceiling_area as number).toFixed(1)}m²`
-          items.push({ number: scopeItemNumber++, description: `Renew ceiling to affected area (${area})`, urgency: 'medium', area })
+          items.push({ number: scopeItemNumber++, description: 'Renew ceiling to affected area', urgency: 'medium', area })
         }
       }
     }
@@ -1595,17 +1656,17 @@ export async function generateReport(
         const urgency = severityUrgencyMap[woodwormData.severity as string] || 'medium'
         if ((woodwormData.spray_floor_area || 0) > 0) {
           const area = `${(woodwormData.spray_floor_area as number).toFixed(1)}m²`
-          items.push({ number: scopeItemNumber++, description: `Apply insecticidal spray treatment to floor timbers (${area})`, urgency, area })
+          items.push({ number: scopeItemNumber++, description: 'Apply insecticidal spray treatment to floor timbers', urgency, area })
           totalAffectedArea += woodwormData.spray_floor_area as number
         }
         if ((woodwormData.spray_timber_area || 0) > 0) {
           const area = `${(woodwormData.spray_timber_area as number).toFixed(1)}m²`
-          items.push({ number: scopeItemNumber++, description: `Apply insecticidal spray treatment to exposed structural timbers (${area})`, urgency, area })
+          items.push({ number: scopeItemNumber++, description: 'Apply insecticidal spray treatment to exposed structural timbers', urgency, area })
           totalAffectedArea += woodwormData.spray_timber_area as number
         }
         if ((woodwormData.paste_treatment_area || 0) > 0) {
           const area = `${(woodwormData.paste_treatment_area as number).toFixed(1)}m²`
-          items.push({ number: scopeItemNumber++, description: `Apply insecticidal paste treatment to affected timbers (${area})`, urgency, area })
+          items.push({ number: scopeItemNumber++, description: 'Apply insecticidal paste treatment to affected timbers', urgency, area })
           totalAffectedArea += woodwormData.paste_treatment_area as number
         }
         if (woodwormData.structural_damage) {
@@ -1682,6 +1743,12 @@ export async function generateReport(
   const ASBESTOS_NOTE =
     'Properties built before 2000 may contain asbestos-containing materials (ACMs). Where our works require disturbance of materials that may contain asbestos, a sampling and testing service is available. If asbestos-containing materials are identified, specialist removal will be arranged in accordance with the Control of Asbestos Regulations 2012 prior to the commencement of treatment works.'
 
+  // Customer reinstatement responsibility — triggered when any damp treatment is present
+  const REINSTATEMENT_RESPONSIBILITY_NOTE =
+    'We will remove radiators and set aside, we will remove skirting boards and isolate electrical sockets to carry out specialist works. Customer to organise refitting of new skirting boards, retrofit sockets, and refit radiators at their own expense.'
+
+  const hasDampTreatmentScope = dampRooms.length > 0
+
   let scopeContent =
     'The following schedule of works has been specified based on our survey findings. Works are listed by location and treatment sequence.'
   if (hasPivOrFan) {
@@ -1689,6 +1756,9 @@ export async function generateReport(
   }
   if (hasStripOut) {
     scopeContent += `\n\n${ASBESTOS_NOTE}`
+  }
+  if (hasDampTreatmentScope) {
+    scopeContent += `\n\n${REINSTATEMENT_RESPONSIBILITY_NOTE}`
   }
 
   sections.push(
@@ -1704,6 +1774,7 @@ export async function generateReport(
         total_affected_area: `${totalAffectedArea.toFixed(1)}m²`,
         electrical_standards_note: hasPivOrFan ? ELECTRICAL_STANDARDS_NOTE : null,
         asbestos_note: hasStripOut ? ASBESTOS_NOTE : null,
+        reinstatement_responsibility_note: hasDampTreatmentScope ? REINSTATEMENT_RESPONSIBILITY_NOTE : null,
       }
     )
   )

@@ -30,6 +30,7 @@ import { BoilerplateSection } from '@/components/report/BoilerplateSection'
 import { SurveyorProfileSection } from '@/components/report/SurveyorProfileSection'
 import { CondensationCausesSection } from '@/components/report/CondensationCausesSection'
 import { TreatmentMethodologySection } from '@/components/report/TreatmentMethodologySection'
+import { WoodwormTreatmentSection } from '@/components/report/WoodwormTreatmentSection'
 import { PhotoLightbox } from '@/components/report/PhotoLightbox'
 import { ReportViewTracker } from './client'
 
@@ -318,6 +319,9 @@ function renderSection(
 
     case 'treatment_methodology':
       return <TreatmentMethodologySection key={section.key} section={section} />
+
+    case 'woodworm_treatment_methodology':
+      return <WoodwormTreatmentSection key={section.key} section={section} />
 
     case 'ancillary_items':
     case 'extent_of_survey':

@@ -41,9 +41,9 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
   const data = section.data || {}
   const roomWorks = (data.room_works as RoomWork[]) ?? []
   const additionalWorks = (data.additional_works as WorkItem[]) ?? []
-  const totalAffectedArea = data.total_affected_area as string | undefined
   const electricalNote = data.electrical_standards_note as string | null | undefined
   const asbestosNote = data.asbestos_note as string | null | undefined
+  const reinstatementNote = data.reinstatement_responsibility_note as string | null | undefined
 
   return (
     <section
@@ -91,16 +91,11 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
                       {item.number}
                     </span>
 
-                    {/* Description + measurement */}
+                    {/* Description */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[#1F2937] leading-snug">
                         {item.description}
                       </p>
-                      {(item.area || item.length) && (
-                        <p className="text-xs text-[#6B7280] mt-0.5">
-                          {item.area || item.length}
-                        </p>
-                      )}
                     </div>
 
                     {/* Urgency dot */}
@@ -133,11 +128,6 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
                   <p className="text-sm text-[#1F2937] leading-snug">
                     {item.description}
                   </p>
-                  {(item.area || item.length) && (
-                    <p className="text-xs text-[#6B7280] mt-0.5">
-                      {item.area || item.length}
-                    </p>
-                  )}
                 </div>
                 <div className="flex-shrink-0 flex items-start pt-1">
                   <UrgencyDot urgency={item.urgency} />
@@ -168,26 +158,12 @@ export function ScopeOfWorksSection({ section }: ScopeOfWorksSectionProps) {
         </div>
       )}
 
-      {/* Total affected area */}
-      {totalAffectedArea && (
-        <div className="mb-6 flex items-center gap-3 bg-[#F0F9FF] border border-blue-200 rounded-lg px-4 py-3">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-[#2563EB] flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
-          <p className="text-sm text-[#374151]">
-            <span className="font-semibold">Total Affected Area:</span>{' '}
-            {totalAffectedArea}
+      {/* Customer reinstatement responsibility */}
+      {reinstatementNote && (
+        <div className="mb-6 flex gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-[#374151] leading-relaxed">
+            <span className="font-semibold">Customer Reinstatement Responsibility: </span>
+            {reinstatementNote}
           </p>
         </div>
       )}
