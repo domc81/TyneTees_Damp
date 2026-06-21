@@ -31,7 +31,7 @@ TyneTees_Damp/
 │   │   ├── middleware.ts  # Supabase SSR session management
 │   │   └── types/         # TypeScript types (database, wizard, report, photo, installer)
 │   ├── supabase/
-│   │   └── migrations/    # 34 SQL migration files
+│   │   └── migrations/    # 38 SQL migration files
 │   ├── Dockerfile         # Multi-stage Node 22 Alpine build
 │   └── package.json
 ├── docs/                  # Documentation

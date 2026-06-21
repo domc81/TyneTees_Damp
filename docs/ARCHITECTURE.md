@@ -5,7 +5,7 @@
 ```
 Customer ──→ Enquiry Pipeline ──→ Survey Wizard ──→ Costing Engine ──→ Quotation ──→ Report
                   │                     │                │                  │            │
-              Kanban board       Room-by-room        8 formula         PDF + email   LLM narrative
+              Kanban board       Room-by-room        11 formula        PDF + email   LLM narrative
               (drag-drop)        inspection          types             public page   public page
                   │                     │                │
               Calendar/          Voice recording     Mapping engine
@@ -19,13 +19,13 @@ The Next.js app (`survey-system/src/`) serves both the internal staff UI and pub
 ### Frontend (Next.js 14, App Router)
 
 - **Dashboard** — survey stats, enquiry pipeline widget, recent activity feed
-- **Enquiry Pipeline** — Kanban board with 7 columns (New through Won/Declined), drag-and-drop via @dnd-kit, detail drawer with inline editing, SLA traffic lights, auto-status transitions
+- **Enquiry Pipeline** — Kanban board with 7 columns (New → Assigned → Surveyed → Quoted → Accepted / Declined / On Hold), drag-and-drop via @dnd-kit, detail drawer with inline editing, SLA traffic lights, auto-status transitions
 - **Survey Wizard** — 5-step room-first workflow: Site Details → External Inspection → Room Inspection (repeats) → Additional Works → Review. Voice recording via Deepgram, photo capture, auto-save with 2-second debounce
 - **Costing Review** — auto-calculated from wizard data, section-by-section breakdown with adjustment controls, multi-survey-type tabs
 - **Quotations** — PDF generation via @react-pdf/renderer, email delivery, public accept/decline page with e-signature
 - **Reports** — LLM-generated narrative (Grok 4.1 Fast via OpenRouter), section editor, status workflow, public branded web report
 - **Calendar** — FullCalendar with booking management, surveyor availability, booking notifications
-- **Admin** — materials catalogue, costing line templates, pricing rates, team management
+- **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management
 
 ### Backend (Next.js API routes + Supabase)
 
@@ -35,17 +35,19 @@ The canonical data access layer is `src/lib/supabase-data.ts`.
 
 ### Database (Supabase / PostgreSQL)
 
-Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). Key table clusters:
+Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 42 tables across these clusters:
 
-- **CRM:** `enquiries`, `enquiry_activity`, `customers`, `communication_log`
-- **Surveys:** `surveys` (central table — 22 FKs into it), `survey_rooms` (room_data JSONB), `survey_images`
-- **Costing:** `costing_sections` (44), `costing_line_templates` (227), `pricing_config` (14 values), `materials_catalog` (30 products), `survey_costing_lines`
-- **Quotations:** `quotations`, `quotation_sections`, `quotation_acceptances` (immutable audit trail)
-- **Reports:** `report_templates` (4, one per survey type), `survey_reports`, `report_view_events`
-- **Calendar:** `bookings`, `surveyor_availability`, `booking_reminders_sent`
+- **CRM:** `enquiries`, `enquiry_activity`, `on_hold_message_templates`, `customers`, `communication_log`
+- **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
+- **Surveys:** `surveys` (central table), `survey_rooms` (room_data JSONB), `survey_images`, `photos`, `survey_installer_info`
+- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (14 values), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
+- **Quotations:** `quotations`, `quotation_sections`, `quotation_acceptances`, `quotation_views`
+- **Reports:** `report_templates` (4, one per survey type), `survey_reports`, `report_views`
+- **Calendar:** `survey_bookings`, `surveyor_availability`, `availability_blocks`
 - **Notifications:** `notifications` (realtime subscriptions)
+- **Company:** `company_profile`
 
-35 migrations applied manually via `docker exec`.
+39 migrations applied manually via `docker exec`.
 
 ### External services
 
@@ -65,7 +67,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). Key table clusters
 1. Office creates enquiry (Kanban board), converts to customer + survey + booking
 2. Surveyor completes 5-step wizard — data stored in `surveys.survey_data` JSONB (property-level) and `survey_rooms.room_data` JSONB (per-room)
 3. Mapping engine (`survey-mapping.ts`) aggregates all rooms into `LineInput[]` per costing section
-4. Pricing engine (`pricing-engine.ts`) calculates material + labour costs using 8 formula types against `costing_line_templates` and `pricing_config`
+4. Pricing engine (`pricing-engine.ts`) calculates material + labour costs using 11 formula types against `costing_line_templates` and `pricing_config`
 5. Travel overhead (`travel-overhead.ts`) adds vehicle costs post-engine
 6. Results written to `survey_costing_lines`, displayed in costing review page
 7. Generate quotation → snapshots costing into `quotation_sections`, creates PDF
@@ -74,7 +76,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). Key table clusters
 
 ### Pricing formula types
 
-`standard`, `ceiling_coverage`, `dpc_injection`, `compound_material`, `fixed_price`, `tiered_disposal`, `bag_and_cart`, `skip_hire`
+`standard`, `ceiling_coverage`, `dpc_injection`, `digital_dpc`, `compound_material`, `fixed_price`, `per_room_fixed`, `ancillary_refit`, `tiered_disposal`, `bag_and_cart`, `skip_hire`
 
 ## Environment variables
 
@@ -94,6 +96,6 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). Key table clusters
 
 - **Room-first survey model:** The wizard follows how a surveyor physically works (room by room), not issue-type-first. A single room can have multiple issue types (damp + timber + condensation). The mapping engine aggregates across all rooms to produce costing inputs.
 - **JSONB over normalised tables:** 13 survey-type extension tables were provisioned but the wizard stores everything in `survey_rooms.room_data` JSONB. Simpler, working, and the extension tables are candidates for removal.
-- **Excel workbooks as pricing source of truth:** All 227 line templates and formula parameters must match the original XLSM workbooks. Deviations cause real business impact.
+- **Excel workbooks as pricing source of truth:** All 220 line templates and formula parameters must match the original XLSM workbooks. Deviations cause real business impact.
 - **Client-side rendering for authenticated pages:** All authenticated pages fetch data client-side. No SSR/streaming. Causes flash-of-spinner but was the faster path to MVP.
-- **Forward-only enquiry transitions:** `shouldAutoTransition()` enforces ordering to prevent status regression. Terminal statuses (won/declined) are never overwritten.
+- **Forward-only enquiry transitions:** `shouldAutoTransition()` enforces ordering to prevent status regression. Terminal statuses (accepted/declined/completed) are never overwritten.

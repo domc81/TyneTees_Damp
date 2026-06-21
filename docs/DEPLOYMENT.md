@@ -59,7 +59,7 @@ Migrations are applied manually (no automated migration runner):
 docker exec -i supabase-db-y04kk0wwoswogw0oowcs04gw psql -U supabase_admin -d postgres < survey-system/supabase/migrations/<filename>.sql
 ```
 
-35 migrations exist (34 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`).
+39 migrations exist (38 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`).
 
 ## Rollback procedure
 

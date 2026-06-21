@@ -42,7 +42,7 @@ Survey wizard data (rooms, areas, measurements)
   Mapping layer  ---- aggregates all rooms by issue type
         |
         v
-  Pricing engine ---- applies 8 formula types using templates + config + materials
+  Pricing engine ---- applies 11 formula types using templates + config + materials
         |
         v
   Costing review ---- admin/surveyor adjusts sections, toggles optional work
@@ -60,7 +60,7 @@ Three admin pages control the inputs that feed this pipeline:
 |------|-----|------------------|
 | Pricing Configuration | `/admin/rates` | Labour rates, markups, wastage, VAT, fixed costs, deposit percentages |
 | Materials Catalogue | `/admin/materials` | Supplier products with unit costs and coverage rates |
-| Costing Templates | `/admin/costing` | 227 line item templates across 4 survey types + site preparation |
+| Costing Templates | `/admin/costing` | 220 line item templates across 4 survey types + site preparation |
 
 All three are admin-only (requires the `admin` role).
 
@@ -222,7 +222,7 @@ Templates reference materials through `product_key` in their `formula_params`. F
 
 **URL:** `/admin/costing`
 
-Manages the 227 line item templates that define how each type of work is priced. Templates are grouped into sections, and sections belong to survey types.
+Manages the 220 line item templates that define how each type of work is priced. Templates are grouped into sections, and sections belong to survey types.
 
 #### Navigation
 
@@ -647,7 +647,7 @@ Global pricing parameters. 14 rows, each with `config_key` (text), `config_value
 
 Supplier product database. Key fields: `id`, `name`, `category`, `product_key` (unique, nullable), `unit_cost`, `unit`, `coverage_m2`, `unit_size`, `supplier`, `supplier_url`, `is_active`, `created_at`, `updated_at`.
 
-Active materials (~30 products) are loaded into a lookup map by the pricing engine. Deactivated materials (`is_active = false`) are preserved for historical reference but excluded from new calculations.
+Active materials (34 products) are loaded into a lookup map by the pricing engine. Deactivated materials (`is_active = false`) are preserved for historical reference but excluded from new calculations.
 
 ### costing_sections
 
@@ -655,7 +655,7 @@ Active materials (~30 products) are loaded into a lookup map by the pricing engi
 
 ### costing_line_templates
 
-227 line item templates. Key fields: `id`, `section_id` (FK to costing_sections), `line_key`, `description`, `uom`, `cost_formula` (one of 8 types), `base_unit_cost`, `labour_rate_per_unit`, `coverage_rate`, `wastage_factor`, `material_markup`, `labour_markup`, `formula_params` (JSONB), `is_active`, `display_order`.
+220 line item templates. Key fields: `id`, `section_id` (FK to costing_sections), `line_key`, `description`, `uom`, `cost_formula` (one of 11 types), `base_unit_cost`, `labour_rate_per_unit`, `coverage_rate`, `wastage_factor`, `material_markup`, `labour_markup`, `formula_params` (JSONB), `is_active`, `display_order`.
 
 ### costing_section_adjustments
 

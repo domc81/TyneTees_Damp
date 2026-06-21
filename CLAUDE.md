@@ -97,7 +97,8 @@ TyneTees_Damp/
 │   │   │   ├── admin/
 │   │   │   │   ├── page.tsx        # Admin landing page
 │   │   │   │   ├── availability/   # Surveyor availability management
-│   │   │   │   ├── materials/      # Materials catalogue admin
+│   │   │   │   ├── costing/       # Costing line templates admin (formula params, pricing)
+│   │   │   │   ├── materials/      # Materials catalogue admin (CRUD)
 │   │   │   │   ├── rates/          # Pricing config (reads/writes pricing_config table)
 │   │   │   │   └── team/           # Team/surveyor management (profiles)
 │   │   │   ├── api/                # API routes (21 route files — see API Routes section)
@@ -146,7 +147,7 @@ TyneTees_Damp/
 │   │       ├── survey-photo.types.ts  # Photo capture & storage types
 │   │       └── installer-info.types.ts # Installer info types
 │   ├── supabase/
-│   │   ├── migrations/              # 34 SQL migrations
+│   │   ├── migrations/              # 38 SQL migrations
 │   │   ├── functions/               # Edge functions (legacy — app uses API routes instead)
 │   │   ├── config.toml
 │   │   ├── seed.sql
@@ -177,7 +178,7 @@ TyneTees_Damp/
 
 **Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
 
-**Pricing:** `pricing-engine.ts` (8 formula types), `pricing-data.ts` (data loading + orchestration), `survey-mapping.ts` (wizard data → pricing inputs), `travel-overhead.ts` (post-engine travel & vehicle overhead)
+**Pricing:** `pricing-engine.ts` (11 formula types), `pricing-data.ts` (data loading + orchestration), `survey-mapping.ts` (wizard data → pricing inputs), `travel-overhead.ts` (post-engine travel & vehicle overhead)
 
 **Survey:** `survey-wizard-data.ts` (wizard persistence/auto-save), `survey-photo-service.ts` (photo upload/management), `survey-tags.ts` (survey type tagging)
 
@@ -241,82 +242,100 @@ TyneTees_Damp/
 
 ### Migrations
 
-35 total: 34 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
+39 total: 38 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
 
-Range: `00000000000000_initial_schema.sql` through `20260303000002_fix_notifications_replica_identity.sql`. Applied manually via `docker exec`.
+Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastage_from_labour_only_templates.sql`. Applied manually via `docker exec`.
 
-### Active Tables
+### Active Tables (42 tables)
 
 **CRM & Pipeline:**
 - `enquiries` — pipeline records (status, priority, sla, follow_up_date, on_hold_reason, decline_reason)
 - `enquiry_activity` — activity/timeline log
-- `on_hold_templates` — predefined on-hold message templates
+- `on_hold_message_templates` — predefined on-hold message templates
 - `customers` — customer master data
 - `communication_log` — email/call communication records
 
 **User & Team:**
 - `user_profiles` — user accounts with roles (admin, office, surveyor)
-- `platform_settings` — per-user settings (notification preferences, Resend API key override)
+- `platform_settings` — per-user settings (Resend API key override, etc.)
+- `notification_preferences` — per-event notification settings (in-app/email toggles)
 
 **Surveys:**
 - `surveys` — survey jobs with `survey_type`, `status`, `survey_data` JSONB, `tags` TEXT[]
 - `survey_rooms` — one row per room with `issues_identified` TEXT[] and `room_data` JSONB
-- `survey_images` — survey photos
+- `survey_images` — survey photos (wizard-managed)
+- `photos` — survey photos (with room/question linkage)
+- `survey_installer_info` — installer site info per survey (JSONB + categories)
 
-**Survey Type Extensions:**
+**Survey Type Extensions (provisioned but unused — wizard stores everything in JSONB):**
 - `survey_damp_report`, `survey_damp_wall_readings`
 - `survey_condensation_report`, `survey_condensation_rooms`
 - `survey_timber_report`, `survey_timber_rooms`
 - `survey_woodworm_report`
 
 **Costing Engine:**
-- `costing_sections` — 44 sections across 4 survey types
-- `costing_line_templates` — 227 line item templates with formula types and params
-- `pricing_config` — 14 config entries (hourly rates, markups, VAT, etc.)
-- `materials_catalog` — 30 products with costs, coverage rates
+- `costing_sections` — 44 sections across 5 survey types (incl. site_preparation)
+- `costing_line_templates` — 220 line item templates with formula types and params
+- `pricing_config` — 14 config entries (hourly rates, markups, VAT, deposit %, etc.)
+- `materials_catalog` — 34 products with costs, coverage rates
 - `survey_costing_lines` — per-survey calculated costs
 - `costing_section_adjustments` — per-section price adjustment %
+- `survey_customer_summary` — per-section customer-facing cost summary
+- `survey_overheads` — per-survey overhead costs (travel, skip, etc.)
+- `survey_subcontractor_costs` — subcontractor cost breakdown per section
+- `survey_caf1` — Customer Acceptance Form (deposit, signature, cooling-off waiver)
 
 **Quotations:**
 - `quotations` — status workflow: draft → sent → viewed → accepted/declined
 - `quotation_sections` — quotation line items with optional/included flags
 - `quotation_acceptances` — e-signature consent records (immutable audit trail)
+- `quotation_views` — quotation view tracking (IP, user agent, duration)
 
 **Reports:**
 - `report_templates` — 4 default templates (one per survey type)
 - `survey_reports` — status workflow: draft → generated → reviewed → finalised → published
-- `report_view_events` — report view tracking
+- `report_views` — report view tracking (IP, user agent, duration)
 
 **Calendar & Bookings:**
-- `bookings` — survey booking slots
+- `survey_bookings` — survey booking slots (date, time, surveyor, customer)
 - `surveyor_availability` — weekly availability patterns
-- `booking_reminders_sent` — dedup table for reminder emails
+- `availability_blocks` — surveyor leave/absence date blocks (annual_leave, sickness, training, other)
 
 **Notifications:**
 - `notifications` — in-app notifications with realtime subscriptions
 
 **Company:**
 - `company_profile` — company details, logo, T&C text
-- `section_inclusions` — per-survey-type section inclusion settings
 
-### Key Pricing Config Values
+### Key Pricing Config Values (14 entries)
 
-| Key | Value |
-|-----|-------|
-| hourly_labour_rate | 30.63 |
-| contractor_hourly_rate | 28.00 |
-| default_material_markup | 0.30 (30%) |
-| default_labour_markup | 1.00 (100%) |
-| default_wastage_factor | 1.10 (10%) |
-| vat_rate | 0.20 (20%) |
+| Key | Value | Description |
+|-----|-------|-------------|
+| hourly_labour_rate | 30.63 | Base hourly labour rate (£) |
+| contractor_hourly_rate | 28.00 | Rate paid to contractor per hour (£) |
+| default_material_markup | 0.30 (30%) | Default material markup |
+| default_labour_markup | 1.00 (100%) | Default labour markup |
+| default_wastage_factor | 1.10 (10%) | Default wastage factor |
+| vat_rate | 0.20 (20%) | VAT rate |
+| vehicle_cost_per_mile | 0.50 | Vehicle running cost per mile (£) |
+| skip_hire_8yd_cost | 270.00 | Skip hire 8 yard base cost (£) |
+| digital_dpc_base_cost | 650.00 | Mursec Eco digital DPC unit base cost (£) |
+| asbestos_testing_cost | 30.00 | Asbestos testing per sample cost (£) |
+| damp_deposit_pct | 0.30 (30%) | Damp survey deposit percentage |
+| condensation_deposit_pct | 0.50 (50%) | Condensation survey deposit percentage |
+| timber_deposit_pct | 0.30 (30%) | Timber survey deposit percentage |
+| woodworm_deposit_pct | 0.30 (30%) | Woodworm survey deposit percentage |
 
-### Formula Types in costing_line_templates
+### Formula Types in costing_line_templates (11 types)
 
 - `standard` — material = unit_cost x quantity, labour = rate x quantity
 - `ceiling_coverage` — CEIL(quantity / coverage) x (unit_cost / coverage x wastage)
 - `dpc_injection` — cream cost + drill plug cost based on wall depth
+- `digital_dpc` — digital DPC unit cost (reads base cost from pricing_config)
 - `compound_material` — multi-material mix (e.g. dubbing coat = SBR + sand + cement)
 - `fixed_price` — flat rate item (e.g. PIV units)
+- `per_room_fixed` — fixed cost applied per room
+- `ancillary_refit` — ancillary refit items
 - `tiered_disposal` — conditional rate based on quantity threshold
 - `bag_and_cart` — per-bag debris removal
 - `skip_hire` — reads cost from pricing_config
@@ -341,7 +360,7 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 
 ## Enquiry Pipeline
 
-Kanban board with drag-and-drop columns: New → Contacted → Booked → Surveyed → Quoted → Won / On Hold / Declined. Features:
+Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted / Declined / On Hold. Features:
 - Detail drawer with tabs (details, activity, notes)
 - Inline field editing
 - SLA traffic lights and follow-up indicators
@@ -390,7 +409,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book
 - **Customer Management:** List, create, edit, detail with history and communication log
 - **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture
-- **Pricing Engine:** 8 formula types, Supabase data loading, travel overhead calculator
+- **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature
 - **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view
