@@ -1,7 +1,7 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-06-21
-**Last commit:** cea71d9 — docs: doc-standard retrofit complete
+**Last commit:** b77941e — chore: remove temporary report regeneration route
 **Current phase:** MVP feature-complete — accuracy verification and polish
 
 ## Current focus
@@ -12,7 +12,7 @@ All core features are built and working: enquiry pipeline, survey wizard (4 issu
 
 - **Workbook formula accuracy pass:** all 220 line template calculations need verification against the original Excel workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26). Deviations cause real business impact.
 - **Costing manual overrides:** surveyors need to adjust individual line items on the costing page. Not yet built.
-- **Woodworm wizard fields:** not at full parity with the workbook. Some fields missing.
+- **Woodworm wizard fields:** not at full parity with the workbook. Some fields missing. Report now includes beetle reference image, equipment photos, and loft insulation note — but wizard field coverage still incomplete.
 - **Survey type refactor:** `survey_type` enum includes `structural`, `comprehensive`, `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing. Selecting them creates dead-end surveys. Plan exists at `docs/plans/2026-03-02-survey-type-display-migration.md`.
 - **Role-based RLS tightening:** most tables grant full access to all authenticated users. Acceptable for MVP but must fix before team growth.
 - **7 API routes with no role checks:** includes LLM/transcription endpoints (API credit exposure) and company profile writes.
@@ -27,6 +27,7 @@ All core features are built and working: enquiry pipeline, survey wizard (4 issu
 
 ## Recently shipped
 
+- 2026-06-21 — Client feedback implementation: removed all measurements from customer-facing reports (m², joist sizes, areas), updated cavity drain membrane methodology wording (3 steps changed), removed skirting reinstatement from scope items, added customer reinstatement responsibility disclaimer, updated woodworm methodology (2 steps removed), added beetle reference image + 3 treatment equipment photos + loft insulation note to woodworm reports, created WoodwormTreatmentSection component, regenerated all 18 existing reports
 - 2026-06-21 — Deep documentation audit: fixed all table names, counts, formula types, pipeline statuses, migration counts across all docs
 - 2026-04-27 — Doc-standard retrofit: AGENTS.md, README.md, ARCHITECTURE.md, DEPLOYMENT.md, CLAUDE.md import chain
 - 2026-04-27 — Consolidated all documentation into `docs/` directory

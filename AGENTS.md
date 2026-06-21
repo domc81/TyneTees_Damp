@@ -59,7 +59,9 @@ All commands run from `survey-system/` directory:
 - Edge functions in `supabase/functions/` are legacy dead code — all LLM/email operations use Next.js API routes under `src/app/api/`.
 - `survey_type` enum includes `structural`, `comprehensive`, and `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing — selecting them creates dead-end surveys.
 - The 13 survey-type extension tables (`survey_damp_report`, etc.) are provisioned but unused — the wizard stores everything in `survey_rooms.room_data` JSONB.
-- `public/` directory must never be empty — Dockerfile COPY requires it. Keep `.gitkeep` if needed.
+- `public/images/woodworm/` contains static reference images (beetle photo + 3 treatment equipment photos) used by the report generator. The beetle image is CC BY 3.0 (CSIRO attribution required).
+- Customer-facing reports intentionally hide all m², area, volume, and joist size/quantity data. The internal editor still shows these. Do not re-add measurements to `RoomFindingsSection.tsx` or `ScopeOfWorksSection.tsx`.
+- Treatment methodology step counts: membrane 8, tanking 7, DPC injection 4, wet rot 11, dry rot 13, woodworm 7. These are hardcoded constants in `report-generator.ts`, not in the database.
 - The Next.js app lives in `survey-system/` subdirectory, not project root. All npm commands must run from there.
 
 ## Do not touch

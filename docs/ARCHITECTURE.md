@@ -23,7 +23,7 @@ The Next.js app (`survey-system/src/`) serves both the internal staff UI and pub
 - **Survey Wizard** — 5-step room-first workflow: Site Details → External Inspection → Room Inspection (repeats) → Additional Works → Review. Voice recording via Deepgram, photo capture, auto-save with 2-second debounce
 - **Costing Review** — auto-calculated from wizard data, section-by-section breakdown with adjustment controls, multi-survey-type tabs
 - **Quotations** — PDF generation via @react-pdf/renderer, email delivery, public accept/decline page with e-signature
-- **Reports** — LLM-generated narrative (Grok 4.1 Fast via OpenRouter), section editor, status workflow, public branded web report
+- **Reports** — LLM-generated narrative (Grok 4.1 Fast via OpenRouter), section editor, status workflow, public branded web report. Customer-facing view hides all measurements (m², joist sizes). Woodworm reports include beetle reference image, treatment equipment photos, and loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
 - **Calendar** — FullCalendar with booking management, surveyor availability, booking notifications
 - **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management
 

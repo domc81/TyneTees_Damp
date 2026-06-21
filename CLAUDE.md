@@ -130,7 +130,7 @@ TyneTees_Damp/
 │   │   │   ├── NotificationBell.tsx # Realtime notification bell
 │   │   │   ├── calendar/           # SlotPicker, SurveyorSelect
 │   │   │   ├── installer-info/     # InstallerPhotoUpload
-│   │   │   ├── report/             # 19 report section components (see Report Components)
+│   │   │   ├── report/             # 20 report section components (see Report Components)
 │   │   │   ├── ui/                 # Primitives: button, card, input, index
 │   │   │   └── wizard/             # 12 wizard components (see Wizard Components)
 │   │   ├── context/
@@ -152,7 +152,8 @@ TyneTees_Damp/
 │   │   ├── config.toml
 │   │   ├── seed.sql
 │   │   └── setup-authentication.sql
-│   ├── public/                      # Static assets
+│   ├── public/
+│   │   └── images/woodworm/         # Beetle + treatment equipment reference images
 │   ├── Dockerfile                   # Multi-stage Node 22 Alpine build
 │   ├── docker-compose.yml           # Local dev Postgres (NOT used in production)
 │   ├── package.json
@@ -170,9 +171,9 @@ TyneTees_Damp/
 
 `WizardStepper`, `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`
 
-### Report Components (19 files)
+### Report Components (20 files)
 
-`CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
+`CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 
 ### Lib Files (31 files)
 
@@ -182,7 +183,7 @@ TyneTees_Damp/
 
 **Survey:** `survey-wizard-data.ts` (wizard persistence/auto-save), `survey-photo-service.ts` (photo upload/management), `survey-tags.ts` (survey type tagging)
 
-**Reports:** `report-generator.ts` (boilerplate + LLM narrative), `report-data.ts` (report CRUD), `report-publish.ts` (publish/share)
+**Reports:** `report-generator.ts` (boilerplate + LLM narrative + treatment methodology + woodworm images), `report-data.ts` (report CRUD), `report-publish.ts` (publish/share)
 
 **PDF:** `quotation-pdf-renderer.tsx` (quotation PDF layout via @react-pdf/renderer)
 
@@ -392,6 +393,10 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Enquiry source values** are stored in Title Case
 - **Server actions** body size limit is 10MB (for photo uploads)
 - **Edge functions** in `supabase/functions/` are legacy — all LLM/email operations use Next.js API routes
+- **Customer-facing reports hide measurements** — all m², area, volume, joist size/quantity removed from public report view. Internal editor and costing page still show all data. Quotation PDF was already measurement-free.
+- **Treatment methodology constants** are hardcoded in `report-generator.ts` — not in the database. Membrane (8 steps), tanking (7), DPC injection (4), wet rot (11), dry rot (13), woodworm (7 steps).
+- **Woodworm reports** include static reference images from `public/images/woodworm/` (beetle photo CC BY 3.0 CSIRO, 3 Pexels equipment photos). These are always included in generated woodworm reports.
+- **Customer reinstatement responsibility note** appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as electrical standards and asbestos notes.
 
 ## Build & Dev Commands
 
@@ -412,7 +417,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature
-- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view
+- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
 - **Calendar:** Booking management with FullCalendar, surveyor availability, booking notifications, daily reminders
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management
 - **Settings:** Company profile, logo upload, notification preferences, email testing
