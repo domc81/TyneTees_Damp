@@ -62,6 +62,7 @@ All commands run from `survey-system/` directory:
 - `public/images/woodworm/` contains static reference images (beetle photo + 3 treatment equipment photos) used by the report generator. The beetle image is CC BY 3.0 (CSIRO attribution required).
 - Customer-facing reports intentionally hide all m², area, volume, and joist size/quantity data. The internal editor still shows these. Do not re-add measurements to `RoomFindingsSection.tsx` or `ScopeOfWorksSection.tsx`.
 - Treatment methodology step counts: membrane 8, tanking 7, DPC injection 4, wet rot 11, dry rot 13, woodworm 7. These are hardcoded constants in `report-generator.ts`, not in the database.
+- Guarantee paragraph in `report-generator.ts` is hardcoded — does not read `guarantee_years`/`guarantee_scheme_name` from company profile. Covers: 25-year on rising damp/dry rot/woodworm, 7-year on mould, Protected Guarantee scheme (Westminster ceased trading).
 - The Next.js app lives in `survey-system/` subdirectory, not project root. All npm commands must run from there.
 
 ## Do not touch

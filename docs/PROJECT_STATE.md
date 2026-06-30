@@ -1,7 +1,7 @@
 # TyneTees Damp — Project State
 
-**Last updated:** 2026-06-21
-**Last commit:** b77941e — chore: remove temporary report regeneration route
+**Last updated:** 2026-06-30
+**Last commit:** 2c520a3 — fix: update guarantee wording per client feedback
 **Current phase:** MVP feature-complete — accuracy verification and polish
 
 ## Current focus
@@ -27,6 +27,7 @@ All core features are built and working: enquiry pipeline, survey wizard (4 issu
 
 ## Recently shipped
 
+- 2026-06-30 — Guarantee wording update per client feedback: 25-year company guarantees on rising damp/dry rot/woodworm, 7-year warranty on mould, removed Westminster Protected Guarantee (ceased trading), insurance-backed guarantees now through generic Protected Guarantee scheme. Updated report-generator.ts, company_profile (about_us_text + guarantee_scheme_name), and all 18 existing report sections in DB.
 - 2026-06-21 — Client feedback implementation: removed all measurements from customer-facing reports (m², joist sizes, areas), updated cavity drain membrane methodology wording (3 steps changed), removed skirting reinstatement from scope items, added customer reinstatement responsibility disclaimer, updated woodworm methodology (2 steps removed), added beetle reference image + 3 treatment equipment photos + loft insulation note to woodworm reports, created WoodwormTreatmentSection component, regenerated all 18 existing reports
 - 2026-06-21 — Deep documentation audit: fixed all table names, counts, formula types, pipeline statuses, migration counts across all docs
 - 2026-04-27 — Doc-standard retrofit: AGENTS.md, README.md, ARCHITECTURE.md, DEPLOYMENT.md, CLAUDE.md import chain

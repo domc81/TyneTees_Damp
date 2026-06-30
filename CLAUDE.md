@@ -395,6 +395,7 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Edge functions** in `supabase/functions/` are legacy — all LLM/email operations use Next.js API routes
 - **Customer-facing reports hide measurements** — all m², area, volume, joist size/quantity removed from public report view. Internal editor and costing page still show all data. Quotation PDF was already measurement-free.
 - **Treatment methodology constants** are hardcoded in `report-generator.ts` — not in the database. Membrane (8 steps), tanking (7), DPC injection (4), wet rot (11), dry rot (13), woodworm (7 steps).
+- **Guarantee paragraph** is hardcoded in `report-generator.ts` `buildGuaranteeParagraph()` — does not read from company profile fields. 25-year company guarantees on rising damp, dry rot, and woodworm; 7-year warranty on mould. Insurance-backed guarantees via generic Protected Guarantee scheme (Westminster ceased trading). Also appears in `company_profile.about_us_text`.
 - **Woodworm reports** include static reference images from `public/images/woodworm/` (beetle photo CC BY 3.0 CSIRO, 3 Pexels equipment photos). These are always included in generated woodworm reports.
 - **Customer reinstatement responsibility note** appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as electrical standards and asbestos notes.
 
