@@ -96,9 +96,7 @@ const PAYMENT_TEXT = `An initial payment of 30% of the contract value is require
 The remaining balance is due within 7 days of completion.`
 
 function buildGuaranteeParagraph(profile: CompanyProfile): string {
-  const years = profile.guarantee_years ?? 25
-  const scheme = profile.guarantee_scheme_name ?? 'Westminster Protected Guarantee'
-  return `We offer ${years}-year company and insurance-backed guarantees for damp proofing and timber treatment works above external ground level. All guarantees cover both materials and labour. Our membrane products carry a ${years}-year manufacturer's product guarantee. Insurance-backed guarantees are issued through the ${scheme} scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.`
+  return `We offer 25-year company guarantees on rising damp, dry rot, and woodworm treatments, with a 7-year warranty on mould treatment. All guarantees cover both materials and labour. Our membrane products carry a 25-year manufacturer's product guarantee. Insurance-backed guarantees are available through the Protected Guarantee scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.`
 }
 
 // =============================================================================
