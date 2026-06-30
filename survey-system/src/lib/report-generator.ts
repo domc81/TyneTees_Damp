@@ -97,8 +97,8 @@ The remaining balance is due within 7 days of completion.`
 
 function buildGuaranteeParagraph(profile: CompanyProfile): string {
   const years = profile.guarantee_years ?? 25
-  const scheme = profile.guarantee_scheme_name ?? 'insurance-backed guarantee scheme'
-  return `All treatment works carried out by ${profile.name} are covered by our ${years}-year insurance-backed guarantee, issued through the ${scheme}. This guarantee covers both materials and labour, operates independently of the contractor, and is fully transferable to future property owners — providing genuine long-term protection for your investment.`
+  const scheme = profile.guarantee_scheme_name ?? 'Westminster Protected Guarantee'
+  return `We offer ${years}-year company and insurance-backed guarantees for damp proofing and timber treatment works above external ground level. All guarantees cover both materials and labour. Our membrane products carry a ${years}-year manufacturer's product guarantee. Insurance-backed guarantees are issued through the ${scheme} scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.`
 }
 
 // =============================================================================
