@@ -1,7 +1,7 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-01
-**Last commit:** (see git log)
+**Last commit:** 497ee2a — feat: add lead-to-customer lifecycle
 **Current phase:** MVP feature-complete — lead-to-customer lifecycle operational, accuracy verification ongoing
 
 ## Current focus
@@ -16,6 +16,8 @@ All core features are built and working: enquiry pipeline with full lead-to-cust
 - **Survey type refactor:** `survey_type` enum includes `structural`, `comprehensive`, `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing. Selecting them creates dead-end surveys. Plan exists at `docs/plans/2026-03-02-survey-type-display-migration.md`.
 - **Role-based RLS tightening:** most tables grant full access to all authenticated users. Acceptable for MVP but must fix before team growth.
 - **7 API routes with no role checks:** includes LLM/transcription endpoints (API credit exposure) and company profile writes.
+- **Stripe integration:** payment provider not yet chosen. Architecture is Stripe-ready (fields in payments table). Manual payment recording (office marks paid) is operational now.
+- **Release-unpaid-bookings cron:** `/api/cron/release-unpaid-bookings` needs a Coolify scheduled task (daily, e.g. 09:00) calling `POST` with `Authorization: Bearer $CRON_SECRET`.
 
 ## Known issues
 
