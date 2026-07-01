@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
-**Last updated:** 2026-06-30
-**Last commit:** 2c520a3 — fix: update guarantee wording per client feedback
-**Current phase:** MVP feature-complete — accuracy verification and polish
+**Last updated:** 2026-07-01
+**Last commit:** (see git log)
+**Current phase:** MVP feature-complete — lead-to-customer lifecycle operational, accuracy verification ongoing
 
 ## Current focus
 
-All core features are built and working: enquiry pipeline, survey wizard (4 issue types), automated costing engine (11 formula types, 220 line templates), quotation generation with PDF and e-signature, AI report generation, calendar/booking, and notifications. The costing admin pages (line templates, materials catalogue, pricing rates) are fully operational. The next concrete deliverables are verifying that all 220 costing line template calculations match the original Excel workbooks, adding costing manual overrides for surveyors, and completing woodworm wizard fields to full workbook parity.
+All core features are built and working: enquiry pipeline with full lead-to-customer lifecycle (provisional bookings, survey fee payments, deposit collection, won/completed tracking), survey wizard (4 issue types), automated costing engine (11 formula types, 220 line templates), quotation generation with PDF and e-signature, AI report generation, calendar/booking, and notifications. The costing admin pages (line templates, materials catalogue, pricing rates) are fully operational. The next concrete deliverables are verifying that all 220 costing line template calculations match the original Excel workbooks, adding costing manual overrides for surveyors, and completing woodworm wizard fields to full workbook parity.
 
 ## Open threads
 
@@ -22,11 +22,11 @@ All core features are built and working: enquiry pipeline, survey wizard (4 issu
 - **CF CSV hardcoded hourly rate:** `cf-csv-export.ts` uses hardcoded £30.63/hr instead of reading from `pricing_config`. Should read from DB.
 - **Report generator crashes on missing company profile:** non-null assertion (`profile!`) on nullable value in `report-generator.ts`. Workaround: ensure company profile exists before generating reports.
 - **Wizard auto-save writes stale step number:** race condition in `wizard/page.tsx`. Low impact — step is cosmetic.
-- **Dashboard "Active Surveys" and "Pending Review" always show 0:** filters by `in_progress` and `pending_review` statuses which are never set — surveys go from `draft` to `completed`.
 - **7 survey-type extension tables unused:** schema provisioned but wizard uses JSONB instead. Candidates for removal.
 
 ## Recently shipped
 
+- 2026-07-01 — Lead-to-customer lifecycle: payments table, provisional bookings (awaiting payment), survey fee payment flow (`/pay/[token]`), deposit collection on quotation acceptance, full pipeline lifecycle with `completed` and `won` states (`won_at`, `cf_exported_at` on enquiries), CF export tracking from costing page, dashboard stats fix (Active Surveys, Completed, Won This Month), workload dashboard (`/admin/workload`), survey fee config in admin rates, auto-release cron for expired provisional bookings, survey fee + booking confirmed email templates
 - 2026-06-30 — Guarantee wording update per client feedback: 25-year company guarantees on rising damp/dry rot/woodworm, 7-year warranty on mould, removed Westminster Protected Guarantee (ceased trading), insurance-backed guarantees now through generic Protected Guarantee scheme. Updated report-generator.ts, company_profile (about_us_text + guarantee_scheme_name), and all 18 existing report sections in DB.
 - 2026-06-21 — Client feedback implementation: removed all measurements from customer-facing reports (m², joist sizes, areas), updated cavity drain membrane methodology wording (3 steps changed), removed skirting reinstatement from scope items, added customer reinstatement responsibility disclaimer, updated woodworm methodology (2 steps removed), added beetle reference image + 3 treatment equipment photos + loft insulation note to woodworm reports, created WoodwormTreatmentSection component, regenerated all 18 existing reports
 - 2026-06-21 — Deep documentation audit: fixed all table names, counts, formula types, pipeline statuses, migration counts across all docs

@@ -108,6 +108,8 @@ export interface Enquiry {
   loss_reason: string | null
   hold_reason: OnHoldReason | null
   hold_reason_note: string | null
+  won_at: string | null
+  cf_exported_at: string | null
   status_changed_at: string
   created_at: string
   updated_at: string
@@ -416,6 +418,36 @@ export type SurveyorUpdate = Partial<SurveyorInput>
 
 export type UserProfileInput = Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>
 export type UserProfileUpdate = Partial<Omit<UserProfileInput, 'user_id'>>
+
+// --- Payment Types ---
+
+export type PaymentType = 'survey_fee' | 'deposit'
+
+export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'cancelled' | 'failed'
+
+export type PaymentMethod = 'bank_transfer' | 'card_phone' | 'cash' | 'cheque' | 'online'
+
+export interface Payment {
+  id: string
+  booking_id: string | null
+  quotation_id: string | null
+  payment_type: PaymentType
+  amount: number
+  currency: string
+  status: PaymentStatus
+  payment_method: PaymentMethod | null
+  recorded_by: string | null
+  recorded_at: string | null
+  reference_note: string | null
+  stripe_payment_intent_id: string | null
+  stripe_checkout_session_id: string | null
+  stripe_receipt_url: string | null
+  payment_token: string
+  paid_at: string | null
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
 
 // --- Cost Summary (calculated, not stored) ---
 

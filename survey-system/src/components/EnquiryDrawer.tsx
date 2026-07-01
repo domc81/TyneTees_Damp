@@ -10,9 +10,15 @@ import {
   logEnquiryActivity,
   createSurveyFromEnquiry,
   updateSurvey,
+  markEnquiryWon,
+  markEnquiryCompleted,
+  setCfExportedAt,
 } from '@/lib/supabase-data'
 import { createBooking, getBookingBySurveyId } from '@/lib/calendar-data'
 import type { SurveyBooking } from '@/lib/calendar-data'
+import { createSurveyFeePayment, getPaymentsForEnquiry, markPaymentPaid } from '@/lib/payment-data'
+import type { Payment, PaymentMethod } from '@/lib/payment-data'
+import { loadPricingConfig } from '@/lib/pricing-data'
 import { SlotPicker } from '@/components/calendar/SlotPicker'
 import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
@@ -694,6 +700,13 @@ export default function EnquiryDrawer({
   const [flowCreatedSurvey, setFlowCreatedSurvey] = useState<{ id: string; project_number: string } | null>(null)
   const [flowExistingSurveyId, setFlowExistingSurveyId] = useState<string | null>(null)
 
+  // Payments
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [markingPayment, setMarkingPayment] = useState(false)
+  const [paymentMethodSelect, setPaymentMethodSelect] = useState<PaymentMethod>('bank_transfer')
+  const [paymentRefNote, setPaymentRefNote] = useState('')
+  const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null) // payment ID being marked
+
   // Refs for click-outside
   const statusRef = useRef<HTMLDivElement>(null)
   const priorityRef = useRef<HTMLDivElement>(null)
@@ -844,6 +857,10 @@ export default function EnquiryDrawer({
       setLinkedQuotations((quotationsResult.data as LinkedQuotation[]) ?? [])
       setLinkedBooking(bookingResult)
     }
+
+    // Load payments for this enquiry
+    const enquiryPayments = await getPaymentsForEnquiry(enquiry.id)
+    setPayments(enquiryPayments)
 
     setLinkedLoaded(true)
     setLinkedLoading(false)
@@ -1154,7 +1171,13 @@ export default function EnquiryDrawer({
         .join(', ')
 
       try {
-        await createBooking({
+        // Load survey fee config
+        const pricingConfig = await loadPricingConfig()
+        const surveyFeeAmount = pricingConfig['survey_fee_amount'] ?? 150
+        const surveyFeeExpiryDays = pricingConfig['survey_fee_expiry_days'] ?? 3
+
+        // Create provisional booking (pending payment)
+        const booking = await createBooking({
           surveyId: createdSurvey.id,
           surveyorId: flowSlot.surveyorId,
           customerName: enquiry.client_name || '',
@@ -1164,9 +1187,13 @@ export default function EnquiryDrawer({
           bookingDate: flowSlot.date,
           startTime: flowSlot.startTime,
           endTime: flowSlot.endTime,
+          status: 'provisional',
           notes: null,
           createdBy: teamMembers.find(m => m.user_id === currentUserId)?.id || currentUserId || '',
         })
+
+        // Create survey fee payment record
+        await createSurveyFeePayment(booking.id, surveyFeeAmount, surveyFeeExpiryDays)
       } catch (bookingErr) {
         // Partial success: survey created but booking failed
         setFlowCreatedSurvey(createdSurvey)
@@ -1187,6 +1214,59 @@ export default function EnquiryDrawer({
       setFlowLoading(false)
     }
   }
+
+  // ── Payment handlers ─────────────────────────────────────────
+
+  async function handleMarkPaymentPaid(paymentId: string) {
+    if (!currentUserId) return
+    setMarkingPayment(true)
+    try {
+      const updated = await markPaymentPaid(paymentId, {
+        method: paymentMethodSelect,
+        recordedBy: currentUserId,
+        referenceNote: paymentRefNote || undefined,
+      })
+      // Refresh payments list
+      setPayments(prev => prev.map(p => p.id === paymentId ? updated : p))
+      setShowPaymentForm(null)
+      setPaymentRefNote('')
+
+      // If this is a deposit payment and enquiry is accepted, mark as won
+      if (updated.payment_type === 'deposit' && enquiry.status === 'accepted') {
+        await markEnquiryWon(enquiry.id, currentUserId)
+        onBoardSync({ ...enquiry, won_at: new Date().toISOString() } as Enquiry, enquiry.status)
+      }
+
+      // If this was a survey fee, refresh linked data to show updated booking status
+      if (updated.payment_type === 'survey_fee') {
+        setLinkedLoaded(false)
+      }
+
+      toast.success(updated.payment_type === 'deposit' ? 'Deposit marked as paid' : 'Survey fee marked as paid')
+    } catch (err) {
+      console.error('Failed to mark payment:', err)
+      toast.error('Failed to mark payment as paid')
+    } finally {
+      setMarkingPayment(false)
+    }
+  }
+
+  async function handleMarkCompleted() {
+    if (!currentUserId) return
+    if (!confirm('Mark this enquiry as completed? This cannot be undone.')) return
+    try {
+      await markEnquiryCompleted(enquiry.id, currentUserId)
+      onBoardSync({ ...enquiry, status: 'completed' } as Enquiry, enquiry.status)
+      toast.success('Enquiry marked as completed')
+    } catch (err) {
+      console.error('Failed to complete enquiry:', err)
+      toast.error('Failed to mark as completed')
+    }
+  }
+
+  // Derived payment data
+  const surveyFeePayment = payments.find(p => p.payment_type === 'survey_fee')
+  const depositPayment = payments.find(p => p.payment_type === 'deposit')
 
   // Hold template lookup
   const currentHoldTemplate = enquiry.hold_reason
@@ -2248,7 +2328,19 @@ export default function EnquiryDrawer({
                           {/* Booking info or schedule button */}
                           {linkedBooking ? (
                             <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
-                              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Booking</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Booking</p>
+                                {linkedBooking.status === 'provisional' && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                                    Awaiting Payment
+                                  </span>
+                                )}
+                                {linkedBooking.status === 'scheduled' && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-400/30">
+                                    Confirmed
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-white/80">
                                 {new Date(linkedBooking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
                                   weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -2257,6 +2349,72 @@ export default function EnquiryDrawer({
                               <p className="text-xs text-white/50">{linkedBooking.start_time} – {linkedBooking.end_time}</p>
                               {linkedBooking.surveyor_name && (
                                 <p className="text-xs text-white/50">Surveyor: {linkedBooking.surveyor_name}</p>
+                              )}
+
+                              {/* Survey Fee Payment */}
+                              {surveyFeePayment && (
+                                <div className="mt-2 pt-2 border-t border-white/5">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-white/40">Survey Fee</p>
+                                    <p className="text-xs font-medium text-white/70">
+                                      £{Number(surveyFeePayment.amount).toFixed(2)}
+                                    </p>
+                                  </div>
+                                  {surveyFeePayment.status === 'pending' && (
+                                    <>
+                                      {showPaymentForm === surveyFeePayment.id ? (
+                                        <div className="mt-2 space-y-2">
+                                          <select
+                                            value={paymentMethodSelect}
+                                            onChange={e => setPaymentMethodSelect(e.target.value as PaymentMethod)}
+                                            className="input-field text-xs w-full"
+                                          >
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                            <option value="card_phone">Card (Phone)</option>
+                                            <option value="cash">Cash</option>
+                                            <option value="cheque">Cheque</option>
+                                            <option value="online">Online</option>
+                                          </select>
+                                          <input
+                                            type="text"
+                                            value={paymentRefNote}
+                                            onChange={e => setPaymentRefNote(e.target.value)}
+                                            placeholder="Reference (optional)"
+                                            className="input-field text-xs w-full"
+                                          />
+                                          <div className="flex gap-2">
+                                            <button
+                                              onClick={() => handleMarkPaymentPaid(surveyFeePayment.id)}
+                                              disabled={markingPayment}
+                                              className="btn-primary text-xs px-3 py-1.5 flex-1"
+                                            >
+                                              {markingPayment ? 'Saving...' : 'Confirm Paid'}
+                                            </button>
+                                            <button
+                                              onClick={() => setShowPaymentForm(null)}
+                                              className="btn-ghost text-xs px-3 py-1.5"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => setShowPaymentForm(surveyFeePayment.id)}
+                                          className="btn-secondary text-xs px-3 py-1.5 w-full mt-1"
+                                        >
+                                          Mark as Paid
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                  {surveyFeePayment.status === 'paid' && (
+                                    <p className="text-xs text-emerald-400 mt-1">
+                                      Paid {surveyFeePayment.paid_at ? new Date(surveyFeePayment.paid_at).toLocaleDateString('en-GB') : ''}
+                                      {surveyFeePayment.payment_method && ` · ${surveyFeePayment.payment_method.replace('_', ' ')}`}
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           ) : (
@@ -2319,6 +2477,120 @@ export default function EnquiryDrawer({
                       <p className="text-xs text-white/25">No quotation yet</p>
                     )}
                   </div>
+
+                  {/* Deposit & Won Workflow Card */}
+                  {enquiry.status === 'accepted' && (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400/60" />
+                        <h4 className="text-sm font-semibold text-emerald-300/80">
+                          {enquiry.won_at ? 'Won' : 'Accepted — Collect Deposit'}
+                        </h4>
+                      </div>
+
+                      {/* Deposit payment */}
+                      {depositPayment && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-white/40">Deposit</p>
+                            <p className="text-xs font-medium text-white/70">
+                              £{Number(depositPayment.amount).toFixed(2)}
+                            </p>
+                          </div>
+                          {depositPayment.status === 'pending' && !enquiry.won_at && (
+                            <>
+                              {showPaymentForm === depositPayment.id ? (
+                                <div className="space-y-2">
+                                  <select
+                                    value={paymentMethodSelect}
+                                    onChange={e => setPaymentMethodSelect(e.target.value as PaymentMethod)}
+                                    className="input-field text-xs w-full"
+                                  >
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="card_phone">Card (Phone)</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="online">Online</option>
+                                  </select>
+                                  <input
+                                    type="text"
+                                    value={paymentRefNote}
+                                    onChange={e => setPaymentRefNote(e.target.value)}
+                                    placeholder="Reference (optional)"
+                                    className="input-field text-xs w-full"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleMarkPaymentPaid(depositPayment.id)}
+                                      disabled={markingPayment}
+                                      className="btn-primary text-xs px-3 py-1.5 flex-1"
+                                    >
+                                      {markingPayment ? 'Saving...' : 'Confirm Deposit Paid'}
+                                    </button>
+                                    <button
+                                      onClick={() => setShowPaymentForm(null)}
+                                      className="btn-ghost text-xs px-3 py-1.5"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setShowPaymentForm(depositPayment.id)}
+                                  className="btn-primary text-xs px-3 py-1.5 w-full"
+                                >
+                                  Mark Deposit as Paid
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {depositPayment.status === 'paid' && (
+                            <p className="text-xs text-emerald-400">
+                              Paid {depositPayment.paid_at ? new Date(depositPayment.paid_at).toLocaleDateString('en-GB') : ''}
+                              {depositPayment.payment_method && ` · ${depositPayment.payment_method.replace('_', ' ')}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Won workflow: CF export + complete */}
+                      {enquiry.won_at && (
+                        <div className="mt-3 pt-3 border-t border-emerald-500/10 space-y-2">
+                          <p className="text-xs text-emerald-300/60">
+                            Won on {new Date(enquiry.won_at).toLocaleDateString('en-GB')}
+                          </p>
+
+                          {linkedSurveys.length > 0 && (
+                            <a
+                              href={`/survey/${linkedSurveys[0].id}/costing`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 w-full justify-center"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Go to Costing &amp; Export CF
+                            </a>
+                          )}
+
+                          {enquiry.cf_exported_at && (
+                            <p className="text-xs text-white/40">
+                              CF exported {new Date(enquiry.cf_exported_at).toLocaleDateString('en-GB')}
+                            </p>
+                          )}
+
+                          {enquiry.cf_exported_at && (
+                            <button
+                              onClick={handleMarkCompleted}
+                              className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                            >
+                              Mark as Completed
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>

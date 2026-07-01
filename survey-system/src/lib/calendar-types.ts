@@ -8,7 +8,7 @@
 
 export type BlockType = 'annual_leave' | 'sickness' | 'training' | 'other'
 
-export type BookingStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+export type BookingStatus = 'provisional' | 'scheduled' | 'completed' | 'cancelled' | 'no_show'
 
 export type NotificationType =
   // Booking events
@@ -139,6 +139,7 @@ export interface BookingFormData {
   bookingDate: string // "YYYY-MM-DD"
   startTime: string   // "HH:MM"
   endTime: string     // "HH:MM"
+  status?: BookingStatus // defaults to 'scheduled' if omitted
   notes?: string | null
   createdBy: string
 }

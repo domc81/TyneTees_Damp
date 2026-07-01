@@ -704,3 +704,113 @@ export async function enquiryOnHoldEmail(data: EnquiryOnHoldEmailData): Promise<
 
   return { subject, html: wrapInBrandedLayout(body, branding) }
 }
+
+// ── Survey fee payment ───────────────────────────────────────────────────
+
+export interface SurveyFeePaymentData {
+  customerName: string
+  amount: number
+  bookingDate: string
+  paymentUrl: string
+  companyName: string
+  companyPhone: string
+  companyEmail: string
+}
+
+export function surveyFeePaymentEmail(data: SurveyFeePaymentData): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f9fafb;">
+      <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+        <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <h1 style="margin:0 0 24px;font-size:20px;color:#1e3a5f;">Survey Fee Payment</h1>
+
+          <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+            Dear ${escapeHtml(data.customerName)},
+          </p>
+
+          <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+            Thank you for booking a survey with ${escapeHtml(data.companyName)}.
+            To confirm your appointment, please pay the survey fee of
+            <strong>&pound;${data.amount.toFixed(2)}</strong>.
+          </p>
+
+          ${data.bookingDate ? `
+          <div style="background:#f3f4f6;border-radius:8px;padding:16px;margin:0 0 20px;">
+            <p style="margin:0;font-size:14px;color:#6b7280;">Appointment</p>
+            <p style="margin:4px 0 0;font-size:15px;color:#111827;font-weight:600;">${escapeHtml(data.bookingDate)}</p>
+          </div>` : ''}
+
+          <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+            Please use the link below to view payment details:
+          </p>
+
+          ${ctaButton(data.paymentUrl, 'View Payment Details')}
+
+          <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
+            Your booking will be confirmed once payment is received.
+          </p>
+
+          ${data.companyPhone ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;">
+            Phone: <a href="tel:${data.companyPhone.replace(/\\s/g, '')}" style="color:#1e3a5f;">${escapeHtml(data.companyPhone)}</a>
+          </p>` : ''}
+          ${data.companyEmail ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;">
+            Email: <a href="mailto:${data.companyEmail}" style="color:#1e3a5f;">${escapeHtml(data.companyEmail)}</a>
+          </p>` : ''}
+
+          <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">
+            Kind regards,<br>${escapeHtml(data.companyName)}
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+// ── Booking confirmed (after payment) ────────────────────────────────────
+
+export interface BookingConfirmedAfterPaymentData {
+  customerName: string
+  bookingDate: string
+  bookingTime: string
+  surveyorName: string
+  siteAddress: string
+}
+
+export async function bookingConfirmedAfterPaymentEmail(data: BookingConfirmedAfterPaymentData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your survey is confirmed — ${branding.companyName}`
+
+  const body = `
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for your payment. Your survey appointment is now <strong>confirmed</strong>.
+    </p>
+
+    ${infoBox([
+      ['Date', data.bookingDate],
+      ['Time', data.bookingTime],
+      ['Surveyor', data.surveyorName],
+      ['Property', data.siteAddress],
+    ])}
+
+    <p style="margin:0 0 20px 0;font-size:14px;color:#374151;line-height:1.6;">
+      If you need to reschedule, please contact us as soon as possible.
+    </p>
+
+    ${branding.companyPhone ? `<p style="margin:0 0 20px 0;">
+      <a href="tel:${branding.companyPhone.replace(/\\s/g, '')}"
+         style="font-size:16px;font-weight:700;color:#1e3a5f;text-decoration:none;">
+        ${escapeHtml(branding.companyPhone)}
+      </a>
+    </p>` : ''}
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}

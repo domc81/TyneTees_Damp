@@ -100,12 +100,14 @@ TyneTees_Damp/
 │   │   │   │   ├── costing/       # Costing line templates admin (formula params, pricing)
 │   │   │   │   ├── materials/      # Materials catalogue admin (CRUD)
 │   │   │   │   ├── rates/          # Pricing config (reads/writes pricing_config table)
-│   │   │   │   └── team/           # Team/surveyor management (profiles)
-│   │   │   ├── api/                # API routes (21 route files — see API Routes section)
+│   │   │   │   ├── team/           # Team/surveyor management (profiles)
+│   │   │   │   └── workload/       # Surveyor workload dashboard (capacity view)
+│   │   │   ├── api/                # API routes (25 route files — see API Routes section)
 │   │   │   ├── calendar/           # Booking calendar (FullCalendar)
 │   │   │   ├── customers/          # Customer CRUD (list, [customerId] detail, new)
 │   │   │   ├── enquiries/          # Enquiry pipeline Kanban + new enquiry form (has layout.tsx)
 │   │   │   ├── materials/          # Materials catalogue view
+│   │   │   ├── pay/[token]/         # Public survey fee payment page (page.tsx + client.tsx)
 │   │   │   ├── q/[token]/          # Public quotation page (page.tsx + client.tsx + CSS)
 │   │   │   ├── report/[reportId]/  # Public report view (page.tsx + client.tsx + CSS)
 │   │   │   ├── settings/           # Settings hub + company profile + notification prefs
@@ -139,7 +141,7 @@ TyneTees_Damp/
 │   │   ├── hooks/
 │   │   │   └── useSmartBack.ts     # Smart back navigation
 │   │   ├── middleware.ts           # Supabase SSR session management + token rotation
-│   │   ├── lib/                    # 31 library files (see Lib Files section)
+│   │   ├── lib/                    # 32 library files (see Lib Files section)
 │   │   └── types/
 │   │       ├── database.types.ts    # Canonical DB TypeScript types
 │   │       ├── survey-wizard.types.ts # Wizard data model types
@@ -147,7 +149,7 @@ TyneTees_Damp/
 │   │       ├── survey-photo.types.ts  # Photo capture & storage types
 │   │       └── installer-info.types.ts # Installer info types
 │   ├── supabase/
-│   │   ├── migrations/              # 38 SQL migrations
+│   │   ├── migrations/              # 39 SQL migrations
 │   │   ├── functions/               # Edge functions (legacy — app uses API routes instead)
 │   │   ├── config.toml
 │   │   ├── seed.sql
@@ -175,7 +177,7 @@ TyneTees_Damp/
 
 `CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 
-### Lib Files (31 files)
+### Lib Files (32 files)
 
 **Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
 
@@ -199,6 +201,8 @@ TyneTees_Damp/
 
 **Notifications:** `notifications-server.ts` (server-side creation), `notification-preferences.ts` (preference helpers)
 
+**Payments:** `payment-data.ts` (payment records, survey fee + deposit lifecycle)
+
 **CSV Export:** `cf-csv-export.ts`, `cf-export-config.ts`
 
 **Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
@@ -207,16 +211,20 @@ TyneTees_Damp/
 
 ## API Routes
 
-21 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
+25 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
 
 | Route | Purpose |
 |---|---|
 | `/api/admin/team` | Team member CRUD (service role) |
 | `/api/bookings/notify` | Booking notification emails |
 | `/api/cron/booking-reminders` | Daily booking reminder (cron, requires CRON_SECRET) |
+| `/api/cron/release-unpaid-bookings` | Cancel expired provisional bookings (cron, requires CRON_SECRET) |
 | `/api/enquiries/[id]/notify-on-hold` | On-hold customer email notification |
 | `/api/generate-report` | LLM report narrative generation (OpenRouter) |
 | `/api/notifications/trigger` | Programmatic in-app notification creation |
+| `/api/pay/[token]` | Process survey fee payment (public) |
+| `/api/payments/[paymentId]/mark-paid` | Mark payment as paid (office action) |
+| `/api/payments/send-link` | Send survey fee payment link email |
 | `/api/polish-observation` | LLM polish voice-transcribed observations (OpenRouter) |
 | `/api/q/[token]/pdf` | Public quotation PDF download |
 | `/api/q/[token]/respond` | Public quotation accept/decline |
@@ -233,24 +241,24 @@ TyneTees_Damp/
 | `/api/surveys/[id]/quotation` | Generate quotation from survey |
 | `/api/transcribe` | Deepgram speech-to-text |
 
-**Public routes** (excluded from auth middleware): `/api/q/*`, `/api/report/*`
+**Public routes** (excluded from auth middleware): `/api/q/*`, `/api/report/*`, `/api/pay/*`
 
 ## Middleware
 
-`src/middleware.ts` — Supabase SSR session management. Runs on all routes except `_next/static`, `_next/image`, `favicon.ico`, `api/q/` (public quotation), and `api/report/` (public report). Handles JWT refresh via `getUser()`. Route protection is handled client-side by `ProtectedRoute.tsx`, not middleware.
+`src/middleware.ts` — Supabase SSR session management. Runs on all routes except `_next/static`, `_next/image`, `favicon.ico`, `api/q/` (public quotation), `api/report/` (public report), and `api/pay/` (public payment). Handles JWT refresh via `getUser()`. Route protection is handled client-side by `ProtectedRoute.tsx`, not middleware.
 
 ## Database
 
 ### Migrations
 
-39 total: 38 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
+40 total: 39 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
 
-Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastage_from_labour_only_templates.sql`. Applied manually via `docker exec`.
+Range: `00000000000000_initial_schema.sql` through `20260701000001_payments_and_lifecycle.sql`. Applied manually via `docker exec`.
 
-### Active Tables (42 tables)
+### Active Tables (43 tables)
 
 **CRM & Pipeline:**
-- `enquiries` — pipeline records (status, priority, sla, follow_up_date, on_hold_reason, decline_reason)
+- `enquiries` — pipeline records (status, priority, sla, follow_up_date, on_hold_reason, decline_reason, won_at, cf_exported_at)
 - `enquiry_activity` — activity/timeline log
 - `on_hold_message_templates` — predefined on-hold message templates
 - `customers` — customer master data
@@ -286,6 +294,9 @@ Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastag
 - `survey_subcontractor_costs` — subcontractor cost breakdown per section
 - `survey_caf1` — Customer Acceptance Form (deposit, signature, cooling-off waiver)
 
+**Payments:**
+- `payments` — payment records (survey_fee or deposit type, token-based public access, linked to enquiry/survey/quotation)
+
 **Quotations:**
 - `quotations` — status workflow: draft → sent → viewed → accepted/declined
 - `quotation_sections` — quotation line items with optional/included flags
@@ -298,7 +309,7 @@ Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastag
 - `report_views` — report view tracking (IP, user agent, duration)
 
 **Calendar & Bookings:**
-- `survey_bookings` — survey booking slots (date, time, surveyor, customer)
+- `survey_bookings` — survey booking slots (date, time, surveyor, customer, status: confirmed/provisional/cancelled)
 - `surveyor_availability` — weekly availability patterns
 - `availability_blocks` — surveyor leave/absence date blocks (annual_leave, sickness, training, other)
 
@@ -308,7 +319,7 @@ Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastag
 **Company:**
 - `company_profile` — company details, logo, T&C text
 
-### Key Pricing Config Values (14 entries)
+### Key Pricing Config Values (16 entries)
 
 | Key | Value | Description |
 |-----|-------|-------------|
@@ -326,6 +337,8 @@ Range: `00000000000000_initial_schema.sql` through `20260415000004_remove_wastag
 | condensation_deposit_pct | 0.50 (50%) | Condensation survey deposit percentage |
 | timber_deposit_pct | 0.30 (30%) | Timber survey deposit percentage |
 | woodworm_deposit_pct | 0.30 (30%) | Woodworm survey deposit percentage |
+| survey_fee_amount | (configurable) | Survey fee charged upfront (£) |
+| survey_fee_expiry_days | (configurable) | Days before unpaid provisional booking is auto-released |
 
 ### Formula Types in costing_line_templates (11 types)
 
@@ -361,15 +374,16 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 
 ## Enquiry Pipeline
 
-Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted / Declined / On Hold. Features:
+Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted → Completed / Declined / On Hold. Features:
 - Detail drawer with tabs (details, activity, notes)
 - Inline field editing
 - SLA traffic lights and follow-up indicators
 - Auto-status transitions on survey completion and quotation generation
 - On-hold customer email notifications with template messages
-- Convert-and-book flow (enquiry → customer + survey + booking)
+- Convert-and-book flow (enquiry → customer + survey + provisional booking + survey fee payment)
 - Quick actions (contact shortcuts, follow-up picker)
 - Dashboard widget with pipeline stats and recent activity
+- Full lifecycle tracking: `won_at` timestamp set when deposit marked paid, `cf_exported_at` set on CF CSV export
 
 ## TypeScript Conventions
 
@@ -398,6 +412,9 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Guarantee paragraph** is hardcoded in `report-generator.ts` `buildGuaranteeParagraph()` — does not read from company profile fields. 25-year company guarantees on rising damp, dry rot, and woodworm; 7-year warranty on mould. Insurance-backed guarantees via generic Protected Guarantee scheme (Westminster ceased trading). Also appears in `company_profile.about_us_text`.
 - **Woodworm reports** include static reference images from `public/images/woodworm/` (beetle photo CC BY 3.0 CSIRO, 3 Pexels equipment photos). These are always included in generated woodworm reports.
 - **Customer reinstatement responsibility note** appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as electrical standards and asbestos notes.
+- **Provisional bookings** are created by Convert & Book with status `provisional` (awaiting survey fee payment). They auto-confirm when payment is marked paid. Expired provisional bookings are cancelled by the `/api/cron/release-unpaid-bookings` cron route.
+- **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to set enquiry as won). The `payments` table links to enquiry, survey, and optionally quotation.
+- **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded from the costing page. The `completed` status is a new terminal Kanban column after `accepted`.
 
 ## Build & Dev Commands
 
@@ -411,21 +428,23 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 ## What's Built & Working
 
 - **Auth:** Login, forgot/change/update password, ProtectedRoute, role-based UI (admin/office/surveyor)
-- **Dashboard:** Survey stats, enquiry pipeline widget, recent activity feed
-- **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book
+- **Dashboard:** Survey stats (Active Surveys, Completed, Won This Month), enquiry pipeline widget, recent activity feed
+- **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (completed/won columns)
 - **Customer Management:** List, create, edit, detail with history and communication log
 - **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture
 - **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
-- **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature
+- **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature, deposit auto-creation on acceptance
 - **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
-- **Calendar:** Booking management with FullCalendar, surveyor availability, booking notifications, daily reminders
+- **Payments:** Survey fee payment flow (public `/pay/[token]` page), deposit collection on quotation acceptance, office mark-as-paid, payment link emails
+- **Calendar:** Booking management with FullCalendar, surveyor availability, provisional bookings (awaiting payment), booking notifications, daily reminders, auto-release of expired provisional bookings (cron)
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management
 - **Settings:** Company profile, logo upload, notification preferences, email testing
 - **Materials:** Catalogue view and admin
 - **Team:** Surveyor/user profile management
 - **Installer Info:** Per-survey installer information and photos
-- **CF CSV Export:** Export logic with test coverage
+- **CF CSV Export:** Export logic with test coverage, sets `cf_exported_at` on enquiry
+- **Workload Dashboard:** Surveyor capacity view at `/admin/workload`
 - **Transcription:** Deepgram speech-to-text for survey observations
 - **Observation Polishing:** LLM cleanup of voice-transcribed notes
 

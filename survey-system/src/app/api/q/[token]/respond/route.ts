@@ -296,6 +296,22 @@ export async function POST(
       autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'accepted')
         .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
 
+      // ── Create deposit payment record (fire-and-forget) ───────────────────
+
+      if (quotation.deposit_amount && quotation.deposit_amount > 0) {
+        supabase
+          .from('payments')
+          .insert({
+            quotation_id: quotation.id,
+            payment_type: 'deposit',
+            amount: quotation.deposit_amount,
+            status: 'pending',
+          })
+          .then(({ error: payErr }) => {
+            if (payErr) console.error('[quotation-respond] Deposit payment creation failed:', payErr)
+          })
+      }
+
       // ── Notify office (fire-and-forget) ────────────────────────────────────
 
       const customerName = quotation.customer_name || 'A customer'

@@ -60,13 +60,14 @@ type ColumnDef = {
 }
 
 const COLUMNS: ColumnDef[] = [
-  { status: 'new',      label: 'New',      color: '#3B82F6' },
-  { status: 'assigned', label: 'Assigned', color: '#8B5CF6' },
-  { status: 'surveyed', label: 'Surveyed', color: '#14B8A6' },
-  { status: 'quoted',   label: 'Quoted',   color: '#F59E0B' },
-  { status: 'accepted', label: 'Accepted', color: '#22C55E' },
-  { status: 'declined', label: 'Declined', color: '#EF4444' },
-  { status: 'on_hold',  label: 'On Hold',  color: '#6B7280' },
+  { status: 'new',       label: 'New',       color: '#3B82F6' },
+  { status: 'assigned',  label: 'Assigned',  color: '#8B5CF6' },
+  { status: 'surveyed',  label: 'Surveyed',  color: '#14B8A6' },
+  { status: 'quoted',    label: 'Quoted',    color: '#F59E0B' },
+  { status: 'accepted',  label: 'Accepted',  color: '#22C55E' },
+  { status: 'declined',  label: 'Declined',  color: '#EF4444' },
+  { status: 'on_hold',   label: 'On Hold',   color: '#6B7280' },
+  { status: 'completed', label: 'Completed', color: '#64748B' },
 ]
 
 const ACTIVE_STATUSES = new Set(['new', 'assigned', 'surveyed', 'quoted', 'accepted'])
@@ -1333,7 +1334,7 @@ export default function EnquiriesPage() {
   // Columns to render based on archived toggle
   const visibleColumns = showArchivedColumns
     ? COLUMNS
-    : COLUMNS.filter((col) => col.status !== 'declined' && col.status !== 'on_hold')
+    : COLUMNS.filter((col) => col.status !== 'declined' && col.status !== 'on_hold' && col.status !== 'completed')
 
   const totalEnquiries = Object.values(board).reduce((sum, arr) => sum + arr.length, 0)
 

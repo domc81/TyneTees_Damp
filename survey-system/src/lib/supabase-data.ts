@@ -737,7 +737,8 @@ export async function updateEnquiryStatus(
 /**
  * Forward-only ordering for enquiry status auto-transitions.
  * Higher number = further along the pipeline.
- * accepted and declined share the same rank (both are terminal outcomes).
+ * declined is terminal (same rank as accepted but blocks further transitions).
+ * accepted can transition to completed (office action after deposit + CF export).
  */
 const ENQUIRY_STATUS_ORDER: Record<string, number> = {
   new: 0,
@@ -750,12 +751,12 @@ const ENQUIRY_STATUS_ORDER: Record<string, number> = {
 }
 
 /** Statuses that should never be overwritten by auto-transitions. */
-const TERMINAL_STATUSES = new Set<string>(['accepted', 'declined', 'completed'])
+const TERMINAL_STATUSES = new Set<string>(['declined', 'completed'])
 
 /**
  * Determine whether an automatic status transition should proceed.
  * Rules:
- *  - Terminal statuses (accepted, declined, completed) are never overwritten.
+ *  - Terminal statuses (declined, completed) are never overwritten.
  *  - on_hold is special: transitions still apply (completing a survey while
  *    on hold should move the enquiry forward).
  *  - Otherwise, only allow forward movement in the pipeline ordering.
@@ -803,6 +804,69 @@ export async function autoTransitionEnquiryStatus(
   }
 
   await updateEnquiryStatus(enquiryId, targetStatus, userId)
+}
+
+// ---------------------------------------------------------------------------
+// Enquiry lifecycle helpers (post-acceptance)
+// ---------------------------------------------------------------------------
+
+/** Mark an enquiry as won (deposit collected). Sets won_at and logs activity. */
+export async function markEnquiryWon(
+  enquiryId: string,
+  userId: string | null
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { error } = await supabase
+    .from('enquiries')
+    .update({ won_at: new Date().toISOString() })
+    .eq('id', enquiryId)
+
+  if (error) {
+    console.error('markEnquiryWon failed:', error.message)
+    return
+  }
+
+  await logEnquiryActivity(enquiryId, 'status_change', userId, 'Deposit received — marked as won')
+}
+
+/** Record CF CSV export timestamp on an enquiry. */
+export async function setCfExportedAt(enquiryId: string): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { error } = await supabase
+    .from('enquiries')
+    .update({ cf_exported_at: new Date().toISOString() })
+    .eq('id', enquiryId)
+
+  if (error) {
+    console.error('setCfExportedAt failed:', error.message)
+  }
+}
+
+/** Transition an enquiry to completed (terminal). Requires won_at to be set. */
+export async function markEnquiryCompleted(
+  enquiryId: string,
+  userId: string | null
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  // Guard: only accepted + won enquiries can be completed
+  const { data: enquiry } = await supabase
+    .from('enquiries')
+    .select('status, won_at')
+    .eq('id', enquiryId)
+    .single()
+
+  if (!enquiry || enquiry.status !== 'accepted' || !enquiry.won_at) {
+    console.error('markEnquiryCompleted: enquiry must be accepted and won')
+    return
+  }
+
+  await updateEnquiryStatus(enquiryId, 'completed', userId)
 }
 
 /**
@@ -961,6 +1025,9 @@ export interface EnquiryPipelineStats {
     redTotal: number
     accepted: number
     declined: number
+    completed: number
+    wonThisMonth: number
+    wonThisMonthValue: number
   }
 }
 
@@ -975,15 +1042,16 @@ const PIPELINE_RED_HOURS: Partial<Record<string, number>> = {
 export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
   const empty: EnquiryPipelineStats = {
     statusCounts: {}, statusValues: {}, redCounts: {},
-    totals: { active: 0, pipelineValue: 0, redTotal: 0, accepted: 0, declined: 0 },
+    totals: { active: 0, pipelineValue: 0, redTotal: 0, accepted: 0, declined: 0, completed: 0, wonThisMonth: 0, wonThisMonthValue: 0 },
   }
   const supabase = getSupabase()
   if (!supabase) return empty
 
+  // Fetch all non-on_hold enquiries (including completed now)
   const { data, error } = await supabase
     .from('enquiries')
-    .select('status, estimated_value, status_changed_at')
-    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined'])
+    .select('status, estimated_value, status_changed_at, won_at')
+    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'completed'])
 
   if (error) {
     console.error('Error fetching pipeline stats:', error)
@@ -993,6 +1061,13 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
   const statusCounts: Record<string, number> = {}
   const statusValues: Record<string, number> = {}
   const redCounts: Record<string, number> = {}
+
+  // Won this month
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  let wonThisMonth = 0
+  let wonThisMonthValue = 0
 
   for (const row of data || []) {
     const s = row.status as string
@@ -1005,6 +1080,11 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
         redCounts[s] = (redCounts[s] ?? 0) + 1
       }
     }
+    // Count won this month
+    if (row.won_at && new Date(row.won_at) >= monthStart) {
+      wonThisMonth++
+      wonThisMonthValue += row.estimated_value ?? 0
+    }
   }
 
   const active = ['new', 'assigned', 'surveyed', 'quoted'].reduce((s, k) => s + (statusCounts[k] ?? 0), 0)
@@ -1015,7 +1095,14 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
     statusCounts,
     statusValues,
     redCounts,
-    totals: { active, pipelineValue, redTotal, accepted: statusCounts['accepted'] ?? 0, declined: statusCounts['declined'] ?? 0 },
+    totals: {
+      active, pipelineValue, redTotal,
+      accepted: statusCounts['accepted'] ?? 0,
+      declined: statusCounts['declined'] ?? 0,
+      completed: statusCounts['completed'] ?? 0,
+      wonThisMonth,
+      wonThisMonthValue,
+    },
   }
 }
 

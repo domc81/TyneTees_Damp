@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Hammer,
   Receipt,
+  CreditCard,
 } from 'lucide-react'
 import { loadPricingConfig, updatePricingConfigBatch } from '@/lib/pricing-data'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -452,6 +453,51 @@ export default function RatesAdminPage() {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Survey Fees */}
+          <div className="section-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-cyan-500/10">
+                <CreditCard className="w-5 h-5 text-cyan-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Survey Fees</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Survey Fee Amount (&pound;)
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={get('survey_fee_amount')}
+                  onChange={e => set('survey_fee_amount', parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                />
+                <p className="text-xs text-white/40 mt-1">
+                  Fee charged to customer before survey booking is confirmed
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Payment Expiry (days)
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="30"
+                  value={get('survey_fee_expiry_days')}
+                  onChange={e => set('survey_fee_expiry_days', parseInt(e.target.value) || 3)}
+                  className="input-field"
+                />
+                <p className="text-xs text-white/40 mt-1">
+                  Provisional booking released if unpaid after this many days
+                </p>
+              </div>
             </div>
           </div>
 

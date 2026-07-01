@@ -22,6 +22,7 @@ import {
 import { calculateTravelOverhead, type TravelOverheadResult } from '@/lib/travel-overhead'
 import { generateCFCSV } from '@/lib/cf-csv-export'
 import { getSupabase } from '@/lib/supabase-client'
+import { setCfExportedAt } from '@/lib/supabase-data'
 import type { PricingConfig } from '@/lib/pricing-engine'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -543,6 +544,21 @@ export default function CostingReviewPage() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
+
+      // Track CF export on linked enquiry (fire-and-forget)
+      const supabase = getSupabase()
+      if (supabase) {
+        supabase
+          .from('surveys')
+          .select('enquiry_id')
+          .eq('id', projectId)
+          .single()
+          .then(({ data }) => {
+            if (data?.enquiry_id) {
+              setCfExportedAt(data.enquiry_id)
+            }
+          })
+      }
     } catch (err) {
       console.error('CF CSV export failed:', err)
       setCfExportMessage(err instanceof Error ? err.message : 'Export failed')

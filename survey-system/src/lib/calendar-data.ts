@@ -516,6 +516,7 @@ export async function createBooking(
       booking_date: formData.bookingDate,
       start_time: formData.startTime,
       end_time: formData.endTime,
+      status: formData.status || 'scheduled',
       notes: formData.notes || null,
       created_by: formData.createdBy,
     })
@@ -528,9 +529,12 @@ export async function createBooking(
   }
 
   // Auto-notify the surveyor (fire-and-forget — don't block the booking)
-  notifyBookingCreated(data as SurveyBooking).catch((err) =>
-    console.error('Failed to send booking notification:', err)
-  )
+  // Skip notification for provisional bookings (notify after payment confirmation)
+  if ((formData.status || 'scheduled') !== 'provisional') {
+    notifyBookingCreated(data as SurveyBooking).catch((err) =>
+      console.error('Failed to send booking notification:', err)
+    )
+  }
 
   return data as SurveyBooking
 }
@@ -946,5 +950,146 @@ async function notifyBookingUpdated(
     title: 'Booking Updated',
     message: `Survey for ${booking.customer_name}: ${detail}.`,
     booking_id: booking.id,
+  })
+}
+
+// =============================================================================
+// Workload Dashboard
+// =============================================================================
+
+export interface SurveyorWorkloadStats {
+  id: string
+  displayName: string
+  email: string
+  todayBookings: SurveyBooking[]
+  thisWeekCount: number
+  nextWeekCount: number
+  last30Completed: number
+  last30CancelledNoShow: number
+  next7DaysAvailableMinutes: number
+  next7DaysBookedMinutes: number
+}
+
+export async function getSurveyorWorkloadStats(): Promise<SurveyorWorkloadStats[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  // Get active surveyors
+  const { data: surveyors, error: sError } = await supabase
+    .from('user_profiles')
+    .select('id, display_name, email')
+    .eq('is_surveyor', true)
+    .eq('is_active', true)
+    .order('display_name')
+
+  if (sError || !surveyors || surveyors.length === 0) return []
+
+  const today = new Date()
+  const todayStr = formatDate(today)
+
+  // Week boundaries
+  const dayOfWeek = today.getDay() // 0=Sun
+  const thisWeekStart = new Date(today)
+  thisWeekStart.setDate(today.getDate() - dayOfWeek + 1) // Monday
+  const thisWeekEnd = new Date(thisWeekStart)
+  thisWeekEnd.setDate(thisWeekStart.getDate() + 6) // Sunday
+
+  const nextWeekStart = new Date(thisWeekEnd)
+  nextWeekStart.setDate(thisWeekEnd.getDate() + 1)
+  const nextWeekEnd = new Date(nextWeekStart)
+  nextWeekEnd.setDate(nextWeekStart.getDate() + 6)
+
+  const next7End = new Date(today)
+  next7End.setDate(today.getDate() + 7)
+
+  const thirtyDaysAgo = new Date(today)
+  thirtyDaysAgo.setDate(today.getDate() - 30)
+
+  const surveyorIds = surveyors.map(s => s.id)
+
+  // Fetch all bookings for these surveyors in the relevant date range
+  const { data: allBookings } = await supabase
+    .from('survey_bookings')
+    .select('id, surveyor_id, booking_date, start_time, end_time, status, customer_name, customer_address')
+    .in('surveyor_id', surveyorIds)
+    .gte('booking_date', formatDate(thirtyDaysAgo))
+    .lte('booking_date', formatDate(nextWeekEnd))
+
+  // Fetch availability for next 7 days
+  const { data: availability } = await supabase
+    .from('surveyor_availability')
+    .select('surveyor_id, day_of_week, start_time, end_time, is_active')
+    .in('surveyor_id', surveyorIds)
+    .eq('is_active', true)
+
+  const bookings = allBookings || []
+  const avail = availability || []
+
+  return surveyors.map(surveyor => {
+    const myBookings = bookings.filter(b => b.surveyor_id === surveyor.id)
+
+    const todayBookings = myBookings
+      .filter(b => b.booking_date === todayStr && b.status !== 'cancelled')
+      .sort((a, b) => a.start_time.localeCompare(b.start_time)) as SurveyBooking[]
+
+    const thisWeekCount = myBookings.filter(b =>
+      b.booking_date >= formatDate(thisWeekStart) &&
+      b.booking_date <= formatDate(thisWeekEnd) &&
+      b.status !== 'cancelled'
+    ).length
+
+    const nextWeekCount = myBookings.filter(b =>
+      b.booking_date >= formatDate(nextWeekStart) &&
+      b.booking_date <= formatDate(nextWeekEnd) &&
+      b.status !== 'cancelled'
+    ).length
+
+    const last30Completed = myBookings.filter(b =>
+      b.booking_date >= formatDate(thirtyDaysAgo) &&
+      b.booking_date <= todayStr &&
+      b.status === 'completed'
+    ).length
+
+    const last30CancelledNoShow = myBookings.filter(b =>
+      b.booking_date >= formatDate(thirtyDaysAgo) &&
+      b.booking_date <= todayStr &&
+      (b.status === 'cancelled' || b.status === 'no_show')
+    ).length
+
+    // Calculate capacity: available minutes vs booked minutes for next 7 days
+    let next7DaysAvailableMinutes = 0
+    let next7DaysBookedMinutes = 0
+
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(today)
+      date.setDate(today.getDate() + d)
+      const dateStr = formatDate(date)
+      const dow = date.getDay()
+
+      // Available minutes for this day
+      const dayAvail = avail.filter(a => a.surveyor_id === surveyor.id && a.day_of_week === dow)
+      for (const slot of dayAvail) {
+        next7DaysAvailableMinutes += timeToMinutes(slot.end_time) - timeToMinutes(slot.start_time)
+      }
+
+      // Booked minutes for this day
+      const dayBookings = myBookings.filter(b => b.booking_date === dateStr && b.status !== 'cancelled')
+      for (const booking of dayBookings) {
+        next7DaysBookedMinutes += timeToMinutes(booking.end_time) - timeToMinutes(booking.start_time)
+      }
+    }
+
+    return {
+      id: surveyor.id,
+      displayName: surveyor.display_name,
+      email: surveyor.email,
+      todayBookings,
+      thisWeekCount,
+      nextWeekCount,
+      last30Completed,
+      last30CancelledNoShow,
+      next7DaysAvailableMinutes,
+      next7DaysBookedMinutes,
+    }
   })
 }

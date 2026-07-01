@@ -51,7 +51,9 @@ export const config = {
      *   favicon.ico   — browser icon request
      *   api/q/        — public quotation API (no auth required)
      *   api/report/   — public report view API (no auth required)
+     *   pay/          — public payment page (no auth required)
+     *   api/pay/      — public payment info API (no auth required)
      */
-    '/((?!_next/static|_next/image|favicon\\.ico|api/q/|api/report/).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|api/q/|api/report/|pay/|api/pay/).*)',
   ],
 }

@@ -154,9 +154,9 @@ export default function Dashboard() {
 
   const recentSurveys = surveys.slice(0, 5)
   const stats = {
-    active: surveys.filter(p => p.status === 'in_progress').length,
-    pending: surveys.filter(p => p.status === 'pending_review').length,
-    draft: surveys.filter(p => p.status === 'draft').length,
+    active: surveys.filter(p => p.status === 'draft').length,
+    completed: surveys.filter(p => p.status === 'completed').length,
+    wonThisMonth: pipelineStats?.totals.wonThisMonth ?? 0,
     total: surveys.length,
   }
 
@@ -211,25 +211,25 @@ export default function Dashboard() {
                 color="blue"
               />
               <StatCard
-                label="Pending Review"
-                value={stats.pending.toString()}
-                change="Awaiting action"
-                icon={Clock}
-                color="amber"
+                label="Completed"
+                value={stats.completed.toString()}
+                change="Surveys done"
+                icon={CheckCircle2}
+                color="green"
               />
               <StatCard
-                label="Drafts"
-                value={stats.draft.toString()}
-                change="Not started"
-                icon={FileText}
-                color="white"
+                label="Won This Month"
+                value={stats.wonThisMonth.toString()}
+                change={pipelineStats?.totals.wonThisMonthValue ? formatCurrency(pipelineStats.totals.wonThisMonthValue) : '£0'}
+                icon={TrendingUp}
+                color="brand"
               />
               <StatCard
                 label="Total Projects"
                 value={stats.total.toString()}
                 change="All time"
-                icon={TrendingUp}
-                color="brand"
+                icon={FileText}
+                color="white"
               />
             </div>
 
@@ -555,19 +555,21 @@ function StatCard({ label, value, change, icon: Icon, color }: {
   value: string
   change: string
   icon: typeof TrendingUp
-  color: 'blue' | 'amber' | 'white' | 'brand'
+  color: 'blue' | 'amber' | 'white' | 'brand' | 'green'
 }) {
   const colorBg: Record<string, string> = {
     blue: 'bg-blue-500/20',
     amber: 'bg-amber-500/20',
     white: 'bg-white/10',
     brand: 'bg-brand-500/20',
+    green: 'bg-emerald-500/20',
   }
   const colorIcon: Record<string, string> = {
     blue: 'text-blue-400',
     amber: 'text-amber-400',
     white: 'text-white/70',
     brand: 'text-brand-400',
+    green: 'text-emerald-400',
   }
 
   return (

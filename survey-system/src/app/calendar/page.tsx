@@ -67,6 +67,7 @@ const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
 }
 
 const STATUS_CONFIG: Record<BookingStatus, { label: string; colour: string; icon: typeof CheckCircle }> = {
+  provisional: { label: 'Awaiting Payment', colour: 'bg-amber-500/20 text-amber-300', icon: Clock },
   scheduled: { label: 'Scheduled', colour: 'bg-blue-500/20 text-blue-300', icon: Clock },
   completed: { label: 'Completed', colour: 'bg-green-500/20 text-green-300', icon: CheckCircle },
   cancelled: { label: 'Cancelled', colour: 'bg-red-500/20 text-red-300', icon: XCircle },
@@ -261,9 +262,11 @@ export default function CalendarPage() {
     const colour = getSurveyorColour(booking.surveyor_id, surveyorColourMap)
     const isCancelled = booking.status === 'cancelled'
     const isCompleted = booking.status === 'completed'
+    const isProvisional = booking.status === 'provisional'
 
     // Build title
     let title = booking.customer_name
+    if (isProvisional) title = `⏳ ${title}`
     if (showMultipleSurveyors && booking.surveyor_name) {
       title += ` — ${booking.surveyor_name}`
     }
@@ -280,11 +283,16 @@ export default function CalendarPage() {
       bgColour = '#16a34a'
       borderColour = '#15803d'
       textColour = '#ffffff'
+    } else if (isProvisional) {
+      bgColour = 'rgba(245, 158, 11, 0.3)'
+      borderColour = 'rgba(245, 158, 11, 0.6)'
+      textColour = '#fbbf24'
     }
 
     const classNames: string[] = []
     if (isCancelled) classNames.push('fc-event-cancelled')
     if (isCompleted) classNames.push('fc-event-completed')
+    if (isProvisional) classNames.push('fc-event-provisional')
 
     return {
       id: `booking-${booking.id}`,
