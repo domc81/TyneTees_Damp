@@ -24,12 +24,25 @@ function getServiceClient() {
   })
 }
 
-// Verify the requesting user is authenticated
-async function verifyAuthenticated(): Promise<{ authorized: boolean; userId?: string }> {
+// Verify the requesting user is authenticated and has admin/office role
+async function verifyAuthorized(): Promise<{ authorized: boolean; userId?: string; forbidden?: boolean }> {
   try {
     const supabase = createServerClient()
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error || !user) return { authorized: false }
+
+    // Quotation generation requires admin or office role
+    const serviceClient = getServiceClient()
+    const { data: profile } = await serviceClient
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile || !['admin', 'office'].includes(profile.role)) {
+      return { authorized: false, userId: user.id, forbidden: true }
+    }
+
     return { authorized: true, userId: user.id }
   } catch {
     return { authorized: false }
@@ -72,12 +85,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Auth check
-    const { authorized } = await verifyAuthenticated()
+    // Auth + role check (admin/office only)
+    const { authorized, forbidden } = await verifyAuthorized()
     if (!authorized) {
       return NextResponse.json(
-        { error: 'Unauthorized — authentication required' },
-        { status: 401 }
+        { error: forbidden ? 'Forbidden — admin or office role required' : 'Unauthorized' },
+        { status: forbidden ? 403 : 401 }
       )
     }
 
@@ -103,6 +116,23 @@ export async function POST(
     if (sections == null || !Array.isArray(sections)) {
       return NextResponse.json(
         { error: 'Missing required field: sections' },
+        { status: 400 }
+      )
+    }
+
+    // Validate totals are sensible — prevent zero or negative quotations
+    if (totalInclVat <= 0) {
+      return NextResponse.json(
+        { error: 'Quotation total must be greater than zero' },
+        { status: 400 }
+      )
+    }
+
+    // Verify subtotal + VAT equals total (within rounding tolerance)
+    const expectedTotal = subtotalCombined + psoTotal + vatAmount
+    if (Math.abs(expectedTotal - totalInclVat) > 0.02) {
+      return NextResponse.json(
+        { error: `Total mismatch: subtotal + PSO + VAT = ${expectedTotal.toFixed(2)}, but totalInclVat = ${totalInclVat.toFixed(2)}` },
         { status: 400 }
       )
     }

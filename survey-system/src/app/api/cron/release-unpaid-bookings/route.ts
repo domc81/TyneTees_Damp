@@ -60,8 +60,16 @@ export async function POST(request: NextRequest) {
       continue
     }
 
-    // Cancel the linked provisional booking
+    // Cancel the linked provisional booking and notify the surveyor
     if (payment.booking_id) {
+      // Fetch booking details before cancelling (for notification)
+      const { data: booking } = await supabase
+        .from('survey_bookings')
+        .select('id, surveyor_id, customer_name, booking_date, start_time')
+        .eq('id', payment.booking_id)
+        .eq('status', 'provisional')
+        .single()
+
       const { error: bookingError } = await supabase
         .from('survey_bookings')
         .update({ status: 'cancelled' })
@@ -70,6 +78,17 @@ export async function POST(request: NextRequest) {
 
       if (bookingError) {
         console.error(`Failed to cancel booking ${payment.booking_id}:`, bookingError)
+      } else if (booking?.surveyor_id) {
+        // Notify the assigned surveyor that the booking was auto-cancelled
+        await supabase.from('notifications').insert({
+          user_id: booking.surveyor_id,
+          type: 'booking_cancelled',
+          title: 'Provisional Booking Cancelled',
+          message: `Survey for ${booking.customer_name || 'Unknown'} on ${booking.booking_date} at ${booking.start_time} was cancelled — survey fee payment expired.`,
+          booking_id: booking.id,
+        }).then(({ error: notifError }) => {
+          if (notifError) console.error(`Failed to notify surveyor:`, notifError)
+        })
       }
     }
 

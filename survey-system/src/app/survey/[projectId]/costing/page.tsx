@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
 import { useSmartBack } from '@/hooks/useSmartBack'
-import { generateCostingFromSurvey } from '@/lib/survey-mapping'
+import { generateCostingFromSurvey, consumeMissingTemplateWarnings } from '@/lib/survey-mapping'
 import {
   loadPricingConfig,
   loadSectionAdjustments,
@@ -296,6 +296,7 @@ export default function CostingReviewPage() {
   // State
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [missingTemplates, setMissingTemplates] = useState<string[]>([])
   const [costingResults, setCostingResults] = useState<Record<string, CalculationResult>>({})
   const [activeSurveyType, setActiveSurveyType] = useState<string>('')
   const [travelOverhead, setTravelOverhead] = useState<TravelOverheadResult | null>(null)
@@ -327,6 +328,7 @@ export default function CostingReviewPage() {
       try {
         const { wizardData, rooms } = await loadWizardData(projectId)
         const results = await generateCostingFromSurvey(projectId, wizardData, rooms)
+        setMissingTemplates(consumeMissingTemplateWarnings())
 
         if (Object.keys(results).length === 0) {
           throw new Error('No survey data found to generate costs. Please complete the survey wizard first.')
@@ -708,6 +710,15 @@ export default function CostingReviewPage() {
             <h2 className="text-2xl font-bold text-white mt-2">Survey Costing</h2>
             <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
           </div>
+
+          {missingTemplates.length > 0 && (
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-400/30 text-amber-200 text-sm space-y-1">
+              <p className="font-medium">Warning: {missingTemplates.length} costing template{missingTemplates.length > 1 ? 's' : ''} not found — these line items are excluded from the quotation:</p>
+              <ul className="list-disc list-inside text-amber-200/70 text-xs">
+                {missingTemplates.map(key => <li key={key}>{key}</li>)}
+              </ul>
+            </div>
+          )}
 
           <div>
 

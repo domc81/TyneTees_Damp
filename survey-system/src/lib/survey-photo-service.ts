@@ -8,6 +8,24 @@
 import { getSupabase } from './supabase-client'
 import type { SurveyPhoto, PhotoCapture } from '@/types/survey-photo.types'
 
+// Per-survey write queue — serializes metadata writes to prevent
+// read-modify-write race condition on survey_data.photos JSONB array.
+// Photo compression and storage upload still run in parallel; only the
+// final metadata append/remove is serialized.
+const writeQueues = new Map<string, Promise<unknown>>()
+
+function serializeWrite<T>(surveyId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = writeQueues.get(surveyId) ?? Promise.resolve()
+  const next: Promise<T> = prev.then(fn, fn)
+  writeQueues.set(surveyId, next)
+  next.finally(() => {
+    if (writeQueues.get(surveyId) === next) {
+      writeQueues.delete(surveyId)
+    }
+  })
+  return next
+}
+
 // Geolocation cache to avoid repeated permission prompts
 let geolocationCache: {
   coords: { latitude: number; longitude: number }
@@ -244,49 +262,46 @@ export async function uploadSurveyPhoto(
       created_at: new Date().toISOString(),
     }
 
-    // Step 8: Load existing survey data
-    const { data: survey, error: fetchError } = await supabase
-      .from('surveys')
-      .select('survey_data')
-      .eq('id', surveyId)
-      .single()
+    // Steps 8-10: Serialize metadata write to prevent race condition.
+    // Multiple concurrent uploads can compress + upload to storage in
+    // parallel, but the read-modify-write on survey_data.photos must
+    // be serialized to avoid one upload overwriting another's metadata.
+    await serializeWrite(surveyId, async () => {
+      // Step 8: Load existing survey data
+      const { data: survey, error: fetchError } = await supabase
+        .from('surveys')
+        .select('survey_data')
+        .eq('id', surveyId)
+        .single()
 
-    if (fetchError) {
-      console.error('Failed to load survey for photo metadata:', fetchError)
-      // Rollback: delete uploaded file
-      await supabase.storage.from('survey-photos').remove([uploadData.path])
-      throw new Error(`Failed to load survey: ${fetchError.message}`)
-    }
+      if (fetchError) {
+        console.error('Failed to load survey for photo metadata:', fetchError)
+        await supabase.storage.from('survey-photos').remove([uploadData.path])
+        throw new Error(`Failed to load survey: ${fetchError.message}`)
+      }
 
-    // Step 9: Add photo to survey_data.photos array
-    const surveyData = survey.survey_data || {}
-    const photos = Array.isArray(surveyData.photos) ? surveyData.photos : []
-    photos.push(newPhoto)
+      // Step 9: Add photo to survey_data.photos array
+      const surveyData = survey.survey_data || {}
+      const photos = Array.isArray(surveyData.photos) ? surveyData.photos : []
+      photos.push(newPhoto)
 
-    // Step 10: Update survey_data with new photos array
-    const { data: updateData, error: updateError } = await supabase
-      .from('surveys')
-      .update({
-        survey_data: {
-          ...surveyData,
-          photos,
-        },
-      })
-      .eq('id', surveyId)
-      .select()
+      // Step 10: Update survey_data with new photos array
+      const { error: updateError } = await supabase
+        .from('surveys')
+        .update({
+          survey_data: {
+            ...surveyData,
+            photos,
+          },
+        })
+        .eq('id', surveyId)
 
-    if (updateError) {
-      console.error('Failed to save photo metadata:', updateError)
-      // Rollback: delete uploaded file
-      await supabase.storage.from('survey-photos').remove([uploadData.path])
-      throw new Error(`Failed to save photo metadata: ${updateError.message}`)
-    }
-
-    if (!updateData || updateData.length === 0) {
-      console.error('Survey update returned no data - metadata may not have been saved')
-      // Don't rollback here as the update might have succeeded
-      // This is a warning scenario
-    }
+      if (updateError) {
+        console.error('Failed to save photo metadata:', updateError)
+        await supabase.storage.from('survey-photos').remove([uploadData.path])
+        throw new Error(`Failed to save photo metadata: ${updateError.message}`)
+      }
+    })
 
     return newPhoto
   } catch (error) {
@@ -458,38 +473,37 @@ export async function deleteSurveyPhoto(
       // Continue anyway — metadata cleanup is more important
     }
 
-    // Step 2: Load existing survey data
-    const { data: survey, error: fetchError } = await supabase
-      .from('surveys')
-      .select('survey_data')
-      .eq('id', surveyId)
-      .single()
+    // Steps 2-4: Serialize metadata write (same queue as uploads)
+    await serializeWrite(surveyId, async () => {
+      const { data: survey, error: fetchError } = await supabase
+        .from('surveys')
+        .select('survey_data')
+        .eq('id', surveyId)
+        .single()
 
-    if (fetchError) {
-      throw new Error(`Failed to load survey: ${fetchError.message}`)
-    }
+      if (fetchError) {
+        throw new Error(`Failed to load survey: ${fetchError.message}`)
+      }
 
-    // Step 3: Remove photo from photos array
-    const surveyData = survey.survey_data || {}
-    const photos = (surveyData.photos || []).filter(
-      (p: SurveyPhoto) => p.id !== photo.id
-    )
+      const surveyData = survey.survey_data || {}
+      const photos = (surveyData.photos || []).filter(
+        (p: SurveyPhoto) => p.id !== photo.id
+      )
 
-    // Step 4: Update survey_data
-    const { error: updateError } = await supabase
-      .from('surveys')
-      .update({
-        survey_data: {
-          ...surveyData,
-          photos,
-        },
-      })
-      .eq('id', surveyId)
+      const { error: updateError } = await supabase
+        .from('surveys')
+        .update({
+          survey_data: {
+            ...surveyData,
+            photos,
+          },
+        })
+        .eq('id', surveyId)
 
-    if (updateError) {
-      throw new Error(`Failed to update survey data: ${updateError.message}`)
-    }
-
+      if (updateError) {
+        throw new Error(`Failed to update survey data: ${updateError.message}`)
+      }
+    })
   } catch (error) {
     console.error('Photo deletion failed:', error)
     throw error

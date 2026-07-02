@@ -114,6 +114,16 @@ export async function loadAllTemplateLookups(): Promise<TemplateLookupCache> {
 /**
  * Get template ID from lookup, warn if not found
  */
+// Tracks templates missing during the current mapping run so the costing UI can warn
+let _missingTemplates: string[] = []
+
+/** Return and clear any missing template warnings from the last mapping run */
+export function consumeMissingTemplateWarnings(): string[] {
+  const warnings = _missingTemplates
+  _missingTemplates = []
+  return warnings
+}
+
 function getTemplateId(
   lookup: TemplateLookup,
   sectionKey: string,
@@ -123,7 +133,9 @@ function getTemplateId(
   const templateId = lookup.get(lookupKey)
 
   if (!templateId) {
-    console.warn(`Template not found: ${lookupKey}`)
+    const msg = `Missing costing template: ${sectionKey} / ${lineKey} — this line item will be excluded from the quotation`
+    console.error(msg)
+    _missingTemplates.push(lookupKey)
   }
 
   return templateId || null
@@ -1425,6 +1437,9 @@ export async function generateCostingFromSurvey(
   wizardData: SurveyWizardData,
   rooms: SurveyRoomRow[]
 ): Promise<Record<string, CalculationResult>> {
+  // Clear previous run's warnings
+  _missingTemplates = []
+
   // Load all template lookups
   const lookupCache = await loadAllTemplateLookups()
 

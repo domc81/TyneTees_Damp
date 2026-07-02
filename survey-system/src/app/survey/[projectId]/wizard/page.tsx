@@ -179,8 +179,8 @@ export default function SurveyWizardPage() {
         if (!ext?.building_defects_found) return true
         return (ext.building_defects?.length ?? 0) > 0
       }
-      case 2: // Room Inspection
-        return true // TODO: Add room validation in next iteration
+      case 2: // Room Inspection — require at least one room
+        return rooms.length > 0
       case 3: // Additional Works
         return true // TODO: Add validation in next iteration
       case 4: // Review
@@ -207,6 +207,7 @@ export default function SurveyWizardPage() {
       setCurrentStep(prevStep)
       const updatedData = { ...wizardData, wizard_step: prevStep }
       setWizardData(updatedData)
+      handleAutoSave() // Save immediately on back navigation (matches handleNext)
     }
   }
 
@@ -214,6 +215,7 @@ export default function SurveyWizardPage() {
     setCurrentStep(stepIndex)
     const updatedData = { ...wizardData, wizard_step: stepIndex }
     setWizardData(updatedData)
+    handleAutoSave() // Save immediately on step click
   }
 
   // Final submission handler

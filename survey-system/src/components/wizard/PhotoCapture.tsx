@@ -46,42 +46,57 @@ export default function PhotoCapture({
 
   const canAddMore = existingPhotos.length < maxPhotos
 
+  const MAX_RETRIES = 2
+
   const performUpload = async (file: File, desc: string) => {
     setIsUploading(true)
     setUploadProgress(0)
 
-    try {
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => Math.min(prev + 10, 90))
-      }, 200)
-
-      const capture: PhotoCaptureType = {
-        file,
-        category,
-        description: desc || `${label} photo`,
-        step,
-        room_id: roomId,
-      }
-
-      const newPhoto = await uploadSurveyPhoto(surveyId, capture)
-
-      clearInterval(progressInterval)
-      setUploadProgress(100)
-
-      onPhotosChange([...existingPhotos, newPhoto])
-
-      setTimeout(() => {
-        setIsUploading(false)
-        setUploadProgress(0)
-        setPendingFile(null)
-        setDescription('')
-      }, 500)
-    } catch (err) {
-      console.error('Upload failed:', err)
-      setError(err instanceof Error ? err.message : 'Upload failed')
-      setIsUploading(false)
-      setUploadProgress(0)
+    const capture: PhotoCaptureType = {
+      file,
+      category,
+      description: desc || `${label} photo`,
+      step,
+      room_id: roomId,
     }
+
+    let lastError: unknown = null
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => Math.min(prev + 10, 90))
+        }, 200)
+
+        const newPhoto = await uploadSurveyPhoto(surveyId, capture)
+
+        clearInterval(progressInterval)
+        setUploadProgress(100)
+
+        onPhotosChange([...existingPhotos, newPhoto])
+
+        setTimeout(() => {
+          setIsUploading(false)
+          setUploadProgress(0)
+          setPendingFile(null)
+          setDescription('')
+        }, 500)
+        return // success
+      } catch (err) {
+        lastError = err
+        console.warn(`Upload attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`, err)
+        if (attempt < MAX_RETRIES) {
+          setUploadProgress(0)
+          // Brief pause before retry
+          await new Promise(r => setTimeout(r, 1000))
+        }
+      }
+    }
+
+    console.error('Upload failed after retries:', lastError)
+    setError(lastError instanceof Error ? lastError.message : 'Upload failed after retries')
+    setIsUploading(false)
+    setUploadProgress(0)
   }
 
   const handleFileSelect = (file: File) => {

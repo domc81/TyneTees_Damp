@@ -94,6 +94,7 @@ export default function AudioRecorder({
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   // Ref mirrors recordingTime state so async callbacks (onstop) get the latest value
   const recordingTimeRef = useRef(0)
 
@@ -183,6 +184,15 @@ export default function AudioRecorder({
         }
       }
 
+      // Request Wake Lock to prevent phone sleep during recording
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request('screen')
+        } catch {
+          // Wake Lock not available or denied — continue without it
+        }
+      }
+
       // Start recording — no timeslice produces a single valid WebM blob.
       // We tried timeslice=1000 but it produced worse results (fragmented
       // WebM container with incomplete cluster headers).
@@ -223,6 +233,12 @@ export default function AudioRecorder({
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
+    }
+
+    // Release Wake Lock
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {})
+      wakeLockRef.current = null
     }
   }, [])
 

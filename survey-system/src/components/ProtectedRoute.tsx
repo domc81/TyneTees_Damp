@@ -3,9 +3,16 @@
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useEffect } from 'react'
+import type { UserRole } from '@/types/database.types'
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, isLoading, mustChangePassword } = useAuth()
+interface ProtectedRouteProps {
+  children: React.ReactNode
+  /** If provided, only users with one of these roles can access the page. */
+  allowedRoles?: UserRole[]
+}
+
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { session, isLoading, mustChangePassword, role } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -20,6 +27,15 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [session, isLoading, mustChangePassword, router])
 
+  // Role-based access check — redirect to dashboard if role not allowed
+  useEffect(() => {
+    if (!isLoading && session && !mustChangePassword && allowedRoles) {
+      if (!role || !allowedRoles.includes(role)) {
+        router.push('/')
+      }
+    }
+  }, [session, isLoading, mustChangePassword, allowedRoles, role, router])
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -32,6 +48,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!session || mustChangePassword) {
+    return null
+  }
+
+  // Block rendering if role not allowed
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
     return null
   }
 

@@ -69,8 +69,8 @@ export function calculateTravelOverhead(
     vehicleCostPerMile,
   } = input
 
-  // Edge case: if distance or crew size is zero, no travel costs
-  if (distanceFromOffice <= 0 || numMenTravelling <= 0) {
+  // No distance = no travel costs
+  if (distanceFromOffice <= 0) {
     return {
       labourDays: 0,
       travelHours: 0,
@@ -80,8 +80,8 @@ export function calculateTravelOverhead(
     }
   }
 
-  // Ensure at least 1 man (guard against fractional values)
-  const effectiveMen = Math.max(1, numMenTravelling)
+  // Default to at least 1 man — a job with 0 crew still has someone travelling
+  const effectiveMen = Math.max(1, numMenTravelling || 1)
 
   // Working days = ROUNDUP(total_hours / 6.5 / num_men)
   const labourDays = Math.ceil(

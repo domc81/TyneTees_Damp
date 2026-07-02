@@ -23,10 +23,20 @@ export async function POST(
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
 
-  // Verify authentication
+  // Verify authentication and role (admin/office only)
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!profile || !['admin', 'office'].includes(profile.role)) {
+    return NextResponse.json({ error: 'Forbidden — admin or office role required' }, { status: 403 })
   }
 
   const body = await request.json()
