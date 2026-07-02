@@ -167,6 +167,21 @@ TyneTees_Damp/
 │   └── tsconfig.json                # strict mode, @/* path alias → ./src/*
 ├── supabase/
 │   └── migrations/                  # 1 root-level migration (allow_published_status)
+├── docs/
+│   ├── training/                    # Staff training & onboarding guides
+│   │   ├── 00-getting-started.md    # All roles: login, navigation, dashboard
+│   │   ├── 01-office-staff-guide.md # Office/Admin: enquiries, customers, calendar, quotations
+│   │   ├── 02-surveyor-guide.md     # Surveyors: schedule, wizard walkthrough, photos, voice
+│   │   ├── 03-admin-guide.md        # Admin: team, materials, pricing, settings
+│   │   └── screenshots/             # 35 live platform screenshots (captured via Steel Browser)
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   ├── PROJECT_STATE.md
+│   ├── audits/                      # Role audit reports and trackers
+│   ├── guides/
+│   ├── plans/
+│   ├── setup/
+│   └── workbook-analysis/
 ├── workbook_extraction/             # Excel workbook analysis scripts
 └── *.xlsm, *.xls, *.csv            # Original Excel workbooks & exports
 ```
@@ -459,6 +474,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Workload Dashboard:** Surveyor capacity view at `/admin/workload`
 - **Transcription:** Deepgram speech-to-text for survey observations
 - **Observation Polishing:** LLM cleanup of voice-transcribed notes
+- **Training Documentation:** 4 role-based guides with 35 live screenshots at `docs/training/` — Getting Started (all roles), Office Staff, Surveyor, Admin
 
 ## External API Access Available
 
@@ -489,3 +505,4 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - Setup guides: `docs/setup/`
 - Workbook analysis: `docs/workbook-analysis/`
 - Audits archive: `docs/audits/`
+- Training guides: `docs/training/` (4 role-based onboarding docs with live screenshots)

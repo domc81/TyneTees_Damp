@@ -39,6 +39,7 @@ All commands run from `survey-system/` directory:
 - Deploy/rollback: `docs/DEPLOYMENT.md`
 - Current focus and open threads: `docs/PROJECT_STATE.md`
 - Workbook analysis: `docs/workbook-analysis/`
+- Training guides: `docs/training/` (role-based onboarding docs with live screenshots)
 
 ## Conventions
 
