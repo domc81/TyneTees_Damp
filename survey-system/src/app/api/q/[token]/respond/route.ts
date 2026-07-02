@@ -296,10 +296,10 @@ export async function POST(
       autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'accepted')
         .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
 
-      // ── Create deposit payment record (fire-and-forget) ───────────────────
+      // ── Create deposit payment record ────────────────────────────────────
 
       if (quotation.deposit_amount && quotation.deposit_amount > 0) {
-        supabase
+        const { error: payErr } = await supabase
           .from('payments')
           .insert({
             quotation_id: quotation.id,
@@ -307,9 +307,10 @@ export async function POST(
             amount: quotation.deposit_amount,
             status: 'pending',
           })
-          .then(({ error: payErr }) => {
-            if (payErr) console.error('[quotation-respond] Deposit payment creation failed:', payErr)
-          })
+
+        if (payErr) {
+          console.error('[quotation-respond] Deposit payment creation failed:', payErr)
+        }
       }
 
       // ── Notify office (fire-and-forget) ────────────────────────────────────

@@ -106,6 +106,7 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 }
 
 export async function createCustomer(customerData: {
+  title?: string
   first_name: string
   last_name: string
   email: string
@@ -828,13 +829,13 @@ export async function markEnquiryWon(
     return
   }
 
-  await logEnquiryActivity(enquiryId, 'status_change', userId, 'Deposit received — marked as won')
+  await logEnquiryActivity(enquiryId, 'status_change', 'Deposit received — marked as won', userId)
 }
 
 /** Record CF CSV export timestamp on an enquiry. */
-export async function setCfExportedAt(enquiryId: string): Promise<void> {
+export async function setCfExportedAt(enquiryId: string): Promise<boolean> {
   const supabase = getSupabase()
-  if (!supabase) return
+  if (!supabase) return false
 
   const { error } = await supabase
     .from('enquiries')
@@ -843,7 +844,10 @@ export async function setCfExportedAt(enquiryId: string): Promise<void> {
 
   if (error) {
     console.error('setCfExportedAt failed:', error.message)
+    return false
   }
+
+  return true
 }
 
 /** Transition an enquiry to completed (terminal). Requires won_at to be set. */

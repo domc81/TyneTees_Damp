@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { sendEmail } from '@/lib/email-service'
+import { bookingConfirmedAfterPaymentEmail } from '@/lib/email-templates'
 
 export async function POST(
   request: NextRequest,
@@ -80,6 +82,41 @@ export async function POST(
       .update({ status: 'scheduled' })
       .eq('id', payment.booking_id)
       .eq('status', 'provisional')
+
+    // Send booking confirmation email to customer
+    const { data: booking } = await supabase
+      .from('survey_bookings')
+      .select('customer_name, customer_email, customer_address, booking_date, start_time, end_time, surveyor_name')
+      .eq('id', payment.booking_id)
+      .single()
+
+    if (booking?.customer_email) {
+      const bookingDate = booking.booking_date
+        ? new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+          })
+        : ''
+      const bookingTime = [booking.start_time?.slice(0, 5), booking.end_time?.slice(0, 5)]
+        .filter(Boolean).join(' – ')
+
+      bookingConfirmedAfterPaymentEmail({
+        customerName: booking.customer_name || 'Customer',
+        bookingDate,
+        bookingTime,
+        surveyorName: booking.surveyor_name || 'Our surveyor',
+        siteAddress: booking.customer_address || '',
+      })
+        .then(email => sendEmail({
+          to: booking.customer_email!,
+          subject: email.subject,
+          html: email.html,
+          templateName: 'booking_confirmed_after_payment',
+          bookingId: payment.booking_id!,
+          sentBy: user.id,
+          recipientName: booking.customer_name || 'Customer',
+        }))
+        .catch(err => console.error('[mark-paid] Booking confirmation email failed:', err))
+    }
   }
 
   if (payment.payment_type === 'deposit' && payment.quotation_id) {

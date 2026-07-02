@@ -689,7 +689,7 @@ export async function enquiryOnHoldEmail(data: EnquiryOnHoldEmailData): Promise<
     </p>
 
     ${branding.companyPhone ? `<p style="margin:0 0 20px 0;">
-      <a href="tel:${branding.companyPhone.replace(/\\s/g, '')}"
+      <a href="tel:${branding.companyPhone.replace(/\s/g, '')}"
          style="font-size:16px;font-weight:700;color:#1e3a5f;text-decoration:none;">
         ${escapeHtml(branding.companyPhone)}
       </a>
@@ -754,7 +754,7 @@ export function surveyFeePaymentEmail(data: SurveyFeePaymentData): string {
           </p>
 
           ${data.companyPhone ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;">
-            Phone: <a href="tel:${data.companyPhone.replace(/\\s/g, '')}" style="color:#1e3a5f;">${escapeHtml(data.companyPhone)}</a>
+            Phone: <a href="tel:${data.companyPhone.replace(/\s/g, '')}" style="color:#1e3a5f;">${escapeHtml(data.companyPhone)}</a>
           </p>` : ''}
           ${data.companyEmail ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;">
             Email: <a href="mailto:${data.companyEmail}" style="color:#1e3a5f;">${escapeHtml(data.companyEmail)}</a>
@@ -803,7 +803,7 @@ export async function bookingConfirmedAfterPaymentEmail(data: BookingConfirmedAf
     </p>
 
     ${branding.companyPhone ? `<p style="margin:0 0 20px 0;">
-      <a href="tel:${branding.companyPhone.replace(/\\s/g, '')}"
+      <a href="tel:${branding.companyPhone.replace(/\s/g, '')}"
          style="font-size:16px;font-weight:700;color:#1e3a5f;text-decoration:none;">
         ${escapeHtml(branding.companyPhone)}
       </a>

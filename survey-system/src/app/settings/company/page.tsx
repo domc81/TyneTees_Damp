@@ -124,7 +124,7 @@ function Field({
 // ---------------------------------------------------------------------------
 
 export default function CompanyProfilePage() {
-  const { session, isLoading: authLoading } = useAuth()
+  const { session, isAdmin, isLoading: authLoading } = useAuth()
   const [profile, setProfile] = useState<CompanyProfile | null>(null)
   const [form, setForm] = useState<FormData | null>(null)
   const [savedForm, setSavedForm] = useState<FormData | null>(null)
@@ -276,6 +276,25 @@ export default function CompanyProfilePage() {
         <Layout>
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-8 h-8 text-brand-400 animate-spin" />
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <ProtectedRoute>
+        <Layout>
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-white mb-2">Admin Access Required</h2>
+              <p className="text-white/60 mb-4">Only administrators can edit the company profile.</p>
+              <Link href="/settings" className="text-blue-400 hover:text-blue-300 text-sm">
+                Back to Settings
+              </Link>
+            </div>
           </div>
         </Layout>
       </ProtectedRoute>

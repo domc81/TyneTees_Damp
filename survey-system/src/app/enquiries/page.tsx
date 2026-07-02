@@ -773,13 +773,13 @@ function MobileEnquiryCard({
 
         {/* Status move dropdown */}
         <select
+          key={`move-${enquiry.id}-${enquiry.status}`}
           defaultValue=""
           onClick={(e) => e.stopPropagation()}
           onChange={(e) => {
             const val = e.target.value
             if (val) {
               onMove(enquiry, val as EnquiryStatus)
-              e.currentTarget.value = ''
             }
           }}
           className="text-[11px] bg-white/5 border border-white/15 rounded-lg px-2 py-1.5 text-white/50 cursor-pointer hover:border-white/30 transition-colors flex-shrink-0"

@@ -4,9 +4,7 @@ import Link from 'next/link'
 import {
   Settings,
   Database,
-  Shield,
   Bell,
-  Palette,
   Building2,
   ChevronRight,
 } from 'lucide-react'
@@ -35,16 +33,6 @@ const settingsSections = [
     badge: null,
   },
   {
-    id: 'security',
-    title: 'Security & Authentication',
-    description: 'User management, permissions, and login settings',
-    icon: Shield,
-    href: '/settings/security',
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10',
-    badge: 'Coming Soon',
-  },
-  {
     id: 'notifications',
     title: 'Notifications',
     description: 'Email alerts and notification preferences',
@@ -53,16 +41,6 @@ const settingsSections = [
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
     badge: null,
-  },
-  {
-    id: 'appearance',
-    title: 'Appearance',
-    description: 'Theme, branding, and display preferences',
-    icon: Palette,
-    href: '/settings/appearance',
-    color: 'text-pink-400',
-    bgColor: 'bg-pink-500/10',
-    badge: 'Coming Soon',
   },
 ]
 

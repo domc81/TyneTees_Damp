@@ -3,8 +3,9 @@
 //
 // PUBLIC — no authentication. The payment_token UUID is the access credential.
 // Shows payment details and instructions for the customer.
-// Phase 1: Bank transfer instructions.
-// Phase 2: Stripe Checkout button will be added here.
+// Payment provider TBD — currently manual (office marks as paid).
+// Customer sees amount due + contact details; office sends payment
+// instructions via their own payment provider.
 // =============================================================================
 
 import type { Metadata } from 'next'
@@ -217,18 +218,20 @@ export default async function PaymentPage({ params }: { params: { token: string 
               </div>
             )}
 
-            {/* Payment instructions (Phase 1: bank transfer) */}
+            {/* Payment instructions */}
             {!isPaid && !isCancelled && !isExpired && (
               <div className="border-t border-gray-100 pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">How to Pay</h3>
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-gray-700 space-y-2">
                   <p>
-                    Please make a bank transfer for <strong>£{Number(payment.amount).toFixed(2)}</strong> to
-                    the account details below. Use your name as the payment reference.
+                    A payment of <strong>£{Number(payment.amount).toFixed(2)}</strong> is required.
+                    We will contact you with payment instructions, or you can reach us
+                    using the details below.
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
-                    Your booking will be confirmed once payment is received.
-                    We will send you a confirmation email.
+                    {isSurveyFee
+                      ? 'Your survey appointment will be confirmed once payment is received.'
+                      : 'Works will be scheduled once your deposit has been received.'}
                   </p>
                 </div>
               </div>

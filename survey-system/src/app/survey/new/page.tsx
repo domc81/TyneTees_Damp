@@ -31,8 +31,6 @@ const SURVEY_TYPE_OPTIONS: { value: SurveyType; label: string }[] = [
   { value: 'condensation', label: 'Condensation' },
   { value: 'timber', label: 'Timber' },
   { value: 'woodworm', label: 'Woodworm' },
-  { value: 'structural', label: 'Structural' },
-  { value: 'comprehensive', label: 'Comprehensive' },
 ]
 
 /** Format "YYYY-MM-DD" for human display: "Mon 3 Mar 2026" */

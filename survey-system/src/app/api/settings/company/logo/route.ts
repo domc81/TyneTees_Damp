@@ -10,16 +10,24 @@ import { createClient as createServerClient } from '@/lib/supabase-server'
 import { uploadCompanyLogo } from '@/lib/company-profile'
 
 /**
- * Verify the caller has an active Supabase session.
+ * Verify the caller is an admin.
  */
-async function verifyAuthenticated(): Promise<string | null> {
+async function verifyAdmin(): Promise<{ authorized: boolean; userId?: string }> {
   try {
     const supabase = createServerClient()
     const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) return null
-    return user.id
+    if (error || !user) return { authorized: false }
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') return { authorized: false }
+    return { authorized: true, userId: user.id }
   } catch {
-    return null
+    return { authorized: false }
   }
 }
 
@@ -28,11 +36,11 @@ async function verifyAuthenticated(): Promise<string | null> {
 // =============================================================================
 
 export async function POST(request: NextRequest) {
-  const userId = await verifyAuthenticated()
-  if (!userId) {
+  const { authorized } = await verifyAdmin()
+  if (!authorized) {
     return NextResponse.json(
-      { error: 'Authentication required' },
-      { status: 401 }
+      { error: 'Admin access required' },
+      { status: 403 }
     )
   }
 

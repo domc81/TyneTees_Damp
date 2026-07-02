@@ -149,6 +149,11 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
       return
     }
 
+    if (!/^[^@]+@[^@]+\.[^@]+$/.test(formData.email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+
     setIsSaving(true)
     setError(null)
     try {
@@ -673,7 +678,7 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
                         {customer.bookings.map((b) => (
                           <tr
                             key={b.id}
-                            onClick={() => router.push('/calendar')}
+                            onClick={() => router.push(`/calendar?date=${b.booking_date}`)}
                             className="cursor-pointer"
                           >
                             <td className="text-white/80">{formatDate(b.booking_date)}</td>

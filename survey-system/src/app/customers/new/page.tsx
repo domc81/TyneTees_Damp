@@ -65,6 +65,7 @@ function NewCustomerContent() {
     setIsSubmitting(true)
     try {
       const newCustomer = await createCustomer({
+        title: formData.title || undefined,
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.emailAddress,

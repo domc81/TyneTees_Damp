@@ -67,8 +67,23 @@ export default function NewEnquiryPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     setErrorMessage(null)
+
+    // Validate required fields
+    if (!formData.client_name.trim()) {
+      setErrorMessage('Client name is required')
+      return
+    }
+    if (!formData.site_address_1.trim()) {
+      setErrorMessage('Site address is required')
+      return
+    }
+    if (!formData.site_postcode.trim()) {
+      setErrorMessage('Site postcode is required')
+      return
+    }
+
+    setIsSubmitting(true)
 
     try {
       const enquiry = await createEnquiry({

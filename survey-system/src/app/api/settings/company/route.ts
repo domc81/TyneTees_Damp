@@ -1,6 +1,6 @@
 // =============================================================================
 // Company Profile API — GET & PATCH /api/settings/company
-// Requires authentication (any role). Returns / updates the singleton row.
+// GET: any authenticated user. PATCH: admin only.
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -50,6 +50,25 @@ async function verifyAuthenticated(): Promise<string | null> {
   }
 }
 
+async function verifyAdmin(): Promise<{ authorized: boolean; userId?: string }> {
+  try {
+    const supabase = createServerClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return { authorized: false }
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') return { authorized: false }
+    return { authorized: true, userId: user.id }
+  } catch {
+    return { authorized: false }
+  }
+}
+
 // =============================================================================
 // GET /api/settings/company
 // =============================================================================
@@ -82,11 +101,11 @@ export async function GET(_request: NextRequest) {
 // =============================================================================
 
 export async function PATCH(request: NextRequest) {
-  const userId = await verifyAuthenticated()
-  if (!userId) {
+  const { authorized, userId } = await verifyAdmin()
+  if (!authorized || !userId) {
     return NextResponse.json(
-      { error: 'Authentication required' },
-      { status: 401 }
+      { error: 'Admin access required' },
+      { status: 403 }
     )
   }
 

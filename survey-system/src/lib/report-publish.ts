@@ -51,6 +51,21 @@ export async function publishReport(reportId: string): Promise<string> {
     throw new Error('Supabase client not available')
   }
 
+  // Validate report is finalised before publishing
+  const { data: report, error: fetchErr } = await supabase
+    .from('survey_reports')
+    .select('status')
+    .eq('id', reportId)
+    .single()
+
+  if (fetchErr || !report) {
+    throw new Error('Report not found')
+  }
+
+  if (report.status !== 'finalised' && report.status !== 'published') {
+    throw new Error('Report must be finalised before publishing')
+  }
+
   const token = generatePublishToken()
   const now = new Date().toISOString()
 

@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-02
 **Last commit:** 497ee2a — feat: add lead-to-customer lifecycle
-**Current phase:** MVP feature-complete — lead-to-customer lifecycle operational, accuracy verification ongoing
+**Current phase:** Bug-fix sprint — Office role audit remediation (38 items)
 
 ## Current focus
 
-All core features are built and working: enquiry pipeline with full lead-to-customer lifecycle (provisional bookings, survey fee payments, deposit collection, won/completed tracking), survey wizard (4 issue types), automated costing engine (11 formula types, 220 line templates), quotation generation with PDF and e-signature, AI report generation, calendar/booking, and notifications. The costing admin pages (line templates, materials catalogue, pricing rates) are fully operational. The next concrete deliverables are verifying that all 220 costing line template calculations match the original Excel workbooks, adding costing manual overrides for surveyors, and completing woodworm wizard fields to full workbook parity.
+**All other work is paused until the Office role audit is complete.** A full walkthrough of every page and workflow accessible to the Office role identified 38 issues: 5 crash bugs, 3 security gaps, 7 workflow dead ends, 10 significant bugs, and 13 UX issues. The audit checklist is at `docs/audits/OFFICE_ROLE_AUDIT_2026-07-02.md` — each item is marked off as it is fixed and deployed. Priority clusters: (A) payment/quotation lifecycle is fundamentally broken for customers, (B) access control lets any user edit pricing/company profile, (C) runtime crashes in normal use, (D) workflow dead ends that trap users.
 
 ## Open threads
 

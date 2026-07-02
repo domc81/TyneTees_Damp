@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
   }
 
-  // Get booking details for context
+  // Resolve customer details from booking (survey fee) or quotation (deposit)
   let customerEmail: string | null = null
   let customerName = 'Customer'
   let bookingDate = ''
@@ -71,6 +71,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (!customerEmail && payment.quotation_id) {
+    const { data: quotation } = await supabase
+      .from('quotations')
+      .select('customer_name, customer_email, site_address')
+      .eq('id', payment.quotation_id)
+      .single()
+
+    if (quotation) {
+      customerEmail = quotation.customer_email
+      customerName = quotation.customer_name || 'Customer'
+      address = quotation.site_address || ''
+    }
+  }
+
   if (!customerEmail) {
     return NextResponse.json({ error: 'No customer email address found' }, { status: 400 })
   }
@@ -82,24 +96,31 @@ export async function POST(request: NextRequest) {
     .eq('is_singleton', true)
     .single()
 
+  const companyName = company?.company_name || 'Tyne Tees Damp Proofing'
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || ''
   const paymentUrl = `${appUrl}/pay/${payment.payment_token}`
+
+  const isSurveyFee = payment.payment_type === 'survey_fee'
 
   const html = surveyFeePaymentEmail({
     customerName,
     amount: Number(payment.amount),
-    bookingDate,
+    bookingDate: isSurveyFee ? bookingDate : '',
     paymentUrl,
-    companyName: company?.company_name || 'Tyne Tees Damp Proofing',
+    companyName,
     companyPhone: company?.phone || '',
     companyEmail: company?.email || '',
   })
 
+  const subject = isSurveyFee
+    ? `Survey Fee Payment — ${companyName}`
+    : `Deposit Payment — ${companyName}`
+
   const result = await sendEmail({
     to: customerEmail,
-    subject: `Survey Fee Payment — ${company?.company_name || 'Tyne Tees Damp Proofing'}`,
+    subject,
     html,
-    templateName: 'survey_fee_payment',
+    templateName: isSurveyFee ? 'survey_fee_payment' : 'deposit_payment',
     bookingId: payment.booking_id || undefined,
     sentBy: user.id,
     recipientName: customerName,

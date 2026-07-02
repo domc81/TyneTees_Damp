@@ -383,7 +383,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                   <div>
                     <p className="text-sm text-white/50">Time</p>
                     <p className="font-medium text-white">
-                      {booking.start_time.slice(0, 5)} – {booking.end_time.slice(0, 5)}
+                      {booking.start_time?.slice(0, 5) || '—'} – {booking.end_time?.slice(0, 5) || '—'}
                     </p>
                   </div>
                   <div>
@@ -462,7 +462,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                             Cancelled
                           </span>
                           <span className="text-white/50 text-xs line-through">
-                            {booking.surveyor_name} · {formatSlotDate(booking.booking_date)} · {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
+                            {booking.surveyor_name} · {formatSlotDate(booking.booking_date)} · {booking.start_time?.slice(0, 5) || '—'}–{booking.end_time?.slice(0, 5) || '—'}
                           </span>
                         </div>
                         <p className="text-white/40 text-xs">Book a new appointment below.</p>

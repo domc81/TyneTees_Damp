@@ -102,7 +102,8 @@ function relativeTime(dateStr: string): string {
 }
 
 export default function Dashboard() {
-  const { profile, user } = useAuth()
+  const { profile, user, isAdmin, isOffice } = useAuth()
+  const isAdminOrOffice = isAdmin || isOffice
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [pipelineStats, setPipelineStats] = useState<EnquiryPipelineStats | null>(null)
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([])
@@ -196,8 +197,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Pipeline Summary Widget */}
-            {pipelineStats && (
+            {/* Pipeline Summary Widget (admin/office only) */}
+            {isAdminOrOffice && pipelineStats && (
               <PipelineWidget stats={pipelineStats} />
             )}
 
@@ -235,13 +236,15 @@ export default function Dashboard() {
 
             {/* Activity Feed + Recent Projects */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
-              {/* Recent Activity Feed */}
+              {/* Recent Activity Feed (admin/office only) */}
+              {isAdminOrOffice && (
               <div className="lg:col-span-2">
                 <RecentActivityFeed items={recentActivity} />
               </div>
+              )}
 
               {/* Recent Projects */}
-              <div className="lg:col-span-3 glass-card">
+              <div className={`${isAdminOrOffice ? 'lg:col-span-3' : 'lg:col-span-5'} glass-card`}>
                 <div className="px-6 py-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold text-white">Recent Projects</h3>
@@ -290,7 +293,7 @@ export default function Dashboard() {
                                 {survey.status.replace('_', ' ')}
                               </span>
                               {quotationMap[survey.id] && (() => {
-                                const qCfg = QUOT_STATUS_CONFIG[quotationMap[survey.id].status] ?? QUOT_STATUS_CONFIG.draft
+                                const qCfg = QUOT_STATUS_CONFIG[quotationMap[survey.id]?.status] ?? QUOT_STATUS_CONFIG.draft
                                 return (
                                   <span className={`badge text-xs ${qCfg.bg} ${qCfg.color}`}>
                                     {qCfg.label}
@@ -508,7 +511,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
             return (
               <Link
                 key={item.id}
-                href="/enquiries"
+                href={`/enquiries?highlight=${item.enquiry_id}`}
                 className="flex items-start gap-3 p-4 hover:bg-white/[0.03] transition-colors"
               >
                 <div className="w-7 h-7 rounded-lg bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">

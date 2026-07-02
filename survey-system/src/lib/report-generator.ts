@@ -1091,7 +1091,8 @@ export async function generateReport(
     }
   }
 
-  const execSummaryContent = execSummaryLlmText
+  const llmSucceeded = !!execSummaryLlmText
+  const execSummaryContent = llmSucceeded
     ? execSummaryLlmText + '\n\n' + buildGuaranteeParagraph(profile!)
     : 'Executive summary to be reviewed.' + '\n\n' + buildGuaranteeParagraph(profile!)
 
@@ -1172,7 +1173,7 @@ export async function generateReport(
       'executive_summary',
       'Executive Summary',
       'findings',
-      'llm_generated',
+      llmSucceeded ? 'llm_generated' : 'template',
       execSummaryContent
     )
   )
@@ -1969,6 +1970,13 @@ export async function regenerateSection(
   if (sectionKey !== 'executive_summary') {
     return currentSection
   }
+
+  // Load company profile for guarantee paragraph
+  const { data: profileData } = await supabase
+    .from('company_profile')
+    .select('*')
+    .single()
+  const profile = profileData as CompanyProfile | null
 
   // Load survey data for context
   const { wizardData, rooms } = await loadWizardData(report.survey_id)

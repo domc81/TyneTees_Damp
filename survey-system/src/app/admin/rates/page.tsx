@@ -19,6 +19,7 @@ import {
 import { loadPricingConfig, updatePricingConfigBatch } from '@/lib/pricing-data'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
+import { useAuth } from '@/context/AuthContext'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,6 +46,7 @@ const fmt = (v: number) => `£${v.toFixed(2)}`
 // ---------------------------------------------------------------------------
 
 export default function RatesAdminPage() {
+  const { isAdmin } = useAuth()
   const [config, setConfig] = useState<ConfigMap>({})
   const [initialConfig, setInitialConfig] = useState<ConfigMap>({})
   const [loading, setLoading] = useState(true)
@@ -127,6 +129,25 @@ export default function RatesAdminPage() {
             <div className="text-center">
               <div className="spinner mx-auto mb-4" />
               <p className="text-white/60">Loading pricing config...</p>
+            </div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <ProtectedRoute>
+        <Layout>
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-white mb-2">Admin Access Required</h2>
+              <p className="text-white/60 mb-4">Only administrators can modify pricing configuration.</p>
+              <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm">
+                Back to Dashboard
+              </Link>
             </div>
           </div>
         </Layout>

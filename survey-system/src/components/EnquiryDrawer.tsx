@@ -1688,10 +1688,10 @@ export default function EnquiryDrawer({
                   )}
                   <div className="flex gap-3 pt-2">
                     <button
-                      onClick={() => flowExistingSurveyId ? cancelConvertFlow() : setFlowStep(1)}
+                      onClick={() => setFlowStep(1)}
                       className="btn-secondary flex-1 text-sm py-2"
                     >
-                      {flowExistingSurveyId ? 'Cancel' : 'Back'}
+                      Back
                     </button>
                     <button
                       onClick={() => setFlowStep(3)}
@@ -2579,13 +2579,16 @@ export default function EnquiryDrawer({
                             </p>
                           )}
 
-                          {enquiry.cf_exported_at && (
-                            <button
-                              onClick={handleMarkCompleted}
-                              className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-                            >
-                              Mark as Completed
-                            </button>
+                          <button
+                            onClick={handleMarkCompleted}
+                            className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            Mark as Completed
+                          </button>
+                          {!enquiry.cf_exported_at && (
+                            <p className="text-[10px] text-amber-300/60 leading-tight">
+                              CF not yet exported — you can still complete, but consider exporting first.
+                            </p>
                           )}
                         </div>
                       )}

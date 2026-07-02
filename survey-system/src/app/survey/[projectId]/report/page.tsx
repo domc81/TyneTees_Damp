@@ -536,6 +536,16 @@ export default function ReportEditorPage() {
                   Finalise Report
                 </Button>
               )}
+              {report.status === 'finalised' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handlePublish()}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  Publish Report
+                </Button>
+              )}
             </div>
           </div>
         </div>
