@@ -4,19 +4,20 @@
 // =============================================================================
 
 import { getSupabase } from './supabase-client'
-import type {
-  SurveyorAvailability,
-  AvailabilityBlock,
-  SurveyBooking,
-  Notification,
-  NotificationCreateData,
-  SurveyorWithAvailability,
-  TimeSlot,
-  BookingFormData,
-  AvailabilitySlotInput,
-  BlockType,
-  BookingStatus,
-  NotificationType,
+import {
+  type SurveyorAvailability,
+  type AvailabilityBlock,
+  type SurveyBooking,
+  type Notification,
+  type NotificationCreateData,
+  type SurveyorWithAvailability,
+  type TimeSlot,
+  type BookingFormData,
+  type AvailabilitySlotInput,
+  type BlockType,
+  type BookingStatus,
+  type NotificationType,
+  validateStatusTransition,
 } from './calendar-types'
 
 // Re-export types for convenience
@@ -564,6 +565,24 @@ export async function updateBooking(
     throw new Error('Supabase client not available')
   }
 
+  // Enforce state machine when status is being changed
+  if (updates.status) {
+    const { data: current, error: fetchError } = await supabase
+      .from('survey_bookings')
+      .select('status')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !current) {
+      throw new Error('Booking not found')
+    }
+
+    const result = validateStatusTransition(current.status as BookingStatus, updates.status)
+    if (!result.valid) {
+      throw new Error(result.error)
+    }
+  }
+
   const { data, error } = await supabase
     .from('survey_bookings')
     .update(updates)
@@ -591,6 +610,22 @@ export async function cancelBooking(id: string): Promise<SurveyBooking> {
   const supabase = getSupabase()
   if (!supabase) {
     throw new Error('Supabase client not available')
+  }
+
+  // Enforce state machine — check current status allows cancellation
+  const { data: current, error: fetchError } = await supabase
+    .from('survey_bookings')
+    .select('status')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !current) {
+    throw new Error('Booking not found')
+  }
+
+  const result = validateStatusTransition(current.status as BookingStatus, 'cancelled')
+  if (!result.valid) {
+    throw new Error(result.error)
   }
 
   const { data, error } = await supabase
@@ -754,12 +789,26 @@ export async function getAvailableSlots(
   surveyorId: string,
   startDate: string,
   endDate: string,
-  slotDurationMinutes: number = 60
+  slotDurationMinutes: number = 90,
+  excludeBookingId?: string
 ): Promise<TimeSlot[]> {
   const supabase = getSupabase()
   if (!supabase) return []
 
   // Batch all 3 queries in parallel
+  let bookingsQuery = supabase
+    .from('survey_bookings')
+    .select('*')
+    .eq('surveyor_id', surveyorId)
+    .neq('status', 'cancelled')
+    .gte('booking_date', startDate)
+    .lte('booking_date', endDate)
+
+  // When rescheduling, exclude the booking being moved so its slot appears as available
+  if (excludeBookingId) {
+    bookingsQuery = bookingsQuery.neq('id', excludeBookingId)
+  }
+
   const [availabilityResult, blocksResult, bookingsResult] = await Promise.all([
     supabase
       .from('surveyor_availability')
@@ -772,13 +821,7 @@ export async function getAvailableSlots(
       .eq('surveyor_id', surveyorId)
       .lte('start_date', endDate)
       .gte('end_date', startDate),
-    supabase
-      .from('survey_bookings')
-      .select('*')
-      .eq('surveyor_id', surveyorId)
-      .neq('status', 'cancelled')
-      .gte('booking_date', startDate)
-      .lte('booking_date', endDate),
+    bookingsQuery,
   ])
 
   if (availabilityResult.error) {

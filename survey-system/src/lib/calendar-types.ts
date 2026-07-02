@@ -10,6 +10,42 @@ export type BlockType = 'annual_leave' | 'sickness' | 'training' | 'other'
 
 export type BookingStatus = 'provisional' | 'scheduled' | 'completed' | 'cancelled' | 'no_show'
 
+/** Valid booking status transitions — terminal statuses have no outgoing transitions. */
+export const BOOKING_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  provisional: ['scheduled', 'cancelled'],
+  scheduled: ['completed', 'no_show', 'cancelled'],
+  completed: [],
+  no_show: [],
+  cancelled: [],
+}
+
+/** Check whether a status transition is valid. Returns an error message if invalid. */
+export function validateStatusTransition(
+  currentStatus: BookingStatus,
+  targetStatus: BookingStatus
+): { valid: boolean; error?: string } {
+  if (currentStatus === targetStatus) {
+    return { valid: false, error: `Booking is already ${currentStatus}` }
+  }
+
+  const allowed = BOOKING_STATUS_TRANSITIONS[currentStatus]
+  if (!allowed || allowed.length === 0) {
+    return {
+      valid: false,
+      error: `Cannot change status — ${currentStatus} is a terminal status`,
+    }
+  }
+
+  if (!allowed.includes(targetStatus)) {
+    return {
+      valid: false,
+      error: `Cannot transition from ${currentStatus} to ${targetStatus}. Allowed transitions: ${allowed.join(', ')}`,
+    }
+  }
+
+  return { valid: true }
+}
+
 export type NotificationType =
   // Booking events
   | 'booking_created'

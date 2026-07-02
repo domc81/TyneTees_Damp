@@ -271,6 +271,41 @@ export async function getCustomerDetail(
 }
 
 // ---------------------------------------------------------------------------
+// Manual communication log entry
+// ---------------------------------------------------------------------------
+
+export type ManualCommChannel = 'phone' | 'whatsapp' | 'sms' | 'in_person'
+
+export async function createManualCommunication(entry: {
+  customer_id: string
+  channel: ManualCommChannel
+  direction: 'inbound' | 'outbound'
+  subject: string
+  sent_by: string
+}): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  const { error } = await supabase
+    .from('communication_log')
+    .insert({
+      customer_id: entry.customer_id,
+      channel: entry.channel,
+      direction: entry.direction,
+      status: 'logged',
+      subject: entry.subject,
+      sent_by: entry.sent_by,
+    })
+
+  if (error) {
+    console.error('Error creating manual communication:', error)
+    return false
+  }
+
+  return true
+}
+
+// ---------------------------------------------------------------------------
 // Delete customer (with guard)
 // ---------------------------------------------------------------------------
 

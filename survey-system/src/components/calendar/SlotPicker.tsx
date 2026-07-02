@@ -50,6 +50,8 @@ export interface SlotPickerProps {
   selectedSlot?: SelectedSlot | null
   defaultSurveyorId?: string | null
   slotDurationMinutes?: number
+  /** When rescheduling, exclude this booking so its current slot appears as available */
+  excludeBookingId?: string | null
 }
 
 // --- Constants ---
@@ -146,6 +148,7 @@ export function SlotPicker({
   selectedSlot,
   defaultSurveyorId,
   slotDurationMinutes = 90,
+  excludeBookingId,
 }: SlotPickerProps) {
   // --- Surveyor state ---
   const [surveyorId, setSurveyorId] = useState<string | null>(defaultSurveyorId || null)
@@ -177,7 +180,7 @@ export function SlotPicker({
 
     setLoading(true)
     const [slotsData, blocksData, availData] = await Promise.all([
-      getAvailableSlots(surveyorId, weekStartStr, weekEndStr, slotDurationMinutes),
+      getAvailableSlots(surveyorId, weekStartStr, weekEndStr, slotDurationMinutes, excludeBookingId || undefined),
       getAvailabilityBlocks(surveyorId, weekStartStr, weekEndStr),
       getSurveyorAvailability(surveyorId),
     ])
@@ -187,7 +190,7 @@ export function SlotPicker({
     setAvailability(availData)
     setLoading(false)
     setHasLoaded(true)
-  }, [surveyorId, weekStartStr, weekEndStr, slotDurationMinutes])
+  }, [surveyorId, weekStartStr, weekEndStr, slotDurationMinutes, excludeBookingId])
 
   useEffect(() => {
     fetchSlots()

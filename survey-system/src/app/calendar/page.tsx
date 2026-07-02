@@ -24,7 +24,11 @@ import {
   Loader2,
   Navigation,
   List,
+  CreditCard,
+  RefreshCw,
+  DollarSign,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -35,12 +39,16 @@ import {
   updateBooking,
   cancelBooking,
 } from '@/lib/calendar-data'
-import type {
-  SurveyBooking,
-  AvailabilityBlock,
-  BookingStatus,
-  BlockType,
+import {
+  type SurveyBooking,
+  type AvailabilityBlock,
+  type BookingStatus,
+  type BlockType,
+  BOOKING_STATUS_TRANSITIONS,
 } from '@/lib/calendar-types'
+import { getPaymentByBookingId } from '@/lib/payment-data'
+import type { Payment, PaymentMethod } from '@/types/database.types'
+import { SlotPicker, type SelectedSlot } from '@/components/calendar/SlotPicker'
 import type { UserProfile } from '@/types/database.types'
 
 // =============================================================================
@@ -368,12 +376,19 @@ export default function CalendarPage() {
     try {
       if (newStatus === 'cancelled') {
         await cancelBooking(bookingId)
-        // Send cancellation email to customer (fire-and-forget)
-        fetch('/api/bookings/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId, eventType: 'booking_cancelled' }),
-        }).catch((err) => console.error('Booking cancellation email failed:', err))
+        // Await cancellation email and surface errors (#30)
+        try {
+          const emailRes = await fetch('/api/bookings/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, eventType: 'booking_cancelled' }),
+          })
+          if (!emailRes.ok) {
+            toast.warning('Booking cancelled but notification email failed — contact customer manually')
+          }
+        } catch {
+          toast.warning('Booking cancelled but notification email failed — contact customer manually')
+        }
       } else {
         await updateBooking(bookingId, { status: newStatus })
       }
@@ -394,6 +409,39 @@ export default function CalendarPage() {
     }
   }
 
+  // ─── Reschedule handler ───────────────────────────────────────────
+  const handleReschedule = async (bookingId: string, slot: SelectedSlot) => {
+    setActionLoading(true)
+    setActionMessage(null)
+    try {
+      await updateBooking(bookingId, {
+        booking_date: slot.date,
+        start_time: slot.startTime,
+        end_time: slot.endTime,
+        surveyor_id: slot.surveyorId,
+      })
+      setActionMessage({ type: 'success', text: 'Booking rescheduled successfully' })
+
+      if (visibleRange) {
+        await fetchCalendarData(visibleRange.start, visibleRange.end)
+      }
+
+      setSelectedBooking(prev => prev ? {
+        ...prev,
+        booking_date: slot.date,
+        start_time: slot.startTime,
+        end_time: slot.endTime,
+        surveyor_id: slot.surveyorId,
+        surveyor_name: slot.surveyorName,
+      } : null)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to reschedule booking'
+      setActionMessage({ type: 'error', text: msg })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleNotesUpdate = async (bookingId: string, notes: string) => {
     setActionLoading(true)
     setActionMessage(null)
@@ -408,6 +456,28 @@ export default function CalendarPage() {
       setSelectedBooking(prev => prev ? { ...prev, notes: notes || null } : null)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update notes'
+      setActionMessage({ type: 'error', text: msg })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // ─── Mark payment as paid handler ──────────────────────────────────
+  const handleMarkPaid = async (paymentId: string, method: PaymentMethod) => {
+    setActionLoading(true)
+    setActionMessage(null)
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method }),
+      })
+      if (!res.ok) throw new Error('Failed to mark payment')
+      setActionMessage({ type: 'success', text: 'Payment recorded and booking confirmed' })
+      if (visibleRange) await fetchCalendarData(visibleRange.start, visibleRange.end)
+      setSelectedBooking(prev => prev ? { ...prev, status: 'scheduled' } : null)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to record payment'
       setActionMessage({ type: 'error', text: msg })
     } finally {
       setActionLoading(false)
@@ -640,6 +710,8 @@ export default function CalendarPage() {
             }}
             onStatusChange={handleStatusChange}
             onNotesUpdate={handleNotesUpdate}
+            onReschedule={handleReschedule}
+            onMarkPaid={handleMarkPaid}
             isAdminOrOffice={isAdminOrOffice}
             isSurveyorOnly={isSurveyorOnly}
             isMobile={isMobile}
@@ -740,7 +812,9 @@ function SurveyorAgenda({
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    onQuickComplete(booking.id)
+                    if (confirm('Mark this survey as completed?')) {
+                      onQuickComplete(booking.id)
+                    }
                   }}
                   disabled={actionLoading}
                   className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
@@ -785,12 +859,44 @@ function BookingDetailModal({
   onClose: () => void
   onStatusChange: (id: string, status: BookingStatus) => void
   onNotesUpdate: (id: string, notes: string) => void
+  onReschedule: (id: string, slot: SelectedSlot) => void
+  onMarkPaid: (paymentId: string, method: PaymentMethod) => Promise<void>
   isAdminOrOffice: boolean
   isSurveyorOnly: boolean
   isMobile: boolean
 }) {
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(booking.notes || '')
+  const [rescheduleMode, setRescheduleMode] = useState(false)
+  const [rescheduleSlot, setRescheduleSlot] = useState<SelectedSlot | null>(null)
+  const [linkedPayment, setLinkedPayment] = useState<Payment | null>(null)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [markPaidMode, setMarkPaidMode] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank_transfer')
+
+  // Fetch linked payment for provisional bookings
+  useEffect(() => {
+    if (booking.status === 'provisional' && isAdminOrOffice) {
+      setPaymentLoading(true)
+      getPaymentByBookingId(booking.id)
+        .then(p => setLinkedPayment(p))
+        .finally(() => setPaymentLoading(false))
+    }
+    return () => {
+      setLinkedPayment(null)
+      setMarkPaidMode(false)
+    }
+  }, [booking.id, booking.status, isAdminOrOffice])
+
+  // Reset reschedule mode on booking change
+  useEffect(() => {
+    setRescheduleMode(false)
+    setRescheduleSlot(null)
+  }, [booking.id])
+
+  // Which status transitions are valid from the current status?
+  const allowedTransitions = BOOKING_STATUS_TRANSITIONS[booking.status] || []
+  const isTerminal = allowedTransitions.length === 0
   const statusInfo = STATUS_CONFIG[booking.status]
   const StatusIcon = statusInfo.icon
   const colour = getSurveyorColour(booking.surveyor_id, surveyorColourMap)
@@ -949,7 +1055,11 @@ function BookingDetailModal({
             {booking.status === 'scheduled' && (
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
-                  onClick={() => onStatusChange(booking.id, 'completed')}
+                  onClick={() => {
+                    if (confirm('Mark this survey as completed? This cannot be undone.')) {
+                      onStatusChange(booking.id, 'completed')
+                    }
+                  }}
                   disabled={actionLoading}
                   className="flex items-center justify-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 hover:bg-green-500/20 transition-all min-h-[48px] disabled:opacity-50"
                 >
@@ -957,7 +1067,11 @@ function BookingDetailModal({
                   <span className="text-sm font-medium">Completed</span>
                 </button>
                 <button
-                  onClick={() => onStatusChange(booking.id, 'no_show')}
+                  onClick={() => {
+                    if (confirm('Mark this booking as a no-show? This cannot be undone.')) {
+                      onStatusChange(booking.id, 'no_show')
+                    }
+                  }}
                   disabled={actionLoading}
                   className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all min-h-[48px] disabled:opacity-50"
                 >
@@ -1153,13 +1267,97 @@ function BookingDetailModal({
           )}
 
           {/* Action buttons — admin/office only */}
-          {isAdminOrOffice && booking.status !== 'cancelled' && (
-            <div className="pt-3 border-t border-white/10">
+          {isAdminOrOffice && !isTerminal && (
+            <div className="pt-3 border-t border-white/10 space-y-3">
               <p className="text-xs text-white/40 mb-2">Actions</p>
-              <div className="flex flex-wrap gap-2">
-                {booking.status !== 'completed' && (
+
+              {/* Provisional booking actions: Confirm + Mark as Paid */}
+              {booking.status === 'provisional' && (
+                <div className="space-y-2">
                   <button
-                    onClick={() => onStatusChange(booking.id, 'completed')}
+                    onClick={() => {
+                      if (confirm('Confirm this booking? This will set the status to scheduled.')) {
+                        onStatusChange(booking.id, 'scheduled')
+                      }
+                    }}
+                    disabled={actionLoading}
+                    className="w-full btn-primary text-xs px-3 py-2.5 flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Confirm Booking
+                  </button>
+
+                  {paymentLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-2 text-xs text-white/40">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Checking payment...
+                    </div>
+                  ) : linkedPayment && linkedPayment.status === 'pending' ? (
+                    markPaidMode ? (
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                        <p className="text-xs font-medium text-white/70">Mark Payment as Paid</p>
+                        <div>
+                          <label className="text-xs text-white/40 block mb-1">Payment Method</label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                            className="input-field text-sm w-full"
+                          >
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="card_phone">Card (Phone)</option>
+                            <option value="cash">Cash</option>
+                            <option value="cheque">Cheque</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Mark £${linkedPayment.amount.toFixed(2)} survey fee as paid via ${paymentMethod.replace('_', ' ')}?`)) return
+                              setPaymentLoading(true)
+                              try {
+                                await onMarkPaid(linkedPayment.id, paymentMethod)
+                                setMarkPaidMode(false)
+                                setLinkedPayment(null)
+                              } finally {
+                                setPaymentLoading(false)
+                              }
+                            }}
+                            disabled={paymentLoading || actionLoading}
+                            className="btn-primary text-xs px-3 py-1.5 flex-1"
+                          >
+                            {paymentLoading ? 'Processing...' : 'Confirm Payment'}
+                          </button>
+                          <button
+                            onClick={() => setMarkPaidMode(false)}
+                            className="btn-secondary text-xs px-3 py-1.5"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setMarkPaidMode(true)}
+                        disabled={actionLoading}
+                        className="w-full btn-secondary text-xs px-3 py-2.5 flex items-center justify-center gap-1.5"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                        Mark as Paid (£{linkedPayment.amount.toFixed(2)})
+                      </button>
+                    )
+                  ) : null}
+                </div>
+              )}
+
+              {/* Status change buttons — gated by state machine */}
+              <div className="flex flex-wrap gap-2">
+                {allowedTransitions.includes('completed') && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Mark this booking as completed? This cannot be undone.')) {
+                        onStatusChange(booking.id, 'completed')
+                      }
+                    }}
                     disabled={actionLoading}
                     className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
                   >
@@ -1167,9 +1365,13 @@ function BookingDetailModal({
                     Mark Completed
                   </button>
                 )}
-                {booking.status !== 'no_show' && (
+                {allowedTransitions.includes('no_show') && (
                   <button
-                    onClick={() => onStatusChange(booking.id, 'no_show')}
+                    onClick={() => {
+                      if (confirm('Mark this booking as a no-show? This cannot be undone.')) {
+                        onStatusChange(booking.id, 'no_show')
+                      }
+                    }}
                     disabled={actionLoading}
                     className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
                   >
@@ -1177,19 +1379,79 @@ function BookingDetailModal({
                     No Show
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to cancel this booking?')) {
-                      onStatusChange(booking.id, 'cancelled')
-                    }
-                  }}
-                  disabled={actionLoading}
-                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 hover:!bg-red-500/10 hover:!border-red-500/30"
-                >
-                  <XCircle className="w-3.5 h-3.5 text-red-400" />
-                  Cancel Booking
-                </button>
+                {allowedTransitions.includes('cancelled') && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to cancel this booking? This cannot be undone.')) {
+                        onStatusChange(booking.id, 'cancelled')
+                      }
+                    }}
+                    disabled={actionLoading}
+                    className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 hover:!bg-red-500/10 hover:!border-red-500/30"
+                  >
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    Cancel Booking
+                  </button>
+                )}
               </div>
+
+              {/* Reschedule */}
+              {(booking.status === 'provisional' || booking.status === 'scheduled') && (
+                rescheduleMode ? (
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-white/70">Select new date and time</p>
+                      <button
+                        onClick={() => { setRescheduleMode(false); setRescheduleSlot(null) }}
+                        className="text-xs text-white/40 hover:text-white/60"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <SlotPicker
+                      onSlotSelected={setRescheduleSlot}
+                      selectedSlot={rescheduleSlot}
+                      defaultSurveyorId={booking.surveyor_id}
+                      excludeBookingId={booking.id}
+                    />
+                    {rescheduleSlot && (
+                      <button
+                        onClick={() => {
+                          const newDate = new Date(rescheduleSlot.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+                          if (confirm(`Reschedule to ${newDate} at ${rescheduleSlot.startTime}–${rescheduleSlot.endTime}?`)) {
+                            onReschedule(booking.id, rescheduleSlot)
+                            setRescheduleMode(false)
+                            setRescheduleSlot(null)
+                          }
+                        }}
+                        disabled={actionLoading}
+                        className="w-full btn-primary text-xs px-3 py-2.5 flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Confirm Reschedule
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setRescheduleMode(true)}
+                    disabled={actionLoading}
+                    className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-brand-400" />
+                    Reschedule
+                  </button>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Terminal status indicator */}
+          {isAdminOrOffice && isTerminal && (
+            <div className="pt-3 border-t border-white/10">
+              <p className="text-xs text-white/40 italic">
+                This booking is {booking.status === 'completed' ? 'completed' : booking.status === 'no_show' ? 'marked as no-show' : 'cancelled'} — no further actions available.
+              </p>
             </div>
           )}
         </div>

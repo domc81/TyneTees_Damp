@@ -24,13 +24,20 @@ import {
   Plus,
   ChevronRight,
   StickyNote,
+  PhoneCall,
+  MessageCircle,
+  Users,
+  Send,
 } from 'lucide-react'
 import {
   getCustomerDetail,
   deleteCustomer,
+  createManualCommunication,
   type CustomerDetail,
+  type ManualCommChannel,
 } from '@/lib/customer-data'
 import { updateCustomer } from '@/lib/supabase-data'
+import { useAuth } from '@/context/AuthContext'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
@@ -66,6 +73,25 @@ const commStatusConfig: Record<string, { color: string; bg: string; label: strin
   delivered: { color: 'text-blue-400', bg: 'bg-blue-500/10 border border-blue-400/20', label: 'Delivered' },
   failed: { color: 'text-red-400', bg: 'bg-red-500/10 border border-red-400/20', label: 'Failed' },
   pending: { color: 'text-amber-400', bg: 'bg-amber-500/10 border border-amber-400/20', label: 'Pending' },
+  logged: { color: 'text-slate-400', bg: 'bg-slate-500/10 border border-slate-400/20', label: 'Logged' },
+}
+
+const CHANNEL_ICONS: Record<string, typeof Mail> = {
+  email: Mail,
+  phone: PhoneCall,
+  whatsapp: MessageCircle,
+  sms: MessageSquare,
+  in_person: Users,
+  in_app: Send,
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  email: 'Email',
+  phone: 'Phone Call',
+  whatsapp: 'WhatsApp',
+  sms: 'SMS',
+  in_person: 'In Person',
+  in_app: 'In-App',
 }
 
 function StatusBadge({ status, config }: { status: string; config: Record<string, { color: string; bg: string; label: string }> }) {
@@ -107,6 +133,7 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
   const { customerId } = params
   const router = useRouter()
   const goBack = useSmartBack('/customers')
+  const { profile } = useAuth()
   const [customer, setCustomer] = useState<CustomerDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -116,6 +143,13 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<Record<string, string>>({})
+
+  // Communication log form state
+  const [showCommForm, setShowCommForm] = useState(false)
+  const [commChannel, setCommChannel] = useState<ManualCommChannel>('phone')
+  const [commDirection, setCommDirection] = useState<'inbound' | 'outbound'>('outbound')
+  const [commNotes, setCommNotes] = useState('')
+  const [commSaving, setCommSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -184,6 +218,37 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleLogCommunication = async () => {
+    if (!commNotes.trim()) {
+      setError('Please add notes about the communication.')
+      return
+    }
+    if (!profile) return
+    setCommSaving(true)
+    setError(null)
+    const success = await createManualCommunication({
+      customer_id: customerId,
+      channel: commChannel,
+      direction: commDirection,
+      subject: commNotes.trim(),
+      sent_by: profile.id,
+    })
+    if (success) {
+      // Reload customer data to show the new entry
+      const data = await getCustomerDetail(customerId)
+      if (data) setCustomer(data)
+      setShowCommForm(false)
+      setCommNotes('')
+      setCommChannel('phone')
+      setCommDirection('outbound')
+      setSuccessMsg('Communication logged')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    } else {
+      setError('Failed to log communication')
+    }
+    setCommSaving(false)
   }
 
   const handleDelete = async () => {
@@ -697,19 +762,112 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
             {/* Communication History */}
             <div className="glass-card">
               <div className="px-6 py-5 border-b border-white/10">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-white/40" />
-                  Communications
-                  {customer.communications.length > 0 && (
-                    <span className="text-sm font-normal text-white/40">(last 10)</span>
-                  )}
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-white/40" />
+                    Communications
+                    {customer.communications.length > 0 && (
+                      <span className="text-sm font-normal text-white/40">(last 10)</span>
+                    )}
+                  </h2>
+                  <button
+                    onClick={() => setShowCommForm(prev => !prev)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand-300 hover:text-brand-200 transition-colors px-3 py-1.5 rounded-lg bg-brand-500/10 border border-brand-400/20 hover:bg-brand-500/20"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Log Communication
+                  </button>
+                </div>
                 {lastCommunication && (
                   <p className="text-xs text-white/40 mt-1">
                     Last contacted: {formatDateTime(lastCommunication.created_at)}
                   </p>
                 )}
               </div>
+
+              {/* Log Communication Form */}
+              {showCommForm && (
+                <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+                  <div className="space-y-3">
+                    {/* Channel + Direction row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-white/50 block mb-1">Channel</label>
+                        <select
+                          value={commChannel}
+                          onChange={(e) => setCommChannel(e.target.value as ManualCommChannel)}
+                          className="input-field text-sm w-full"
+                        >
+                          <option value="phone">Phone Call</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="sms">SMS</option>
+                          <option value="in_person">In Person</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-white/50 block mb-1">Direction</label>
+                        <div className="flex rounded-lg overflow-hidden border border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => setCommDirection('outbound')}
+                            className={`flex-1 text-xs py-2 px-3 transition-colors ${
+                              commDirection === 'outbound'
+                                ? 'bg-brand-500/20 text-brand-300'
+                                : 'bg-white/5 text-white/50 hover:bg-white/10'
+                            }`}
+                          >
+                            Outgoing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCommDirection('inbound')}
+                            className={`flex-1 text-xs py-2 px-3 transition-colors ${
+                              commDirection === 'inbound'
+                                ? 'bg-brand-500/20 text-brand-300'
+                                : 'bg-white/5 text-white/50 hover:bg-white/10'
+                            }`}
+                          >
+                            Incoming
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="text-xs text-white/50 block mb-1">Notes</label>
+                      <textarea
+                        value={commNotes}
+                        onChange={(e) => setCommNotes(e.target.value)}
+                        placeholder="Brief summary of the conversation..."
+                        className="input-field text-sm w-full min-h-[80px] resize-y"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => { setShowCommForm(false); setCommNotes('') }}
+                        className="btn-secondary text-xs px-3 py-1.5"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleLogCommunication}
+                        disabled={commSaving || !commNotes.trim()}
+                        className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5"
+                      >
+                        {commSaving ? (
+                          <><Loader2 className="w-3 h-3 animate-spin" /> Saving...</>
+                        ) : (
+                          <><Check className="w-3 h-3" /> Log</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="p-0">
                 {customer.communications.length === 0 ? (
                   <div className="p-6 text-center">
@@ -717,24 +875,30 @@ export default function CustomerDetailPage({ params }: { params: { customerId: s
                   </div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {customer.communications.map((c) => (
-                      <div key={c.id} className="px-6 py-4 flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-                          <Mail className="w-4 h-4 text-white/40" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-white truncate">
-                              {c.template_name || c.subject || 'Communication'}
-                            </p>
-                            <StatusBadge status={c.status} config={commStatusConfig} />
+                    {customer.communications.map((c) => {
+                      const ChannelIcon = CHANNEL_ICONS[c.channel] || Mail
+                      return (
+                        <div key={c.id} className="px-6 py-4 flex items-center gap-4">
+                          <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                            <ChannelIcon className="w-4 h-4 text-white/40" />
                           </div>
-                          <p className="text-xs text-white/40 mt-0.5">
-                            {c.recipient_email || c.recipient_name || '-'} &middot; {formatDateTime(c.created_at)}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium text-white truncate">
+                                {c.template_name || c.subject || 'Communication'}
+                              </p>
+                              <span className="text-xs text-white/30">{CHANNEL_LABELS[c.channel] || c.channel}</span>
+                              <StatusBadge status={c.status} config={commStatusConfig} />
+                            </div>
+                            <p className="text-xs text-white/40 mt-0.5">
+                              {c.direction === 'inbound' ? 'Incoming' : 'Outgoing'}
+                              {c.recipient_email ? ` · ${c.recipient_email}` : ''}
+                              {' · '}{formatDateTime(c.created_at)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

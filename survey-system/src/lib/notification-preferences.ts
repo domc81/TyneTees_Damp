@@ -78,6 +78,14 @@ async function loadPreferences(): Promise<
 }
 
 // ---------------------------------------------------------------------------
+// Cache invalidation — call after writing notification preferences
+// ---------------------------------------------------------------------------
+
+export function invalidatePreferencesCache(): void {
+  _cache = null
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 

@@ -33,6 +33,7 @@ function createServiceRoleClient() {
 // ---------------------------------------------------------------------------
 
 import { createClient as createServerClient } from '@/lib/supabase-server'
+import { invalidatePreferencesCache } from '@/lib/notification-preferences'
 
 /** Returns { userId, isAdmin } or null if unauthenticated. */
 async function verifyAuth(): Promise<{ userId: string; isAdmin: boolean } | null> {
@@ -233,6 +234,9 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Invalidate cached preferences so changes take effect immediately
+    invalidatePreferencesCache()
 
     // Return the updated state using the same GET logic
     return GET(request)

@@ -83,13 +83,13 @@
 - **Issue:** Button only shows if `enquiry.cf_exported_at` is truthy. If Office forgets to export from the costing page, they can never complete the enquiry. Either auto-set on export click or show button regardless with a warning.
 
 ### 14. Calendar Can't Confirm Provisional Bookings
-- [ ] **Deferred** — provisional bookings are confirmed via payment mark-paid flow (now sends confirmation email). Calendar UI enhancement to add confirm button deferred.
+- [x] **Fixed** — added Confirm Booking and Mark as Paid buttons in booking detail modal for provisional bookings. Mark as Paid fetches linked payment, shows method selector, calls mark-paid API.
 - **File:** `src/app/calendar/page.tsx`
 - **Issue:** No "Confirm Booking" or "Mark as Paid" button in the calendar booking modal. Payment confirmation only happens via the payments API, not through calendar UI. Office users have no path to transition provisional -> scheduled from the calendar.
 
 ### 15. Calendar Cannot Reschedule Bookings
-- [ ] **Deferred** — reschedule via survey detail page works. Calendar UI reschedule is a feature enhancement.
-- **File:** `src/app/calendar/page.tsx`
+- [x] **Fixed** — added Reschedule button in booking modal with SlotPicker integration. Confirms before applying. SlotPicker excludes current booking so its slot shows as available.
+- **Files:** `src/app/calendar/page.tsx`, `src/components/calendar/SlotPicker.tsx`, `src/lib/calendar-data.ts`
 - **Issue:** Booking modal only allows status changes (completed, no_show, cancelled). No date/time change UI. Must navigate to survey detail page to reschedule.
 
 ---
@@ -151,8 +151,8 @@
 ## MEDIUM: UX Issues / Incomplete Features
 
 ### 26. Communication Log is Read-Only
-- [ ] **Deferred** — feature enhancement, communication entries are currently created automatically by email sends
-- **File:** `src/app/customers/[customerId]/page.tsx:692-736`
+- [x] **Fixed** — added Log Communication form with channel (phone, WhatsApp, SMS, in-person), direction (incoming/outgoing), and notes. DB migration expands channel/status constraints. Channel-specific icons in communication list.
+- **Files:** `src/app/customers/[customerId]/page.tsx`, `src/lib/customer-data.ts`, `supabase/migrations/20260702000001_communication_log_expand_channels.sql`
 - **Issue:** No button or form to add new communication entries. Log exists but can't be written to from the customer page.
 
 ### 27. Customer Booking Links Are Dead
@@ -171,23 +171,23 @@
 - **Issue:** Surveyors see enquiry pipeline stats, activity feed, and "Create Customer" button. These should be admin/office only.
 
 ### 30. Cancellation Email is Fire-and-Forget
-- [ ] **Deferred** — low risk, follows same fire-and-forget pattern as other notification emails
-- **File:** `src/app/calendar/page.tsx:369-376`
+- [x] **Fixed** — cancellation email now awaited, failure surfaces a warning toast: "Booking cancelled but notification email failed — contact customer manually"
+- **File:** `src/app/calendar/page.tsx`
 - **Issue:** When Office cancels a booking, the notification email is not awaited. If it fails, Office sees "success" but customer never gets the cancellation email.
 
 ### 31. Slot Duration Mismatch
-- [ ] **Deferred** — cosmetic mismatch between calendar grid (30min) and slot picker (90min). Functional but visually confusing.
-- **Files:** `src/app/calendar/page.tsx:591`, `src/components/calendar/SlotPicker.tsx:148`
-- **Issue:** Calendar shows 30-min slots (`slotDuration="00:30:00"`) but SlotPicker generates 90-min booking slots. Confusing visual mismatch for Office users.
+- [x] **Fixed** — `getAvailableSlots()` default changed from 60 to 90 minutes to match survey duration. Calendar grid 30-min rows are correct (visual precision, not booking duration).
+- **File:** `src/lib/calendar-data.ts`
+- **Issue:** `getAvailableSlots()` defaulted to 60-minute slots but surveys take ~90 minutes. SlotPicker already passed 90 but any other caller got wrong defaults.
 
 ### 32. No Confirmation Dialogs for Calendar Status Changes
-- [ ] **Deferred** — UX enhancement, cancel already has confirm(), completed/no_show should too
+- [x] **Fixed** — added confirm() dialogs for completed, no_show, and cancel actions (both admin/office and surveyor views, including agenda quick-complete). Terminal status warnings: "This cannot be undone."
 - **File:** `src/app/calendar/page.tsx`
 - **Issue:** Marking a booking as "completed" or "no_show" has no confirmation dialog. Accidental clicks can't be undone.
 
 ### 33. Booking Status Has No State Machine
-- [ ] **Deferred** — enforcement at DB/application level, not causing data issues currently
-- **File:** `src/app/calendar/page.tsx`
+- [x] **Fixed** — defined `BOOKING_STATUS_TRANSITIONS` and `validateStatusTransition()` in calendar-types.ts. Enforced in `updateBooking()` and `cancelBooking()`. UI buttons now only show valid transitions. Terminal statuses show "no further actions available."
+- **Files:** `src/lib/calendar-types.ts`, `src/lib/calendar-data.ts`, `src/app/calendar/page.tsx`
 - **Issue:** No enforcement of valid transitions. A completed booking can't be moved back to scheduled. No undo for accidental status changes.
 
 ### 34. Settings Pages with Dead "Coming Soon" Links
@@ -196,8 +196,8 @@
 - **Issue:** "Security & Authentication" and "Appearance" link to pages that don't exist. Currently click-prevented but fragile design.
 
 ### 35. Notification Preferences Cache with No Invalidation
-- [ ] **Deferred** — 5-minute TTL is acceptable for MVP, cache invalidation is a future enhancement
-- **File:** `src/lib/notification-preferences.ts:42-78`
+- [x] **Fixed** — added `invalidatePreferencesCache()` export, called after notification preferences are saved via the settings API. Changes now take effect immediately.
+- **Files:** `src/lib/notification-preferences.ts`, `src/app/api/settings/notifications/route.ts`
 - **Issue:** 5-minute cache TTL with no invalidation mechanism. If a user disables notifications, system continues sending for up to 5 minutes.
 
 ### 36. setCfExportedAt() Silently Fails
@@ -221,17 +221,8 @@
 
 | Status | Count |
 |--------|-------|
-| Fixed | 27 |
-| Deferred (UX enhancements) | 8 |
+| Fixed | 35 |
 | Verified OK (false positive) | 3 |
 | **Total** | **38** |
 
-### Deferred items (require larger UX work or await payment provider decision)
-- 14: Calendar confirm provisional bookings (UI enhancement)
-- 15: Calendar reschedule bookings (UI enhancement)
-- 26: Communication log write UI (feature enhancement)
-- 30: Cancellation email await pattern (low risk)
-- 31: Slot duration visual mismatch (cosmetic)
-- 32: Calendar status change confirmation dialogs (UX polish)
-- 33: Booking status state machine enforcement (DB-level)
-- 35: Notification preference cache invalidation (MVP acceptable)
+All 38 audit items resolved. 35 fixed across two commits, 3 verified as false positives.
