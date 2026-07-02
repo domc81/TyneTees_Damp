@@ -112,6 +112,7 @@ TyneTees_Damp/
 │   │   │   ├── q/[token]/          # Public quotation page (page.tsx + client.tsx + CSS)
 │   │   │   ├── report/[reportId]/  # Public report view (page.tsx + client.tsx + CSS)
 │   │   │   ├── settings/           # Settings hub + company profile + notification prefs
+│   │   │   ├── training/           # In-app training guides (hub + 4 role-based guide pages)
 │   │   │   ├── survey/
 │   │   │   │   ├── new/            # New survey creation
 │   │   │   │   └── [projectId]/    # Note: param is [projectId] (historical) — refers to survey ID
@@ -135,6 +136,7 @@ TyneTees_Damp/
 │   │   │   ├── calendar/           # SlotPicker, SurveyorSelect
 │   │   │   ├── installer-info/     # InstallerPhotoUpload
 │   │   │   ├── report/             # 20 report section components (see Report Components)
+│   │   │   ├── training/           # 5 shared training components (TrainingArticle, TableOfContents, TrainingImage, Tip, GuideCard)
 │   │   │   ├── ui/                 # Primitives: button, card, input, index
 │   │   │   └── wizard/             # 12 wizard components (see Wizard Components)
 │   │   ├── context/
@@ -474,7 +476,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Workload Dashboard:** Surveyor capacity view at `/admin/workload`
 - **Transcription:** Deepgram speech-to-text for survey observations
 - **Observation Polishing:** LLM cleanup of voice-transcribed notes
-- **Training Documentation:** 4 role-based guides with 35 live screenshots at `docs/training/` — Getting Started (all roles), Office Staff, Surveyor, Admin
+- **Training Pages:** In-app training at `/training` — hub page with role-aware recommendations, 4 styled guide pages (Getting Started, Office Staff, Surveyor, Admin) with 35 screenshots, sticky ToC, image lightbox, tip/note/warning callouts. Source markdown also at `docs/training/`
 
 ## External API Access Available
 

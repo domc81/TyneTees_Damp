@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-02
-**Last commit:** ab708af — docs: add role-based training documentation with live platform screenshots
-**Current phase:** Post-audit — both Office and Surveyor role audits complete, training docs shipped
+**Last commit:** 685faad — feat: add in-app training pages accessible to all roles
+**Current phase:** Post-audit — both Office and Surveyor role audits complete, in-app training live
 
 ## Current focus
 
-**Both role audits complete. Training documentation shipped.** Office audit (38 items) and Surveyor audit (41 items) are fully resolved. Tracker: `docs/audits/SURVEYOR_AUDIT_TRACKER.md` — 24 fixed, 17 deferred/by-design. Role-based training guides with live screenshots now at `docs/training/`. The system is ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
+**Both role audits complete. In-app training pages live.** Office audit (38 items) and Surveyor audit (41 items) are fully resolved. Role-based training guides now accessible to all authenticated users at `/training` in the platform — hub page with 4 guides, 35 screenshots, sticky ToC, role-aware recommendations. Source markdown also at `docs/training/`. The system is ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
 
 ## Open threads
 
@@ -27,7 +27,8 @@
 
 ## Recently shipped
 
-- 2026-07-02 — Role-based training documentation: 4 guides (Getting Started, Office Staff, Surveyor, Admin) with 35 live platform screenshots captured via Steel Browser. Covers all 3 roles with step-by-step workflows — login/onboarding, enquiry pipeline, customer management, survey wizard (all 5 steps with every field), calendar, quotations, reports, payments, team management, pricing configuration, materials, availability, workload, company settings, and notifications. Written in plain English for non-technical staff onboarding. Location: `docs/training/`.
+- 2026-07-02 — In-app training pages: converted 4 markdown guides into styled web pages at `/training` accessible to all authenticated users. Hub page with role-aware "Recommended" badges, 5 shared components (TrainingArticle, TableOfContents with IntersectionObserver, TrainingImage with click-to-expand lightbox, Tip callouts, GuideCard). Sidebar "Training" item with BookOpen icon. 35 screenshots served as static assets. `.training-prose` CSS for consistent typography. All content hardcoded as JSX — no markdown parser dependency.
+- 2026-07-02 — Role-based training documentation: 4 guides (Getting Started, Office Staff, Surveyor, Admin) with 35 live platform screenshots captured via Steel Browser. Written in plain English for non-technical staff onboarding. Source markdown at `docs/training/`.
 - 2026-07-02 — Surveyor role audit complete (41 items): 24 fixed across 3 commits (434f12b, ca33b8f, e240199), 17 deferred/by-design. Security: RoleGuard + ProtectedRoute allowedRoles for route protection, API role checks on payments/quotations. Data integrity: per-survey write queue for photo + wizard race conditions, photo upload retries. Surveyor workflow: wizard back-nav saves, room validation, Wake Lock for recording, booking cancellation notifications. API resilience: Deepgram retry with backoff, LLM timeout, quotation total validation. Report editor unsaved-changes warning. NotificationBell reconnection. Full report: `docs/audits/SURVEYOR_ROLE_AUDIT_2026-07-02.md`, tracker: `docs/audits/SURVEYOR_AUDIT_TRACKER.md`.
 - 2026-07-02 — Office role audit complete (38 items): 27 bug fixes in first pass (crashes, security, workflow dead ends), then 8 deferred items resolved — booking status state machine with transition enforcement, calendar confirm/mark-as-paid for provisional bookings, calendar reschedule with SlotPicker and confirmation dialog, communication log manual entries (phone/WhatsApp/SMS/in-person with channel icons), confirmation dialogs on all destructive calendar actions, cancellation email error surfacing, slot duration default fix (90min), notification preferences cache invalidation on save. DB migration for expanded communication_log channels.
 - 2026-07-01 — Lead-to-customer lifecycle: payments table, provisional bookings (awaiting payment), survey fee payment flow (`/pay/[token]`), deposit collection on quotation acceptance, full pipeline lifecycle with `completed` and `won` states (`won_at`, `cf_exported_at` on enquiries), CF export tracking from costing page, dashboard stats fix (Active Surveys, Completed, Won This Month), workload dashboard (`/admin/workload`), survey fee config in admin rates, auto-release cron for expired provisional bookings, survey fee + booking confirmed email templates
