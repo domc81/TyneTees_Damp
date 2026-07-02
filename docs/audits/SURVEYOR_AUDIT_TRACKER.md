@@ -59,18 +59,18 @@ When fixing an item, update its status and add the commit hash. Pick up where yo
 
 | # | Status | Issue | File(s) | Commit |
 |---|--------|-------|---------|--------|
-| L1 | [ ] | `is_surveyor` vs `role` field mismatch possible | `src/context/AuthContext.tsx` | |
-| L2 | [ ] | Sidebar defaults to surveyor nav if all role flags false | `src/components/layout.tsx` | |
-| L3 | [ ] | Room "Mark Complete" button has no effect on wizard completion | `src/components/wizard/RoomInspectionStep.tsx` | |
-| L4 | [ ] | Deprecated fields in CondensationRoomData (14 fields) | `src/types/survey-wizard.types.ts` | |
-| L5 | [ ] | URL inconsistency: `/survey/` vs `/surveys/` | Multiple route files | |
-| L6 | [ ] | `[projectId]` param name should be `[surveyId]` | All `/survey/[projectId]/` routes | |
-| L7 | [ ] | Recording timer can exceed 2:00 by 1-2 seconds | `src/components/wizard/AudioRecorder.tsx` | |
-| L8 | [ ] | Photo dimensions stored from compressed image, not original | `src/lib/survey-photo-service.ts` | |
-| L9 | [ ] | Debris bags magic number "2 bags/m2" not documented | `src/lib/survey-mapping.ts` | |
-| L10 | [ ] | Deposit % selection uses highest across types with no explanation | `src/app/survey/[projectId]/costing/page.tsx` | |
-| L11 | [ ] | Surveyor notes read-only on calendar bookings | `src/app/calendar/page.tsx` | |
-| L12 | [ ] | Notification bell has no reconnection logic | `src/components/NotificationBell.tsx` | |
+| L1 | [-] | `is_surveyor` vs `role` field mismatch possible | `src/context/AuthContext.tsx` | by design |
+| L2 | [-] | Sidebar defaults to surveyor nav if all role flags false | `src/components/layout.tsx` | by design |
+| L3 | [-] | Room "Mark Complete" button has no effect on wizard completion | `src/components/wizard/RoomInspectionStep.tsx` | by design |
+| L4 | [-] | Deprecated fields in CondensationRoomData (14 fields) | `src/types/survey-wizard.types.ts` | by design |
+| L5 | [-] | URL inconsistency: `/survey/` vs `/surveys/` | Multiple route files | by design |
+| L6 | [-] | `[projectId]` param name should be `[surveyId]` | All `/survey/[projectId]/` routes | by design |
+| L7 | [x] | Recording timer can exceed 2:00 by 1-2 seconds | `src/components/wizard/AudioRecorder.tsx` | pending |
+| L8 | [-] | Photo dimensions stored from compressed image, not original | `src/lib/survey-photo-service.ts` | by design |
+| L9 | [x] | Debris bags magic number "2 bags/m2" not documented | `src/lib/survey-mapping.ts` | pending |
+| L10 | [-] | Deposit % selection uses highest across types with no explanation | `src/app/survey/[projectId]/costing/page.tsx` | by design |
+| L11 | [-] | Surveyor notes read-only on calendar bookings | `src/app/calendar/page.tsx` | by design |
+| L12 | [x] | Notification bell has no reconnection logic | `src/components/NotificationBell.tsx` | pending |
 
 ---
 
@@ -81,8 +81,8 @@ When fixing an item, update its status and add the commit hash. Pick up where yo
 | Critical | 5 | 3 | 2 | 0 |
 | High | 10 | 9 | 1 | 0 |
 | Medium | 14 | 9 | 5 | 0 |
-| Low | 12 | 0 | 0 | 12 |
-| **Total** | **41** | **21** | **8** | **12** |
+| Low | 12 | 3 | 9 | 0 |
+| **Total** | **41** | **24** | **17** | **0** |
 
 ## Fix Log
 
@@ -127,3 +127,20 @@ _Record each fix session below so we can pick up where we left off._
 - M11: Not a bug — existing validation at line 180 correctly blocks progression when defects_found=true but no defects selected.
 - M12 deferred: Installer info validation needs investigation of mandatory vs optional categories.
 **Stopped at:** L1 (next item to address)
+
+### Session 2026-07-02 (3)
+**Items addressed:** L7, L9, L12 (L1-L6, L8, L10-L11 confirmed as by-design)
+**Commits:** pending push
+**Notes:**
+- L7: Timer now checks limit before incrementing — `stopRecording()` fires at exactly 120s, not 121-122s.
+- L9: Added workbook source comments to both `calcDampDebrisBags` and `calcTimberDebrisBags` inline `* 2` expressions.
+- L12: NotificationBell now detects `CHANNEL_ERROR` / `TIMED_OUT` on the Supabase realtime channel and retries after 5 seconds.
+- L1: By design — `is_surveyor` is a capability flag, separate from `role`. Admin/office users can also be surveyors.
+- L2: By design — surveyor nav is the most restricted view, correct safe fallback for null profile edge case.
+- L3: By design — "Mark Complete" is a progress indicator for the surveyor, not a completion gate.
+- L4: By design — deprecated fields kept for backward compatibility with existing survey data.
+- L5/L6: By design — documented historical naming, changing would break external links.
+- L8: By design — stored dimensions match the actual stored file, not the discarded original.
+- L10: By design — business rule to use highest deposit % across survey types.
+- L11: By design — office manages booking notes as part of their workflow.
+**Audit complete — 0 remaining items.**

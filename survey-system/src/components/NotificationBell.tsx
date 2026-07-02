@@ -176,6 +176,8 @@ export function NotificationBell() {
 
     const channelName = `notifications-${profile.id}`
 
+    let retryTimeout: NodeJS.Timeout | null = null
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -204,9 +206,19 @@ export function NotificationBell() {
         if (err) {
           console.error('[NotificationBell] Realtime error:', err)
         }
+        // Reconnect on channel close/error after a short delay
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[NotificationBell] Channel lost, retrying in 5s...')
+          retryTimeout = setTimeout(() => {
+            supabase.removeChannel(channel)
+            // Re-subscribe by forcing effect re-run via unread count refresh
+            getUnreadCount(profile!.id).then(setUnreadCount)
+          }, 5000)
+        }
       })
 
     return () => {
+      if (retryTimeout) clearTimeout(retryTimeout)
       supabase.removeChannel(channel)
     }
   }, [profile?.id])

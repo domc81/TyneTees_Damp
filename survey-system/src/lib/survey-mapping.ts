@@ -1263,6 +1263,7 @@ function calcDampDebrisBags(rooms: SurveyRoomRow[]): number {
     totalStripOutArea += dampData.sub_floor_area || 0
   }
 
+  // 2 bags per m² — from Damp workbook v48, row R34 (bag_and_cart formula)
   return totalStripOutArea > 0 ? Math.ceil(totalStripOutArea * 2) : 0
 }
 
@@ -1281,6 +1282,7 @@ function calcTimberDebrisBags(rooms: SurveyRoomRow[]): number {
     totalFlooringArea += timberData.flooring_area || 0
   }
 
+  // 2 bags per m² — from Timber workbook v33 (bag_and_cart formula)
   return totalFlooringArea > 0 ? Math.ceil(totalFlooringArea * 2) : 0
 }
 

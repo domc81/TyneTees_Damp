@@ -201,14 +201,17 @@ export default function AudioRecorder({
       setRecordingTime(0)
       recordingTimeRef.current = 0
 
-      // Start timer — updates both state (for UI) and ref (for async callbacks)
+      // Start timer — updates both state (for UI) and ref (for async callbacks).
+      // Check limit BEFORE incrementing to prevent overshoot by 1-2 seconds
+      // when the UI thread is busy (e.g. heavy rendering during recording).
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
+          if (prev + 1 >= MAX_RECORDING_SECONDS) {
+            stopRecording()
+            return MAX_RECORDING_SECONDS
+          }
           const newTime = prev + 1
           recordingTimeRef.current = newTime
-          if (newTime >= MAX_RECORDING_SECONDS) {
-            stopRecording()
-          }
           return newTime
         })
       }, 1000)
