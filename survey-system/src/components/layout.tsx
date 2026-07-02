@@ -16,6 +16,7 @@ import {
   LogOut,
   Inbox,
   BarChart3,
+  BookOpen,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
@@ -31,6 +32,7 @@ const navItems: { icon: typeof LayoutDashboard; label: string; href: string; rol
   { icon: Users, label: 'Team', href: '/admin/team' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },
   { icon: BarChart3, label: 'Workload', href: '/admin/workload', roles: ['admin', 'office'] },
+  { icon: BookOpen, label: 'Training', href: '/training' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ]
 
