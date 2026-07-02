@@ -251,9 +251,9 @@ TyneTees_Damp/
 
 ### Migrations
 
-40 total: 39 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
+41 total: 40 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
 
-Range: `00000000000000_initial_schema.sql` through `20260701000001_payments_and_lifecycle.sql`. Applied manually via `docker exec`.
+Range: `00000000000000_initial_schema.sql` through `20260702000001_communication_log_expand_channels.sql`. Applied manually via `docker exec`.
 
 ### Active Tables (43 tables)
 
@@ -262,7 +262,7 @@ Range: `00000000000000_initial_schema.sql` through `20260701000001_payments_and_
 - `enquiry_activity` — activity/timeline log
 - `on_hold_message_templates` — predefined on-hold message templates
 - `customers` — customer master data
-- `communication_log` — email/call communication records
+- `communication_log` — communication records (channels: email, sms, in_app, phone, whatsapp, in_person; statuses: sent, failed, pending, delivered, bounced, logged)
 
 **User & Team:**
 - `user_profiles` — user accounts with roles (admin, office, surveyor)
@@ -309,7 +309,7 @@ Range: `00000000000000_initial_schema.sql` through `20260701000001_payments_and_
 - `report_views` — report view tracking (IP, user agent, duration)
 
 **Calendar & Bookings:**
-- `survey_bookings` — survey booking slots (date, time, surveyor, customer, status: confirmed/provisional/cancelled)
+- `survey_bookings` — survey booking slots (date, time, surveyor, customer, status: provisional/scheduled/completed/cancelled/no_show). State machine enforced in `calendar-data.ts`
 - `surveyor_availability` — weekly availability patterns
 - `availability_blocks` — surveyor leave/absence date blocks (annual_leave, sickness, training, other)
 
@@ -412,7 +412,9 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Guarantee paragraph** is hardcoded in `report-generator.ts` `buildGuaranteeParagraph()` — does not read from company profile fields. 25-year company guarantees on rising damp, dry rot, and woodworm; 7-year warranty on mould. Insurance-backed guarantees via generic Protected Guarantee scheme (Westminster ceased trading). Also appears in `company_profile.about_us_text`.
 - **Woodworm reports** include static reference images from `public/images/woodworm/` (beetle photo CC BY 3.0 CSIRO, 3 Pexels equipment photos). These are always included in generated woodworm reports.
 - **Customer reinstatement responsibility note** appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as electrical standards and asbestos notes.
-- **Provisional bookings** are created by Convert & Book with status `provisional` (awaiting survey fee payment). They auto-confirm when payment is marked paid. Expired provisional bookings are cancelled by the `/api/cron/release-unpaid-bookings` cron route.
+- **Provisional bookings** are created by Convert & Book with status `provisional` (awaiting survey fee payment). They auto-confirm when payment is marked paid (via API or calendar modal). Expired provisional bookings are cancelled by the `/api/cron/release-unpaid-bookings` cron route.
+- **Booking status state machine** is enforced in `calendar-data.ts` via `validateStatusTransition()`. Valid transitions: provisional → scheduled/cancelled, scheduled → completed/no_show/cancelled. Completed, no_show, and cancelled are terminal. The calendar UI only shows buttons for valid transitions.
+- **Communication log channels** include system-generated (`email`, `sms`, `in_app`) and manually logged (`phone`, `whatsapp`, `in_person`). Manual entries use status `logged` and are created from the customer detail page. The log is append-only (no UPDATE/DELETE).
 - **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to set enquiry as won). The `payments` table links to enquiry, survey, and optionally quotation.
 - **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded from the costing page. The `completed` status is a new terminal Kanban column after `accepted`.
 
@@ -437,7 +439,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature, deposit auto-creation on acceptance
 - **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
 - **Payments:** Survey fee payment flow (public `/pay/[token]` page), deposit collection on quotation acceptance, office mark-as-paid, payment link emails
-- **Calendar:** Booking management with FullCalendar, surveyor availability, provisional bookings (awaiting payment), booking notifications, daily reminders, auto-release of expired provisional bookings (cron)
+- **Calendar:** Booking management with FullCalendar, surveyor availability, provisional bookings (awaiting payment), confirm/mark-as-paid from calendar modal, reschedule with SlotPicker, booking status state machine (valid transitions enforced), confirmation dialogs on all status changes, booking notifications, daily reminders, auto-release of expired provisional bookings (cron)
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management
 - **Settings:** Company profile, logo upload, notification preferences, email testing
 - **Materials:** Catalogue view and admin

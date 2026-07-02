@@ -24,18 +24,18 @@ The Next.js app (`survey-system/src/`) serves both the internal staff UI and pub
 - **Costing Review** — auto-calculated from wizard data, section-by-section breakdown with adjustment controls, multi-survey-type tabs
 - **Quotations** — PDF generation via @react-pdf/renderer, email delivery, public accept/decline page with e-signature
 - **Reports** — LLM-generated narrative (Grok 4.1 Fast via OpenRouter), section editor, status workflow, public branded web report. Customer-facing view hides all measurements (m², joist sizes). Woodworm reports include beetle reference image, treatment equipment photos, and loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
-- **Calendar** — FullCalendar with booking management, surveyor availability, booking notifications
-- **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management
+- **Calendar** — FullCalendar with booking management, surveyor availability, booking notifications, confirm/mark-as-paid for provisional bookings, reschedule with SlotPicker, booking status state machine (provisional → scheduled → completed/no_show/cancelled), confirmation dialogs on all status changes
+- **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management, workload dashboard
 
 ### Backend (Next.js API routes + Supabase)
 
-21 API routes handle server-side operations requiring secrets (LLM calls, email sending, PDF generation, cron triggers). All CRUD for surveys, enquiries, bookings, and notifications is done via direct Supabase client SDK calls from the frontend, not through API routes.
+25 API routes handle server-side operations requiring secrets (LLM calls, email sending, PDF generation, cron triggers). All CRUD for surveys, enquiries, bookings, and notifications is done via direct Supabase client SDK calls from the frontend, not through API routes.
 
 The canonical data access layer is `src/lib/supabase-data.ts`.
 
 ### Database (Supabase / PostgreSQL)
 
-Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 42 tables across these clusters:
+Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across these clusters:
 
 - **CRM:** `enquiries`, `enquiry_activity`, `on_hold_message_templates`, `customers`, `communication_log`
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
@@ -47,7 +47,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 42 tables across t
 - **Notifications:** `notifications` (realtime subscriptions)
 - **Company:** `company_profile`
 
-39 migrations applied manually via `docker exec`.
+41 migrations applied manually via `docker exec` (39 + 1 root-level + 1 communication_log expansion).
 
 ### External services
 
@@ -99,3 +99,5 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 42 tables across t
 - **Excel workbooks as pricing source of truth:** All 220 line templates and formula parameters must match the original XLSM workbooks. Deviations cause real business impact.
 - **Client-side rendering for authenticated pages:** All authenticated pages fetch data client-side. No SSR/streaming. Causes flash-of-spinner but was the faster path to MVP.
 - **Forward-only enquiry transitions:** `shouldAutoTransition()` enforces ordering to prevent status regression. Terminal statuses (accepted/declined/completed) are never overwritten.
+- **Booking status state machine:** `BOOKING_STATUS_TRANSITIONS` in `calendar-types.ts` defines valid transitions (provisional → scheduled/cancelled, scheduled → completed/no_show/cancelled, terminal statuses have no outgoing transitions). Enforced in `updateBooking()` and `cancelBooking()`, UI only shows valid action buttons.
+- **Communication log channels:** `communication_log.channel` supports email, sms, in_app (system-generated), phone, whatsapp, in_person (manually logged by office staff). Manual entries use status `logged` to distinguish from system-sent entries.

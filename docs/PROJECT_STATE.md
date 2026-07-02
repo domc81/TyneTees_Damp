@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-02
-**Last commit:** 497ee2a — feat: add lead-to-customer lifecycle
-**Current phase:** Bug-fix sprint — Office role audit remediation (38 items)
+**Last commit:** b908136 — feat: resolve 8 deferred audit items
+**Current phase:** Post-audit — all 38 Office role audit items resolved
 
 ## Current focus
 
-**All other work is paused until the Office role audit is complete.** A full walkthrough of every page and workflow accessible to the Office role identified 38 issues: 5 crash bugs, 3 security gaps, 7 workflow dead ends, 10 significant bugs, and 13 UX issues. The audit checklist is at `docs/audits/OFFICE_ROLE_AUDIT_2026-07-02.md` — each item is marked off as it is fixed and deployed. Priority clusters: (A) payment/quotation lifecycle is fundamentally broken for customers, (B) access control lets any user edit pricing/company profile, (C) runtime crashes in normal use, (D) workflow dead ends that trap users.
+**Office role audit complete.** All 38 items from `docs/audits/OFFICE_ROLE_AUDIT_2026-07-02.md` are resolved (35 fixed, 3 verified OK). The system is now ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
 
 ## Open threads
 
@@ -15,19 +15,19 @@
 - **Woodworm wizard fields:** not at full parity with the workbook. Some fields missing. Report now includes beetle reference image, equipment photos, and loft insulation note — but wizard field coverage still incomplete.
 - **Survey type refactor:** `survey_type` enum includes `structural`, `comprehensive`, `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing. Selecting them creates dead-end surveys. Plan exists at `docs/plans/2026-03-02-survey-type-display-migration.md`.
 - **Role-based RLS tightening:** most tables grant full access to all authenticated users. Acceptable for MVP but must fix before team growth.
-- **7 API routes with no role checks:** includes LLM/transcription endpoints (API credit exposure) and company profile writes.
-- **Stripe integration:** payment provider not yet chosen. Architecture is Stripe-ready (fields in payments table). Manual payment recording (office marks paid) is operational now.
+- **API route role checks:** company profile and logo endpoints now admin-only (fixed in audit). LLM/transcription endpoints remain open to all authenticated users (acceptable — no PII exposure, API credit risk is low with single-user team).
+- **Stripe integration:** payment provider not yet chosen. Architecture is Stripe-ready (fields in payments table). Manual payment recording (office marks paid) is operational now, including from the calendar booking modal.
 - **Release-unpaid-bookings cron:** `/api/cron/release-unpaid-bookings` needs a Coolify scheduled task (daily, e.g. 09:00) calling `POST` with `Authorization: Bearer $CRON_SECRET`.
 
 ## Known issues
 
 - **CF CSV hardcoded hourly rate:** `cf-csv-export.ts` uses hardcoded £30.63/hr instead of reading from `pricing_config`. Should read from DB.
-- **Report generator crashes on missing company profile:** non-null assertion (`profile!`) on nullable value in `report-generator.ts`. Workaround: ensure company profile exists before generating reports.
 - **Wizard auto-save writes stale step number:** race condition in `wizard/page.tsx`. Low impact — step is cosmetic.
-- **7 survey-type extension tables unused:** schema provisioned but wizard uses JSONB instead. Candidates for removal.
+- **13 survey-type extension tables unused:** schema provisioned but wizard uses JSONB instead. Candidates for removal.
 
 ## Recently shipped
 
+- 2026-07-02 — Office role audit complete (38 items): 27 bug fixes in first pass (crashes, security, workflow dead ends), then 8 deferred items resolved — booking status state machine with transition enforcement, calendar confirm/mark-as-paid for provisional bookings, calendar reschedule with SlotPicker and confirmation dialog, communication log manual entries (phone/WhatsApp/SMS/in-person with channel icons), confirmation dialogs on all destructive calendar actions, cancellation email error surfacing, slot duration default fix (90min), notification preferences cache invalidation on save. DB migration for expanded communication_log channels.
 - 2026-07-01 — Lead-to-customer lifecycle: payments table, provisional bookings (awaiting payment), survey fee payment flow (`/pay/[token]`), deposit collection on quotation acceptance, full pipeline lifecycle with `completed` and `won` states (`won_at`, `cf_exported_at` on enquiries), CF export tracking from costing page, dashboard stats fix (Active Surveys, Completed, Won This Month), workload dashboard (`/admin/workload`), survey fee config in admin rates, auto-release cron for expired provisional bookings, survey fee + booking confirmed email templates
 - 2026-06-30 — Guarantee wording update per client feedback: 25-year company guarantees on rising damp/dry rot/woodworm, 7-year warranty on mould, removed Westminster Protected Guarantee (ceased trading), insurance-backed guarantees now through generic Protected Guarantee scheme. Updated report-generator.ts, company_profile (about_us_text + guarantee_scheme_name), and all 18 existing report sections in DB.
 - 2026-06-21 — Client feedback implementation: removed all measurements from customer-facing reports (m², joist sizes, areas), updated cavity drain membrane methodology wording (3 steps changed), removed skirting reinstatement from scope items, added customer reinstatement responsibility disclaimer, updated woodworm methodology (2 steps removed), added beetle reference image + 3 treatment equipment photos + loft insulation note to woodworm reports, created WoodwormTreatmentSection component, regenerated all 18 existing reports

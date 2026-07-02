@@ -33,7 +33,7 @@ All commands run from `survey-system/` directory:
 ## Ground truth
 
 - Code of record: `survey-system/src/`
-- Data model: `survey-system/supabase/migrations/` (40 SQL migrations — 39 + 1 root-level, applied manually via docker exec)
+- Data model: `survey-system/supabase/migrations/` (41 SQL migrations — 40 + 1 root-level, applied manually via docker exec)
 - Pricing logic source of truth: original Excel workbooks at project root (`*.xlsm`, `*.xls`) — all 220 costing line templates must match these
 - Architecture: `docs/ARCHITECTURE.md`
 - Deploy/rollback: `docs/DEPLOYMENT.md`
@@ -63,7 +63,8 @@ All commands run from `survey-system/` directory:
 - Customer-facing reports intentionally hide all m², area, volume, and joist size/quantity data. The internal editor still shows these. Do not re-add measurements to `RoomFindingsSection.tsx` or `ScopeOfWorksSection.tsx`.
 - Treatment methodology step counts: membrane 8, tanking 7, DPC injection 4, wet rot 11, dry rot 13, woodworm 7. These are hardcoded constants in `report-generator.ts`, not in the database.
 - Guarantee paragraph in `report-generator.ts` is hardcoded — does not read `guarantee_years`/`guarantee_scheme_name` from company profile. Covers: 25-year on rising damp/dry rot/woodworm, 7-year on mould, Protected Guarantee scheme (Westminster ceased trading).
-- `survey_bookings` has a `status` column: `provisional`, `scheduled`, `completed`, `cancelled`, `no_show`. Provisional bookings are created by Convert & Book (awaiting survey fee payment) and auto-released by cron if payment expires. Payment confirmation transitions provisional → scheduled.
+- `survey_bookings` has a `status` column: `provisional`, `scheduled`, `completed`, `cancelled`, `no_show`. Status transitions are enforced by `validateStatusTransition()` in `calendar-types.ts` (provisional → scheduled/cancelled, scheduled → completed/no_show/cancelled, terminal statuses have no outgoing transitions). Provisional bookings are created by Convert & Book (awaiting survey fee payment), can be confirmed/paid from the calendar modal, and auto-released by cron if payment expires.
+- `communication_log.channel` supports: `email`, `sms`, `in_app` (system-generated), `phone`, `whatsapp`, `in_person` (manually logged). Manual entries use status `logged`.
 - `payments` table tracks survey fees and deposits with token-based public access. Two types: `survey_fee` (paid via `/pay/[token]`) and `deposit` (auto-created on quotation acceptance, office marks paid).
 - `enquiries` has `won_at` (set when deposit marked paid) and `cf_exported_at` (set on CF CSV download) columns. The `completed` status is a Kanban column after `accepted`.
 - The Next.js app lives in `survey-system/` subdirectory, not project root. All npm commands must run from there.
