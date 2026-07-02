@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-02
-**Last commit:** b908136 — feat: resolve 8 deferred audit items
-**Current phase:** Post-audit — all 38 Office role audit items resolved
+**Last commit:** e240199 — fix: resolve 3 low-severity items from Surveyor role audit
+**Current phase:** Post-audit — both Office and Surveyor role audits complete
 
 ## Current focus
 
-**Office role audit complete.** All 38 items from `docs/audits/OFFICE_ROLE_AUDIT_2026-07-02.md` are resolved (35 fixed, 3 verified OK). The system is now ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
+**Both role audits complete.** Office audit (38 items) and Surveyor audit (41 items) are fully resolved. Tracker: `docs/audits/SURVEYOR_AUDIT_TRACKER.md` — 24 fixed, 17 deferred/by-design. The system is ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
 
 ## Open threads
 
@@ -14,19 +14,20 @@
 - **Costing manual overrides:** surveyors need to adjust individual line items on the costing page. Not yet built.
 - **Woodworm wizard fields:** not at full parity with the workbook. Some fields missing. Report now includes beetle reference image, equipment photos, and loft insulation note — but wizard field coverage still incomplete.
 - **Survey type refactor:** `survey_type` enum includes `structural`, `comprehensive`, `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing. Selecting them creates dead-end surveys. Plan exists at `docs/plans/2026-03-02-survey-type-display-migration.md`.
-- **Role-based RLS tightening:** most tables grant full access to all authenticated users. Acceptable for MVP but must fix before team growth.
-- **API route role checks:** company profile and logo endpoints now admin-only (fixed in audit). LLM/transcription endpoints remain open to all authenticated users (acceptable — no PII exposure, API credit risk is low with single-user team).
+- **Role-based RLS tightening:** most tables grant full access to all authenticated users. App-level route guards (RoleGuard, ProtectedRoute allowedRoles) and API role checks now block surveyors from admin/office pages and sensitive endpoints. RLS policy migration deferred — acceptable for small team but must fix before team growth.
+- **API route role checks:** payment mark-paid/send-link, quotation generation, company profile, and logo endpoints now require admin/office role (fixed in both audits). LLM/transcription endpoints remain open to all authenticated users (acceptable — no PII exposure, API credit risk is low with single-user team).
 - **Stripe integration:** payment provider not yet chosen. Architecture is Stripe-ready (fields in payments table). Manual payment recording (office marks paid) is operational now, including from the calendar booking modal.
 - **Release-unpaid-bookings cron:** `/api/cron/release-unpaid-bookings` needs a Coolify scheduled task (daily, e.g. 09:00) calling `POST` with `Authorization: Bearer $CRON_SECRET`.
 
 ## Known issues
 
 - **CF CSV hardcoded hourly rate:** `cf-csv-export.ts` uses hardcoded £30.63/hr instead of reading from `pricing_config`. Should read from DB.
-- **Wizard auto-save writes stale step number:** race condition in `wizard/page.tsx`. Low impact — step is cosmetic.
 - **13 survey-type extension tables unused:** schema provisioned but wizard uses JSONB instead. Candidates for removal.
+- **RLS policies still grant full access:** `USING (true) WITH CHECK (true)` on core tables. App-level guards mitigate risk but DB-level isolation needs a dedicated migration session.
 
 ## Recently shipped
 
+- 2026-07-02 — Surveyor role audit complete (41 items): 24 fixed across 3 commits (434f12b, ca33b8f, e240199), 17 deferred/by-design. Security: RoleGuard + ProtectedRoute allowedRoles for route protection, API role checks on payments/quotations. Data integrity: per-survey write queue for photo + wizard race conditions, photo upload retries. Surveyor workflow: wizard back-nav saves, room validation, Wake Lock for recording, booking cancellation notifications. API resilience: Deepgram retry with backoff, LLM timeout, quotation total validation. Report editor unsaved-changes warning. NotificationBell reconnection. Full report: `docs/audits/SURVEYOR_ROLE_AUDIT_2026-07-02.md`, tracker: `docs/audits/SURVEYOR_AUDIT_TRACKER.md`.
 - 2026-07-02 — Office role audit complete (38 items): 27 bug fixes in first pass (crashes, security, workflow dead ends), then 8 deferred items resolved — booking status state machine with transition enforcement, calendar confirm/mark-as-paid for provisional bookings, calendar reschedule with SlotPicker and confirmation dialog, communication log manual entries (phone/WhatsApp/SMS/in-person with channel icons), confirmation dialogs on all destructive calendar actions, cancellation email error surfacing, slot duration default fix (90min), notification preferences cache invalidation on save. DB migration for expanded communication_log channels.
 - 2026-07-01 — Lead-to-customer lifecycle: payments table, provisional bookings (awaiting payment), survey fee payment flow (`/pay/[token]`), deposit collection on quotation acceptance, full pipeline lifecycle with `completed` and `won` states (`won_at`, `cf_exported_at` on enquiries), CF export tracking from costing page, dashboard stats fix (Active Surveys, Completed, Won This Month), workload dashboard (`/admin/workload`), survey fee config in admin rates, auto-release cron for expired provisional bookings, survey fee + booking confirmed email templates
 - 2026-06-30 — Guarantee wording update per client feedback: 25-year company guarantees on rising damp/dry rot/woodworm, 7-year warranty on mould, removed Westminster Protected Guarantee (ceased trading), insurance-backed guarantees now through generic Protected Guarantee scheme. Updated report-generator.ts, company_profile (about_us_text + guarantee_scheme_name), and all 18 existing report sections in DB.

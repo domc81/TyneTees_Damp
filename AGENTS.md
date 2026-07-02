@@ -68,6 +68,8 @@ All commands run from `survey-system/` directory:
 - `payments` table tracks survey fees and deposits with token-based public access. Two types: `survey_fee` (paid via `/pay/[token]`) and `deposit` (auto-created on quotation acceptance, office marks paid).
 - `enquiries` has `won_at` (set when deposit marked paid) and `cf_exported_at` (set on CF CSV download) columns. The `completed` status is a Kanban column after `accepted`.
 - The Next.js app lives in `survey-system/` subdirectory, not project root. All npm commands must run from there.
+- `RoleGuard` in `admin/layout.tsx` blocks surveyors from `/admin/*` routes except `/admin/availability` and `/admin/workload`. `enquiries/layout.tsx` blocks surveyors from `/enquiries/*`. API routes for payments, quotations, and admin endpoints check `user_profiles.role` and return 403 for unauthorised roles.
+- All writes to `surveys.survey_data` JSONB must go through `serializeWrite()` from `src/lib/write-queue.ts` to prevent race conditions between wizard auto-save and photo uploads.
 
 ## Do not touch
 

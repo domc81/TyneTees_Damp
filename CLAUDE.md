@@ -95,6 +95,7 @@ TyneTees_Damp/
 │   │   │   ├── error.tsx           # Error boundary
 │   │   │   ├── not-found.tsx       # Custom 404
 │   │   │   ├── admin/
+│   │   │   │   ├── layout.tsx      # RoleGuard: admin/office only (except availability + workload)
 │   │   │   │   ├── page.tsx        # Admin landing page
 │   │   │   │   ├── availability/   # Surveyor availability management
 │   │   │   │   ├── costing/       # Costing line templates admin (formula params, pricing)
@@ -126,7 +127,8 @@ TyneTees_Damp/
 │   │   │   └── update-password/
 │   │   ├── components/
 │   │   │   ├── layout.tsx          # Sidebar nav with role-based items + NotificationBell
-│   │   │   ├── ProtectedRoute.tsx  # Auth guard (client-side route protection)
+│   │   │   ├── ProtectedRoute.tsx  # Auth guard (client-side route protection, optional allowedRoles)
+│   │   │   ├── RoleGuard.tsx      # Layout-level role guard (wraps route groups)
 │   │   │   ├── CompanyLogo.tsx     # Dynamic company logo
 │   │   │   ├── EnquiryDrawer.tsx   # Enquiry detail drawer (tabs, inline edit, activity)
 │   │   │   ├── NotificationBell.tsx # Realtime notification bell
@@ -141,7 +143,7 @@ TyneTees_Damp/
 │   │   ├── hooks/
 │   │   │   └── useSmartBack.ts     # Smart back navigation
 │   │   ├── middleware.ts           # Supabase SSR session management + token rotation
-│   │   ├── lib/                    # 32 library files (see Lib Files section)
+│   │   ├── lib/                    # 33 library files (see Lib Files section)
 │   │   └── types/
 │   │       ├── database.types.ts    # Canonical DB TypeScript types
 │   │       ├── survey-wizard.types.ts # Wizard data model types
@@ -205,6 +207,8 @@ TyneTees_Damp/
 
 **CSV Export:** `cf-csv-export.ts`, `cf-export-config.ts`
 
+**Concurrency:** `write-queue.ts` (per-survey serialized write queue — used by photo service + wizard auto-save)
+
 **Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
 
 **Tests:** `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
@@ -245,7 +249,7 @@ TyneTees_Damp/
 
 ## Middleware
 
-`src/middleware.ts` — Supabase SSR session management. Runs on all routes except `_next/static`, `_next/image`, `favicon.ico`, `api/q/` (public quotation), `api/report/` (public report), and `api/pay/` (public payment). Handles JWT refresh via `getUser()`. Route protection is handled client-side by `ProtectedRoute.tsx`, not middleware.
+`src/middleware.ts` — Supabase SSR session management. Runs on all routes except `_next/static`, `_next/image`, `favicon.ico`, `api/q/` (public quotation), `api/report/` (public report), and `api/pay/` (public payment). Handles JWT refresh via `getUser()`. Route protection is handled client-side by `ProtectedRoute.tsx` (session + optional role check) and `RoleGuard.tsx` (layout-level role guard for entire route groups), not middleware.
 
 ## Database
 
@@ -417,6 +421,12 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Communication log channels** include system-generated (`email`, `sms`, `in_app`) and manually logged (`phone`, `whatsapp`, `in_person`). Manual entries use status `logged` and are created from the customer detail page. The log is append-only (no UPDATE/DELETE).
 - **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to set enquiry as won). The `payments` table links to enquiry, survey, and optionally quotation.
 - **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded from the costing page. The `completed` status is a new terminal Kanban column after `accepted`.
+- **Route protection layers:** `RoleGuard` in `admin/layout.tsx` blocks surveyors from all `/admin/*` routes except `/admin/availability` and `/admin/workload`. `RoleGuard` in `enquiries/layout.tsx` blocks surveyors from `/enquiries/*`. `ProtectedRoute` accepts `allowedRoles` prop for page-level checks. API routes check `user_profiles.role` via service-role client for payment, quotation, and admin endpoints.
+- **Per-survey write queue** (`src/lib/write-queue.ts`) serializes all writes to `surveys.survey_data` JSONB. Both `survey-photo-service.ts` and `survey-wizard-data.ts` use `serializeWrite(surveyId, fn)` to prevent concurrent read-modify-write races. Photo compression and storage upload still run in parallel — only the metadata append is queued.
+- **Deepgram transcription** retries up to 2 times on 429/503 with exponential backoff (2s, 4s). LLM polish-observation has a 30-second `AbortController` timeout.
+- **Wizard room validation:** Room Inspection step (step 2) requires at least 1 room before the surveyor can proceed. Back navigation and step clicks trigger auto-save (matching forward navigation).
+- **Wake Lock API** is used during voice recording (`AudioRecorder.tsx`) to prevent phone sleep. Released on stop.
+- **NotificationBell reconnection:** the Supabase realtime channel auto-reconnects after 5 seconds on `CHANNEL_ERROR` or `TIMED_OUT`.
 
 ## Build & Dev Commands
 
@@ -429,7 +439,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 
 ## What's Built & Working
 
-- **Auth:** Login, forgot/change/update password, ProtectedRoute, role-based UI (admin/office/surveyor)
+- **Auth:** Login, forgot/change/update password, ProtectedRoute (with optional `allowedRoles`), RoleGuard (layout-level), role-based UI and API enforcement (admin/office/surveyor)
 - **Dashboard:** Survey stats (Active Surveys, Completed, Won This Month), enquiry pipeline widget, recent activity feed
 - **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (completed/won columns)
 - **Customer Management:** List, create, edit, detail with history and communication log
