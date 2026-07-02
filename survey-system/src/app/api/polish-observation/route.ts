@@ -119,30 +119,49 @@ CLEANUP RULES:
 
     const userPrompt = `Clean up this surveyor's voice note:\n\n${text}`
 
-    const response = await fetch(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': companyWebsite || (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
-          'X-Title': `${companyName} Survey System`,
-        },
-        body: JSON.stringify({
-          model: 'x-ai/grok-4.1-fast',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.1,
-          max_tokens: 1000,
-          // grok-4.1-fast is a reasoning model; disable reasoning so thinking tokens
-          // don't bleed into the content field and corrupt the polished output.
-          reasoning: { enabled: false },
-        }),
+    // 30-second timeout to prevent hanging requests
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+    let response: Response
+    try {
+      response = await fetch(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': companyWebsite || (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+            'X-Title': `${companyName} Survey System`,
+          },
+          body: JSON.stringify({
+            model: 'x-ai/grok-4.1-fast',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.1,
+            max_tokens: 1000,
+            // grok-4.1-fast is a reasoning model; disable reasoning so thinking tokens
+            // don't bleed into the content field and corrupt the polished output.
+            reasoning: { enabled: false },
+          }),
+          signal: controller.signal,
+        }
+      )
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if (err instanceof Error && err.name === 'AbortError') {
+        return NextResponse.json(
+          { error: 'LLM request timed out. Please try again.' },
+          { status: 408 }
+        )
       }
-    )
+      throw err
+    } finally {
+      clearTimeout(timeoutId)
+    }
 
     if (!response.ok) {
       const errorText = await response.text()

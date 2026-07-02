@@ -8,28 +8,15 @@
 import { getSupabase } from './supabase-client'
 import type { SurveyPhoto, PhotoCapture } from '@/types/survey-photo.types'
 
-// Per-survey write queue — serializes metadata writes to prevent
-// read-modify-write race condition on survey_data.photos JSONB array.
-// Photo compression and storage upload still run in parallel; only the
-// final metadata append/remove is serialized.
-const writeQueues = new Map<string, Promise<unknown>>()
+// Shared write queue — serializes all survey_data writes (photos + wizard)
+import { serializeWrite } from './write-queue'
 
-function serializeWrite<T>(surveyId: string, fn: () => Promise<T>): Promise<T> {
-  const prev = writeQueues.get(surveyId) ?? Promise.resolve()
-  const next: Promise<T> = prev.then(fn, fn)
-  writeQueues.set(surveyId, next)
-  next.finally(() => {
-    if (writeQueues.get(surveyId) === next) {
-      writeQueues.delete(surveyId)
-    }
-  })
-  return next
-}
-
-// Geolocation cache to avoid repeated permission prompts
+// Geolocation cache — keyed by surveyId to prevent stale coordinates
+// when a surveyor moves between properties within the TTL window
 let geolocationCache: {
   coords: { latitude: number; longitude: number }
   timestamp: number
+  surveyId: string
 } | null = null
 
 const GEOLOCATION_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -117,14 +104,15 @@ export async function compressImage(
  * Returns null if denied or unavailable
  * Caches result for 5 minutes
  */
-export async function getGeolocation(): Promise<{
+export async function getGeolocation(surveyId?: string): Promise<{
   latitude: number
   longitude: number
 } | null> {
-  // Check cache first
+  // Check cache — invalidate if surveyId changed (different property)
   if (geolocationCache) {
     const age = Date.now() - geolocationCache.timestamp
-    if (age < GEOLOCATION_CACHE_TTL) {
+    const sameProperty = !surveyId || geolocationCache.surveyId === surveyId
+    if (age < GEOLOCATION_CACHE_TTL && sameProperty) {
       return geolocationCache.coords
     }
   }
@@ -150,6 +138,7 @@ export async function getGeolocation(): Promise<{
         geolocationCache = {
           coords,
           timestamp: Date.now(),
+          surveyId: surveyId || '',
         }
         resolve(coords)
       },
@@ -218,7 +207,7 @@ export async function uploadSurveyPhoto(
     const dimensions = await getImageDimensions(compressedFile)
 
     // Step 3: Get geolocation (non-blocking — don't wait if slow)
-    const geoPromise = getGeolocation()
+    const geoPromise = getGeolocation(surveyId)
 
     // Step 4: Generate storage path and filename
     const timestamp = Date.now()

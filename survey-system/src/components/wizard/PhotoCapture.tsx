@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Camera, Upload, X, Trash2, MapPin, Calendar } from 'lucide-react'
+import { Camera, Upload, X, Trash2, MapPin, Calendar, Loader2, Check } from 'lucide-react'
 import type { SurveyPhoto, PhotoCapture as PhotoCaptureType } from '@/types/survey-photo.types'
 import {
   uploadSurveyPhoto,
@@ -291,19 +291,18 @@ export default function PhotoCapture({
 
       {/* Upload Progress */}
       {isUploading && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/70">
-              {uploadProgress < 100 ? 'Uploading...' : 'Complete!'}
-            </span>
-            <span className="text-white/70">{uploadProgress}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full bg-brand-500 transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+          {uploadProgress >= 100 ? (
+            <>
+              <Check className="w-5 h-5 text-green-400" />
+              <span className="text-sm text-green-300">Upload complete</span>
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-5 h-5 text-brand-400 animate-spin" />
+              <span className="text-sm text-white/70">Uploading photo...</span>
+            </>
+          )}
         </div>
       )}
 

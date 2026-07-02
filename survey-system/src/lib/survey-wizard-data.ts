@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { getSupabase } from './supabase-client'
+import { serializeWrite } from './write-queue'
 import type {
   SurveyWizardData,
   SurveyRoomRow,
@@ -115,7 +116,9 @@ export async function saveWizardData(
     throw new Error('Supabase client not available')
   }
 
-  try {
+  // Serialize via shared write queue — prevents race with photo uploads
+  // that also modify survey_data concurrently.
+  await serializeWrite(surveyId, async () => {
     // Read the current survey_data first so we can merge rather than overwrite.
     // The photo service writes photos into survey_data.photos independently — if we
     // blindly write wizardData over the whole column we'll wipe any photos uploaded
@@ -162,11 +165,7 @@ export async function saveWizardData(
       console.error('Error saving wizard data:', error)
       throw new Error(`Failed to save wizard data: ${error.message}`)
     }
-
-  } catch (error) {
-    console.error('Error in saveWizardData:', error)
-    throw error
-  }
+  })
 }
 
 // =============================================================================

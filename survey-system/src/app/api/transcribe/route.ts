@@ -129,23 +129,39 @@ export async function POST(request: NextRequest) {
 
       const deepgramUrl = `https://api.deepgram.com/v1/listen?${params.toString()}`
 
-      const deepgramResponse = await fetch(deepgramUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          'Content-Type': audioFile.type,
-        },
-        body: buffer,
-        signal: controller.signal,
-      })
+      // Retry loop for transient errors (429 rate limit, 503 service unavailable)
+      let deepgramResponse: Response | null = null
+      const MAX_RETRIES = 2
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        deepgramResponse = await fetch(deepgramUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${apiKey}`,
+            'Content-Type': audioFile.type,
+          },
+          body: buffer,
+          signal: controller.signal,
+        })
+
+        if (deepgramResponse.ok || (deepgramResponse.status !== 429 && deepgramResponse.status !== 503)) {
+          break
+        }
+
+        if (attempt < MAX_RETRIES) {
+          const delay = (attempt + 1) * 2000 // 2s, 4s backoff
+          await new Promise(r => setTimeout(r, delay))
+        }
+      }
 
       clearTimeout(timeoutId)
 
-      if (!deepgramResponse.ok) {
-        return NextResponse.json(
-          { error: `Transcription service error: ${deepgramResponse.status}` },
-          { status: deepgramResponse.status }
-        )
+      if (!deepgramResponse || !deepgramResponse.ok) {
+        const status = deepgramResponse?.status || 500
+        const msg = status === 429
+          ? 'Transcription service is busy. Please wait a moment and try again.'
+          : `Transcription service error: ${status}`
+        return NextResponse.json({ error: msg }, { status })
       }
 
       const data: DeepgramResponse = await deepgramResponse.json()

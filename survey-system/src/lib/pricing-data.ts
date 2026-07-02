@@ -119,6 +119,13 @@ export async function loadPricingConfig(): Promise<PricingConfig> {
     }
   }
 
+  // Warn if critical config keys are missing — pricing engine will use hardcoded fallbacks
+  const requiredKeys = ['hourly_labour_rate', 'default_material_markup', 'default_labour_markup', 'default_wastage_factor', 'vat_rate']
+  const missing = requiredKeys.filter(k => !(k in config))
+  if (missing.length > 0) {
+    console.warn(`[pricing] Missing pricing_config keys (hardcoded fallbacks will be used): ${missing.join(', ')}`)
+  }
+
   return config
 }
 

@@ -111,6 +111,14 @@ export default function ReportEditorPage() {
   const [photos, setPhotos] = useState<SurveyPhoto[]>([])
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+
+  // Warn before leaving with unsaved edits
+  useEffect(() => {
+    if (!editingSection) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editingSection])
   const [savingSection, setSavingSection] = useState(false)
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null)
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({})

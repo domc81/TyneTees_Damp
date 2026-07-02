@@ -40,20 +40,20 @@ When fixing an item, update its status and add the commit hash. Pick up where yo
 
 | # | Status | Issue | File(s) | Commit |
 |---|--------|-------|---------|--------|
-| M1 | [ ] | Fake progress bar on photo upload | `src/components/wizard/PhotoCapture.tsx` | |
-| M2 | [ ] | Surveyors cannot manage their own availability | `src/app/admin/availability/page.tsx` | |
-| M3 | [ ] | Workload dashboard inaccessible to surveyors | `src/app/admin/workload/page.tsx` | |
-| M4 | [ ] | Deepgram rate limits not handled | `src/app/api/transcribe/route.ts` | |
-| M5 | [ ] | No timeout on LLM polish requests | `src/app/api/polish-observation/route.ts` | |
-| M6 | [ ] | DampFields only supports 1 moisture reading per wall | `src/components/wizard/DampFields.tsx` | |
-| M7 | [ ] | Condensation fields allow invalid states | `src/components/wizard/CondensationFields.tsx` | |
-| M8 | [ ] | Report editor has no unsaved changes warning | `src/app/survey/[projectId]/report/page.tsx` | |
-| M9 | [ ] | Notification preferences not checked consistently | `src/lib/calendar-data.ts` | |
-| M10 | [ ] | Geolocation cache is global, not per-survey | `src/lib/survey-photo-service.ts` | |
-| M11 | [ ] | External inspection defects validation gap | `src/app/survey/[projectId]/wizard/page.tsx` | |
-| M12 | [ ] | Installer info "Complete" toggle has no validation | `src/app/survey/[projectId]/installer-info/page.tsx` | |
-| M13 | [ ] | Pricing config falls back to hardcoded values silently | `src/lib/pricing-data.ts` | |
-| M14 | [ ] | Auto-save race condition | `src/lib/survey-wizard-data.ts` | |
+| M1 | [x] | Fake progress bar on photo upload | `src/components/wizard/PhotoCapture.tsx` | pending |
+| M2 | [x] | Surveyors cannot manage their own availability | `src/app/admin/layout.tsx` | pending |
+| M3 | [x] | Workload dashboard inaccessible to surveyors | `src/app/admin/layout.tsx` | pending |
+| M4 | [x] | Deepgram rate limits not handled | `src/app/api/transcribe/route.ts` | pending |
+| M5 | [x] | No timeout on LLM polish requests | `src/app/api/polish-observation/route.ts` | pending |
+| M6 | [-] | DampFields only supports 1 moisture reading per wall | `src/components/wizard/DampFields.tsx` | deferred |
+| M7 | [-] | Condensation fields allow invalid states | `src/components/wizard/CondensationFields.tsx` | deferred |
+| M8 | [x] | Report editor has no unsaved changes warning | `src/app/survey/[projectId]/report/page.tsx` | pending |
+| M9 | [-] | Notification preferences not checked consistently | `src/lib/calendar-data.ts` | deferred |
+| M10 | [x] | Geolocation cache is global, not per-survey | `src/lib/survey-photo-service.ts` | pending |
+| M11 | [-] | External inspection defects validation gap | `src/app/survey/[projectId]/wizard/page.tsx` | not a bug |
+| M12 | [-] | Installer info "Complete" toggle has no validation | `src/app/survey/[projectId]/installer-info/page.tsx` | deferred |
+| M13 | [x] | Pricing config falls back to hardcoded values silently | `src/lib/pricing-data.ts` | pending |
+| M14 | [x] | Auto-save race condition | `src/lib/survey-wizard-data.ts` | pending |
 
 ## Low (12)
 
@@ -80,9 +80,9 @@ When fixing an item, update its status and add the commit hash. Pick up where yo
 |----------|-------|------|----------|-----------|
 | Critical | 5 | 3 | 2 | 0 |
 | High | 10 | 9 | 1 | 0 |
-| Medium | 14 | 0 | 0 | 14 |
+| Medium | 14 | 9 | 5 | 0 |
 | Low | 12 | 0 | 0 | 12 |
-| **Total** | **41** | **12** | **3** | **26** |
+| **Total** | **41** | **21** | **8** | **12** |
 
 ## Fix Log
 
@@ -108,3 +108,22 @@ _Record each fix session below so we can pick up where we left off._
 - C1 deferred: RLS policy changes are high-risk. App-level controls (C3, C4) provide practical security for this small-team app.
 - C2 deferred: Data layer filtering requires changes to 20+ functions. C4 blocks surveyors from reaching most unfiltered data pages.
 **Stopped at:** M1 (next item to address)
+
+### Session 2026-07-02 (2)
+**Items addressed:** M1-M5, M8, M10, M13, M14 (M6, M7, M9, M11, M12 deferred)
+**Commits:** pending push
+**Notes:**
+- M1: Replaced fake percentage progress bar with honest spinner/complete indicator.
+- M2/M3: Updated admin layout to exempt `/admin/availability` and `/admin/workload` from admin-only guard — surveyors can now access their own availability and workload views.
+- M4: Added retry with exponential backoff (2s, 4s) on Deepgram 429/503 responses. User-friendly error message for rate limits.
+- M5: Added 30-second AbortController timeout to OpenRouter polish-observation fetch. Returns 408 on timeout.
+- M8: Added `beforeunload` warning when report editor has an unsaved section edit.
+- M10: Geolocation cache now keyed by surveyId — invalidates when surveyor switches to a different property.
+- M13: `loadPricingConfig` now logs a warning listing any missing required config keys (hardcoded fallbacks used).
+- M14: Extracted `serializeWrite` to shared `write-queue.ts` module. Both `saveWizardData` and photo upload/delete now use the same per-survey queue, preventing wizard-vs-photo race conditions.
+- M6 deferred: Multiple moisture readings per wall requires significant DampFields UI refactor (feature enhancement).
+- M7 deferred: Condensation field validation changes require UI redesign of extraction controls.
+- M9 deferred: Calendar notification functions run client-side but `isNotificationEnabled` requires service-role client. Needs architecture change.
+- M11: Not a bug — existing validation at line 180 correctly blocks progression when defects_found=true but no defects selected.
+- M12 deferred: Installer info validation needs investigation of mandatory vs optional categories.
+**Stopped at:** L1 (next item to address)
