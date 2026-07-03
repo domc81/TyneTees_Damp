@@ -204,7 +204,7 @@ TyneTees_Damp/
 
 **Survey:** `survey-wizard-data.ts` (wizard persistence/auto-save), `survey-photo-service.ts` (photo upload/management), `survey-tags.ts` (survey type tagging)
 
-**Reports:** `report-generator.ts` (boilerplate + LLM narrative + treatment methodology + woodworm images), `report-data.ts` (report CRUD), `report-publish.ts` (publish/share)
+**Reports:** `report-generator.ts` (boilerplate + LLM narrative + treatment methodology + woodworm images), `report-data.ts` (report CRUD + section photo updates), `report-publish.ts` (publish/share)
 
 **PDF:** `quotation-pdf-renderer.tsx` (quotation PDF layout via @react-pdf/renderer)
 
@@ -224,7 +224,7 @@ TyneTees_Damp/
 
 **CSV Export:** `cf-csv-export.ts`, `cf-export-config.ts`
 
-**Concurrency:** `write-queue.ts` (per-survey serialized write queue — used by photo service + wizard auto-save)
+**Concurrency:** `write-queue.ts` (per-survey serialized write queue — used by photo service + wizard auto-save + sketch upload)
 
 **Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
 
@@ -444,6 +444,9 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Wizard room validation:** Room Inspection step (step 2) requires at least 1 room before the surveyor can proceed. Back navigation and step clicks trigger auto-save (matching forward navigation).
 - **Wake Lock API** is used during voice recording (`AudioRecorder.tsx`) to prevent phone sleep. Released on stop.
 - **NotificationBell reconnection:** the Supabase realtime channel auto-reconnects after 5 seconds on `CHANNEL_ERROR` or `TIMED_OUT`.
+- **Sketch plan upload** in report editor stores files in the `survey-photos` bucket under `{surveyId}/sketch/{timestamp}-{randomId}.{ext}`. Photo metadata is saved to `survey_data.photos` via `serializeWrite()`. Photo IDs are stored in the sketch_plan report section's `photos` array via `updateReportSectionPhotos()`. Supports JPEG, PNG, and PDF (up to 10MB). On the public report, images render full-width with lightbox; PDFs use `<object>` embed with download fallback.
+- **Password fields** on all auth pages (login, change-password, update-password) include a show/hide toggle (Eye/EyeOff icons) built into the shared `Input` component. Activates automatically when `type="password"` is passed.
+- **Supabase Auth SMTP is not configured** on the TTDP instance — `GOTRUE_SMTP_HOST` and related vars are blank. `resetPasswordForEmail()` silently fails. To reset a user's password, use the Supabase Admin API (`PUT /auth/v1/admin/users/{id}` with service role key) and set `must_change_password = true` on their `user_profiles` row.
 
 ## Build & Dev Commands
 
@@ -456,7 +459,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 
 ## What's Built & Working
 
-- **Auth:** Login, forgot/change/update password, ProtectedRoute (with optional `allowedRoles`), RoleGuard (layout-level), role-based UI and API enforcement (admin/office/surveyor)
+- **Auth:** Login, forgot/change/update password (all with show/hide password toggle), ProtectedRoute (with optional `allowedRoles`), RoleGuard (layout-level), role-based UI and API enforcement (admin/office/surveyor). Note: Supabase Auth SMTP is not configured — password reset emails silently fail; admin must reset passwords via Admin API + `must_change_password` flag.
 - **Dashboard:** Survey stats (Active Surveys, Completed, Won This Month), enquiry pipeline widget, recent activity feed
 - **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (completed/won columns)
 - **Customer Management:** List, create, edit, detail with history and communication log
@@ -464,7 +467,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature, deposit auto-creation on acceptance
-- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
+- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Sketch plan upload (JPEG/PNG/PDF) in report editor with delete support — images display full-width with lightbox on public report, PDFs render as embedded viewers with download fallback. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
 - **Payments:** Survey fee payment flow (public `/pay/[token]` page), deposit collection on quotation acceptance, office mark-as-paid, payment link emails
 - **Calendar:** Booking management with FullCalendar, surveyor availability, provisional bookings (awaiting payment), confirm/mark-as-paid from calendar modal, reschedule with SlotPicker, booking status state machine (valid transitions enforced), confirmation dialogs on all status changes, booking notifications, daily reminders, auto-release of expired provisional bookings (cron)
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management

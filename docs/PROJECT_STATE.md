@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
-**Last updated:** 2026-07-02
-**Last commit:** 685faad — feat: add in-app training pages accessible to all roles
-**Current phase:** Post-audit — both Office and Surveyor role audits complete, in-app training live
+**Last updated:** 2026-07-03
+**Last commit:** 82113d2 — feat: render sketch plans on customer-facing public report
+**Current phase:** Post-audit — sketch upload, password UX, report enhancements shipped
 
 ## Current focus
 
-**Both role audits complete. In-app training pages live.** Office audit (38 items) and Surveyor audit (41 items) are fully resolved. Role-based training guides now accessible to all authenticated users at `/training` in the platform — hub page with 4 guides, 35 screenshots, sticky ToC, role-aware recommendations. Source markdown also at `docs/training/`. The system is ready for the next feature sprint. Priority candidates: workbook formula accuracy pass, costing manual overrides, Stripe integration.
+**Sketch upload and password UX shipped.** Surveyors can now upload JPEG/PNG/PDF sketch plans in the report editor — files display inline (images) or as embedded PDF viewers on the customer-facing public report. Password fields across all auth pages (login, change-password, update-password) now have show/hide toggle. Supabase Auth SMTP is not configured — password reset emails silently fail (requires root-session fix to set GOTRUE_SMTP_* env vars on the auth container). Priority candidates: SMTP configuration for password resets, workbook formula accuracy pass, costing manual overrides, Stripe integration.
 
 ## Open threads
 
@@ -16,6 +16,7 @@
 - **Survey type refactor:** `survey_type` enum includes `structural`, `comprehensive`, `site_preparation` — `site_preparation` has 3 costing sections but no wizard steps or report templates; the other two have nothing. Selecting them creates dead-end surveys. Plan exists at `docs/plans/2026-03-02-survey-type-display-migration.md`.
 - **Role-based RLS tightening:** most tables grant full access to all authenticated users. App-level route guards (RoleGuard, ProtectedRoute allowedRoles) and API role checks now block surveyors from admin/office pages and sensitive endpoints. RLS policy migration deferred — acceptable for small team but must fix before team growth.
 - **API route role checks:** payment mark-paid/send-link, quotation generation, company profile, and logo endpoints now require admin/office role (fixed in both audits). LLM/transcription endpoints remain open to all authenticated users (acceptable — no PII exposure, API credit risk is low with single-user team).
+- **Supabase Auth SMTP not configured:** `GOTRUE_SMTP_HOST`, `GOTRUE_SMTP_USER`, `GOTRUE_SMTP_PASS`, `GOTRUE_SMTP_ADMIN_EMAIL` are all blank on the TTDP auth container. Password reset emails (`resetPasswordForEmail()`) silently fail. Requires root-session fix to update Coolify environment variables with SMTP credentials (Resend SMTP is available). Workaround: admin resets passwords via Supabase Admin API + `must_change_password` flag.
 - **Stripe integration:** payment provider not yet chosen. Architecture is Stripe-ready (fields in payments table). Manual payment recording (office marks paid) is operational now, including from the calendar booking modal.
 - **Release-unpaid-bookings cron:** `/api/cron/release-unpaid-bookings` needs a Coolify scheduled task (daily, e.g. 09:00) calling `POST` with `Authorization: Bearer $CRON_SECRET`.
 
@@ -27,6 +28,8 @@
 
 ## Recently shipped
 
+- 2026-07-03 — Sketch plan upload for reports: surveyors can upload JPEG/PNG/PDF sketches in the report editor. Uploaded sketches display inline on the internal editor (with delete support) and on the customer-facing public report. Images render full-width with lightbox; PDFs render as embedded viewers with download fallback. Uses existing `survey-photos` storage bucket with serialized writes. New `updateReportSectionPhotos()` in report-data.ts.
+- 2026-07-03 — Show/hide password toggle: added eye icon toggle to the shared Input component for all password fields. Works on login, change-password, and update-password pages. Uses lucide-react Eye/EyeOff icons with tabIndex={-1} to avoid disrupting keyboard flow.
 - 2026-07-02 — In-app training pages: converted 4 markdown guides into styled web pages at `/training` accessible to all authenticated users. Hub page with role-aware "Recommended" badges, 5 shared components (TrainingArticle, TableOfContents with IntersectionObserver, TrainingImage with click-to-expand lightbox, Tip callouts, GuideCard). Sidebar "Training" item with BookOpen icon. 35 screenshots served as static assets. `.training-prose` CSS for consistent typography. All content hardcoded as JSX — no markdown parser dependency.
 - 2026-07-02 — Role-based training documentation: 4 guides (Getting Started, Office Staff, Surveyor, Admin) with 35 live platform screenshots captured via Steel Browser. Written in plain English for non-technical staff onboarding. Source markdown at `docs/training/`.
 - 2026-07-02 — Surveyor role audit complete (41 items): 24 fixed across 3 commits (434f12b, ca33b8f, e240199), 17 deferred/by-design. Security: RoleGuard + ProtectedRoute allowedRoles for route protection, API role checks on payments/quotations. Data integrity: per-survey write queue for photo + wizard race conditions, photo upload retries. Surveyor workflow: wizard back-nav saves, room validation, Wake Lock for recording, booking cancellation notifications. API resilience: Deepgram retry with backoff, LLM timeout, quotation total validation. Report editor unsaved-changes warning. NotificationBell reconnection. Full report: `docs/audits/SURVEYOR_ROLE_AUDIT_2026-07-02.md`, tracker: `docs/audits/SURVEYOR_AUDIT_TRACKER.md`.

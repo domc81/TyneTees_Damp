@@ -70,7 +70,10 @@ All commands run from `survey-system/` directory:
 - `enquiries` has `won_at` (set when deposit marked paid) and `cf_exported_at` (set on CF CSV download) columns. The `completed` status is a Kanban column after `accepted`.
 - The Next.js app lives in `survey-system/` subdirectory, not project root. All npm commands must run from there.
 - `RoleGuard` in `admin/layout.tsx` blocks surveyors from `/admin/*` routes except `/admin/availability` and `/admin/workload`. `enquiries/layout.tsx` blocks surveyors from `/enquiries/*`. API routes for payments, quotations, and admin endpoints check `user_profiles.role` and return 403 for unauthorised roles.
-- All writes to `surveys.survey_data` JSONB must go through `serializeWrite()` from `src/lib/write-queue.ts` to prevent race conditions between wizard auto-save and photo uploads.
+- All writes to `surveys.survey_data` JSONB must go through `serializeWrite()` from `src/lib/write-queue.ts` to prevent race conditions between wizard auto-save, photo uploads, and sketch uploads.
+- Sketch plan uploads in the report editor store files in `survey-photos` bucket under `{surveyId}/sketch/` and link to the `sketch_plan` report section's `photos` array via `updateReportSectionPhotos()`. Supports JPEG, PNG, and PDF.
+- Supabase Auth SMTP is not configured on the TTDP instance (`GOTRUE_SMTP_HOST` is blank). Password reset emails silently fail. To reset a user's password: Admin API PUT + `must_change_password` flag on `user_profiles`.
+- The shared `Input` component (`src/components/ui/input.tsx`) auto-shows a password visibility toggle (Eye/EyeOff) for any `type="password"` field.
 
 ## Do not touch
 
