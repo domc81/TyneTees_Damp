@@ -206,6 +206,48 @@ export async function updateReportSection(
 }
 
 // =============================================================================
+// Update Report Section Photos
+// =============================================================================
+
+/**
+ * Update a section's photos array (e.g. adding/removing sketch uploads)
+ */
+export async function updateReportSectionPhotos(
+  reportId: string,
+  sectionKey: string,
+  photos: string[]
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const report = await loadReport(reportId)
+  if (!report) {
+    throw new Error(`Report not found: ${reportId}`)
+  }
+
+  const updatedSections = report.sections.map((section) => {
+    if (section.key === sectionKey) {
+      return { ...section, photos }
+    }
+    return section
+  })
+
+  const { error } = await supabase
+    .from('survey_reports')
+    .update({
+      sections: updatedSections as any,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', reportId)
+
+  if (error) {
+    throw new Error(`Failed to update report section photos: ${error.message}`)
+  }
+}
+
+// =============================================================================
 // Update Report Status
 // =============================================================================
 

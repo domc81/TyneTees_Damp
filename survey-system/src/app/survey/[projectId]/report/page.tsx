@@ -21,6 +21,8 @@ import {
   Clock,
   Sparkles,
   Image as ImageIcon,
+  Upload,
+  Trash2,
   ChevronDown,
   ChevronUp,
   Globe,
@@ -36,10 +38,12 @@ import { generateReport, regenerateSection } from '@/lib/report-generator'
 import {
   loadReportBySurvey,
   updateReportSection,
+  updateReportSectionPhotos,
   updateReportStatus,
 } from '@/lib/report-data'
 import { publishReport, unpublishReport } from '@/lib/report-publish'
 import { getPhotoUrl } from '@/lib/survey-photo-service'
+import { serializeWrite } from '@/lib/write-queue'
 import type {
   SurveyReport,
   ReportSection,
@@ -857,6 +861,16 @@ export default function ReportEditorPage() {
                   }
                   onToggleCollapse={() => toggleSectionCollapse(section.key)}
                   setSectionRef={(el) => (sectionRefs.current[section.key] = el)}
+                  surveyId={projectId}
+                  onSketchChange={(updatedSection, updatedPhotos) => {
+                    setReport({
+                      ...report,
+                      sections: report.sections.map((s) =>
+                        s.key === updatedSection.key ? updatedSection : s
+                      ),
+                    })
+                    setPhotos(updatedPhotos)
+                  }}
                 />
               ))}
 
@@ -942,6 +956,8 @@ interface SectionCardProps {
   onToggleOriginal: () => void
   onToggleCollapse: () => void
   setSectionRef: (el: HTMLDivElement | null) => void
+  onSketchChange?: (updatedSection: ReportSection, updatedPhotos: SurveyPhoto[]) => void
+  surveyId?: string
 }
 
 function SectionCard({
@@ -963,6 +979,8 @@ function SectionCard({
   onToggleOriginal,
   onToggleCollapse,
   setSectionRef,
+  onSketchChange,
+  surveyId,
 }: SectionCardProps) {
   const sourceColors = SOURCE_COLORS[section.content_source] || SOURCE_COLORS.template
   const sectionPhotos = photos.filter((p) => section.photos.includes(p.id))
@@ -1089,6 +1107,10 @@ function SectionCard({
                 section={section}
                 showOriginal={showOriginal}
                 photos={sectionPhotos}
+                report={report}
+                surveyId={surveyId}
+                isFinalised={isFinalised}
+                onSketchChange={onSketchChange}
               />
 
               {/* Sub-sections */}
@@ -1120,9 +1142,13 @@ interface SectionContentProps {
   section: ReportSection
   showOriginal: boolean
   photos: SurveyPhoto[]
+  report?: SurveyReport
+  surveyId?: string
+  isFinalised?: boolean
+  onSketchChange?: (updatedSection: ReportSection, updatedPhotos: SurveyPhoto[]) => void
 }
 
-function SectionContent({ section, showOriginal, photos }: SectionContentProps) {
+function SectionContent({ section, showOriginal, photos, report, surveyId, isFinalised, onSketchChange }: SectionContentProps) {
   const displayContent = showOriginal && section.original_content
     ? section.original_content
     : section.content
@@ -1175,7 +1201,16 @@ function SectionContent({ section, showOriginal, photos }: SectionContentProps) 
       return <PhotoGrid photos={photos} />
 
     case 'sketch':
-      return <SketchPlaceholder />
+      return (
+        <SketchUpload
+          section={section}
+          report={report!}
+          surveyId={surveyId!}
+          photos={photos}
+          isFinalised={isFinalised || false}
+          onSketchChange={onSketchChange!}
+        />
+      )
 
     default:
       return <TextContent content={displayContent} />
@@ -1554,12 +1589,271 @@ function PhotoGrid({ photos }: { photos: SurveyPhoto[] }) {
   )
 }
 
-// Sketch placeholder
-function SketchPlaceholder() {
+// Sketch upload component
+function SketchUpload({
+  section,
+  report,
+  surveyId,
+  photos,
+  isFinalised,
+  onSketchChange,
+}: {
+  section: ReportSection
+  report: SurveyReport
+  surveyId: string
+  photos: SurveyPhoto[]
+  isFinalised: boolean
+  onSketchChange: (updatedSection: ReportSection, updatedPhotos: SurveyPhoto[]) => void
+}) {
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const sketchPhotos = photos.filter((p) => section.photos.includes(p.id))
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Reset input so re-selecting the same file works
+    e.target.value = ''
+
+    const isImage = file.type.startsWith('image/')
+    const isPdf = file.type === 'application/pdf'
+
+    if (!isImage && !isPdf) {
+      toast.error('Please upload a JPEG, PNG, or PDF file')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File must be under 10MB')
+      return
+    }
+
+    setIsUploading(true)
+
+    try {
+      const supabase = getSupabase()
+      if (!supabase) throw new Error('Supabase not available')
+
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(2, 9)
+      const ext = file.name.split('.').pop()?.toLowerCase() || (isPdf ? 'pdf' : 'jpg')
+      const fileName = `${timestamp}-${randomId}.${ext}`
+      const storagePath = `${surveyId}/sketch/${fileName}`
+
+      // Upload to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('survey-photos')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+        })
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
+
+      // Create photo metadata
+      const photoId = `sketch_${timestamp}_${randomId}`
+      const newPhoto: SurveyPhoto = {
+        id: photoId,
+        survey_id: surveyId,
+        step: 'site_details' as any,
+        category: 'sketch_plan',
+        description: file.name,
+        storage_path: uploadData.path,
+        file_name: fileName,
+        file_size: file.size,
+        mime_type: file.type,
+        width: 0,
+        height: 0,
+        taken_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }
+
+      // Save photo metadata to survey_data.photos (serialized write)
+      await serializeWrite(surveyId, async () => {
+        const { data: survey, error: fetchError } = await supabase
+          .from('surveys')
+          .select('survey_data')
+          .eq('id', surveyId)
+          .single()
+
+        if (fetchError) {
+          await supabase.storage.from('survey-photos').remove([uploadData.path])
+          throw new Error(`Failed to load survey: ${fetchError.message}`)
+        }
+
+        const surveyData = survey.survey_data || {}
+        const existingPhotos = Array.isArray(surveyData.photos) ? surveyData.photos : []
+        existingPhotos.push(newPhoto)
+
+        const { error: updateError } = await supabase
+          .from('surveys')
+          .update({ survey_data: { ...surveyData, photos: existingPhotos } })
+          .eq('id', surveyId)
+
+        if (updateError) {
+          await supabase.storage.from('survey-photos').remove([uploadData.path])
+          throw new Error(`Failed to save photo metadata: ${updateError.message}`)
+        }
+      })
+
+      // Add photo ID to report section
+      const updatedPhotoIds = [...section.photos, photoId]
+      await updateReportSectionPhotos(report.id, section.key, updatedPhotoIds)
+
+      // Update local state
+      const updatedSection = { ...section, photos: updatedPhotoIds }
+      onSketchChange(updatedSection, [...photos, newPhoto])
+      toast.success('Sketch uploaded')
+    } catch (err) {
+      console.error('Sketch upload failed:', err)
+      toast.error('Failed to upload sketch')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  async function handleDelete(photoId: string) {
+    const photo = photos.find((p) => p.id === photoId)
+    if (!photo) return
+
+    setIsDeleting(photoId)
+
+    try {
+      const supabase = getSupabase()
+      if (!supabase) throw new Error('Supabase not available')
+
+      // Remove from storage
+      await supabase.storage.from('survey-photos').remove([photo.storage_path])
+
+      // Remove from survey_data.photos
+      await serializeWrite(surveyId, async () => {
+        const { data: survey, error: fetchError } = await supabase
+          .from('surveys')
+          .select('survey_data')
+          .eq('id', surveyId)
+          .single()
+
+        if (fetchError) throw new Error(`Failed to load survey: ${fetchError.message}`)
+
+        const surveyData = survey.survey_data || {}
+        const existingPhotos = Array.isArray(surveyData.photos) ? surveyData.photos : []
+        const filtered = existingPhotos.filter((p: any) => p.id !== photoId)
+
+        await supabase
+          .from('surveys')
+          .update({ survey_data: { ...surveyData, photos: filtered } })
+          .eq('id', surveyId)
+      })
+
+      // Remove from report section
+      const updatedPhotoIds = section.photos.filter((id) => id !== photoId)
+      await updateReportSectionPhotos(report.id, section.key, updatedPhotoIds)
+
+      // Update local state
+      const updatedSection = { ...section, photos: updatedPhotoIds }
+      onSketchChange(updatedSection, photos.filter((p) => p.id !== photoId))
+      toast.success('Sketch removed')
+    } catch (err) {
+      console.error('Sketch delete failed:', err)
+      toast.error('Failed to remove sketch')
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
   return (
-    <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-lg">
-      <ImageIcon className="w-12 h-12 text-white/30 mx-auto mb-3" />
-      <p className="text-white/50">Sketch plan will be uploaded by surveyor</p>
+    <div className="space-y-4">
+      {/* Existing sketches */}
+      {sketchPhotos.length > 0 && (
+        <div className="space-y-3">
+          {sketchPhotos.map((photo) => {
+            const url = getPhotoUrl(photo.storage_path)
+            const isPdf = photo.mime_type === 'application/pdf'
+
+            return (
+              <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                {isPdf ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 hover:bg-white/10 transition-colors"
+                  >
+                    <FileText className="w-8 h-8 text-brand-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{photo.description || photo.file_name}</p>
+                      <p className="text-xs text-white/40">{(photo.file_size / 1024).toFixed(0)} KB - PDF</p>
+                    </div>
+                  </a>
+                ) : (
+                  <img
+                    src={url}
+                    alt={photo.description || 'Sketch plan'}
+                    className="w-full max-h-[600px] object-contain bg-black/20"
+                  />
+                )}
+                {!isFinalised && (
+                  <button
+                    onClick={() => handleDelete(photo.id)}
+                    disabled={isDeleting === photo.id}
+                    className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    title="Remove sketch"
+                  >
+                    {isDeleting === photo.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Upload area */}
+      {!isFinalised && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/jpg,application/pdf"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full text-center py-8 border-2 border-dashed border-white/10 rounded-lg hover:border-white/30 hover:bg-white/5 transition-colors disabled:opacity-50"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="w-8 h-8 text-white/30 mx-auto mb-2 animate-spin" />
+                <p className="text-white/50 text-sm">Uploading...</p>
+              </>
+            ) : (
+              <>
+                <Upload className="w-8 h-8 text-white/30 mx-auto mb-2" />
+                <p className="text-white/50 text-sm">
+                  {sketchPhotos.length > 0 ? 'Upload another sketch' : 'Upload sketch (JPEG, PNG, or PDF)'}
+                </p>
+              </>
+            )}
+          </button>
+        </>
+      )}
+
+      {/* Empty state when finalised with no sketches */}
+      {isFinalised && sketchPhotos.length === 0 && (
+        <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-lg">
+          <ImageIcon className="w-8 h-8 text-white/20 mx-auto mb-2" />
+          <p className="text-white/30 text-sm">No sketch uploaded</p>
+        </div>
+      )}
     </div>
   )
 }
