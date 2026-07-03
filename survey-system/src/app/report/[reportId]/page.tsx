@@ -204,6 +204,25 @@ function resolvePhotoCaptions(
   return captions
 }
 
+/** Build a photoId → mime_type map from survey_data.photos metadata. */
+function resolvePhotoMimeTypes(
+  photoIds: string[],
+  surveyData: Record<string, unknown> | null
+): Record<string, string> {
+  if (photoIds.length === 0) return {}
+
+  const allPhotos =
+    (surveyData?.photos as Array<{ id: string; mime_type?: string }>) ?? []
+  const mimeMap = new Map(allPhotos.map((p) => [p.id, p.mime_type]))
+
+  const mimes: Record<string, string> = {}
+  for (const id of photoIds) {
+    const mime = mimeMap.get(id)
+    if (mime) mimes[id] = mime
+  }
+  return mimes
+}
+
 // =============================================================================
 // Error page — no auth, no data
 // =============================================================================
@@ -258,7 +277,8 @@ async function InvalidReportPage() {
 function renderSection(
   section: ReportSection,
   photoUrls: Record<string, string>,
-  photoCaptions: Record<string, string>
+  photoCaptions: Record<string, string>,
+  photoMimeTypes: Record<string, string> = {}
 ) {
   if (isSectionEmpty(section)) return null
 
@@ -331,15 +351,78 @@ function renderSection(
     case 'surveyor_profile':
       return <SurveyorProfileSection key={section.key} section={section} />
 
-    case 'sketch_plan':
-      if (section.photos.length === 0) return null
+    case 'sketch_plan': {
+      const validSketchIds = section.photos.filter((id) => !!photoUrls[id])
+      if (validSketchIds.length === 0) return null
       return (
-        <TextSection
+        <section
           key={section.key}
-          section={section}
-          photoUrls={photoUrls}
-        />
+          className="py-8 border-t border-[#E5E7EB] report-section"
+          data-section={section.key}
+        >
+          <h2 className="text-base font-semibold text-[#1F2937] uppercase tracking-wide mb-4">
+            {section.title}
+          </h2>
+          {section.content && (
+            <p className="text-sm text-[#374151] leading-relaxed mb-4">{section.content}</p>
+          )}
+          <div className="space-y-4">
+            {validSketchIds.map((photoId) => {
+              const url = photoUrls[photoId]
+              const mime = photoMimeTypes[photoId] || ''
+              const isPdf = mime === 'application/pdf' || url.toLowerCase().endsWith('.pdf')
+
+              if (isPdf) {
+                return (
+                  <div key={photoId} className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+                    <object
+                      data={url}
+                      type="application/pdf"
+                      className="w-full"
+                      style={{ height: '600px' }}
+                    >
+                      <div className="flex items-center justify-center p-8 bg-[#F9FAFB]">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1F2937] text-white text-sm font-medium hover:bg-[#374151] transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download Sketch Plan (PDF)
+                        </a>
+                      </div>
+                    </object>
+                  </div>
+                )
+              }
+
+              return (
+                <figure
+                  key={photoId}
+                  data-lightbox-src={url}
+                  data-lightbox-caption="Sketch Plan"
+                  className="overflow-hidden rounded-lg border border-[#E5E7EB] shadow-sm cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="View sketch plan"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt="Sketch Plan"
+                    className="w-full object-contain"
+                    loading="lazy"
+                  />
+                </figure>
+              )
+            })}
+          </div>
+        </section>
       )
+    }
 
     default:
       return (
@@ -450,6 +533,7 @@ export default async function PublicReportPage({
   const surveyDataRecord = survey.survey_data as Record<string, unknown> | null
   const photoUrls = resolvePhotoUrls(supabase, photoIds, surveyDataRecord)
   const photoCaptions = resolvePhotoCaptions(photoIds, surveyDataRecord)
+  const photoMimeTypes = resolvePhotoMimeTypes(photoIds, surveyDataRecord)
 
   // Split cover from body sections
   const coverSection = sections.find((s) => s.key === 'cover')
@@ -483,7 +567,7 @@ export default async function PublicReportPage({
       <main>
         <div className="mx-auto max-w-[800px] px-4 sm:px-6">
           {contentSections.map((section) =>
-            renderSection(section, photoUrls, photoCaptions)
+            renderSection(section, photoUrls, photoCaptions, photoMimeTypes)
           )}
         </div>
       </main>
