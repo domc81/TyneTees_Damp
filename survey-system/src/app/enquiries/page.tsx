@@ -1287,17 +1287,6 @@ export default function EnquiriesPage() {
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [board])
 
-  // Distinct survey types present in the loaded data
-  const presentSurveyTypes = useMemo(() => {
-    const types = new Set<SurveyType>()
-    for (const enquiries of Object.values(board)) {
-      for (const enq of enquiries) {
-        types.add(enq.survey_type)
-      }
-    }
-    return Array.from(types).sort()
-  }, [board])
-
   // Filtered view of the board — used for rendering (counts + cards)
   const filteredBoard = useMemo(() => {
     const result: Record<string, Enquiry[]> = {}
@@ -1671,7 +1660,7 @@ export default function EnquiriesPage() {
                   className="input-field text-sm min-w-[130px]"
                 >
                   <option value="all">All types</option>
-                  {presentSurveyTypes.map((type) => (
+                  {(Object.keys(SURVEY_TYPE_LABELS) as SurveyType[]).map((type) => (
                     <option key={type} value={type}>
                       {SURVEY_TYPE_LABELS[type]}
                     </option>
