@@ -68,14 +68,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<EnquiryStatus, { label: string; color: string }> = {
-  new:       { label: 'New',       color: '#3B82F6' },
-  assigned:  { label: 'Assigned',  color: '#8B5CF6' },
-  surveyed:  { label: 'Surveyed',  color: '#14B8A6' },
-  quoted:    { label: 'Quoted',    color: '#F59E0B' },
-  accepted:  { label: 'Accepted',  color: '#22C55E' },
-  declined:  { label: 'Declined',  color: '#EF4444' },
-  on_hold:   { label: 'On Hold',   color: '#6B7280' },
-  completed: { label: 'Completed', color: '#10B981' },
+  new:          { label: 'New',          color: '#3B82F6' },
+  assigned:     { label: 'Assigned',     color: '#8B5CF6' },
+  surveyed:     { label: 'Surveyed',     color: '#14B8A6' },
+  quoted:       { label: 'Quoted',       color: '#F59E0B' },
+  accepted:     { label: 'Accepted',     color: '#22C55E' },
+  declined:     { label: 'Declined',     color: '#EF4444' },
+  on_hold:      { label: 'On Hold',      color: '#6B7280' },
+  completed:    { label: 'Completed',    color: '#10B981' },
+  handed_over:  { label: 'Handed Over',  color: '#6366F1' },
 }
 
 const PRIORITY_CONFIG: Record<EnquiryPriority, { label: string; color: string; bgClass: string }> = {
@@ -129,7 +130,7 @@ const SOURCE_OPTIONS = [
 ]
 
 const ALL_STATUSES: EnquiryStatus[] = [
-  'new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'on_hold', 'completed',
+  'new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'on_hold', 'completed', 'handed_over',
 ]
 
 const ALL_PRIORITIES: EnquiryPriority[] = ['low', 'medium', 'high', 'urgent']
@@ -2554,7 +2555,7 @@ export default function EnquiryDrawer({
                         </div>
                       )}
 
-                      {/* Won workflow: CF export + complete */}
+                      {/* Won workflow: handover pack + complete + hand over */}
                       {enquiry.won_at && (
                         <div className="mt-3 pt-3 border-t border-emerald-500/10 space-y-2">
                           <p className="text-xs text-emerald-300/60">
@@ -2563,13 +2564,13 @@ export default function EnquiryDrawer({
 
                           {linkedSurveys.length > 0 && (
                             <a
-                              href={`/survey/${linkedSurveys[0].id}/costing`}
+                              href={`/survey/${linkedSurveys[0].id}/handover`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 w-full justify-center"
+                              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 w-full justify-center border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
                             >
                               <ExternalLink className="w-3 h-3" />
-                              Go to Costing &amp; Export CF
+                              Open Handover Pack
                             </a>
                           )}
 
@@ -2579,15 +2580,33 @@ export default function EnquiryDrawer({
                             </p>
                           )}
 
-                          <button
-                            onClick={handleMarkCompleted}
-                            className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-                          >
-                            Mark as Completed
-                          </button>
-                          {!enquiry.cf_exported_at && (
-                            <p className="text-[10px] text-amber-300/60 leading-tight">
-                              CF not yet exported — you can still complete, but consider exporting first.
+                          {enquiry.status !== 'completed' && enquiry.status !== 'handed_over' && (
+                            <button
+                              onClick={handleMarkCompleted}
+                              className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                            >
+                              Mark as Completed
+                            </button>
+                          )}
+
+                          {enquiry.status === 'completed' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const { markEnquiryHandedOver } = await import('@/lib/supabase-data')
+                                  await markEnquiryHandedOver(enquiry.id, null)
+                                  onEnquiryUpdated?.()
+                                } catch { /* handled by the function */ }
+                              }}
+                              className="btn-secondary text-xs px-3 py-1.5 w-full border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
+                            >
+                              Mark as Handed Over
+                            </button>
+                          )}
+
+                          {enquiry.status === 'handed_over' && (
+                            <p className="text-xs text-indigo-300/60 text-center">
+                              Handed over to Contractor Foreman
                             </p>
                           )}
                         </div>

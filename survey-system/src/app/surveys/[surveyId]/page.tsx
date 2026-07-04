@@ -29,6 +29,7 @@ import {
   CalendarClock,
   X,
   Loader2,
+  PackageCheck,
 } from 'lucide-react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
@@ -704,6 +705,13 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                     >
                       <HardHat className="w-5 h-5" />
                       Installer Info
+                    </Link>
+                    <Link
+                      href={`/survey/${survey.id}/handover`}
+                      className="btn-secondary flex items-center gap-2 px-6 py-3 text-base border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
+                    >
+                      <PackageCheck className="w-5 h-5" />
+                      Handover Pack
                     </Link>
                   </>
                 )}

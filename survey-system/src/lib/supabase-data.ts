@@ -749,10 +749,11 @@ const ENQUIRY_STATUS_ORDER: Record<string, number> = {
   accepted: 4,
   declined: 4,
   completed: 5,
+  handed_over: 6,
 }
 
 /** Statuses that should never be overwritten by auto-transitions. */
-const TERMINAL_STATUSES = new Set<string>(['declined', 'completed'])
+const TERMINAL_STATUSES = new Set<string>(['declined', 'completed', 'handed_over'])
 
 /**
  * Determine whether an automatic status transition should proceed.
@@ -871,6 +872,28 @@ export async function markEnquiryCompleted(
   }
 
   await updateEnquiryStatus(enquiryId, 'completed', userId)
+}
+
+/** Transition an enquiry to handed_over (terminal). Requires completed status. */
+export async function markEnquiryHandedOver(
+  enquiryId: string,
+  userId: string | null
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { data: enquiry } = await supabase
+    .from('enquiries')
+    .select('status')
+    .eq('id', enquiryId)
+    .single()
+
+  if (!enquiry || enquiry.status !== 'completed') {
+    console.error('markEnquiryHandedOver: enquiry must be completed first')
+    return
+  }
+
+  await updateEnquiryStatus(enquiryId, 'handed_over', userId)
 }
 
 /**
@@ -1055,7 +1078,7 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
   const { data, error } = await supabase
     .from('enquiries')
     .select('status, estimated_value, status_changed_at, won_at')
-    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'completed'])
+    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'completed', 'handed_over'])
 
   if (error) {
     console.error('Error fetching pipeline stats:', error)

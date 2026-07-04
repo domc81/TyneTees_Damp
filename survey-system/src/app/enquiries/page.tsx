@@ -67,7 +67,8 @@ const COLUMNS: ColumnDef[] = [
   { status: 'accepted',  label: 'Accepted',  color: '#22C55E' },
   { status: 'declined',  label: 'Declined',  color: '#EF4444' },
   { status: 'on_hold',   label: 'On Hold',   color: '#6B7280' },
-  { status: 'completed', label: 'Completed', color: '#64748B' },
+  { status: 'completed',    label: 'Completed',    color: '#64748B' },
+  { status: 'handed_over',  label: 'Handed Over',  color: '#6366F1' },
 ]
 
 const ACTIVE_STATUSES = new Set(['new', 'assigned', 'surveyed', 'quoted', 'accepted'])

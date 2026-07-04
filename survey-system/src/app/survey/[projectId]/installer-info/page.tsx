@@ -631,16 +631,16 @@ export default function InstallerInfoPage({ params }: { params: { projectId: str
           {/* ── General Notes ── */}
           <div className="glass-card">
             <div className="px-6 py-4 border-b border-white/10">
-              <h3 className="font-semibold text-white">General Notes</h3>
+              <h3 className="font-semibold text-white">Special Instructions for Workmen</h3>
               <p className="text-sm text-white/50">
-                Any additional information for the installation team
+                Instructions, warnings, and notes for the install crew
               </p>
             </div>
             <div className="p-6">
               <textarea
                 value={notes}
                 onChange={e => handleNotesChange(e.target.value)}
-                placeholder="General notes for the installer..."
+                placeholder="Special instructions for the workmen..."
                 disabled={!canEdit}
                 rows={4}
                 className="input-field w-full resize-y"

@@ -295,9 +295,9 @@ export async function POST(
         // Forward-only status ordering (duplicated from supabase-data.ts to avoid
         // importing browser-only module into server context)
         const STATUS_ORDER: Record<string, number> = {
-          new: 0, assigned: 1, surveyed: 2, quoted: 3, accepted: 4, declined: 4, completed: 5,
+          new: 0, assigned: 1, surveyed: 2, quoted: 3, accepted: 4, declined: 4, completed: 5, handed_over: 6,
         }
-        const TERMINAL = new Set(['accepted', 'declined', 'completed'])
+        const TERMINAL = new Set(['accepted', 'declined', 'completed', 'handed_over'])
 
         const { data: enquiry } = await db
           .from('enquiries')

@@ -18,6 +18,7 @@ export type EnquiryStatus =
   | 'declined'
   | 'on_hold'
   | 'completed'
+  | 'handed_over'
 
 export type EnquiryPriority = 'low' | 'medium' | 'high' | 'urgent'
 
