@@ -22,6 +22,7 @@ import { AboutUsSection } from '@/components/report/AboutUsSection'
 import { SurveyContextSection } from '@/components/report/SurveyContextSection'
 import { PropertySection } from '@/components/report/PropertySection'
 import { ExecutiveSummarySection } from '@/components/report/ExecutiveSummarySection'
+import { ReportGuideSection } from '@/components/report/ReportGuideSection'
 import { ExternalInspectionSection } from '@/components/report/ExternalInspectionSection'
 import { TextSection } from '@/components/report/TextSection'
 import { RoomFindingsSection } from '@/components/report/RoomFindingsSection'
@@ -299,7 +300,12 @@ function renderSection(
       )
 
     case 'executive_summary':
-      return <ExecutiveSummarySection key={section.key} section={section} />
+      return (
+        <div key={section.key}>
+          <ExecutiveSummarySection section={section} />
+          <ReportGuideSection />
+        </div>
+      )
 
     case 'external_inspection':
       return (

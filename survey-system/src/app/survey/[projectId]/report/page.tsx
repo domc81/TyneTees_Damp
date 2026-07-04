@@ -42,6 +42,7 @@ import {
   updateReportStatus,
 } from '@/lib/report-data'
 import { publishReport, unpublishReport } from '@/lib/report-publish'
+import { validateReportCompleteness, ValidationWarning } from '@/lib/report-validation'
 import { getPhotoUrl } from '@/lib/survey-photo-service'
 import { serializeWrite } from '@/lib/write-queue'
 import type {
@@ -562,6 +563,50 @@ export default function ReportEditorPage() {
           </div>
         </div>
       </header>
+
+      {/* Completeness Validation Panel */}
+      {report.status !== 'published' && (() => {
+        const warnings: { message: string; severity: 'critical' | 'warning' }[] = []
+        const hasSketch = report.sections.some(s => s.key === 'sketch_plan' && s.photos?.length > 0)
+        const hasFrontPhoto = photos.some(p => p.step === 'site_details' && (p.category === 'property_front' || p.category === 'building_exterior' || p.category === 'street_view'))
+        const roomSections = report.sections.find(s => s.key === 'room_findings')?.sub_sections || []
+
+        if (!hasFrontPhoto) warnings.push({ message: 'Front elevation photo missing', severity: 'warning' })
+        if (!hasSketch) warnings.push({ message: 'No sketch plan uploaded', severity: 'warning' })
+        if (roomSections.length === 0) warnings.push({ message: 'No room findings in report', severity: 'critical' })
+
+        // Check each room has urgency set
+        for (const room of roomSections) {
+          if (!room.data?.urgency) {
+            warnings.push({ message: `${room.data?.room_name || room.title}: urgency not set`, severity: 'warning' })
+          }
+        }
+
+        if (warnings.length === 0) return null
+        const criticalCount = warnings.filter(w => w.severity === 'critical').length
+
+        return (
+          <div className="max-w-7xl mx-auto px-4 lg:px-8 mb-4">
+            <div className={`rounded-xl p-4 border ${criticalCount > 0 ? 'bg-red-500/10 border-red-400/30' : 'bg-amber-500/10 border-amber-400/30'}`}>
+              <div className="flex items-start gap-3">
+                <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${criticalCount > 0 ? 'text-red-400' : 'text-amber-400'}`} />
+                <div>
+                  <h4 className="text-sm font-semibold text-white mb-2">
+                    Completeness Check — {warnings.length} item{warnings.length !== 1 ? 's' : ''} to review
+                  </h4>
+                  <ul className="space-y-1">
+                    {warnings.map((w, i) => (
+                      <li key={i} className={`text-xs ${w.severity === 'critical' ? 'text-red-300' : 'text-amber-300'}`}>
+                        • {w.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="flex gap-6">

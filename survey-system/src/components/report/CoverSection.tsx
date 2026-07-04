@@ -1,6 +1,6 @@
 // =============================================================================
-// CoverSection — hero area with report title, client details, survey details
-// Clean and formal — no background image, clear visual hierarchy
+// CoverSection — Hero area with navy gradient, Tyne Bridge watermark,
+// report title, client details card overlay
 // =============================================================================
 
 import type { ReportSection } from '@/types/survey-report.types'
@@ -24,6 +24,18 @@ interface CoverSectionProps {
   }
 }
 
+function TyneBridgeSVG() {
+  return (
+    <svg viewBox="0 0 700 260" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <path d="M50 190H650" stroke="white" strokeWidth="18" strokeLinecap="round"/>
+      <path d="M95 182C160 76 250 36 350 36C450 36 540 76 605 182" stroke="white" strokeWidth="18" strokeLinecap="round"/>
+      <path d="M155 185V128M220 185V88M285 185V61M350 185V50M415 185V61M480 185V88M545 185V128" stroke="white" strokeWidth="12" strokeLinecap="round"/>
+      <path d="M85 207H615" stroke="white" strokeWidth="9" strokeLinecap="round"/>
+      <path d="M120 212L72 246M580 212L628 246" stroke="white" strokeWidth="10" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 export function CoverSection({ section, surveyType, company }: CoverSectionProps) {
   const data = section.data || {}
   const reportTitle =
@@ -34,80 +46,88 @@ export function CoverSection({ section, surveyType, company }: CoverSectionProps
   const temp = data.temperature_c as string | number | undefined
 
   return (
-    <div className="bg-white border-b border-[#E5E7EB]">
-      {/* Blue accent stripe */}
-      <div className="h-1.5 w-full bg-[#1E40AF]" />
+    <div className="relative overflow-hidden bg-gradient-to-br from-[#09283f] via-[#103a58] to-[#125a71]">
+      {/* Tyne Bridge watermark */}
+      <div className="absolute right-[-60px] bottom-[-18px] w-[56%] max-w-[560px] opacity-[0.12] pointer-events-none">
+        <TyneBridgeSVG />
+      </div>
 
-      <div className="mx-auto max-w-[800px] px-6 py-12">
-        {/* Report title block */}
-        <div className="mb-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#2563EB] mb-2">
-            Survey Report
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1F2937] leading-tight">
-            {reportTitle}
-          </h1>
-        </div>
+      {/* Content */}
+      <div className="relative z-10 mx-auto max-w-[800px] px-6 py-12 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end">
+          {/* Left — branding + title */}
+          <div>
+            {/* Company brand */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 120 76" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10">
+                  <path d="M10 55H110" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+                  <path d="M18 52C29 25 44 13 60 13C76 13 91 25 102 52" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+                  <path d="M25 53V40M37 53V29M49 53V22M60 53V19M71 53V22M83 53V29M95 53V40" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
+                  <path d="M20 62H100" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg leading-tight">{company.name}</p>
+                <p className="text-white/60 text-xs mt-0.5">Specialist damp, timber &amp; condensation surveys</p>
+              </div>
+            </div>
 
-        {/* Two-column detail cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Client & site details */}
-          <div className="bg-[#F3F4F6] rounded-xl p-5 border border-[#E5E7EB]">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#6B7280] mb-3">
-              Client Name &amp; Site Details
-            </p>
-            {data.client_name && (
-              <p className="text-sm font-semibold text-[#1F2937] mb-1">
-                {data.client_name as string}
-              </p>
-            )}
-            {data.site_address && (
-              <p className="text-sm text-[#374151]">{data.site_address as string}</p>
-            )}
-            {data.site_address_line2 && (
-              <p className="text-sm text-[#374151]">{data.site_address_line2 as string}</p>
-            )}
-            {data.site_city && (
-              <p className="text-sm text-[#374151]">
-                {data.site_city as string}
-                {data.site_county ? `, ${data.site_county as string}` : ''}
-              </p>
-            )}
-            {data.site_postcode && (
-              <p className="text-sm font-medium text-[#374151]">{data.site_postcode as string}</p>
-            )}
+            {/* Report type badge */}
+            <span className="inline-flex px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold uppercase tracking-widest text-white/90 mb-4">
+              Survey Report
+            </span>
+
+            {/* Title */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+              {reportTitle}
+            </h1>
           </div>
 
-          {/* Survey details */}
-          <div className="bg-[#F3F4F6] rounded-xl p-5 border border-[#E5E7EB]">
+          {/* Right — client & survey details card */}
+          <div className="bg-white/[0.97] rounded-2xl p-5 shadow-lg border border-white/20">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#6B7280] mb-3">
-              Survey Details
+              Client &amp; Survey Details
             </p>
-            <dl className="space-y-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {data.client_name && (
+                <div className="border-t border-[#E5E7EB] pt-2">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#9CA3AF]">Client</span>
+                  <p className="text-xs font-semibold text-[#1F2937] mt-0.5">{data.client_name as string}</p>
+                </div>
+              )}
               {inspectionDate && (
-                <div>
-                  <dt className="text-xs text-[#9CA3AF] mb-0.5">Inspection Date</dt>
-                  <dd className="text-sm font-medium text-[#1F2937]">
-                    {formatDate(inspectionDate)}
-                  </dd>
+                <div className="border-t border-[#E5E7EB] pt-2">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#9CA3AF]">Inspection Date</span>
+                  <p className="text-xs font-medium text-[#1F2937] mt-0.5">{formatDate(inspectionDate)}</p>
+                </div>
+              )}
+              {data.site_address && (
+                <div className="border-t border-[#E5E7EB] pt-2 col-span-2">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#9CA3AF]">Property</span>
+                  <p className="text-xs text-[#374151] mt-0.5">
+                    {data.site_address as string}
+                    {data.site_city ? `, ${data.site_city as string}` : ''}
+                    {data.site_postcode ? ` ${data.site_postcode as string}` : ''}
+                  </p>
                 </div>
               )}
               {weather && (
-                <div>
-                  <dt className="text-xs text-[#9CA3AF] mb-0.5">Weather Conditions</dt>
-                  <dd className="text-sm text-[#374151]">
+                <div className="border-t border-[#E5E7EB] pt-2">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#9CA3AF]">Weather</span>
+                  <p className="text-xs text-[#374151] mt-0.5">
                     {weather.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                     {temp ? `, ${temp}°C` : ''}
-                  </dd>
+                  </p>
                 </div>
               )}
-              <div>
-                <dt className="text-xs text-[#9CA3AF] mb-0.5">Prepared By</dt>
-                <dd className="text-sm text-[#374151]">
+              <div className="border-t border-[#E5E7EB] pt-2">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[#9CA3AF]">Prepared By</span>
+                <p className="text-xs text-[#374151] mt-0.5">
                   {(data.prepared_by as string | undefined) || company.name}
-                </dd>
+                </p>
               </div>
-            </dl>
+            </div>
           </div>
         </div>
       </div>

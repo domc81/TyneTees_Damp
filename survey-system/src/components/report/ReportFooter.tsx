@@ -1,5 +1,6 @@
 // =============================================================================
-// ReportFooter — confidentiality notice + company contact + PDF download button
+// ReportFooter — Professional three-column footer with regional presence,
+// company details, and report reference
 // =============================================================================
 
 import { formatDate } from './utils'
@@ -23,87 +24,82 @@ export function ReportFooter({
   generatedAt,
 }: ReportFooterProps) {
   return (
-    <footer className="mt-16 border-t border-[#E5E7EB] bg-[#F9FAFB]">
+    <footer className="mt-16 bg-[#09283f] text-white">
       {/* Main footer content */}
       <div className="mx-auto max-w-[800px] px-6 py-10">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          {/* Confidentiality notice */}
+          {/* Registered Office */}
           <div>
-            <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide mb-2">
-              Confidentiality
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#7fb4cc] mb-3">
+              Registered Office
             </p>
-            <p className="text-xs text-[#6B7280] leading-relaxed">
-              This report is confidential and has been prepared exclusively for{' '}
-              <span className="font-medium text-[#374151]">{customerName || 'the client'}</span>.
-              It may not be reproduced or disclosed without prior written consent.
+            <p className="text-xs text-[#d8e7ef] leading-relaxed">
+              The Town Hall Conference<br />
+              &amp; Business Centre<br />
+              High Street East<br />
+              Wallsend, NE28 7AT
+            </p>
+            <p className="text-xs text-[#7fb4cc] mt-2">
+              Company No. 09747364
             </p>
           </div>
 
-          {/* Company contact */}
+          {/* Regional Contact */}
           <div>
-            <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide mb-2">
-              Contact Us
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#7fb4cc] mb-3">
+              Regional Contact
             </p>
-            <p className="text-xs text-[#6B7280] leading-relaxed">
-              {company.name}
-            </p>
-            <p className="text-xs text-[#6B7280]">{company.phone}</p>
-            <p className="text-xs text-[#6B7280]">{company.email}</p>
-            <p className="text-xs text-[#6B7280]">{company.website}</p>
+            <div className="space-y-1.5 text-xs text-[#d8e7ef]">
+              <p>Tyneside: 0191 814 1613</p>
+              <p>Wearside: 0191 500 1097</p>
+              <p>Northumberland: 01434 303 725</p>
+              <p>Durham: 0191 300 3625</p>
+            </div>
           </div>
 
-          {/* Report reference + download */}
+          {/* Report Details */}
           <div>
-            <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide mb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#7fb4cc] mb-3">
               Report Details
             </p>
-            <p className="text-xs text-[#6B7280] mb-1">
+            <p className="text-xs text-[#d8e7ef] mb-1">
               Reference:{' '}
-              <span className="font-mono text-[#374151]">
+              <span className="font-mono text-white">
                 {reportId.slice(0, 8).toUpperCase()}
               </span>
             </p>
             {generatedAt && (
-              <p className="text-xs text-[#6B7280] mb-3">
+              <p className="text-xs text-[#d8e7ef] mb-1">
                 Generated: {formatDate(generatedAt)}
               </p>
             )}
-
-            {/* Download PDF button — placeholder (no functionality yet) */}
-            <button
-              type="button"
-              disabled
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#2563EB] rounded opacity-60 cursor-not-allowed print:hidden"
-              title="PDF download coming soon"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3.5 w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              Download PDF
-            </button>
+            <p className="text-xs text-[#7fb4cc] mt-3">
+              {company.email}
+            </p>
+            <p className="text-xs text-[#7fb4cc]">
+              {company.website}
+            </p>
           </div>
+        </div>
+
+        {/* Confidentiality */}
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <p className="text-[11px] text-[#7fb4cc] leading-relaxed">
+            This report is confidential and has been prepared exclusively for{' '}
+            <span className="text-white font-medium">{customerName || 'the client'}</span>.
+            It may not be reproduced or disclosed to any third party without prior written consent from {company.name}.
+          </p>
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-[#E5E7EB] py-3">
+      {/* Bottom copyright bar */}
+      <div className="border-t border-white/10 py-3">
         <div className="mx-auto max-w-[800px] px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-[#9CA3AF]">
+          <p className="text-[11px] text-[#7fb4cc]">
             © {new Date().getFullYear()} {company.name}. All rights reserved.
           </p>
-          <p className="text-xs text-[#9CA3AF]">
-            {company.website}
+          <p className="text-[11px] text-[#7fb4cc]">
+            South Shields · Blyth · Corbridge · Whitley Bay · North Shields · Sunderland · Durham
           </p>
         </div>
       </div>
