@@ -740,6 +740,7 @@ export default function EnquiryDrawer({
     priority: 'medium' as EnquiryPriority,
   })
   const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [approveSending, setApproveSending] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
   async function handleCreateSubmit() {
@@ -1338,6 +1339,30 @@ export default function EnquiryDrawer({
     }
   }
 
+  // ── Approve & Send handler ──────────────────────────────────────
+  async function handleApproveAndSend() {
+    if (!enquiry || linkedSurveys.length === 0) return
+    setApproveSending(true)
+    try {
+      const res = await fetch(`/api/surveys/${linkedSurveys[0].id}/approve-and-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to send report and quotation')
+        return
+      }
+      onBoardSync({ ...enquiry, status: 'sent' }, enquiry.status)
+      toast.success(`Report and quotation sent to ${data.sentTo}`)
+    } catch (err) {
+      console.error('Approve & Send failed:', err)
+      toast.error('Failed to send report and quotation')
+    } finally {
+      setApproveSending(false)
+    }
+  }
+
   // Derived payment data
   const surveyFeePayment = payments.find(p => p.payment_type === 'survey_fee')
   const depositPayment = payments.find(p => p.payment_type === 'deposit')
@@ -1891,17 +1916,31 @@ export default function EnquiryDrawer({
                   <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Next</span>
                 </div>
-                <p className="text-sm text-white/70 mb-3">Review survey, then approve and send report &amp; quotation to customer</p>
+                <p className="text-sm text-white/70 mb-3">Review the report, then send the report &amp; quotation to the customer</p>
                 {linkedSurveys.length > 0 && (
-                  <a
-                    href={`/survey/${linkedSurveys[0].id}/report`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Review &amp; Approve
-                  </a>
+                  <div className="space-y-2">
+                    <a
+                      href={`/survey/${linkedSurveys[0].id}/report`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary w-full py-2 text-sm flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Review Report
+                    </a>
+                    <button
+                      onClick={handleApproveAndSend}
+                      disabled={approveSending}
+                      className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                    >
+                      {approveSending ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                      ) : (
+                        <><Send className="w-4 h-4" /> Approve &amp; Send</>
+                      )}
+                    </button>
+                    <p className="text-[11px] text-white/30 text-center">Sends report and quotation to customer via email</p>
+                  </div>
                 )}
               </div>
             )}
