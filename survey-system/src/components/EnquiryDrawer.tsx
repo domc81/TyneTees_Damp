@@ -943,6 +943,16 @@ export default function EnquiryDrawer({
     }
   }, [activeTab, linkedLoaded, loadLinked])
 
+  // ── Eagerly load linked data for workflow panel ──────────────
+  // The workflow panel (always visible, outside tabs) needs payments,
+  // linkedBooking, and linkedSurveys. Trigger loadLinked on drawer
+  // open so this data is available without clicking the Linked tab.
+  useEffect(() => {
+    if (enquiry && !linkedLoaded && !linkedLoading) {
+      loadLinked()
+    }
+  }, [enquiry?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Handlers ──────────────────────────────────────────────────
 
   function handleClose() {
@@ -1743,6 +1753,192 @@ export default function EnquiryDrawer({
           </div>
         )}
 
+        {/* ─────────────────── Workflow: Next Action Panel ─────────────────── */}
+        {!showConvertFlow && (
+          <div className="flex-shrink-0 border-b border-white/10 px-4 lg:px-5 py-3">
+            {/* NEW — Book a Survey */}
+            {enquiry.status === 'new' && (
+              <div className="rounded-xl border border-blue-400/20 bg-blue-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Next</span>
+                </div>
+                <p className="text-sm text-white/70 mb-3">Book a survey for this lead</p>
+                <button
+                  onClick={() => startConvertFlow()}
+                  className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Book Survey
+                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => onRequestStatusChange(enquiry, 'on_hold')}
+                    className="btn-secondary flex-1 py-1.5 text-xs"
+                  >
+                    Put On Hold
+                  </button>
+                  <button
+                    onClick={() => onRequestStatusChange(enquiry, 'lost')}
+                    className="btn-secondary flex-1 py-1.5 text-xs"
+                  >
+                    Mark Lost
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* AWAITING PAYMENT — Confirm Payment */}
+            {enquiry.status === 'awaiting_payment' && (
+              <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Next</span>
+                </div>
+                <p className="text-sm text-white/70 mb-1">Confirm survey fee payment</p>
+                {linkedBooking && (
+                  <div className="text-xs text-white/40 mb-3 space-y-0.5">
+                    <p>{new Date(linkedBooking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · {linkedBooking.start_time?.slice(0,5)} – {linkedBooking.end_time?.slice(0,5)}</p>
+                    {linkedBooking.surveyor_name && <p>Surveyor: {linkedBooking.surveyor_name}</p>}
+                  </div>
+                )}
+                {payments.filter(p => p.payment_type === 'survey_fee' && p.status === 'pending').length > 0 ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab('linked')
+                        if (!linkedLoaded) loadLinked()
+                      }}
+                      className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Mark as Paid
+                    </button>
+                    <p className="text-[11px] text-white/30 text-center">Opens payment form below</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/40">Loading payment details...</p>
+                )}
+              </div>
+            )}
+
+            {/* BOOKED — Survey Scheduled */}
+            {enquiry.status === 'booked' && (
+              <div className="rounded-xl border border-purple-400/20 bg-purple-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Survey Scheduled</span>
+                </div>
+                {linkedBooking ? (
+                  <div className="space-y-1">
+                    <p className="text-sm text-white/80 font-medium">
+                      {new Date(linkedBooking.booking_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                    <p className="text-xs text-white/50">{linkedBooking.start_time?.slice(0,5)} – {linkedBooking.end_time?.slice(0,5)}</p>
+                    {linkedBooking.surveyor_name && (
+                      <p className="text-xs text-white/50">Surveyor: {linkedBooking.surveyor_name}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/50">Waiting for survey day</p>
+                )}
+              </div>
+            )}
+
+            {/* SURVEY COMPLETE — Review & Send */}
+            {enquiry.status === 'survey_complete' && (
+              <div className="rounded-xl border border-teal-400/20 bg-teal-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Next</span>
+                </div>
+                <p className="text-sm text-white/70 mb-3">Review survey, then approve and send report &amp; quotation to customer</p>
+                {linkedSurveys.length > 0 && (
+                  <a
+                    href={`/survey/${linkedSurveys[0].id}/report`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Review &amp; Approve
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* SENT — Awaiting Customer Response */}
+            {enquiry.status === 'sent' && (
+              <div className="rounded-xl border border-orange-400/20 bg-orange-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400">Awaiting Response</span>
+                </div>
+                <p className="text-sm text-white/70 mb-1">Report &amp; quotation sent to customer</p>
+                <p className="text-xs text-white/30">Status updates automatically when the customer accepts or declines</p>
+              </div>
+            )}
+
+            {/* WON — Complete Handover */}
+            {enquiry.status === 'won' && (
+              <div className="rounded-xl border border-green-400/20 bg-green-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Next</span>
+                </div>
+                <p className="text-sm text-white/70 mb-3">Customer accepted — complete the handover</p>
+                {linkedSurveys.length > 0 && (
+                  <a
+                    href={`/survey/${linkedSurveys[0].id}/handover`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    Open Handover Pack
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* CLOSED — Done */}
+            {enquiry.status === 'closed' && (
+              <div className="rounded-xl border border-indigo-400/20 bg-indigo-500/5 p-3.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm font-medium text-indigo-300">Handover complete</span>
+                </div>
+              </div>
+            )}
+
+            {/* LOST */}
+            {enquiry.status === 'lost' && (
+              <div className="rounded-xl border border-red-400/20 bg-red-500/5 p-3.5">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-sm font-medium text-red-300">Lead lost</span>
+                </div>
+                {enquiry.loss_reason && (
+                  <p className="text-xs text-white/40 mt-1">{enquiry.loss_reason}</p>
+                )}
+              </div>
+            )}
+
+            {/* ON HOLD */}
+            {enquiry.status === 'on_hold' && (
+              <div className="rounded-xl border border-gray-400/20 bg-gray-500/5 p-3.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <PauseCircle className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-300">On hold</span>
+                </div>
+                {currentHoldTemplate?.display_label && (
+                  <p className="text-xs text-white/40">{currentHoldTemplate.display_label}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─────────────────── Tab Bar (sticky) ─────────────────── */}
         {!showConvertFlow && (
           <div className="flex-shrink-0 border-b border-white/10 px-4 lg:px-5">
@@ -1751,13 +1947,13 @@ export default function EnquiryDrawer({
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${
+                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab
                       ? 'text-white border-blue-500'
                       : 'text-white/40 border-transparent hover:text-white/60'
                   }`}
                 >
-                  {tab}
+                  {tab === 'details' ? 'Info' : tab === 'activity' ? 'Timeline' : 'Records'}
                 </button>
               ))}
             </div>
