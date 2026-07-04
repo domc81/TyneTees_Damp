@@ -1167,7 +1167,7 @@ function LostModal({
 // ---------------------------------------------------------------------------
 
 export default function EnquiriesPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   // Board data: keyed by status string
   const [board, setBoard] = useState<Record<string, Enquiry[]>>({})
@@ -1799,7 +1799,7 @@ export default function EnquiriesPage() {
             }}
             onRequestStatusChange={handleDrawerStatusChange}
             holdTemplates={holdTemplates}
-            currentUserId={user?.id ?? null}
+            currentUserId={profile?.id ?? null}
             initialConvertFlow={drawerConvertFlow}
           />
         )}
@@ -1813,7 +1813,7 @@ export default function EnquiriesPage() {
             onBoardSync={handleBoardSync}
             onRequestStatusChange={handleDrawerStatusChange}
             holdTemplates={holdTemplates}
-            currentUserId={user?.id ?? null}
+            currentUserId={profile?.id ?? null}
             onCreated={(newEnquiry) => {
               // Add to the board in the 'new' column
               setBoard(prev => ({
