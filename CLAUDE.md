@@ -103,10 +103,9 @@ TyneTees_Damp/
 │   │   │   │   ├── rates/          # Pricing config (reads/writes pricing_config table)
 │   │   │   │   ├── team/           # Team/surveyor management (profiles)
 │   │   │   │   └── workload/       # Surveyor workload dashboard (capacity view)
-│   │   │   ├── api/                # API routes (25 route files — see API Routes section)
+│   │   │   ├── api/                # API routes (27 route files — see API Routes section)
 │   │   │   ├── calendar/           # Booking calendar (FullCalendar)
-│   │   │   ├── customers/          # Customer CRUD (list, [customerId] detail, new)
-│   │   │   ├── enquiries/          # Enquiry pipeline Kanban + new enquiry form (has layout.tsx)
+│   │   │   ├── enquiries/          # Pipeline Kanban + new enquiry form (has layout.tsx)
 │   │   │   ├── materials/          # Materials catalogue view
 │   │   │   ├── pay/[token]/         # Public survey fee payment page (page.tsx + client.tsx)
 │   │   │   ├── q/[token]/          # Public quotation page (page.tsx + client.tsx + CSS)
@@ -117,7 +116,7 @@ TyneTees_Damp/
 │   │   │   │   ├── new/            # New survey creation
 │   │   │   │   └── [projectId]/    # Note: param is [projectId] (historical) — refers to survey ID
 │   │   │   │       ├── costing/    # Auto-calculated costing review
-│   │   │   │       ├── handover/  # CF handover pack (downloads, summary, mark handed over)
+│   │   │   │       ├── handover/  # CF handover pack (downloads, summary, mark closed)
 │   │   │   │       ├── installer-info/ # Installer information/photos
 │   │   │   │       ├── quotation/[quotationId]/ # Quotation view + send
 │   │   │   │       ├── report/     # Report editor (review, inline edit, status workflow)
@@ -128,7 +127,7 @@ TyneTees_Damp/
 │   │   │   ├── change-password/
 │   │   │   └── update-password/
 │   │   ├── components/
-│   │   │   ├── layout.tsx          # Sidebar nav with role-based items + NotificationBell
+│   │   │   ├── layout.tsx          # Sidebar nav with role-based items (Pipeline, Surveys, Calendar, etc.) + NotificationBell
 │   │   │   ├── ProtectedRoute.tsx  # Auth guard (client-side route protection, optional allowedRoles)
 │   │   │   ├── RoleGuard.tsx      # Layout-level role guard (wraps route groups)
 │   │   │   ├── CompanyLogo.tsx     # Dynamic company logo
@@ -146,7 +145,7 @@ TyneTees_Damp/
 │   │   ├── hooks/
 │   │   │   └── useSmartBack.ts     # Smart back navigation
 │   │   ├── middleware.ts           # Supabase SSR session management + token rotation
-│   │   ├── lib/                    # 34 library files (see Lib Files section)
+│   │   ├── lib/                    # 35 library files (see Lib Files section)
 │   │   └── types/
 │   │       ├── database.types.ts    # Canonical DB TypeScript types
 │   │       ├── survey-wizard.types.ts # Wizard data model types
@@ -197,9 +196,9 @@ TyneTees_Damp/
 
 `CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 
-### Lib Files (36 files)
+### Lib Files (35 files)
 
-**Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
+**Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries, including customer queries)
 
 **Pricing:** `pricing-engine.ts` (11 formula types), `pricing-data.ts` (data loading + orchestration), `survey-mapping.ts` (wizard data → pricing inputs), `travel-overhead.ts` (post-engine travel & vehicle overhead)
 
@@ -209,11 +208,9 @@ TyneTees_Damp/
 
 **PDF:** `quotation-pdf-renderer.tsx` (quotation PDF layout via @react-pdf/renderer)
 
-**Email:** `email-service.ts` (Resend sending + communication_log), `email-templates.ts` (HTML templates), `email-config.ts` (config loading from platform_settings)
+**Email:** `email-service.ts` (Resend sending + communication_log), `email-templates.ts` (HTML templates — includes reportAndQuotationEmail, surveyCompletedEmail, quotationAcceptedThankYouEmail, onMyWayEmail), `email-config.ts` (config loading from platform_settings)
 
 **Calendar:** `calendar-data.ts` (booking queries), `calendar-types.ts` (TypeScript types)
-
-**Customer:** `customer-data.ts` (customer-specific queries)
 
 **Company:** `company-profile.ts` (company profile helpers)
 
@@ -239,7 +236,7 @@ TyneTees_Damp/
 
 ## API Routes
 
-26 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
+27 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
 
 | Route | Purpose |
 |---|---|
@@ -267,6 +264,7 @@ TyneTees_Damp/
 | `/api/settings/notifications` | Notification preference CRUD |
 | `/api/settings/notifications/test-email` | Test email delivery |
 | `/api/surveys/[id]/photos-zip` | Download survey photos + sketches as ZIP (handover) |
+| `/api/surveys/[id]/approve-and-send` | Combined approve report + send report & quote email |
 | `/api/surveys/[id]/quotation` | Generate quotation from survey |
 | `/api/transcribe` | Deepgram speech-to-text |
 
@@ -287,7 +285,7 @@ Range: `00000000000000_initial_schema.sql` through `20260704000001_handover_pack
 ### Active Tables (43 tables)
 
 **CRM & Pipeline:**
-- `enquiries` — pipeline records (status, priority, sla, follow_up_date, on_hold_reason, decline_reason, won_at, cf_exported_at)
+- `enquiries` — pipeline records (status: new/awaiting_payment/booked/survey_complete/sent/won/closed/lost/on_hold, priority, sla, follow_up_date, on_hold_reason, decline_reason, won_at, cf_exported_at)
 - `enquiry_activity` — activity/timeline log
 - `on_hold_message_templates` — predefined on-hold message templates
 - `customers` — customer master data
@@ -403,11 +401,11 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 
 ## Enquiry Pipeline
 
-Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted → Completed → Handed Over / Declined / On Hold. Features:
-- Detail drawer with tabs (details, activity, notes)
+Kanban board with drag-and-drop columns: New → Awaiting Payment → Booked → Survey Complete → Sent → Won → Closed / Lost / On Hold. Features:
+- Detail drawer with tabs (details, activity, notes) — customer management integrated into drawer
 - Inline field editing
 - SLA traffic lights and follow-up indicators
-- Auto-status transitions on survey completion and quotation generation
+- Auto-status transitions on survey completion, report/quotation sending, and payment
 - On-hold customer email notifications with template messages
 - Convert-and-book flow (enquiry → customer + survey + provisional booking + survey fee payment)
 - Quick actions (contact shortcuts, follow-up picker)
@@ -443,13 +441,13 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Customer reinstatement responsibility note** appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as electrical standards and asbestos notes.
 - **Provisional bookings** are created by Convert & Book with status `provisional` (awaiting survey fee payment). They auto-confirm when payment is marked paid (via API or calendar modal). Expired provisional bookings are cancelled by the `/api/cron/release-unpaid-bookings` cron route.
 - **Booking status state machine** is enforced in `calendar-data.ts` via `validateStatusTransition()`. Valid transitions: provisional → scheduled/cancelled, scheduled → completed/no_show/cancelled. Completed, no_show, and cancelled are terminal. The calendar UI only shows buttons for valid transitions.
-- **Communication log channels** include system-generated (`email`, `sms`, `in_app`) and manually logged (`phone`, `whatsapp`, `in_person`). Manual entries use status `logged` and are created from the customer detail page. The log is append-only (no UPDATE/DELETE).
-- **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to set enquiry as won). The `payments` table links to enquiry, survey, and optionally quotation.
-- **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded (from handover or costing page). The `completed` status is after `accepted`; `handed_over` is the final terminal status (job exported to Contractor Foreman). Transition: accepted → completed → handed_over.
-- **CF Handover Pack** at `/survey/[projectId]/handover/` is the one-stop page for exporting accepted jobs to Contractor Foreman. Restricted to admin/office roles. Contains 4 download cards (customer CSV, CF estimate CSV, photos ZIP, job summary text), report link with copy button, guarantee summary, and "Mark as Handed Over" button. Quick action "Open Handover Pack" button appears in EnquiryDrawer won workflow section.
+- **Communication log channels** include system-generated (`email`, `sms`, `in_app`) and manually logged (`phone`, `whatsapp`, `in_person`). Manual entries use status `logged` and are created from the pipeline drawer. The log is append-only (no UPDATE/DELETE).
+- **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to move enquiry to won). The `payments` table links to enquiry, survey, and optionally quotation.
+- **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded (from handover or costing page). `closed` is the terminal status (job exported to Contractor Foreman). Transition: won → closed (handover complete).
+- **CF Handover Pack** at `/survey/[projectId]/handover/` is the one-stop page for exporting won jobs to Contractor Foreman. Restricted to admin/office roles. Contains 4 download cards (customer CSV, CF estimate CSV, photos ZIP, job summary text), report link with copy button, guarantee summary, and "Mark as Closed" button. Quick action "Open Handover Pack" button appears in EnquiryDrawer won workflow section.
 - **Guarantee type is derived from survey type** — 25-year for damp/timber/woodworm, 7-year for condensation/mould. No per-survey guarantee field; `deriveGuaranteeType()` in `handover-pack.ts` checks survey_type and survey_tags.
 - **Installer info "Special Instructions for Workmen"** field (renamed from "General Notes") is the `notes` column on `survey_installer_info`. Used in the handover pack job summary text.
-- **Route protection layers:** `RoleGuard` in `admin/layout.tsx` blocks surveyors from all `/admin/*` routes except `/admin/availability` and `/admin/workload`. `RoleGuard` in `enquiries/layout.tsx` blocks surveyors from `/enquiries/*`. `ProtectedRoute` accepts `allowedRoles` prop for page-level checks. API routes check `user_profiles.role` via service-role client for payment, quotation, and admin endpoints.
+- **Route protection layers:** `RoleGuard` in `admin/layout.tsx` blocks surveyors from all `/admin/*` routes except `/admin/availability` and `/admin/workload`. `RoleGuard` in `enquiries/layout.tsx` blocks surveyors from the pipeline (`/enquiries/*`). `ProtectedRoute` accepts `allowedRoles` prop for page-level checks. API routes check `user_profiles.role` via service-role client for payment, quotation, and admin endpoints.
 - **Per-survey write queue** (`src/lib/write-queue.ts`) serializes all writes to `surveys.survey_data` JSONB. Both `survey-photo-service.ts` and `survey-wizard-data.ts` use `serializeWrite(surveyId, fn)` to prevent concurrent read-modify-write races. Photo compression and storage upload still run in parallel — only the metadata append is queued.
 - **Deepgram transcription** retries up to 2 times on 429/503 with exponential backoff (2s, 4s). LLM polish-observation has a 30-second `AbortController` timeout.
 - **Wizard room validation:** Room Inspection step (step 2) requires at least 1 room before the surveyor can proceed. Back navigation and step clicks trigger auto-save (matching forward navigation).
@@ -478,8 +476,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 
 - **Auth:** Login, forgot/change/update password (all with show/hide password toggle), ProtectedRoute (with optional `allowedRoles`), RoleGuard (layout-level), role-based UI and API enforcement (admin/office/surveyor). Note: Supabase Auth SMTP is not configured — password reset emails silently fail; admin must reset passwords via Admin API + `must_change_password` flag.
 - **Dashboard:** Survey stats (Active Surveys, Completed, Won This Month), enquiry pipeline widget, recent activity feed
-- **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (completed/won columns)
-- **Customer Management:** List, create, edit, detail with history and communication log
+- **Pipeline:** Kanban board, drag-drop, detail drawer (with integrated customer management), inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (won/closed columns)
 - **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture with visibility tiers (customer/technician/office), per-finding urgency selector (green/amber/red), proposal quick-select (13 items), limitations quick-select (12 items)
 - **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
@@ -493,7 +490,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Team:** Surveyor/user profile management
 - **Installer Info:** Per-survey installer information and photos
 - **CF CSV Export:** Export logic with test coverage, sets `cf_exported_at` on enquiry
-- **CF Handover Pack:** One-stop handover page at `/survey/[projectId]/handover/` — customer CSV, CF estimate CSV, photos ZIP (JSZip server-side), job summary text with clipboard copy, report link, guarantee derivation, "Mark as Handed Over" action. Quick action button in EnquiryDrawer. New `handed_over` terminal status.
+- **CF Handover Pack:** One-stop handover page at `/survey/[projectId]/handover/` — customer CSV, CF estimate CSV, photos ZIP (JSZip server-side), job summary text with clipboard copy, report link, guarantee derivation, "Mark as Closed" action. Quick action button in EnquiryDrawer. `closed` terminal status.
 - **Workload Dashboard:** Surveyor capacity view at `/admin/workload`
 - **Transcription:** Deepgram speech-to-text for survey observations
 - **Observation Polishing:** LLM cleanup of voice-transcribed notes
