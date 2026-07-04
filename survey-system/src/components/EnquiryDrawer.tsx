@@ -1228,9 +1228,6 @@ export default function EnquiryDrawer({
         // Create customer + survey from enquiry
         const { survey } = await createSurveyFromEnquiry(enquiry.id, currentUserId)
         createdSurvey = { id: survey.id, project_number: survey.project_number }
-        if (enquiry.status === 'new') {
-          onBoardSync({ ...enquiry, status: 'awaiting_payment' }, enquiry.status)
-        }
       }
 
       if (!createdSurvey) throw new Error('Failed to resolve survey')
@@ -1283,6 +1280,12 @@ export default function EnquiryDrawer({
         setFlowError(bookingErr instanceof Error ? bookingErr.message : 'Booking creation failed')
         setLinkedLoaded(false)
         return
+      }
+
+      // Transition enquiry to awaiting_payment in the DB
+      if (enquiry.status === 'new') {
+        await updateEnquiryStatus(enquiry.id, 'awaiting_payment', currentUserId)
+        onBoardSync({ ...enquiry, status: 'awaiting_payment' }, enquiry.status)
       }
 
       setFlowCreatedSurvey(createdSurvey)
@@ -1995,17 +1998,17 @@ export default function EnquiryDrawer({
                       <span className="text-sm text-white/80">{flowSlot.startTime} – {flowSlot.endTime}</span>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={cancelConvertFlow} className="btn-secondary flex-1 text-sm py-2">
-                      Close
-                    </button>
-                    <a
-                      href={`/surveys/${flowCreatedSurvey.id}`}
-                      className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1.5"
-                    >
-                      View Survey <ChevronRight className="w-4 h-4" />
-                    </a>
-                  </div>
+                  <button
+                    onClick={() => {
+                      cancelConvertFlow()
+                      setLinkedLoaded(false)
+                      loadLinked()
+                    }}
+                    className="btn-primary w-full text-sm py-2 flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Continue
+                  </button>
                 </div>
               )}
 
