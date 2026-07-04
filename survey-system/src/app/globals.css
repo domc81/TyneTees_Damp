@@ -521,6 +521,11 @@ input:-webkit-autofill:focus {
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
+  /* Contain scroll chaining — prevents scroll events from bubbling to parent/body on Edge */
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+
   /* Hide scrollbar */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

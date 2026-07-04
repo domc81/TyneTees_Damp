@@ -315,7 +315,7 @@ function KanbanColumn({
       <div
         className={`
           flex-1 rounded-b-xl border border-white/10 border-t-0
-          overflow-y-auto p-2 space-y-2 min-h-[120px]
+          overflow-y-auto overscroll-contain p-2 space-y-2 min-h-[120px]
           transition-colors duration-200
           ${isOver ? 'border-dashed' : ''}
         `}
@@ -1719,9 +1719,8 @@ export default function EnquiriesPage() {
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
               >
-                <div className="hidden lg:flex flex-col flex-1 overflow-hidden">
-                  <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2">
-                    <div className="flex gap-3 h-full min-w-max">
+                <div className="hidden lg:flex flex-1 overflow-x-auto overflow-y-hidden overscroll-contain pb-2">
+                  <div className="flex gap-3 h-full min-w-max">
                       {visibleColumns.map((col, idx) => {
                         const isArchived = col.status === 'declined' || col.status === 'on_hold'
                         const prevCol = visibleColumns[idx - 1]
@@ -1757,7 +1756,6 @@ export default function EnquiriesPage() {
                           </Fragment>
                         )
                       })}
-                    </div>
                   </div>
                 </div>
 
@@ -1770,7 +1768,7 @@ export default function EnquiriesPage() {
               </DndContext>
 
               {/* ── Mobile List View (below lg) (Task C) ───────────────── */}
-              <div className="flex flex-col gap-2 overflow-y-auto pb-4 flex-1 lg:hidden">
+              <div className="flex flex-col gap-2 overflow-y-auto overscroll-contain pb-4 flex-1 lg:hidden">
                 {visibleColumns.map((col) => (
                   <MobileStatusSection
                     key={col.status}

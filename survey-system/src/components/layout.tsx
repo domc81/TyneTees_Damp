@@ -80,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto overscroll-contain">
           {navItems.filter((item) => {
             if (!item.roles) return true
             const userRole = isAdmin ? 'admin' : isOffice ? 'office' : 'surveyor'

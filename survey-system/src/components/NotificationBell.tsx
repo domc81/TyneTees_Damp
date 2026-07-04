@@ -121,6 +121,8 @@ export function NotificationBell() {
   const [isMarkingAll, setIsMarkingAll] = useState(false)
   const [pingBadge, setPingBadge]     = useState(false)
 
+  const [reconnectKey, setReconnectKey] = useState(0)
+
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef   = useRef<HTMLButtonElement>(null)
 
@@ -211,8 +213,8 @@ export function NotificationBell() {
           console.warn('[NotificationBell] Channel lost, retrying in 5s...')
           retryTimeout = setTimeout(() => {
             supabase.removeChannel(channel)
-            // Re-subscribe by forcing effect re-run via unread count refresh
-            getUnreadCount(profile!.id).then(setUnreadCount)
+            // Force effect re-run to re-subscribe
+            setReconnectKey((k) => k + 1)
           }, 5000)
         }
       })
@@ -221,7 +223,7 @@ export function NotificationBell() {
       if (retryTimeout) clearTimeout(retryTimeout)
       supabase.removeChannel(channel)
     }
-  }, [profile?.id])
+  }, [profile?.id, reconnectKey])
 
   // ------------------------------------------------------------------
   // Handlers
@@ -313,7 +315,7 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="overflow-y-auto flex-1">
+          <div className="overflow-y-auto overscroll-contain flex-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-10">
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
