@@ -4,6 +4,14 @@
 // Storage bucket: "survey-photos"
 // =============================================================================
 
+export type PhotoVisibility = 'customer' | 'technician' | 'office'
+
+export const PHOTO_VISIBILITY_OPTIONS: { value: PhotoVisibility; label: string }[] = [
+  { value: 'customer', label: 'Customer Report' },
+  { value: 'technician', label: 'Technician Only' },
+  { value: 'office', label: 'Office Only' },
+]
+
 export interface SurveyPhoto {
   id: string
   survey_id: string
@@ -20,6 +28,7 @@ export interface SurveyPhoto {
   taken_at: string // ISO datetime — when photo was captured
   latitude?: number
   longitude?: number
+  visibility?: PhotoVisibility // Defaults to 'customer' if not set (backwards compat)
   created_at: string
 }
 
@@ -52,6 +61,9 @@ export const PHOTO_CATEGORIES = {
     { value: 'condensation_evidence', label: 'Condensation Evidence' },
     { value: 'woodworm_evidence', label: 'Woodworm Evidence' },
     { value: 'room_overview', label: 'Room Overview' },
+    { value: 'meter_reading', label: 'Meter Reading' },
+    { value: 'dry_reading', label: 'Dry Reading / No Damp' },
+    { value: 'no_defect_evidence', label: 'No Defect Found (Evidence)' },
     { value: 'general', label: 'General' },
   ],
 } as const
@@ -62,6 +74,7 @@ export interface PhotoCapture {
   description: string
   step: PhotoStep
   room_id?: string
+  visibility?: PhotoVisibility
 }
 
 export interface PhotoUploadProgress {

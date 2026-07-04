@@ -5,8 +5,10 @@ import {
   WoodwormSpecies,
   InfestationStatus,
   InfestationSeverity,
+  FindingUrgency,
 } from '@/types/survey-wizard.types'
 import { Bug, AlertTriangle, Layers, Clock, Hammer, Package } from 'lucide-react'
+import UrgencySelector from './UrgencySelector'
 
 interface WoodwormFieldsProps {
   data: Partial<WoodwormRoomData>
@@ -32,6 +34,12 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
           </div>
         </div>
       </div>
+
+      {/* Finding Urgency */}
+      <UrgencySelector
+        value={data.urgency}
+        onChange={(v: FindingUrgency) => handleChange('urgency', v)}
+      />
 
       {/* Infestation Details */}
       <div className="glass-card p-4 space-y-4">

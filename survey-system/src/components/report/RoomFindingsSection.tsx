@@ -156,16 +156,35 @@ export function RoomFindingsSection({
               ? (room.photos ?? []).filter((id) => id !== roomIdPhotoId)
               : []
 
+          const urgency = data.urgency as 'red' | 'amber' | 'green' | undefined
+
           return (
             <div
               key={room.key}
               className="border border-[#E5E7EB] rounded-xl overflow-hidden"
             >
-              {/* Room header */}
-              <div className="bg-[#1E40AF] px-5 py-3">
+              {/* Room header with urgency indicator */}
+              <div className={`px-5 py-3 flex items-center justify-between ${
+                urgency === 'red' ? 'bg-red-700' :
+                urgency === 'amber' ? 'bg-amber-600' :
+                urgency === 'green' ? 'bg-green-700' : 'bg-[#1E40AF]'
+              }`}>
                 <h3 className="text-sm font-semibold text-white">
                   {room.title}
                 </h3>
+                {urgency && (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    urgency === 'red' ? 'bg-white/20 text-white' :
+                    urgency === 'amber' ? 'bg-white/20 text-white' :
+                    'bg-white/20 text-white'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${
+                      urgency === 'red' ? 'bg-red-200' :
+                      urgency === 'amber' ? 'bg-amber-200' : 'bg-green-200'
+                    }`} />
+                    {urgency === 'red' ? 'Urgent' : urgency === 'amber' ? 'Recommended' : 'Advisory'}
+                  </span>
+                )}
               </div>
 
               <div className="p-5 space-y-5">

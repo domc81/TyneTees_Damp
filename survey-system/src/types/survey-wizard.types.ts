@@ -15,6 +15,9 @@ export interface SurveyWizardData {
   additional_works?: AdditionalWorks
   reported_defect?: string // Captured at booking time — what the customer described
   surveyor_additional_comments?: string // Free-text observations not covered by room-specific findings
+  proposal_items?: string[] // Quick-select proposal item IDs
+  proposal_comments?: string // Additional surveyor proposal comments
+  limitations?: string[] // Quick-select limitation IDs (access restrictions)
   wizard_step: number
   wizard_completed: boolean
 }
@@ -70,6 +73,7 @@ export interface ExternalInspection {
   building_defects_found: boolean
   building_defects: BuildingDefect[] // Multi-select
   defect_urgency?: DefectUrgency
+  urgency?: FindingUrgency // Traffic light overall external status
   wall_tie_concern: boolean
   cracking_concern: boolean
   notes?: string
@@ -100,6 +104,18 @@ export type DefectUrgency =
   | 'short_term' // 3 months
   | 'medium_term' // 6 months
   | 'long_term' // 12+ months
+
+// =============================================================================
+// Traffic Light / Finding Urgency (per-issue per-room)
+// =============================================================================
+
+export type FindingUrgency = 'green' | 'amber' | 'red'
+
+export const FINDING_URGENCY_OPTIONS: { value: FindingUrgency; label: string; description: string }[] = [
+  { value: 'green', label: 'Green — Advisory', description: 'No major issue / low risk / monitor' },
+  { value: 'amber', label: 'Amber — Recommended', description: 'Issue noted / remedial works advisable' },
+  { value: 'red', label: 'Red — Urgent', description: 'Significant issue requiring action' },
+]
 
 // =============================================================================
 // Room Data (stored in survey_rooms.room_data JSONB, keyed by issue type)
@@ -168,6 +184,9 @@ export type IssueType =
 // =============================================================================
 
 export interface DampRoomData {
+  // Traffic Light Urgency
+  urgency?: FindingUrgency
+
   // Wall-by-wall measurements
   walls: DampWall[]
 
@@ -250,6 +269,9 @@ export type FloorTreatment =
 // =============================================================================
 
 export interface CondensationRoomData {
+  // Traffic Light Urgency
+  urgency?: FindingUrgency
+
   // Evidence
   condensation_on_windows: boolean
   black_mould_present: boolean
@@ -294,6 +316,9 @@ export type MouldSeverity =
 // =============================================================================
 
 export interface TimberRoomData {
+  // Traffic Light Urgency
+  urgency?: FindingUrgency
+
   // Floor Assessment
   floor_type: TimberFloorType
   floor_condition: FloorCondition
@@ -399,6 +424,9 @@ export type FlooringType =
 // =============================================================================
 
 export interface WoodwormRoomData {
+  // Traffic Light Urgency
+  urgency?: FindingUrgency
+
   species_identified: WoodwormSpecies
   infestation_status: InfestationStatus
   severity: InfestationSeverity

@@ -17,12 +17,18 @@ import {
   Users,
   Calendar,
   Trash2,
+  ClipboardList,
+  ShieldAlert,
 } from 'lucide-react'
+import { PROPOSAL_ITEMS, LIMITATION_ITEMS } from '@/lib/proposal-items'
 
 interface ReviewStepProps {
   wizardData: SurveyWizardData
   rooms: SurveyRoomRow[]
   onCommentsChange?: (value: string) => void
+  onProposalItemsChange?: (items: string[]) => void
+  onProposalCommentsChange?: (value: string) => void
+  onLimitationsChange?: (items: string[]) => void
 }
 
 const ISSUE_ICONS = {
@@ -32,7 +38,7 @@ const ISSUE_ICONS = {
   woodworm: Bug,
 }
 
-export default function ReviewStep({ wizardData, rooms, onCommentsChange }: ReviewStepProps) {
+export default function ReviewStep({ wizardData, rooms, onCommentsChange, onProposalItemsChange, onProposalCommentsChange, onLimitationsChange }: ReviewStepProps) {
   // Calculate summary statistics
   const totalRooms = rooms.length
   const completedRooms = rooms.filter((r) => r.is_completed).length
@@ -344,6 +350,92 @@ export default function ReviewStep({ wizardData, rooms, onCommentsChange }: Revi
           </div>
         </div>
       )}
+
+      {/* Proposal Quick-Select */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-blue-500/20">
+            <ClipboardList className="w-5 h-5 text-blue-300" />
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold text-white">Proposal Items</h4>
+            <p className="text-sm text-white/50">Select the works being proposed for this survey</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {PROPOSAL_ITEMS.map((item) => {
+            const isSelected = (wizardData.proposal_items || []).includes(item.id)
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  const current = wizardData.proposal_items || []
+                  const updated = isSelected
+                    ? current.filter((id) => id !== item.id)
+                    : [...current, item.id]
+                  onProposalItemsChange?.(updated)
+                }}
+                className={`w-full text-left p-3 rounded-lg text-sm transition-all ${
+                  isSelected
+                    ? 'bg-brand-500/20 border border-brand-400/50 text-white'
+                    : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                <span className="font-medium">{item.label}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-4">
+          <label className="text-sm text-white/70 mb-2 block">Additional Proposal Comments</label>
+          <textarea
+            value={wizardData.proposal_comments || ''}
+            onChange={(e) => onProposalCommentsChange?.(e.target.value)}
+            placeholder="Any bespoke notes for the customer..."
+            rows={3}
+            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400/50"
+          />
+        </div>
+      </div>
+
+      {/* Limitations Quick-Select */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-amber-500/20">
+            <ShieldAlert className="w-5 h-5 text-amber-300" />
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold text-white">Limitations & Access Restrictions</h4>
+            <p className="text-sm text-white/50">Select any areas that could not be fully inspected</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {LIMITATION_ITEMS.map((item) => {
+            const isSelected = (wizardData.limitations || []).includes(item.id)
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  const current = wizardData.limitations || []
+                  const updated = isSelected
+                    ? current.filter((id) => id !== item.id)
+                    : [...current, item.id]
+                  onLimitationsChange?.(updated)
+                }}
+                className={`text-left p-3 rounded-lg text-sm transition-all ${
+                  isSelected
+                    ? 'bg-amber-500/20 border border-amber-400/50 text-white'
+                    : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Surveyor's Additional Comments */}
       <div className="glass-card p-6">

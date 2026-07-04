@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
-import { CondensationRoomData, ExtractionType, MouldSeverity } from '@/types/survey-wizard.types'
+import { CondensationRoomData, ExtractionType, MouldSeverity, FindingUrgency } from '@/types/survey-wizard.types'
 import { Wind, Droplet, Fan, AlertCircle } from 'lucide-react'
+import UrgencySelector from './UrgencySelector'
 
 interface CondensationFieldsProps {
   data: Partial<CondensationRoomData>
@@ -41,6 +42,12 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           </div>
         </div>
       </div>
+
+      {/* Finding Urgency */}
+      <UrgencySelector
+        value={data.urgency}
+        onChange={(v: FindingUrgency) => handleChange('urgency', v)}
+      />
 
       {/* Evidence Toggles */}
       <div className="glass-card p-4 space-y-3">

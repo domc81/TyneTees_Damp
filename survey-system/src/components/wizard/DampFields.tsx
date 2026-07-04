@@ -8,6 +8,7 @@ import {
   WallTreatment,
   MembraneHeight,
   FloorTreatment,
+  FindingUrgency,
 } from '@/types/survey-wizard.types'
 import {
   ChevronDown,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PhotoCapture from './PhotoCapture'
+import UrgencySelector from './UrgencySelector'
 import { filterPhotos } from '@/lib/survey-photo-service'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 
@@ -121,6 +123,12 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
           </div>
         </div>
       </div>
+
+      {/* Finding Urgency */}
+      <UrgencySelector
+        value={data.urgency}
+        onChange={(v: FindingUrgency) => handleChange('urgency', v)}
+      />
 
       {/* Affected Walls Section */}
       <div className="glass-card overflow-hidden">

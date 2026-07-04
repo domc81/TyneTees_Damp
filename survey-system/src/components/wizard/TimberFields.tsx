@@ -11,6 +11,7 @@ import {
   FungalFinding,
   FlooringType,
   JoistEntry,
+  FindingUrgency,
 } from '@/types/survey-wizard.types'
 import {
   TreeDeciduous,
@@ -26,6 +27,7 @@ import {
   Square,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import UrgencySelector from './UrgencySelector'
 
 interface TimberFieldsProps {
   data: Partial<TimberRoomData>
@@ -121,6 +123,12 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
           </div>
         </div>
       </div>
+
+      {/* Finding Urgency */}
+      <UrgencySelector
+        value={data.urgency}
+        onChange={(v: FindingUrgency) => handleChange('urgency', v)}
+      />
 
       {/* Floor Inspection Section */}
       <div className="glass-card overflow-hidden">

@@ -529,8 +529,18 @@ export default async function PublicReportPage({
 
   // Resolve photos from survey_data.photos (not the legacy photos table)
   const sections = (report.sections || []) as ReportSection[]
-  const photoIds = collectPhotoIds(sections)
+  const allPhotoIds = collectPhotoIds(sections)
   const surveyDataRecord = survey.survey_data as Record<string, unknown> | null
+
+  // Filter to customer-visible photos only (public report)
+  const allPhotos = (surveyDataRecord?.photos as Array<{ id: string; visibility?: string }>) ?? []
+  const nonCustomerIds = new Set(
+    allPhotos
+      .filter((p) => p.visibility && p.visibility !== 'customer')
+      .map((p) => p.id)
+  )
+  const photoIds = allPhotoIds.filter((id) => !nonCustomerIds.has(id))
+
   const photoUrls = resolvePhotoUrls(supabase, photoIds, surveyDataRecord)
   const photoCaptions = resolvePhotoCaptions(photoIds, surveyDataRecord)
   const photoMimeTypes = resolvePhotoMimeTypes(photoIds, surveyDataRecord)

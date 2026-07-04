@@ -303,6 +303,30 @@ export default function SurveyWizardPage() {
     triggerDebouncedSave()
   }
 
+  const handleProposalItemsChange = (items: string[]) => {
+    setWizardData({
+      ...wizardData,
+      proposal_items: items,
+    })
+    triggerDebouncedSave()
+  }
+
+  const handleProposalCommentsChange = (value: string) => {
+    setWizardData({
+      ...wizardData,
+      proposal_comments: value,
+    })
+    triggerDebouncedSave()
+  }
+
+  const handleLimitationsChange = (items: string[]) => {
+    setWizardData({
+      ...wizardData,
+      limitations: items,
+    })
+    triggerDebouncedSave()
+  }
+
   // Room update handler (with debounced auto-save)
   const handleRoomsChange = (updatedRooms: SurveyRoomRow[]) => {
     setRooms(updatedRooms)
@@ -368,7 +392,7 @@ export default function SurveyWizardPage() {
           />
         )
       case 4:
-        return <ReviewStep wizardData={wizardData} rooms={rooms} onCommentsChange={handleCommentsChange} />
+        return <ReviewStep wizardData={wizardData} rooms={rooms} onCommentsChange={handleCommentsChange} onProposalItemsChange={handleProposalItemsChange} onProposalCommentsChange={handleProposalCommentsChange} onLimitationsChange={handleLimitationsChange} />
       default:
         return null
     }

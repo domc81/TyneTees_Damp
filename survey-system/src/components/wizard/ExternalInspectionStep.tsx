@@ -6,10 +6,12 @@ import {
   BuildingDefect,
   BUILDING_DEFECTS,
   DefectUrgency,
+  FindingUrgency,
 } from '@/types/survey-wizard.types'
 import { Home, AlertTriangle, CheckSquare, Square, FileText, Camera, Loader2 } from 'lucide-react'
 import PhotoCapture from './PhotoCapture'
 import AudioRecorder from './AudioRecorder'
+import UrgencySelector from './UrgencySelector'
 import { filterPhotos } from '@/lib/survey-photo-service'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 
@@ -322,6 +324,13 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
           </div>
         </div>
       </div>
+
+      {/* Overall External Urgency */}
+      <UrgencySelector
+        value={data.urgency}
+        onChange={(v: FindingUrgency) => handleChange('urgency', v)}
+        label="External Inspection Status"
+      />
 
       {/* External Inspection Observations (STT + Polish) */}
       <div className="glass-card p-6">

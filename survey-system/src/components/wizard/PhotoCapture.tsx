@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { Camera, Upload, X, Trash2, MapPin, Calendar, Loader2, Check } from 'lucide-react'
-import type { SurveyPhoto, PhotoCapture as PhotoCaptureType } from '@/types/survey-photo.types'
+import type { SurveyPhoto, PhotoCapture as PhotoCaptureType, PhotoVisibility } from '@/types/survey-photo.types'
+import { PHOTO_VISIBILITY_OPTIONS } from '@/types/survey-photo.types'
 import {
   uploadSurveyPhoto,
   deleteSurveyPhoto,
@@ -40,6 +41,7 @@ export default function PhotoCapture({
   const [showDescriptionModal, setShowDescriptionModal] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [description, setDescription] = useState('')
+  const [visibility, setVisibility] = useState<PhotoVisibility>('customer')
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
@@ -48,7 +50,7 @@ export default function PhotoCapture({
 
   const MAX_RETRIES = 2
 
-  const performUpload = async (file: File, desc: string) => {
+  const performUpload = async (file: File, desc: string, vis?: PhotoVisibility) => {
     setIsUploading(true)
     setUploadProgress(0)
 
@@ -58,6 +60,7 @@ export default function PhotoCapture({
       description: desc || `${label} photo`,
       step,
       room_id: roomId,
+      visibility: vis || 'customer',
     }
 
     let lastError: unknown = null
@@ -116,7 +119,7 @@ export default function PhotoCapture({
     if (autoDescription !== undefined) {
       // Skip description modal — upload immediately with the auto-generated description
       setError(null)
-      performUpload(file, autoDescription)
+      performUpload(file, autoDescription, 'customer')
     } else {
       // Show description modal
       setPendingFile(file)
@@ -151,7 +154,7 @@ export default function PhotoCapture({
   const handleUploadWithDescription = async () => {
     if (!pendingFile) return
     setShowDescriptionModal(false)
-    await performUpload(pendingFile, description)
+    await performUpload(pendingFile, description, visibility)
   }
 
   const handleDeletePhoto = async (photo: SurveyPhoto) => {
@@ -335,6 +338,23 @@ export default function PhotoCapture({
                 rows={3}
                 autoFocus
               />
+            </div>
+
+            <div>
+              <label className="text-sm text-white/70 mb-2 block">
+                Visibility
+              </label>
+              <select
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as PhotoVisibility)}
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20"
+              >
+                {PHOTO_VISIBILITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-navy-900 text-white">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex gap-3">

@@ -248,6 +248,7 @@ export async function uploadSurveyPhoto(
       taken_at: new Date().toISOString(),
       latitude: geo?.latitude,
       longitude: geo?.longitude,
+      visibility: capture.visibility || 'customer',
       created_at: new Date().toISOString(),
     }
 

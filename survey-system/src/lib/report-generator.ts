@@ -868,12 +868,29 @@ export async function generateReport(
     }
 
     // Build the room data object — includes all issue types present in the room
+    // Determine highest urgency across all issue types in this room
+    const rd = room.room_data
+    const roomIssueUrgencies = [
+      rd?.damp?.urgency,
+      rd?.condensation?.urgency,
+      rd?.timber_decay?.urgency,
+      rd?.woodworm?.urgency,
+    ].filter(Boolean) as string[]
+    const roomUrgency = roomIssueUrgencies.includes('red')
+      ? 'red'
+      : roomIssueUrgencies.includes('amber')
+        ? 'amber'
+        : roomIssueUrgencies.length > 0
+          ? 'green'
+          : undefined
+
     const roomData: Record<string, unknown> = {
       room_name: room.name,
       floor_level: formatFloorLevel(room.floor_level),
       issues: room.issues_identified,
       walls: walls,
       rh_reading: (room.room_data as any)?.rh_reading ?? null,
+      urgency: roomUrgency,
     }
 
     if (dampData && walls.length > 0) {
@@ -993,7 +1010,8 @@ export async function generateReport(
     const contextLines = [
       `Room: ${room.name} (${formatFloorLevel(room.floor_level)})`,
       `Issues: ${room.issues_identified.join(', ')}`,
-    ]
+      roomUrgency ? `Urgency: ${roomUrgency.toUpperCase()}` : '',
+    ].filter(Boolean)
     if (room.findings) {
       contextLines.push(`Surveyor observation: ${room.findings}`)
     }
@@ -1034,11 +1052,29 @@ export async function generateReport(
     llmContextParts.push(contextLines.join('\n'))
   }
 
+  // 2b. CALCULATE OVERALL URGENCY from room-level traffic lights
+  const roomUrgencies: string[] = []
+  for (const room of rooms) {
+    if (!room.issues_identified || room.issues_identified.length === 0) continue
+    const rd = room.room_data
+    if (rd?.damp?.urgency) roomUrgencies.push(rd.damp.urgency)
+    if (rd?.condensation?.urgency) roomUrgencies.push(rd.condensation.urgency)
+    if (rd?.timber_decay?.urgency) roomUrgencies.push(rd.timber_decay.urgency)
+    if (rd?.woodworm?.urgency) roomUrgencies.push(rd.woodworm.urgency)
+  }
+  if (ext?.urgency) roomUrgencies.push(ext.urgency)
+  const overallUrgency: 'red' | 'amber' | 'green' = roomUrgencies.includes('red')
+    ? 'red'
+    : roomUrgencies.includes('amber')
+      ? 'amber'
+      : 'green'
+
   // 3. BUILD LLM CONTEXT AND CALL FOR EXECUTIVE SUMMARY
   const llmContext = [
     `Property: ${sd?.property_type || 'Unknown'}, ${sd?.construction_type?.replace(/_/g, ' ') || 'Unknown construction'}, built ${sd?.approx_build_year || 'unknown year'}.`,
     `Total rooms inspected: ${rooms.filter((r) => r.issues_identified?.length).length}`,
     `Total affected rooms: ${dampRooms.length} with damp, ${condensationRooms.length} with condensation, ${timberRooms.length} with timber decay, ${woodwormRooms.length} with woodworm.`,
+    `Overall urgency status: ${overallUrgency.toUpperCase()} (${roomUrgencies.filter(u => u === 'red').length} red, ${roomUrgencies.filter(u => u === 'amber').length} amber, ${roomUrgencies.filter(u => u === 'green').length} green findings).`,
     '',
     'Room-by-room findings:',
     ...llmContextParts,
@@ -1174,7 +1210,15 @@ export async function generateReport(
       'Executive Summary',
       'findings',
       llmSucceeded ? 'llm_generated' : 'template',
-      execSummaryContent
+      execSummaryContent,
+      {
+        overall_urgency: overallUrgency,
+        urgency_counts: {
+          red: roomUrgencies.filter(u => u === 'red').length,
+          amber: roomUrgencies.filter(u => u === 'amber').length,
+          green: roomUrgencies.filter(u => u === 'green').length,
+        },
+      }
     )
   )
 
