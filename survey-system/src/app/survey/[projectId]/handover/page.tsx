@@ -6,6 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Loader2, AlertCircle, PackageCheck, Users, Calculator,
   Camera, FileText, ExternalLink, Check, Copy, CheckCircle, Download,
+  Receipt, Square, CheckSquare,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,17 +26,102 @@ import { toast } from 'sonner'
 import type { HandoverData } from '@/lib/handover-pack'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 
+// =============================================================================
+// Handover tracking — persisted in surveys.survey_data.handover_tracking
+// =============================================================================
+
+interface HandoverTracking {
+  customer_csv_downloaded_at?: string
+  cf_estimate_downloaded_at?: string
+  photos_downloaded_at?: string
+  summary_downloaded_at?: string
+  customer_csv_added_to_cf?: boolean
+  cf_estimate_added_to_cf?: boolean
+  photos_added_to_cf?: boolean
+  summary_added_to_cf?: boolean
+}
+
+async function loadHandoverTracking(surveyId: string): Promise<HandoverTracking> {
+  const supabase = getSupabase()
+  if (!supabase) return {}
+  const { data } = await supabase
+    .from('surveys')
+    .select('survey_data')
+    .eq('id', surveyId)
+    .single()
+  return (data?.survey_data as Record<string, unknown>)?.handover_tracking as HandoverTracking || {}
+}
+
+async function saveHandoverTracking(surveyId: string, tracking: HandoverTracking): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+  // Read current survey_data, merge handover_tracking, write back
+  const { data } = await supabase
+    .from('surveys')
+    .select('survey_data')
+    .eq('id', surveyId)
+    .single()
+  const currentData = (data?.survey_data || {}) as Record<string, unknown>
+  await supabase
+    .from('surveys')
+    .update({ survey_data: { ...currentData, handover_tracking: tracking } })
+    .eq('id', surveyId)
+}
+
+// =============================================================================
+// Status tag components
+// =============================================================================
+
+function DownloadedTag({ date }: { date: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+      <Check className="w-2.5 h-2.5" />
+      Downloaded {new Date(date).toLocaleDateString('en-GB')}
+    </span>
+  )
+}
+
+function AddedToCFTag() {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+      <CheckCircle className="w-2.5 h-2.5" />
+      Added to CF
+    </span>
+  )
+}
+
+function AddToCFCheckbox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white/70 transition-colors mt-1"
+    >
+      {checked ? (
+        <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+      ) : (
+        <Square className="w-3.5 h-3.5" />
+      )}
+      Added to Contractor Foreman
+    </button>
+  )
+}
+
+// =============================================================================
+// Main content
+// =============================================================================
+
 function HandoverContent() {
   const params = useParams()
   const projectId = params.projectId as string
   const { goBack } = useSmartBack()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [handoverData, setHandoverData] = useState<HandoverData | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
   const [reportUrl, setReportUrl] = useState<string | null>(null)
+  const [quotationUrl, setQuotationUrl] = useState<string | null>(null)
 
   // Download state
   const [downloadingCustomerCSV, setDownloadingCustomerCSV] = useState(false)
@@ -46,19 +132,33 @@ function HandoverContent() {
   const [handedOver, setHandedOver] = useState(false)
   const [confirmingHandover, setConfirmingHandover] = useState(false)
 
+  // Tracking state (persisted)
+  const [tracking, setTracking] = useState<HandoverTracking>({})
+
   // Readiness
   const enquiryStatus = handoverData?.enquiry?.status
   const isReady = enquiryStatus === 'accepted' || enquiryStatus === 'completed' || enquiryStatus === 'handed_over'
   const isWon = !!handoverData?.enquiry?.won_at
   const isAlreadyHandedOver = enquiryStatus === 'handed_over' || handedOver
 
+  // Persist tracking changes
+  const updateTracking = useCallback(async (updates: Partial<HandoverTracking>) => {
+    const newTracking = { ...tracking, ...updates }
+    setTracking(newTracking)
+    await saveHandoverTracking(projectId, newTracking)
+  }, [tracking, projectId])
+
   // Load data
   useEffect(() => {
     async function load() {
       try {
         setLoading(true)
-        const data = await getHandoverData(projectId)
+        const [data, savedTracking] = await Promise.all([
+          getHandoverData(projectId),
+          loadHandoverTracking(projectId),
+        ])
         setHandoverData(data)
+        setTracking(savedTracking)
 
         // Count photos
         const surveyData = data.survey.survey_data as Record<string, unknown> | null
@@ -69,6 +169,12 @@ function HandoverContent() {
         if (data.report?.publish_token) {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
           setReportUrl(`${appUrl}/report/${data.report.id}?token=${data.report.publish_token}`)
+        }
+
+        // Build quotation URL
+        if (data.quotation?.share_token) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+          setQuotationUrl(`${appUrl}/q/${data.quotation.share_token}`)
         }
 
         if (data.enquiry?.status === 'handed_over') {
@@ -105,19 +211,19 @@ function HandoverContent() {
       const { csv, filename } = generateCustomerCSV(handoverData)
       downloadBlob(csv, filename, 'text/csv')
       toast.success('Customer CSV downloaded')
-    } catch (err) {
+      updateTracking({ customer_csv_downloaded_at: new Date().toISOString() })
+    } catch {
       toast.error('Failed to generate customer CSV')
     } finally {
       setDownloadingCustomerCSV(false)
     }
-  }, [handoverData])
+  }, [handoverData, updateTracking])
 
   // CF Estimate CSV
   const handleCFCSV = useCallback(async () => {
     if (!handoverData) return
     setDownloadingCFCSV(true)
     try {
-      // Load costing data (same as costing page)
       const { wizardData, rooms } = await loadWizardData(projectId)
       if (!wizardData) throw new Error('No wizard data found')
 
@@ -127,17 +233,14 @@ function HandoverContent() {
       )
       const surveyTypes = Object.keys(costingResults).filter(t => t !== 'site_preparation')
 
-      // Check if any results have costs
       const hasAnyCosts = Object.values(costingResults).some(r => r.lines.length > 0)
       if (!hasAnyCosts) {
         toast.error('No costing data — complete the survey wizard first')
         return
       }
 
-      // Load section adjustments
       const sectionAdjustments = await loadSectionAdjustments(projectId)
 
-      // Calculate travel overhead
       const aw = wizardData.additional_works
       const totalLabourHours = Object.values(costingResults).reduce(
         (sum, r) => sum + r.lines.reduce((s, l) => s + l.result.labourHours, 0), 0
@@ -157,8 +260,8 @@ function HandoverContent() {
 
       downloadBlob(csv, filename, 'text/csv')
       toast.success('CF Estimate CSV downloaded')
+      updateTracking({ cf_estimate_downloaded_at: new Date().toISOString() })
 
-      // Fire-and-forget: set cf_exported_at
       if (handoverData.enquiry?.id) {
         setCfExportedAt(handoverData.enquiry.id).catch(() => {})
       }
@@ -168,7 +271,7 @@ function HandoverContent() {
     } finally {
       setDownloadingCFCSV(false)
     }
-  }, [handoverData, projectId])
+  }, [handoverData, projectId, updateTracking])
 
   // Photos ZIP
   const handlePhotosZip = useCallback(async () => {
@@ -191,12 +294,13 @@ function HandoverContent() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.success('Photos ZIP downloaded')
+      updateTracking({ photos_downloaded_at: new Date().toISOString() })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to download photos')
     } finally {
       setDownloadingPhotos(false)
     }
-  }, [projectId])
+  }, [projectId, updateTracking])
 
   // Job Summary
   const handleJobSummary = useCallback(async () => {
@@ -206,12 +310,13 @@ function HandoverContent() {
       const { text, filename } = generateJobSummaryText(handoverData)
       downloadBlob(text, filename, 'text/plain')
       toast.success('Job summary downloaded')
-    } catch (err) {
+      updateTracking({ summary_downloaded_at: new Date().toISOString() })
+    } catch {
       toast.error('Failed to generate job summary')
     } finally {
       setDownloadingSummary(false)
     }
-  }, [handoverData])
+  }, [handoverData, updateTracking])
 
   // Copy summary to clipboard
   const handleCopySummary = useCallback(async () => {
@@ -231,7 +336,6 @@ function HandoverContent() {
   const handleMarkHandedOver = useCallback(async () => {
     if (!handoverData?.enquiry?.id) return
 
-    // Guard: must be completed first
     if (handoverData.enquiry.status !== 'completed') {
       toast.error('Enquiry must be marked as Completed before handing over')
       return
@@ -242,7 +346,7 @@ function HandoverContent() {
       await markEnquiryHandedOver(handoverData.enquiry.id, user?.id || null)
       setHandedOver(true)
       toast.success('Enquiry marked as Handed Over')
-    } catch (err) {
+    } catch {
       toast.error('Failed to mark as handed over')
     } finally {
       setConfirmingHandover(false)
@@ -269,7 +373,7 @@ function HandoverContent() {
     )
   }
 
-  const { survey, customer, enquiry, quotation, quotationSections } = handoverData
+  const { survey, customer, enquiry, quotation } = handoverData
   const guarantee = deriveGuaranteeType(survey.survey_type, survey.survey_tags)
   const customerName = customer
     ? `${customer.first_name} ${customer.last_name}`
@@ -331,10 +435,14 @@ function HandoverContent() {
             <div className="p-2 rounded-lg bg-blue-500/10">
               <Users className="w-5 h-5 text-blue-400" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-sm font-semibold text-white">Customer Details CSV</h3>
               <p className="text-xs text-white/40">Customer import file for Contractor Foreman</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tracking.customer_csv_downloaded_at && <DownloadedTag date={tracking.customer_csv_downloaded_at} />}
+            {tracking.customer_csv_added_to_cf && <AddedToCFTag />}
           </div>
           <Button
             onClick={handleCustomerCSV}
@@ -349,6 +457,10 @@ function HandoverContent() {
             )}
             Download CSV
           </Button>
+          <AddToCFCheckbox
+            checked={!!tracking.customer_csv_added_to_cf}
+            onChange={v => updateTracking({ customer_csv_added_to_cf: v })}
+          />
         </Card>
 
         {/* CF Estimate CSV */}
@@ -357,10 +469,14 @@ function HandoverContent() {
             <div className="p-2 rounded-lg bg-emerald-500/10">
               <Calculator className="w-5 h-5 text-emerald-400" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-sm font-semibold text-white">CF Estimate CSV</h3>
               <p className="text-xs text-white/40">Estimate import with scope of works and pricing</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tracking.cf_estimate_downloaded_at && <DownloadedTag date={tracking.cf_estimate_downloaded_at} />}
+            {tracking.cf_estimate_added_to_cf && <AddedToCFTag />}
           </div>
           <Button
             onClick={handleCFCSV}
@@ -375,6 +491,10 @@ function HandoverContent() {
             )}
             Download CF Estimate
           </Button>
+          <AddToCFCheckbox
+            checked={!!tracking.cf_estimate_added_to_cf}
+            onChange={v => updateTracking({ cf_estimate_added_to_cf: v })}
+          />
         </Card>
 
         {/* Photos ZIP */}
@@ -383,12 +503,16 @@ function HandoverContent() {
             <div className="p-2 rounded-lg bg-amber-500/10">
               <Camera className="w-5 h-5 text-amber-400" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-sm font-semibold text-white">Survey Photos & Sketches</h3>
               <p className="text-xs text-white/40">
                 {photoCount > 0 ? `${photoCount} photo${photoCount !== 1 ? 's' : ''} + sketch plans` : 'All photos and sketch plans'}
               </p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tracking.photos_downloaded_at && <DownloadedTag date={tracking.photos_downloaded_at} />}
+            {tracking.photos_added_to_cf && <AddedToCFTag />}
           </div>
           <Button
             onClick={handlePhotosZip}
@@ -403,6 +527,10 @@ function HandoverContent() {
             )}
             {downloadingPhotos ? 'Preparing ZIP...' : 'Download Photos ZIP'}
           </Button>
+          <AddToCFCheckbox
+            checked={!!tracking.photos_added_to_cf}
+            onChange={v => updateTracking({ photos_added_to_cf: v })}
+          />
         </Card>
 
         {/* Job Summary */}
@@ -411,10 +539,14 @@ function HandoverContent() {
             <div className="p-2 rounded-lg bg-purple-500/10">
               <FileText className="w-5 h-5 text-purple-400" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-sm font-semibold text-white">Job Summary Notes</h3>
               <p className="text-xs text-white/40">Plain text summary for CF Project notes</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {tracking.summary_downloaded_at && <DownloadedTag date={tracking.summary_downloaded_at} />}
+            {tracking.summary_added_to_cf && <AddedToCFTag />}
           </div>
           <div className="flex gap-2">
             <Button
@@ -443,8 +575,58 @@ function HandoverContent() {
               {copiedSummary ? 'Copied' : 'Copy'}
             </Button>
           </div>
+          <AddToCFCheckbox
+            checked={!!tracking.summary_added_to_cf}
+            onChange={v => updateTracking({ summary_added_to_cf: v })}
+          />
         </Card>
       </div>
+
+      {/* Quotation Link */}
+      <Card className="glass-card p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <Receipt className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Quotation</h3>
+              <p className="text-xs text-white/40">
+                {quotation
+                  ? `${quotation.quotation_number} — ${quotation.status === 'accepted' ? 'Accepted' : quotation.status}`
+                  : 'No quotation generated'}
+              </p>
+            </div>
+          </div>
+          {quotationUrl ? (
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(quotationUrl)
+                  toast.success('Quotation link copied')
+                }}
+              >
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                Copy Link
+              </Button>
+              <a href={quotationUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="secondary" size="sm">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  View Quote
+                </Button>
+              </a>
+            </div>
+          ) : quotation ? (
+            <Link href={`/survey/${projectId}/quotation/${quotation.id}`}>
+              <Button variant="secondary" size="sm">
+                Go to Quotation
+              </Button>
+            </Link>
+          ) : null}
+        </div>
+      </Card>
 
       {/* Report Link */}
       <Card className="glass-card p-5">
