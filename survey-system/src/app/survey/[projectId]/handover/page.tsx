@@ -122,9 +122,10 @@ function HandoverContent() {
       if (!wizardData) throw new Error('No wizard data found')
 
       const pricingConfig = await loadPricingConfig()
-      const { costingResults, surveyTypes } = await generateCostingFromSurvey(
-        wizardData, rooms, pricingConfig
+      const costingResults = await generateCostingFromSurvey(
+        projectId, wizardData, rooms
       )
+      const surveyTypes = Object.keys(costingResults).filter(t => t !== 'site_preparation')
 
       // Check if any results have costs
       const hasAnyCosts = Object.values(costingResults).some(r => r.lines.length > 0)
