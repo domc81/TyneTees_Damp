@@ -20,9 +20,14 @@ export function ExecutiveSummarySection({ section }: ExecutiveSummarySectionProp
     .filter(Boolean)
 
   // Split into main content and guarantee paragraph
-  const guaranteeIdx = paragraphs.findLastIndex((p) =>
-    p.startsWith(GUARANTEE_MARKER)
-  )
+  // Note: avoid Array.findLastIndex() — it is ES2023 and unsupported in Edge < 97
+  let guaranteeIdx = -1
+  for (let i = paragraphs.length - 1; i >= 0; i--) {
+    if (paragraphs[i].startsWith(GUARANTEE_MARKER)) {
+      guaranteeIdx = i
+      break
+    }
+  }
   const mainParagraphs =
     guaranteeIdx >= 0 ? paragraphs.slice(0, guaranteeIdx) : paragraphs
   const guaranteeParagraph =

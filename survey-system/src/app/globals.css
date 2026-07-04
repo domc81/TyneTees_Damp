@@ -26,55 +26,63 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+}
+
+/*
+ * Animated background — rendered via a <div class="app-background"> inside the
+ * internal Layout component.  Public pages (/report, /q, /pay) do NOT use
+ * Layout, so they never get the dark gradients or aurora animation.
+ *
+ * Previously these styles lived on body / body::before / body::after, which
+ * caused Edge rendering issues:
+ *   - background-attachment:fixed → scroll-jank on every page
+ *   - transform in the aurora keyframe → compositing-layer conflicts with
+ *     z-index:-1 that could paint over content in Edge
+ *   - pseudo-elements bled into public white-background pages
+ */
+.app-background {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
   background-image:
     radial-gradient(ellipse at 20% 20%, rgba(12, 140, 233, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 80%, rgba(15, 52, 96, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(30, 58, 95, 0.05) 0%, transparent 70%);
-  background-attachment: fixed;
 }
 
-/* Animated gradient background */
-body::before {
+/* Animated gradient overlay */
+.app-background::before {
   content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: absolute;
+  inset: 0;
   background:
     radial-gradient(ellipse at 15% 15%, rgba(12, 140, 233, 0.12) 0%, transparent 40%),
     radial-gradient(ellipse at 85% 85%, rgba(15, 52, 96, 0.18) 0%, transparent 40%),
     radial-gradient(ellipse at 50% 50%, rgba(30, 58, 95, 0.08) 0%, transparent 60%);
   pointer-events: none;
-  z-index: -1;
   animation: aurora 20s ease-in-out infinite;
 }
 
 @keyframes aurora {
   0%, 100% {
     opacity: 1;
-    transform: scale(1) rotate(0deg);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.05) rotate(1deg);
+    opacity: 0.7;
   }
 }
 
 /* Subtle grid pattern overlay */
-body::after {
+.app-background::after {
   content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: absolute;
+  inset: 0;
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
-  z-index: -1;
 }
 
 /* Custom scrollbar */
@@ -363,6 +371,7 @@ input:-webkit-autofill:focus {
     @apply overflow-x-auto rounded-xl border border-white/10;
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .table-base {
@@ -558,7 +567,7 @@ input:-webkit-autofill:focus {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  body {
+  .app-background {
     background-image:
       radial-gradient(ellipse at 30% 30%, rgba(12, 140, 233, 0.1) 0%, transparent 50%),
       radial-gradient(ellipse at 70% 70%, rgba(15, 52, 96, 0.12) 0%, transparent 50%);

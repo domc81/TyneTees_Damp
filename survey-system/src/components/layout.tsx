@@ -61,6 +61,9 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen">
+      {/* Animated dark background — internal pages only (not on public /report, /q, /pay) */}
+      <div className="app-background" aria-hidden="true" />
+
       {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -77,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.filter((item) => {
             if (!item.roles) return true
             const userRole = isAdmin ? 'admin' : isOffice ? 'office' : 'surveyor'
@@ -153,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="min-h-screen p-4 lg:p-8 lg:pr-20">
+        <main className="p-4 lg:p-8 lg:pr-20">
           {children}
         </main>
       </div>
