@@ -1,8 +1,8 @@
 # TyneTees Damp — Project State
 
-**Last updated:** 2026-07-03
-**Last commit:** 82113d2 — feat: render sketch plans on customer-facing public report
-**Current phase:** Post-audit — sketch upload, password UX, report enhancements shipped
+**Last updated:** 2026-07-04
+**Last commit:** e504858 — fix: resolve remaining Edge scroll/API/realtime issues
+**Current phase:** Post-audit — Edge browser compat, sketch upload, password UX shipped
 
 ## Current focus
 
@@ -25,9 +25,11 @@
 - **CF CSV hardcoded hourly rate:** `cf-csv-export.ts` uses hardcoded £30.63/hr instead of reading from `pricing_config`. Should read from DB.
 - **13 survey-type extension tables unused:** schema provisioned but wizard uses JSONB instead. Candidates for removal.
 - **RLS policies still grant full access:** `USING (true) WITH CHECK (true)` on core tables. App-level guards mitigate risk but DB-level isolation needs a dedicated migration session.
+- **ESLint not configured:** `npm run lint` prompts for setup. Build validates compilation but no automated lint rules enforced.
 
 ## Recently shipped
 
+- 2026-07-04 — Edge browser compatibility fixes (2 commits): background rendering moved from body to layout div (fixes public pages), removed background-attachment:fixed (scroll-jank), aurora animation simplified to opacity-only (compositing conflict), -webkit-backdrop-filter prefix on tables, removed redundant min-h-screen, sidebar nav overflow-y-auto, replaced ES2023 findLastIndex(). Then: overscroll-behavior:contain on all scroll containers, enquiry pipeline nested scroll simplified (3→2 wrappers), supabase-server.ts migrated from deprecated get/set/remove cookie API to getAll/setAll, NotificationBell realtime subscription now properly reconnects after channel loss (via reconnectKey state).
 - 2026-07-03 — Sketch plan upload for reports: surveyors can upload JPEG/PNG/PDF sketches in the report editor. Uploaded sketches display inline on the internal editor (with delete support) and on the customer-facing public report. Images render full-width with lightbox; PDFs render as embedded viewers with download fallback. Uses existing `survey-photos` storage bucket with serialized writes. New `updateReportSectionPhotos()` in report-data.ts.
 - 2026-07-03 — Show/hide password toggle: added eye icon toggle to the shared Input component for all password fields. Works on login, change-password, and update-password pages. Uses lucide-react Eye/EyeOff icons with tabIndex={-1} to avoid disrupting keyboard flow.
 - 2026-07-02 — In-app training pages: converted 4 markdown guides into styled web pages at `/training` accessible to all authenticated users. Hub page with role-aware "Recommended" badges, 5 shared components (TrainingArticle, TableOfContents with IntersectionObserver, TrainingImage with click-to-expand lightbox, Tip callouts, GuideCard). Sidebar "Training" item with BookOpen icon. 35 screenshots served as static assets. `.training-prose` CSS for consistent typography. All content hardcoded as JSX — no markdown parser dependency.
