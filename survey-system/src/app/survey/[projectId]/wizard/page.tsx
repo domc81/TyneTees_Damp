@@ -235,7 +235,7 @@ export default function SurveyWizardPage() {
       setWizardData(completedData)
       setLastSaved(new Date())
 
-      // Auto-transition linked enquiry status to 'surveyed' (non-blocking)
+      // Auto-transition linked enquiry status to 'survey_complete' (non-blocking)
       try {
         const supabase = getSupabase()
         if (supabase) {
@@ -246,7 +246,7 @@ export default function SurveyWizardPage() {
             .single()
 
           if (survey?.enquiry_id) {
-            await autoTransitionEnquiryStatus(survey.enquiry_id, 'surveyed', null)
+            await autoTransitionEnquiryStatus(survey.enquiry_id, 'survey_complete', null)
           }
         }
       } catch (err) {

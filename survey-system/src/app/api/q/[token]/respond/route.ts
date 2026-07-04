@@ -291,9 +291,9 @@ export async function POST(
         })
         .eq('id', quotation.id)
 
-      // ── Auto-transition linked enquiry (fire-and-forget) ──────────────────
+      // ── Auto-transition linked enquiry to 'won' (fire-and-forget) ────────
 
-      autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'accepted')
+      autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'won')
         .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
 
       // ── Create deposit payment record ────────────────────────────────────
@@ -405,8 +405,8 @@ export async function POST(
       })
       .eq('id', quotation.id)
 
-    // Auto-transition linked enquiry (fire-and-forget)
-    autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'declined')
+    // Auto-transition linked enquiry to 'lost' (fire-and-forget)
+    autoTransitionLinkedEnquiry(supabase, quotation.survey_id, 'lost')
       .catch(err => console.error('[quotation-respond] Enquiry auto-transition failed:', err))
 
     // Notify office (fire-and-forget)
@@ -446,7 +446,7 @@ export async function POST(
 async function autoTransitionLinkedEnquiry(
   supabase: ReturnType<typeof createClient>,
   surveyId: string,
-  targetStatus: 'accepted' | 'declined'
+  targetStatus: 'won' | 'lost'
 ): Promise<void> {
   // Look up the survey to find the linked enquiry
   const { data: survey } = await supabase

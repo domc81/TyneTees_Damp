@@ -11,7 +11,7 @@ import {
   createSurveyFromEnquiry,
   updateSurvey,
   markEnquiryWon,
-  markEnquiryCompleted,
+  markEnquiryClosed,
   setCfExportedAt,
 } from '@/lib/supabase-data'
 import { createBooking, getBookingBySurveyId } from '@/lib/calendar-data'
@@ -68,15 +68,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<EnquiryStatus, { label: string; color: string }> = {
-  new:          { label: 'New',          color: '#3B82F6' },
-  assigned:     { label: 'Assigned',     color: '#8B5CF6' },
-  surveyed:     { label: 'Surveyed',     color: '#14B8A6' },
-  quoted:       { label: 'Quoted',       color: '#F59E0B' },
-  accepted:     { label: 'Accepted',     color: '#22C55E' },
-  declined:     { label: 'Declined',     color: '#EF4444' },
-  on_hold:      { label: 'On Hold',      color: '#6B7280' },
-  completed:    { label: 'Completed',    color: '#10B981' },
-  handed_over:  { label: 'Handed Over',  color: '#6366F1' },
+  new:              { label: 'New',             color: '#3B82F6' },
+  awaiting_payment: { label: 'Awaiting Payment', color: '#F59E0B' },
+  booked:           { label: 'Booked',          color: '#8B5CF6' },
+  survey_complete:  { label: 'Survey Complete', color: '#14B8A6' },
+  sent:             { label: 'Sent',            color: '#F97316' },
+  won:              { label: 'Won',             color: '#22C55E' },
+  closed:           { label: 'Closed',          color: '#6366F1' },
+  on_hold:          { label: 'On Hold',         color: '#6B7280' },
+  lost:             { label: 'Lost',            color: '#EF4444' },
 }
 
 const PRIORITY_CONFIG: Record<EnquiryPriority, { label: string; color: string; bgClass: string }> = {
@@ -130,7 +130,7 @@ const SOURCE_OPTIONS = [
 ]
 
 const ALL_STATUSES: EnquiryStatus[] = [
-  'new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'on_hold', 'completed', 'handed_over',
+  'new', 'awaiting_payment', 'booked', 'survey_complete', 'sent', 'won', 'closed', 'on_hold', 'lost',
 ]
 
 const ALL_PRIORITIES: EnquiryPriority[] = ['low', 'medium', 'high', 'urgent']
@@ -167,11 +167,10 @@ function relativeTime(dateStr: string): string {
 // ---------------------------------------------------------------------------
 
 const DRAWER_SLA_HOURS: Partial<Record<EnquiryStatus, { green: number; amber: number }>> = {
-  new:      { green: 24,  amber: 48  },
-  assigned: { green: 72,  amber: 120 },
-  surveyed: { green: 24,  amber: 48  },
-  quoted:   { green: 120, amber: 240 },
-  on_hold:  { green: 168, amber: 336 },
+  new:              { green: 24,  amber: 48  },
+  awaiting_payment: { green: 48,  amber: 72  },
+  survey_complete:  { green: 24,  amber: 48  },
+  sent:             { green: 120, amber: 240 },
 }
 
 function getDrawerSlaStatus(status: EnquiryStatus, statusChangedAt: string): 'green' | 'amber' | 'red' | null {
@@ -617,7 +616,7 @@ export type EnquiryDrawerProps = {
   enquiry: Enquiry
   onClose: () => void
   onBoardSync: (updatedEnquiry: Enquiry, previousStatus?: EnquiryStatus) => void
-  onRequestStatusChange: (enquiry: Enquiry, toStatus: 'on_hold' | 'declined') => void
+  onRequestStatusChange: (enquiry: Enquiry, toStatus: 'on_hold' | 'lost') => void
   holdTemplates: OnHoldMessageTemplate[]
   currentUserId: string | null
   /** When true, the drawer opens directly into the Convert & Book flow */
@@ -884,7 +883,7 @@ export default function EnquiryDrawer({
     setShowStatusDropdown(false)
     if (newStatus === enquiry.status) return
 
-    if (newStatus === 'on_hold' || newStatus === 'declined') {
+    if (newStatus === 'on_hold' || newStatus === 'lost') {
       onRequestStatusChange(enquiry, newStatus)
       return
     }
@@ -1148,7 +1147,7 @@ export default function EnquiryDrawer({
         const { survey } = await createSurveyFromEnquiry(enquiry.id, currentUserId)
         createdSurvey = { id: survey.id, project_number: survey.project_number }
         if (enquiry.status === 'new') {
-          onBoardSync({ ...enquiry, status: 'assigned' }, enquiry.status)
+          onBoardSync({ ...enquiry, status: 'awaiting_payment' }, enquiry.status)
         }
       }
 
@@ -1232,8 +1231,8 @@ export default function EnquiryDrawer({
       setShowPaymentForm(null)
       setPaymentRefNote('')
 
-      // If this is a deposit payment and enquiry is accepted, mark as won
-      if (updated.payment_type === 'deposit' && enquiry.status === 'accepted') {
+      // If this is a deposit payment and enquiry is won, mark as won
+      if (updated.payment_type === 'deposit' && enquiry.status === 'won') {
         await markEnquiryWon(enquiry.id, currentUserId)
         onBoardSync({ ...enquiry, won_at: new Date().toISOString() } as Enquiry, enquiry.status)
       }
@@ -1249,19 +1248,6 @@ export default function EnquiryDrawer({
       toast.error('Failed to mark payment as paid')
     } finally {
       setMarkingPayment(false)
-    }
-  }
-
-  async function handleMarkCompleted() {
-    if (!currentUserId) return
-    if (!confirm('Mark this enquiry as completed? This cannot be undone.')) return
-    try {
-      await markEnquiryCompleted(enquiry.id, currentUserId)
-      onBoardSync({ ...enquiry, status: 'completed' } as Enquiry, enquiry.status)
-      toast.success('Enquiry marked as completed')
-    } catch (err) {
-      console.error('Failed to complete enquiry:', err)
-      toast.error('Failed to mark as completed')
     }
   }
 
@@ -1807,15 +1793,7 @@ export default function EnquiryDrawer({
                 {enquiry.customer_id && (
                   <div className="flex items-center gap-1.5 mb-2 px-1">
                     <Info className="w-3 h-3 text-white/30 flex-shrink-0" />
-                    <span className="text-xs text-white/40">Linked to customer record —</span>
-                    <a
-                      href={`/customers/${enquiry.customer_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
-                    >
-                      View Customer <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
-                    </a>
+                    <span className="text-xs text-white/40">Linked to customer record</span>
                   </div>
                 )}
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
@@ -2285,14 +2263,6 @@ export default function EnquiryDrawer({
                         {enquiry.client_phone && (
                           <p className="text-xs text-white/40">{enquiry.client_phone}</p>
                         )}
-                        <a
-                          href={`/customers/${enquiry.customer_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"
-                        >
-                          View Customer <ExternalLink className="w-3 h-3" />
-                        </a>
                       </div>
                     ) : (
                       <p className="text-xs text-white/25">No linked customer record</p>
@@ -2480,12 +2450,12 @@ export default function EnquiryDrawer({
                   </div>
 
                   {/* Deposit & Won Workflow Card */}
-                  {enquiry.status === 'accepted' && (
+                  {enquiry.status === 'won' && (
                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400/60" />
                         <h4 className="text-sm font-semibold text-emerald-300/80">
-                          {enquiry.won_at ? 'Won' : 'Accepted — Collect Deposit'}
+                          {enquiry.won_at ? 'Won' : 'Won — Collect Deposit'}
                         </h4>
                       </div>
 
@@ -2555,7 +2525,7 @@ export default function EnquiryDrawer({
                         </div>
                       )}
 
-                      {/* Won workflow: handover pack + complete + hand over */}
+                      {/* Won workflow: handover pack + close */}
                       {enquiry.won_at && (
                         <div className="mt-3 pt-3 border-t border-emerald-500/10 space-y-2">
                           <p className="text-xs text-emerald-300/60">
@@ -2580,36 +2550,43 @@ export default function EnquiryDrawer({
                             </p>
                           )}
 
-                          {enquiry.status !== 'completed' && enquiry.status !== 'handed_over' && (
-                            <button
-                              onClick={handleMarkCompleted}
-                              className="btn-secondary text-xs px-3 py-1.5 w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-                            >
-                              Mark as Completed
-                            </button>
-                          )}
-
-                          {enquiry.status === 'completed' && (
+                          {enquiry.status !== 'closed' && (
                             <button
                               onClick={async () => {
+                                if (!confirm('Mark this enquiry as closed? This cannot be undone.')) return
                                 try {
-                                  const { markEnquiryHandedOver } = await import('@/lib/supabase-data')
-                                  await markEnquiryHandedOver(enquiry.id, null)
-                                  onEnquiryUpdated?.()
-                                } catch { /* handled by the function */ }
+                                  await markEnquiryClosed(enquiry.id, currentUserId)
+                                  onBoardSync({ ...enquiry, status: 'closed' } as Enquiry, enquiry.status)
+                                  toast.success('Enquiry closed')
+                                } catch (err) {
+                                  console.error('Failed to close enquiry:', err)
+                                  toast.error('Failed to close enquiry')
+                                }
                               }}
                               className="btn-secondary text-xs px-3 py-1.5 w-full border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
                             >
-                              Mark as Handed Over
+                              Handover Complete
                             </button>
                           )}
-
-                          {enquiry.status === 'handed_over' && (
-                            <p className="text-xs text-indigo-300/60 text-center">
-                              Handed over to Contractor Foreman
-                            </p>
-                          )}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Closed status card */}
+                  {enquiry.status === 'closed' && (
+                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-400/60" />
+                        <h4 className="text-sm font-semibold text-indigo-300/80">Closed</h4>
+                      </div>
+                      <p className="text-xs text-indigo-300/60 text-center">
+                        Handed over to Contractor Foreman
+                      </p>
+                      {enquiry.won_at && (
+                        <p className="text-xs text-white/40 text-center mt-1">
+                          Won on {new Date(enquiry.won_at).toLocaleDateString('en-GB')}
+                        </p>
                       )}
                     </div>
                   )}

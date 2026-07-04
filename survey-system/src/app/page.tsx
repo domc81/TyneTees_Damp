@@ -13,7 +13,6 @@ import {
   Droplets,
   Bug,
   Wind,
-  Users,
   AlertTriangle,
   CheckCircle2,
   Activity,
@@ -62,11 +61,12 @@ const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; l
 
 // Pipeline bar config — matches COLUMNS in enquiries/page.tsx
 const PIPELINE_STATUSES = [
-  { status: 'new',      label: 'New',      color: '#3B82F6' },
-  { status: 'assigned', label: 'Assigned', color: '#8B5CF6' },
-  { status: 'surveyed', label: 'Surveyed', color: '#14B8A6' },
-  { status: 'quoted',   label: 'Quoted',   color: '#F59E0B' },
-  { status: 'accepted', label: 'Accepted', color: '#22C55E' },
+  { status: 'new',              label: 'New',              color: '#3B82F6' },
+  { status: 'awaiting_payment', label: 'Awaiting Payment', color: '#F59E0B' },
+  { status: 'booked',           label: 'Booked',           color: '#8B5CF6' },
+  { status: 'survey_complete',  label: 'Survey Complete',  color: '#14B8A6' },
+  { status: 'sent',             label: 'Sent',             color: '#F97316' },
+  { status: 'won',              label: 'Won',              color: '#22C55E' },
 ] as const
 
 // Activity icons — mirrors ACTIVITY_ICONS in EnquiryDrawer.tsx
@@ -156,7 +156,7 @@ export default function Dashboard() {
   const recentSurveys = surveys.slice(0, 5)
   const stats = {
     active: surveys.filter(p => p.status === 'draft').length,
-    completed: surveys.filter(p => p.status === 'completed').length,
+    completed: surveys.filter(p => ['completed', 'archived'].includes(p.status)).length,
     wonThisMonth: pipelineStats?.totals.wonThisMonth ?? 0,
     total: surveys.length,
   }
@@ -189,10 +189,6 @@ export default function Dashboard() {
                 <Link href="/survey/new" className="btn-primary flex items-center gap-2">
                   <Plus className="w-4 h-4" />
                   New Survey
-                </Link>
-                <Link href="/customers/new?returnTo=dashboard" className="btn-secondary flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Create Customer
                 </Link>
               </div>
             </div>
@@ -339,12 +335,12 @@ function PipelineWidget({ stats }: { stats: EnquiryPipelineStats }) {
     0,
   )
 
-  const hasAnyActive = totals.active > 0 || (statusCounts['accepted'] ?? 0) > 0
+  const hasAnyActive = totals.active > 0 || (statusCounts['won'] ?? 0) > 0
 
   const conversionRate = (() => {
-    const decided = totals.accepted + totals.declined
+    const decided = totals.won + totals.lost
     if (decided === 0) return null
-    return Math.round((totals.accepted / decided) * 100)
+    return Math.round((totals.won / decided) * 100)
   })()
 
   return (

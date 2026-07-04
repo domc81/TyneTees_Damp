@@ -11,14 +11,14 @@ export type UserRole = 'admin' | 'office' | 'surveyor'
 
 export type EnquiryStatus =
   | 'new'
-  | 'assigned'
-  | 'surveyed'
-  | 'quoted'
-  | 'accepted'
-  | 'declined'
+  | 'awaiting_payment'
+  | 'booked'
+  | 'survey_complete'
+  | 'sent'
+  | 'won'
+  | 'closed'
   | 'on_hold'
-  | 'completed'
-  | 'handed_over'
+  | 'lost'
 
 export type EnquiryPriority = 'low' | 'medium' | 'high' | 'urgent'
 

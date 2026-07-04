@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSmartBack } from '@/hooks/useSmartBack'
 import { getSupabase } from '@/lib/supabase-client'
-import { setCfExportedAt, markEnquiryHandedOver } from '@/lib/supabase-data'
+import { setCfExportedAt, markEnquiryClosed } from '@/lib/supabase-data'
 import { getHandoverData, generateCustomerCSV, generateJobSummaryText, deriveGuaranteeType } from '@/lib/handover-pack'
 import { loadWizardData } from '@/lib/survey-wizard-data'
 import { generateCostingFromSurvey } from '@/lib/survey-mapping'
@@ -137,9 +137,9 @@ function HandoverContent() {
 
   // Readiness
   const enquiryStatus = handoverData?.enquiry?.status
-  const isReady = enquiryStatus === 'accepted' || enquiryStatus === 'completed' || enquiryStatus === 'handed_over'
+  const isReady = enquiryStatus === 'won' || enquiryStatus === 'closed'
   const isWon = !!handoverData?.enquiry?.won_at
-  const isAlreadyHandedOver = enquiryStatus === 'handed_over' || handedOver
+  const isAlreadyHandedOver = enquiryStatus === 'closed' || handedOver
 
   // Persist tracking changes
   const updateTracking = useCallback(async (updates: Partial<HandoverTracking>) => {
@@ -177,7 +177,7 @@ function HandoverContent() {
           setQuotationUrl(`${appUrl}/q/${data.quotation.share_token}`)
         }
 
-        if (data.enquiry?.status === 'handed_over') {
+        if (data.enquiry?.status === 'closed') {
           setHandedOver(true)
         }
       } catch (err) {
@@ -332,22 +332,22 @@ function HandoverContent() {
     }
   }, [handoverData])
 
-  // Mark as Handed Over
+  // Mark as Closed (handover complete)
   const handleMarkHandedOver = useCallback(async () => {
     if (!handoverData?.enquiry?.id) return
 
-    if (handoverData.enquiry.status !== 'completed') {
-      toast.error('Enquiry must be marked as Completed before handing over')
+    if (handoverData.enquiry.status !== 'won') {
+      toast.error('Enquiry must be in Won status before closing')
       return
     }
 
     setConfirmingHandover(true)
     try {
-      await markEnquiryHandedOver(handoverData.enquiry.id, user?.id || null)
+      await markEnquiryClosed(handoverData.enquiry.id, user?.id || null)
       setHandedOver(true)
-      toast.success('Enquiry marked as Handed Over')
+      toast.success('Handover complete — enquiry closed')
     } catch {
-      toast.error('Failed to mark as handed over')
+      toast.error('Failed to close handover')
     } finally {
       setConfirmingHandover(false)
     }
@@ -685,10 +685,10 @@ function HandoverContent() {
         <p className="text-sm text-white/70 ml-12">{guarantee.description}</p>
       </Card>
 
-      {/* Mark as Handed Over */}
+      {/* Handover Complete */}
       {isReady && !isAlreadyHandedOver && (
         <div className="pt-4 border-t border-white/10">
-          {enquiry?.status === 'completed' ? (
+          {enquiry?.status === 'won' ? (
             <Button
               onClick={handleMarkHandedOver}
               disabled={confirmingHandover}
@@ -699,11 +699,11 @@ function HandoverContent() {
               ) : (
                 <PackageCheck className="w-4 h-4 mr-2" />
               )}
-              Mark as Handed Over to Contractor Foreman
+              Handover Complete
             </Button>
           ) : (
             <p className="text-xs text-white/30 text-center">
-              Mark the enquiry as Completed before marking as Handed Over
+              Enquiry must be in Won status before completing handover
             </p>
           )}
         </div>

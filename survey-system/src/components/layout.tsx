@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Package,
   Users,
-  UserCircle,
   Calendar,
   Settings,
   Menu,
@@ -26,8 +25,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 const navItems: { icon: typeof LayoutDashboard; label: string; href: string; roles?: string[] }[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
-  { icon: UserCircle, label: 'Customers', href: '/customers' },
-  { icon: Inbox, label: 'Enquiries', href: '/enquiries', roles: ['admin', 'office'] },
+  { icon: Inbox, label: 'Pipeline', href: '/enquiries', roles: ['admin', 'office'] },
   { icon: Package, label: 'Materials', href: '/materials' },
   { icon: Users, label: 'Team', href: '/admin/team' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },

@@ -11,7 +11,6 @@ import {
   ClipboardList,
   FileText,
   Save,
-  Plus,
   CalendarClock,
   Check,
   AlertTriangle,
@@ -108,7 +107,8 @@ function NewSurveyContent() {
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
     if (value === 'new') {
-      router.push('/customers/new?returnTo=survey-new')
+      // Customer creation now happens through the pipeline (enquiry → Convert & Book)
+      return
     } else {
       handleInputChange('customer_id', value)
     }
@@ -285,13 +285,9 @@ function NewSurveyContent() {
                       </select>
                     </div>
                     <div className="flex items-end">
-                      <Link
-                        href="/customers/new?returnTo=survey-new"
-                        className="btn-secondary flex items-center gap-2 w-full justify-center"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Create Customer
-                      </Link>
+                      <p className="text-xs text-white/40 py-2">
+                        New customers are created via the Pipeline
+                      </p>
                     </div>
                   </div>
                 </div>

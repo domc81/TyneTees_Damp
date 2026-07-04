@@ -78,7 +78,34 @@ export async function POST(request: NextRequest) {
 
       if (bookingError) {
         console.error(`Failed to cancel booking ${payment.booking_id}:`, bookingError)
-      } else if (booking?.surveyor_id) {
+      }
+
+      // Revert enquiry status from awaiting_payment back to new
+      if (booking) {
+        const { data: surveyForRevert } = await supabase
+          .from('survey_bookings')
+          .select('survey_id')
+          .eq('id', payment.booking_id)
+          .single()
+
+        if (surveyForRevert?.survey_id) {
+          const { data: linkedSurvey } = await supabase
+            .from('surveys')
+            .select('enquiry_id')
+            .eq('id', surveyForRevert.survey_id)
+            .single()
+
+          if (linkedSurvey?.enquiry_id) {
+            await supabase
+              .from('enquiries')
+              .update({ status: 'new' })
+              .eq('id', linkedSurvey.enquiry_id)
+              .eq('status', 'awaiting_payment')
+          }
+        }
+      }
+
+      if (!bookingError && booking?.surveyor_id) {
         // Notify the assigned surveyor that the booking was auto-cancelled
         await supabase.from('notifications').insert({
           user_id: booking.surveyor_id,

@@ -699,7 +699,7 @@ export async function updateEnquiryStatus(
     updatePayload.hold_reason_note = null
   }
 
-  if (newStatus === 'declined' && options?.lossReason) {
+  if (newStatus === 'lost' && options?.lossReason) {
     updatePayload.loss_reason = options.lossReason
   }
 
@@ -736,29 +736,29 @@ export async function updateEnquiryStatus(
 // ============================================================================
 
 /**
- * Forward-only ordering for enquiry status auto-transitions.
+ * Pipeline ordering for forward-only auto-transitions.
  * Higher number = further along the pipeline.
- * declined is terminal (same rank as accepted but blocks further transitions).
- * accepted can transition to completed (office action after deposit + CF export).
+ * lost and closed are terminal — never overwritten by auto-transitions.
+ * on_hold is a side-lane that allows forward transitions.
  */
 const ENQUIRY_STATUS_ORDER: Record<string, number> = {
   new: 0,
-  assigned: 1,
-  surveyed: 2,
-  quoted: 3,
-  accepted: 4,
-  declined: 4,
-  completed: 5,
-  handed_over: 6,
+  awaiting_payment: 1,
+  booked: 2,
+  survey_complete: 3,
+  sent: 4,
+  won: 5,
+  closed: 6,
+  lost: 4,
 }
 
 /** Statuses that should never be overwritten by auto-transitions. */
-const TERMINAL_STATUSES = new Set<string>(['declined', 'completed', 'handed_over'])
+const TERMINAL_STATUSES = new Set<string>(['lost', 'closed'])
 
 /**
  * Determine whether an automatic status transition should proceed.
  * Rules:
- *  - Terminal statuses (declined, completed) are never overwritten.
+ *  - Terminal statuses (lost, closed) are never overwritten.
  *  - on_hold is special: transitions still apply (completing a survey while
  *    on hold should move the enquiry forward).
  *  - Otherwise, only allow forward movement in the pipeline ordering.
@@ -851,31 +851,8 @@ export async function setCfExportedAt(enquiryId: string): Promise<boolean> {
   return true
 }
 
-/** Transition an enquiry to completed (terminal). Requires won_at to be set. */
-export async function markEnquiryCompleted(
-  enquiryId: string,
-  userId: string | null
-): Promise<void> {
-  const supabase = getSupabase()
-  if (!supabase) return
-
-  // Guard: only accepted + won enquiries can be completed
-  const { data: enquiry } = await supabase
-    .from('enquiries')
-    .select('status, won_at')
-    .eq('id', enquiryId)
-    .single()
-
-  if (!enquiry || enquiry.status !== 'accepted' || !enquiry.won_at) {
-    console.error('markEnquiryCompleted: enquiry must be accepted and won')
-    return
-  }
-
-  await updateEnquiryStatus(enquiryId, 'completed', userId)
-}
-
-/** Transition an enquiry to handed_over (terminal). Requires completed status. */
-export async function markEnquiryHandedOver(
+/** Transition an enquiry to closed (terminal). Requires won status. */
+export async function markEnquiryClosed(
   enquiryId: string,
   userId: string | null
 ): Promise<void> {
@@ -888,18 +865,17 @@ export async function markEnquiryHandedOver(
     .eq('id', enquiryId)
     .single()
 
-  if (!enquiry || enquiry.status !== 'completed') {
-    console.error('markEnquiryHandedOver: enquiry must be completed first')
+  if (!enquiry || enquiry.status !== 'won') {
+    console.error('markEnquiryClosed: enquiry must be in won status')
     return
   }
 
-  await updateEnquiryStatus(enquiryId, 'handed_over', userId)
+  await updateEnquiryStatus(enquiryId, 'closed', userId)
 }
 
 /**
  * Assign an enquiry to a team member.
- * If the enquiry is currently 'new', automatically transitions it to 'assigned'.
- * Logs both assignment_change and (if status changes) status_change activities.
+ * Logs assignment_change activity. Does not change enquiry status.
  */
 export async function assignEnquiry(
   enquiryId: string,
@@ -952,11 +928,6 @@ export async function assignEnquiry(
       new_assignee_name: assigneeProfile?.display_name ?? null,
     }
   )
-
-  // If status is 'new', automatically transition to 'assigned'
-  if (current.status === 'new') {
-    return updateEnquiryStatus(enquiryId, 'assigned', userId)
-  }
 
   return updated
 }
@@ -1047,38 +1018,36 @@ export interface EnquiryPipelineStats {
   statusValues: Record<string, number>
   redCounts: Record<string, number>
   totals: {
-    active: number        // new + assigned + surveyed + quoted
-    pipelineValue: number // sum estimated_value for all 5 active statuses
+    active: number
+    pipelineValue: number
     redTotal: number
-    accepted: number
-    declined: number
-    completed: number
+    won: number
+    lost: number
     wonThisMonth: number
     wonThisMonthValue: number
   }
 }
 
-// Red threshold mirrors SLA_HOURS[status].amber from the Kanban board
+// Red threshold (hours) — matches SLA_HOURS amber thresholds in the Kanban board
 const PIPELINE_RED_HOURS: Partial<Record<string, number>> = {
-  new:      48,
-  assigned: 120,
-  surveyed: 48,
-  quoted:   240,
+  new:              48,
+  awaiting_payment: 72,
+  survey_complete:  48,
+  sent:             240,
 }
 
 export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
   const empty: EnquiryPipelineStats = {
     statusCounts: {}, statusValues: {}, redCounts: {},
-    totals: { active: 0, pipelineValue: 0, redTotal: 0, accepted: 0, declined: 0, completed: 0, wonThisMonth: 0, wonThisMonthValue: 0 },
+    totals: { active: 0, pipelineValue: 0, redTotal: 0, won: 0, lost: 0, wonThisMonth: 0, wonThisMonthValue: 0 },
   }
   const supabase = getSupabase()
   if (!supabase) return empty
 
-  // Fetch all non-on_hold enquiries (including completed now)
   const { data, error } = await supabase
     .from('enquiries')
     .select('status, estimated_value, status_changed_at, won_at')
-    .in('status', ['new', 'assigned', 'surveyed', 'quoted', 'accepted', 'declined', 'completed', 'handed_over'])
+    .in('status', ['new', 'awaiting_payment', 'booked', 'survey_complete', 'sent', 'won', 'closed', 'lost'])
 
   if (error) {
     console.error('Error fetching pipeline stats:', error)
@@ -1089,7 +1058,6 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
   const statusValues: Record<string, number> = {}
   const redCounts: Record<string, number> = {}
 
-  // Won this month
   const monthStart = new Date()
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
@@ -1107,15 +1075,14 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
         redCounts[s] = (redCounts[s] ?? 0) + 1
       }
     }
-    // Count won this month
     if (row.won_at && new Date(row.won_at) >= monthStart) {
       wonThisMonth++
       wonThisMonthValue += row.estimated_value ?? 0
     }
   }
 
-  const active = ['new', 'assigned', 'surveyed', 'quoted'].reduce((s, k) => s + (statusCounts[k] ?? 0), 0)
-  const pipelineValue = ['new', 'assigned', 'surveyed', 'quoted', 'accepted'].reduce((s, k) => s + (statusValues[k] ?? 0), 0)
+  const active = ['new', 'awaiting_payment', 'booked', 'survey_complete', 'sent'].reduce((s, k) => s + (statusCounts[k] ?? 0), 0)
+  const pipelineValue = ['new', 'awaiting_payment', 'booked', 'survey_complete', 'sent', 'won'].reduce((s, k) => s + (statusValues[k] ?? 0), 0)
   const redTotal = Object.values(redCounts).reduce((s, c) => s + c, 0)
 
   return {
@@ -1124,9 +1091,8 @@ export async function getEnquiryPipelineStats(): Promise<EnquiryPipelineStats> {
     redCounts,
     totals: {
       active, pipelineValue, redTotal,
-      accepted: statusCounts['accepted'] ?? 0,
-      declined: statusCounts['declined'] ?? 0,
-      completed: statusCounts['completed'] ?? 0,
+      won: statusCounts['won'] ?? 0,
+      lost: statusCounts['lost'] ?? 0,
       wonThisMonth,
       wonThisMonthValue,
     },
@@ -1349,8 +1315,7 @@ async function generateProjectNumber(): Promise<string> {
  *  3. Resolve/create customer via findOrCreateCustomerFromEnquiry()
  *  4. Insert survey with enquiry_id FK
  *  5. Log 'survey_created' activity on the enquiry
- *  6. Advance enquiry status to 'assigned' if currently 'new'
- *  7. Return { survey, customer }
+ *  6. Return { survey, customer }
  */
 export async function createSurveyFromEnquiry(
   enquiryId: string,
@@ -1429,11 +1394,6 @@ export async function createSurveyFromEnquiry(
     null,
     { survey_id: survey.id, project_number: projectNumber, customer_id: customer.id }
   )
-
-  // 6. Advance enquiry status to 'assigned' if currently 'new'
-  if (enquiry.status === 'new') {
-    await updateEnquiryStatus(enquiryId, 'assigned', userId)
-  }
 
   return { survey, customer }
 }

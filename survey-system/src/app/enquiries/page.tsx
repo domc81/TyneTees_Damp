@@ -60,18 +60,18 @@ type ColumnDef = {
 }
 
 const COLUMNS: ColumnDef[] = [
-  { status: 'new',       label: 'New',       color: '#3B82F6' },
-  { status: 'assigned',  label: 'Assigned',  color: '#8B5CF6' },
-  { status: 'surveyed',  label: 'Surveyed',  color: '#14B8A6' },
-  { status: 'quoted',    label: 'Quoted',    color: '#F59E0B' },
-  { status: 'accepted',  label: 'Accepted',  color: '#22C55E' },
-  { status: 'declined',  label: 'Declined',  color: '#EF4444' },
-  { status: 'on_hold',   label: 'On Hold',   color: '#6B7280' },
-  { status: 'completed',    label: 'Completed',    color: '#64748B' },
-  { status: 'handed_over',  label: 'Handed Over',  color: '#6366F1' },
+  { status: 'new',              label: 'New',              color: '#3B82F6' },
+  { status: 'awaiting_payment', label: 'Awaiting Payment', color: '#F59E0B' },
+  { status: 'booked',           label: 'Booked',           color: '#8B5CF6' },
+  { status: 'survey_complete',  label: 'Survey Complete',  color: '#14B8A6' },
+  { status: 'sent',             label: 'Sent',             color: '#F97316' },
+  { status: 'won',              label: 'Won',              color: '#22C55E' },
+  { status: 'closed',           label: 'Closed',           color: '#6366F1' },
+  { status: 'on_hold',          label: 'On Hold',          color: '#6B7280' },
+  { status: 'lost',             label: 'Lost',             color: '#EF4444' },
 ]
 
-const ACTIVE_STATUSES = new Set(['new', 'assigned', 'surveyed', 'quoted', 'accepted'])
+const ACTIVE_STATUSES = new Set(['new', 'awaiting_payment', 'booked', 'survey_complete', 'sent', 'won'])
 
 // ---------------------------------------------------------------------------
 // Survey type display
@@ -118,13 +118,13 @@ function formatCurrency(value: number): string {
 }
 
 // SLA threshold config (hours in status before changing tier).
-// Statuses not listed (accepted, declined, completed) have no SLA.
+// Statuses not listed (won, lost, closed) have no SLA.
 const SLA_HOURS: Partial<Record<EnquiryStatus, { green: number; amber: number }>> = {
-  new:      { green: 24,  amber: 48  },
-  assigned: { green: 72,  amber: 120 }, // 3d / 5d
-  surveyed: { green: 24,  amber: 48  },
-  quoted:   { green: 120, amber: 240 }, // 5d / 10d
-  on_hold:  { green: 168, amber: 336 }, // 7d / 14d
+  new:              { green: 24,  amber: 48  },
+  awaiting_payment: { green: 48,  amber: 72  },
+  survey_complete:  { green: 24,  amber: 48  },
+  sent:             { green: 120, amber: 240 }, // 5d / 10d
+  on_hold:          { green: 168, amber: 336 }, // 7d / 14d
 }
 
 function getSlaStatus(status: EnquiryStatus, statusChangedAt: string): 'green' | 'amber' | 'red' | null {
@@ -1090,10 +1090,10 @@ function OnHoldModal({
 }
 
 // ---------------------------------------------------------------------------
-// Declined Modal
+// Lost Modal
 // ---------------------------------------------------------------------------
 
-function DeclinedModal({
+function LostModal({
   enquiry: _enquiry,
   onConfirm,
   onCancel,
@@ -1121,7 +1121,7 @@ function DeclinedModal({
         }}
       >
         <div>
-          <h2 className="text-lg font-bold text-white">Mark Enquiry as Declined</h2>
+          <h2 className="text-lg font-bold text-white">Mark Enquiry as Lost</h2>
           <p className="text-sm text-white/50 mt-1">
             This will remove the enquiry from the active pipeline.
           </p>
@@ -1130,7 +1130,7 @@ function DeclinedModal({
         {/* Reason textarea */}
         <div>
           <label className="block text-sm font-medium text-white/70 mb-1.5">
-            Reason for decline <span className="text-white/30">(optional)</span>
+            Reason for loss <span className="text-white/30">(optional)</span>
           </label>
           <textarea
             value={reason}
@@ -1187,7 +1187,7 @@ export default function EnquiriesPage() {
   const [pendingDrag, setPendingDrag] = useState<{
     enquiry: Enquiry
     fromStatus: EnquiryStatus
-    toStatus: 'on_hold' | 'declined'
+    toStatus: 'on_hold' | 'lost'
   } | null>(null)
 
   // Toast (supports error, success, and warning variants)
@@ -1203,7 +1203,7 @@ export default function EnquiriesPage() {
   // Mobile accordion expand state (Task C)
   // Active pipeline sections start expanded; archived start collapsed
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['new', 'assigned', 'surveyed', 'quoted', 'accepted'])
+    new Set(['new', 'awaiting_payment', 'booked', 'survey_complete', 'sent', 'won'])
   )
 
   // Drawer state
@@ -1335,7 +1335,7 @@ export default function EnquiriesPage() {
   // Columns to render based on archived toggle
   const visibleColumns = showArchivedColumns
     ? COLUMNS
-    : COLUMNS.filter((col) => col.status !== 'declined' && col.status !== 'on_hold' && col.status !== 'completed')
+    : COLUMNS.filter((col) => col.status !== 'on_hold' && col.status !== 'lost' && col.status !== 'closed')
 
   const totalEnquiries = Object.values(board).reduce((sum, arr) => sum + arr.length, 0)
 
@@ -1411,8 +1411,8 @@ export default function EnquiriesPage() {
     })
   }, [])
 
-  // Drawer requests on_hold or declined — triggers existing modals
-  function handleDrawerStatusChange(enquiry: Enquiry, toStatus: 'on_hold' | 'declined') {
+  // Drawer requests on_hold or lost — triggers existing modals
+  function handleDrawerStatusChange(enquiry: Enquiry, toStatus: 'on_hold' | 'lost') {
     setPendingDrag({ enquiry, fromStatus: enquiry.status, toStatus })
   }
 
@@ -1445,7 +1445,7 @@ export default function EnquiriesPage() {
 
     if (sourceStatus === targetStatus) return
 
-    if (targetStatus === 'on_hold' || targetStatus === 'declined') {
+    if (targetStatus === 'on_hold' || targetStatus === 'lost') {
       setPendingDrag({ enquiry, fromStatus: sourceStatus, toStatus: targetStatus })
       return
     }
@@ -1526,17 +1526,17 @@ export default function EnquiriesPage() {
     }
   }
 
-  function handleDeclinedConfirm(lossReason: string) {
+  function handleLostConfirm(lossReason: string) {
     if (!pendingDrag) return
     const { enquiry, fromStatus } = pendingDrag
-    moveCard(enquiry, fromStatus, 'declined', {
+    moveCard(enquiry, fromStatus, 'lost', {
       lossReason: lossReason || undefined,
     })
     // Enrich the board state with loss_reason (moveCard only sets status)
     if (lossReason) {
       setBoard(prev => {
         const next = { ...prev }
-        next['declined'] = (next['declined'] ?? []).map(e =>
+        next['lost'] = (next['lost'] ?? []).map(e =>
           e.id === enquiry.id ? { ...e, loss_reason: lossReason } : e
         )
         return next
@@ -1556,7 +1556,7 @@ export default function EnquiriesPage() {
   function handleMobileMove(enquiry: Enquiry, toStatus: EnquiryStatus) {
     const fromStatus = enquiry.status
     if (toStatus === fromStatus) return
-    if (toStatus === 'on_hold' || toStatus === 'declined') {
+    if (toStatus === 'on_hold' || toStatus === 'lost') {
       setPendingDrag({ enquiry, fromStatus, toStatus })
       return
     }
@@ -1678,7 +1678,7 @@ export default function EnquiriesPage() {
                   ))}
                 </select>
 
-                {/* Show declined & on hold toggle */}
+                {/* Show on hold & lost toggle */}
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <button
                     type="button"
@@ -1695,7 +1695,7 @@ export default function EnquiriesPage() {
                       }`}
                     />
                   </button>
-                  <span className="text-sm text-white/60 whitespace-nowrap">Show declined &amp; on hold</span>
+                  <span className="text-sm text-white/60 whitespace-nowrap">Show on hold &amp; lost</span>
                 </label>
 
                 {/* Clear filters — only visible when a filter is active */}
@@ -1723,7 +1723,7 @@ export default function EnquiriesPage() {
                 <div className="hidden lg:flex flex-1 overflow-x-auto overflow-y-hidden overscroll-contain pb-2">
                   <div className="flex gap-3 h-full min-w-max">
                       {visibleColumns.map((col, idx) => {
-                        const isArchived = col.status === 'declined' || col.status === 'on_hold'
+                        const isArchived = col.status === 'on_hold' || col.status === 'lost' || col.status === 'closed'
                         const prevCol = visibleColumns[idx - 1]
                         const showSeparator =
                           isArchived &&
@@ -1818,11 +1818,11 @@ export default function EnquiriesPage() {
           />
         )}
 
-        {/* Declined Modal */}
-        {pendingDrag?.toStatus === 'declined' && (
-          <DeclinedModal
+        {/* Lost Modal */}
+        {pendingDrag?.toStatus === 'lost' && (
+          <LostModal
             enquiry={pendingDrag.enquiry}
-            onConfirm={handleDeclinedConfirm}
+            onConfirm={handleLostConfirm}
             onCancel={handleModalCancel}
           />
         )}

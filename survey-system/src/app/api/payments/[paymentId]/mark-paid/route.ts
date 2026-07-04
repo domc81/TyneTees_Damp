@@ -93,6 +93,29 @@ export async function POST(
       .eq('id', payment.booking_id)
       .eq('status', 'provisional')
 
+    // Transition enquiry from awaiting_payment → booked
+    const { data: bookingForEnquiry } = await supabase
+      .from('survey_bookings')
+      .select('survey_id')
+      .eq('id', payment.booking_id)
+      .single()
+
+    if (bookingForEnquiry?.survey_id) {
+      const { data: surveyForEnquiry } = await supabase
+        .from('surveys')
+        .select('enquiry_id')
+        .eq('id', bookingForEnquiry.survey_id)
+        .single()
+
+      if (surveyForEnquiry?.enquiry_id) {
+        await supabase
+          .from('enquiries')
+          .update({ status: 'booked' })
+          .eq('id', surveyForEnquiry.enquiry_id)
+          .in('status', ['awaiting_payment', 'new'])
+      }
+    }
+
     // Send booking confirmation email to customer
     const { data: booking } = await supabase
       .from('survey_bookings')

@@ -814,3 +814,195 @@ export async function bookingConfirmedAfterPaymentEmail(data: BookingConfirmedAf
 
   return { subject, html: wrapInBrandedLayout(body, branding) }
 }
+
+// ── Combined report + quotation email ─────────────────────────────────────
+
+export interface ReportAndQuotationEmailData {
+  customerName: string
+  reportUrl: string
+  quotationUrl: string
+  surveyDate?: string
+}
+
+export async function reportAndQuotationEmail(data: ReportAndQuotationEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your survey report and quotation are ready — ${branding.companyName}`
+
+  const surveyLine = data.surveyDate
+    ? `<p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+        Following our survey on <strong>${escapeHtml(data.surveyDate)}</strong>, we have now completed your
+        full survey report and prepared a detailed quotation for the recommended works.
+      </p>`
+    : `<p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+        We have now completed your full survey report and prepared a detailed quotation
+        for the recommended works.
+      </p>`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Your survey report and quotation are ready to view.&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    ${surveyLine}
+
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.6;">
+      You can review both documents using the links below:
+    </p>
+
+    ${ctaButton(data.reportUrl, 'View Your Survey Report')}
+
+    ${ctaButton(data.quotationUrl, 'View Your Quotation')}
+
+    <p style="margin:20px 0 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Please take your time to review the report and quotation. If you have any questions
+      or would like to discuss anything, please don't hesitate to get in touch.
+    </p>
+
+    <p style="margin:16px 0 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      To accept the quotation, simply click &ldquo;View Your Quotation&rdquo; and follow the
+      instructions on the page.
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
+
+// ── Post-survey completion email ──────────────────────────────────────────
+
+export interface SurveyCompletedEmailData {
+  customerName: string
+  surveyDate?: string
+}
+
+export async function surveyCompletedEmail(data: SurveyCompletedEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your survey has been completed — ${branding.companyName}`
+
+  const dateLine = data.surveyDate
+    ? ` on <strong>${escapeHtml(data.surveyDate)}</strong>`
+    : ''
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Your survey has been completed. Your report will be with you soon.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for allowing us to carry out your property survey${dateLine}. Our surveyor has
+      now completed the inspection and submitted their findings.
+    </p>
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Our team is now preparing your detailed survey report and quotation. You can expect
+      to receive these within <strong>48 hours</strong>.
+    </p>
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      If you have any immediate questions about the survey, please don't hesitate to contact us.
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
+
+// ── Post-acceptance thank you email ───────────────────────────────────────
+
+export interface QuotationAcceptedThankYouData {
+  customerName: string
+  quotationNumber: string
+}
+
+export async function quotationAcceptedThankYouEmail(data: QuotationAcceptedThankYouData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Thank you for accepting your quotation — ${branding.companyName}`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Thank you for accepting your quotation. Here is what happens next.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Thank you for accepting quotation <strong>${escapeHtml(data.quotationNumber)}</strong>. We are
+      delighted you have chosen ${escapeHtml(branding.companyName)} and we look forward to completing
+      the works for you.
+    </p>
+
+    <p style="margin:0 0 12px 0;font-size:15px;color:#374151;line-height:1.6;font-weight:600;">
+      What happens next:
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin:0 0 20px 0;">
+      <tbody>
+        <tr>
+          <td style="padding:16px 20px;font-size:14px;color:#374151;line-height:1.8;">
+            <strong>1.</strong> Our office team will be in touch to arrange the installation date.<br />
+            <strong>2.</strong> We will confirm all the details with you before the work begins.<br />
+            <strong>3.</strong> Our qualified team will carry out the agreed works at your property.<br />
+            <strong>4.</strong> Upon completion, you will receive your guarantee documentation.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      If you have any questions in the meantime, please don't hesitate to get in touch.
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
+
+// ── On My Way notification ────────────────────────────────────────────────
+
+export interface OnMyWayEmailData {
+  customerName: string
+  surveyorName: string
+  bookingTime: string
+  siteAddress: string
+}
+
+export async function onMyWayEmail(data: OnMyWayEmailData): Promise<EmailTemplate> {
+  const branding = await getCompanyBranding()
+  const subject = `Your surveyor is on their way — ${branding.companyName}`
+
+  const body = `
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+      Your surveyor is on their way to your property.&nbsp;&#8203;&nbsp;&#8203;
+    </div>
+
+    ${greeting(data.customerName)}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      Just a quick note to let you know that <strong>${escapeHtml(data.surveyorName)}</strong> is now on
+      their way to your property and will be with you for your <strong>${escapeHtml(data.bookingTime)}</strong> appointment.
+    </p>
+
+    ${infoBox([
+      ['Surveyor', data.surveyorName],
+      ['Expected arrival', data.bookingTime],
+      ['Property', data.siteAddress],
+    ])}
+
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.6;">
+      If you need to contact us before the surveyor arrives, please call us on
+      <a href="tel:${branding.companyPhone.replace(/\s/g, '')}" style="color:#1e3a5f;text-decoration:none;font-weight:600;">${escapeHtml(branding.companyPhone)}</a>.
+    </p>
+
+    ${signature(branding)}
+  `
+
+  return { subject, html: wrapInBrandedLayout(body, branding) }
+}
