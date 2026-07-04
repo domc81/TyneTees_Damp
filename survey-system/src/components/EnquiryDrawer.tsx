@@ -1322,8 +1322,10 @@ export default function EnquiryDrawer({
         onBoardSync({ ...enquiry, won_at: new Date().toISOString() } as Enquiry, enquiry.status)
       }
 
-      // If this was a survey fee, refresh linked data to show updated booking status
-      if (updated.payment_type === 'survey_fee') {
+      // If this was a survey fee, transition enquiry to booked and refresh
+      if (updated.payment_type === 'survey_fee' && enquiry.status === 'awaiting_payment') {
+        await updateEnquiryStatus(enquiry.id, 'booked', currentUserId)
+        onBoardSync({ ...enquiry, status: 'booked' }, enquiry.status)
         setLinkedLoaded(false)
       }
 
@@ -1805,19 +1807,53 @@ export default function EnquiryDrawer({
                     {linkedBooking.surveyor_name && <p>Surveyor: {linkedBooking.surveyor_name}</p>}
                   </div>
                 )}
-                {payments.filter(p => p.payment_type === 'survey_fee' && p.status === 'pending').length > 0 ? (
+                {surveyFeePayment && surveyFeePayment.status === 'pending' ? (
                   <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        setActiveTab('linked')
-                        if (!linkedLoaded) loadLinked()
-                      }}
-                      className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      Mark as Paid
-                    </button>
-                    <p className="text-[11px] text-white/30 text-center">Opens payment form below</p>
+                    {showPaymentForm === surveyFeePayment.id ? (
+                      <div className="space-y-2">
+                        <select
+                          value={paymentMethodSelect}
+                          onChange={e => setPaymentMethodSelect(e.target.value as PaymentMethod)}
+                          className="input-field text-sm w-full"
+                        >
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="card_phone">Card (Phone)</option>
+                          <option value="cash">Cash</option>
+                          <option value="cheque">Cheque</option>
+                          <option value="online">Online</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={paymentRefNote}
+                          onChange={e => setPaymentRefNote(e.target.value)}
+                          placeholder="Reference (optional)"
+                          className="input-field text-sm w-full"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleMarkPaymentPaid(surveyFeePayment.id)}
+                            disabled={markingPayment}
+                            className="btn-primary flex-1 py-2 text-sm"
+                          >
+                            {markingPayment ? 'Saving...' : 'Confirm Paid'}
+                          </button>
+                          <button
+                            onClick={() => setShowPaymentForm(null)}
+                            className="btn-secondary py-2 text-sm px-4"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowPaymentForm(surveyFeePayment.id)}
+                        className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        Mark as Paid
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-white/40">Loading payment details...</p>
