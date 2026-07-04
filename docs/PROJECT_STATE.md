@@ -1,12 +1,12 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-04
-**Last commit:** e504858 — fix: resolve remaining Edge scroll/API/realtime issues
-**Current phase:** Post-audit — Edge browser compat, sketch upload, password UX shipped
+**Last commit:** 5d294b1 — feat: add Contractor Foreman handover pack
+**Current phase:** Handover pack shipped — CF integration workflow complete
 
 ## Current focus
 
-**Sketch upload and password UX shipped.** Surveyors can now upload JPEG/PNG/PDF sketch plans in the report editor — files display inline (images) or as embedded PDF viewers on the customer-facing public report. Password fields across all auth pages (login, change-password, update-password) now have show/hide toggle. Supabase Auth SMTP is not configured — password reset emails silently fail (requires root-session fix to set GOTRUE_SMTP_* env vars on the auth container). Priority candidates: SMTP configuration for password resets, workbook formula accuracy pass, costing manual overrides, Stripe integration.
+**Contractor Foreman handover pack shipped.** New one-stop handover page at `/survey/[projectId]/handover/` with all exports for creating a CF Project: customer details CSV, CF estimate CSV (moved from costing page), survey photos ZIP, and plain text job summary with clipboard copy. Quick action button in EnquiryDrawer won workflow. New `handed_over` enquiry status (terminal, after completed) with Kanban column. Installer info "General Notes" renamed to "Special Instructions for Workmen". Guarantee type derived from survey type (25yr damp/timber/woodworm, 7yr condensation). Westminster guarantee references cleaned from DB. Report link included (public URL for browser print). Priority candidates: CF replacement assessment (project management, invoicing, bookkeeping integration), SMTP configuration for password resets, workbook formula accuracy pass, Stripe integration.
 
 ## Open threads
 
@@ -29,6 +29,7 @@
 
 ## Recently shipped
 
+- 2026-07-04 — Contractor Foreman handover pack: new page at `/survey/[projectId]/handover/` consolidating all CF export outputs. Downloads: customer CSV (CF import format), CF estimate CSV (existing export moved here), photos ZIP (all survey photos + sketch plans bundled server-side via JSZip), plain text job summary (10-section text with copy-to-clipboard). New `handed_over` enquiry status after `completed` with Kanban column and EnquiryDrawer quick action button. Guarantee type derived from survey type (25yr damp/timber/woodworm, 7yr condensation). "General Notes" renamed to "Special Instructions for Workmen" on installer info page. Westminster guarantee references cleaned from DB. Report published URL included with copy button. ProtectedRoute restricted to admin/office roles.
 - 2026-07-04 — Edge browser compatibility fixes (2 commits): background rendering moved from body to layout div (fixes public pages), removed background-attachment:fixed (scroll-jank), aurora animation simplified to opacity-only (compositing conflict), -webkit-backdrop-filter prefix on tables, removed redundant min-h-screen, sidebar nav overflow-y-auto, replaced ES2023 findLastIndex(). Then: overscroll-behavior:contain on all scroll containers, enquiry pipeline nested scroll simplified (3→2 wrappers), supabase-server.ts migrated from deprecated get/set/remove cookie API to getAll/setAll, NotificationBell realtime subscription now properly reconnects after channel loss (via reconnectKey state).
 - 2026-07-03 — Sketch plan upload for reports: surveyors can upload JPEG/PNG/PDF sketches in the report editor. Uploaded sketches display inline on the internal editor (with delete support) and on the customer-facing public report. Images render full-width with lightbox; PDFs render as embedded viewers with download fallback. Uses existing `survey-photos` storage bucket with serialized writes. New `updateReportSectionPhotos()` in report-data.ts.
 - 2026-07-03 — Show/hide password toggle: added eye icon toggle to the shared Input component for all password fields. Works on login, change-password, and update-password pages. Uses lucide-react Eye/EyeOff icons with tabIndex={-1} to avoid disrupting keyboard flow.

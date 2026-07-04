@@ -117,6 +117,7 @@ TyneTees_Damp/
 │   │   │   │   ├── new/            # New survey creation
 │   │   │   │   └── [projectId]/    # Note: param is [projectId] (historical) — refers to survey ID
 │   │   │   │       ├── costing/    # Auto-calculated costing review
+│   │   │   │       ├── handover/  # CF handover pack (downloads, summary, mark handed over)
 │   │   │   │       ├── installer-info/ # Installer information/photos
 │   │   │   │       ├── quotation/[quotationId]/ # Quotation view + send
 │   │   │   │       ├── report/     # Report editor (review, inline edit, status workflow)
@@ -145,7 +146,7 @@ TyneTees_Damp/
 │   │   ├── hooks/
 │   │   │   └── useSmartBack.ts     # Smart back navigation
 │   │   ├── middleware.ts           # Supabase SSR session management + token rotation
-│   │   ├── lib/                    # 33 library files (see Lib Files section)
+│   │   ├── lib/                    # 34 library files (see Lib Files section)
 │   │   └── types/
 │   │       ├── database.types.ts    # Canonical DB TypeScript types
 │   │       ├── survey-wizard.types.ts # Wizard data model types
@@ -196,7 +197,7 @@ TyneTees_Damp/
 
 `CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 
-### Lib Files (32 files)
+### Lib Files (33 files)
 
 **Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
 
@@ -224,6 +225,8 @@ TyneTees_Damp/
 
 **CSV Export:** `cf-csv-export.ts`, `cf-export-config.ts`
 
+**Handover:** `handover-pack.ts` (CF handover data aggregation, customer CSV, job summary text, guarantee derivation)
+
 **Concurrency:** `write-queue.ts` (per-survey serialized write queue — used by photo service + wizard auto-save + sketch upload)
 
 **Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
@@ -232,7 +235,7 @@ TyneTees_Damp/
 
 ## API Routes
 
-25 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
+26 route.ts files. CRUD operations for surveys, enquiries, bookings, notifications, and quotations are handled via direct Supabase client SDK calls from the frontend — API routes are only used for server-side operations requiring secrets.
 
 | Route | Purpose |
 |---|---|
@@ -259,6 +262,7 @@ TyneTees_Damp/
 | `/api/settings/company/logo` | Logo upload |
 | `/api/settings/notifications` | Notification preference CRUD |
 | `/api/settings/notifications/test-email` | Test email delivery |
+| `/api/surveys/[id]/photos-zip` | Download survey photos + sketches as ZIP (handover) |
 | `/api/surveys/[id]/quotation` | Generate quotation from survey |
 | `/api/transcribe` | Deepgram speech-to-text |
 
@@ -272,9 +276,9 @@ TyneTees_Damp/
 
 ### Migrations
 
-41 total: 40 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
+42 total: 41 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`.
 
-Range: `00000000000000_initial_schema.sql` through `20260702000001_communication_log_expand_channels.sql`. Applied manually via `docker exec`.
+Range: `00000000000000_initial_schema.sql` through `20260704000001_handover_pack_guarantee_cleanup.sql`. Applied manually via `docker exec`.
 
 ### Active Tables (43 tables)
 
@@ -395,7 +399,7 @@ Survey wizard → survey_data + room_data → Mapping engine aggregates all room
 
 ## Enquiry Pipeline
 
-Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted → Completed / Declined / On Hold. Features:
+Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quoted → Accepted → Completed → Handed Over / Declined / On Hold. Features:
 - Detail drawer with tabs (details, activity, notes)
 - Inline field editing
 - SLA traffic lights and follow-up indicators
@@ -437,7 +441,10 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Booking status state machine** is enforced in `calendar-data.ts` via `validateStatusTransition()`. Valid transitions: provisional → scheduled/cancelled, scheduled → completed/no_show/cancelled. Completed, no_show, and cancelled are terminal. The calendar UI only shows buttons for valid transitions.
 - **Communication log channels** include system-generated (`email`, `sms`, `in_app`) and manually logged (`phone`, `whatsapp`, `in_person`). Manual entries use status `logged` and are created from the customer detail page. The log is append-only (no UPDATE/DELETE).
 - **Payment lifecycle:** two payment types — `survey_fee` (created at convert-and-book, customer pays via `/pay/[token]`) and `deposit` (auto-created when quotation is accepted, office marks paid to set enquiry as won). The `payments` table links to enquiry, survey, and optionally quotation.
-- **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded from the costing page. The `completed` status is a new terminal Kanban column after `accepted`.
+- **Enquiry lifecycle columns:** `won_at` is set when deposit is marked paid; `cf_exported_at` is set when CF CSV export is downloaded (from handover or costing page). The `completed` status is after `accepted`; `handed_over` is the final terminal status (job exported to Contractor Foreman). Transition: accepted → completed → handed_over.
+- **CF Handover Pack** at `/survey/[projectId]/handover/` is the one-stop page for exporting accepted jobs to Contractor Foreman. Restricted to admin/office roles. Contains 4 download cards (customer CSV, CF estimate CSV, photos ZIP, job summary text), report link with copy button, guarantee summary, and "Mark as Handed Over" button. Quick action "Open Handover Pack" button appears in EnquiryDrawer won workflow section.
+- **Guarantee type is derived from survey type** — 25-year for damp/timber/woodworm, 7-year for condensation/mould. No per-survey guarantee field; `deriveGuaranteeType()` in `handover-pack.ts` checks survey_type and survey_tags.
+- **Installer info "Special Instructions for Workmen"** field (renamed from "General Notes") is the `notes` column on `survey_installer_info`. Used in the handover pack job summary text.
 - **Route protection layers:** `RoleGuard` in `admin/layout.tsx` blocks surveyors from all `/admin/*` routes except `/admin/availability` and `/admin/workload`. `RoleGuard` in `enquiries/layout.tsx` blocks surveyors from `/enquiries/*`. `ProtectedRoute` accepts `allowedRoles` prop for page-level checks. API routes check `user_profiles.role` via service-role client for payment, quotation, and admin endpoints.
 - **Per-survey write queue** (`src/lib/write-queue.ts`) serializes all writes to `surveys.survey_data` JSONB. Both `survey-photo-service.ts` and `survey-wizard-data.ts` use `serializeWrite(surveyId, fn)` to prevent concurrent read-modify-write races. Photo compression and storage upload still run in parallel — only the metadata append is queued.
 - **Deepgram transcription** retries up to 2 times on 429/503 with exponential backoff (2s, 4s). LLM polish-observation has a 30-second `AbortController` timeout.
@@ -476,6 +483,7 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Team:** Surveyor/user profile management
 - **Installer Info:** Per-survey installer information and photos
 - **CF CSV Export:** Export logic with test coverage, sets `cf_exported_at` on enquiry
+- **CF Handover Pack:** One-stop handover page at `/survey/[projectId]/handover/` — customer CSV, CF estimate CSV, photos ZIP (JSZip server-side), job summary text with clipboard copy, report link, guarantee derivation, "Mark as Handed Over" action. Quick action button in EnquiryDrawer. New `handed_over` terminal status.
 - **Workload Dashboard:** Surveyor capacity view at `/admin/workload`
 - **Transcription:** Deepgram speech-to-text for survey observations
 - **Observation Polishing:** LLM cleanup of voice-transcribed notes
