@@ -136,7 +136,7 @@ TyneTees_Damp/
 │   │   │   ├── NotificationBell.tsx # Realtime notification bell
 │   │   │   ├── calendar/           # SlotPicker, SurveyorSelect
 │   │   │   ├── installer-info/     # InstallerPhotoUpload
-│   │   │   ├── report/             # 20 report section components (see Report Components)
+│   │   │   ├── report/             # 21 report section components (see Report Components)
 │   │   │   ├── training/           # 5 shared training components (TrainingArticle, TableOfContents, TrainingImage, Tip, GuideCard)
 │   │   │   ├── ui/                 # Primitives: button, card, input, index
 │   │   │   └── wizard/             # 12 wizard components (see Wizard Components)
@@ -189,15 +189,15 @@ TyneTees_Damp/
 └── *.xlsm, *.xls, *.csv            # Original Excel workbooks & exports
 ```
 
-### Wizard Components (12 files)
+### Wizard Components (13 files)
 
-`WizardStepper`, `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`
+`WizardStepper`, `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`, `UrgencySelector`
 
-### Report Components (20 files)
+### Report Components (21 files)
 
-`CoverSection`, `ExecutiveSummarySection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
+`CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 
-### Lib Files (33 files)
+### Lib Files (36 files)
 
 **Supabase:** `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer — all Supabase queries)
 
@@ -228,6 +228,10 @@ TyneTees_Damp/
 **Handover:** `handover-pack.ts` (CF handover data aggregation, customer CSV, job summary text, guarantee derivation)
 
 **Concurrency:** `write-queue.ts` (per-survey serialized write queue — used by photo service + wizard auto-save + sketch upload)
+
+**Proposals & Limitations:** `proposal-items.ts` (13 predefined proposal items + 12 limitation items for quick-select in ReviewStep)
+
+**Validation:** `report-validation.ts` (report completeness checks — missing photos, urgency, proposals, limitations)
 
 **Utilities:** `cron-auth.ts` (cron route authentication), `terms-hash.ts` (T&C hash generation)
 
@@ -454,6 +458,12 @@ Kanban board with drag-and-drop columns: New → Assigned → Surveyed → Quote
 - **Sketch plan upload** in report editor stores files in the `survey-photos` bucket under `{surveyId}/sketch/{timestamp}-{randomId}.{ext}`. Photo metadata is saved to `survey_data.photos` via `serializeWrite()`. Photo IDs are stored in the sketch_plan report section's `photos` array via `updateReportSectionPhotos()`. Supports JPEG, PNG, and PDF (up to 10MB). On the public report, images render full-width with lightbox; PDFs use `<object>` embed with download fallback.
 - **Password fields** on all auth pages (login, change-password, update-password) include a show/hide toggle (Eye/EyeOff icons) built into the shared `Input` component. Activates automatically when `type="password"` is passed.
 - **Supabase Auth SMTP is not configured** on the TTDP instance — `GOTRUE_SMTP_HOST` and related vars are blank. `resetPasswordForEmail()` silently fails. To reset a user's password, use the Supabase Admin API (`PUT /auth/v1/admin/users/{id}` with service role key) and set `must_change_password = true` on their `user_profiles` row.
+- **Traffic light urgency** (`FindingUrgency` type: `'green' | 'amber' | 'red'`) is stored per-issue per-room in `room_data.{issue_type}.urgency`. Also on `ExternalInspection.urgency`. The report generator calculates overall urgency (highest severity wins) and stores it in the `executive_summary` section's `data.overall_urgency` + `data.urgency_counts`. Room sub-sections get `data.urgency` from the room's highest issue urgency. UrgencySelector component is shared across all 4 wizard field components + external inspection.
+- **Photo visibility** (`PhotoVisibility` type: `'customer' | 'technician' | 'office'`) defaults to `'customer'` if not set (backwards compatible). The public report page filters out photos where `visibility !== 'customer'` and `visibility !== undefined`. The PhotoCapture modal shows a visibility dropdown. Photos without the field (pre-existing) are treated as customer-visible.
+- **Proposal quick-select** stores selected item IDs in `surveys.survey_data.proposal_items` (string array). 13 predefined items defined in `src/lib/proposal-items.ts` with id, label, full text, and category. Free-text additions via `survey_data.proposal_comments`.
+- **Limitations quick-select** stores selected item IDs in `surveys.survey_data.limitations` (string array). 12 predefined limitation items in `src/lib/proposal-items.ts`. Used for company protection — records what areas could not be inspected.
+- **Report completeness validation** (`src/lib/report-validation.ts`) checks: front elevation photo, rear elevation photo, sketch plan, rooms with issues, urgency set per finding, room photos, external inspection, proposal items, limitations. The report editor page shows an inline validation panel (amber/red warnings) when report status is not `published`.
+- **Report branding** uses navy gradient (`#09283f` → `#103a58` → `#125a71`) with Tyne Bridge SVG watermark on cover. Header shows all 4 regional numbers. Footer is dark navy three-column layout with registered office (Company No. 09747364), regional contacts, and report reference. Print CSS preserves background colours via `print-color-adjust: exact`.
 
 ## Build & Dev Commands
 
@@ -470,11 +480,11 @@ npm run dev          # Start dev server (DO NOT use — commit and push instead)
 - **Dashboard:** Survey stats (Active Surveys, Completed, Won This Month), enquiry pipeline widget, recent activity feed
 - **Enquiry Pipeline:** Kanban board, drag-drop, detail drawer, inline edit, SLA indicators, auto-transitions, on-hold emails, convert-and-book with provisional bookings, full lifecycle (completed/won columns)
 - **Customer Management:** List, create, edit, detail with history and communication log
-- **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture
+- **Survey System:** Creation, list, detail, 5-step room-first wizard with auto-save, voice recording + transcription, photo capture with visibility tiers (customer/technician/office), per-finding urgency selector (green/amber/red), proposal quick-select (13 items), limitations quick-select (12 items)
 - **Pricing Engine:** 11 formula types, Supabase data loading, travel overhead calculator
 - **Costing:** Auto-calculated from wizard data, section-by-section breakdown, multi-type tabs
 - **Quotations:** Generation from survey, PDF rendering, email sending, public accept/decline page, e-signature, deposit auto-creation on acceptance
-- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Sketch plan upload (JPEG/PNG/PDF) in report editor with delete support — images display full-width with lightbox on public report, PDFs render as embedded viewers with download fallback. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
+- **Reports:** LLM narrative generation (OpenRouter / Grok 4.1 Fast), section editor, status workflow, email sending, public view. Navy gradient hero cover with Tyne Bridge SVG watermark. Traffic light urgency system: per-finding green/amber/red from wizard → executive summary overall status badge + room headers colour-coded. "How to Read This Report" 3-card guide after executive summary. Report editor completeness validation panel (missing photos, urgency, proposals). Photo visibility filtering (public report excludes technician/office-only photos). Sketch plan upload (JPEG/PNG/PDF) in report editor with delete support — images display full-width with lightbox on public report, PDFs render as embedded viewers with download fallback. Customer-facing reports hide all m²/area/volume/joist measurements (internal editor retains them). Woodworm reports include beetle reference image, treatment equipment photos, and conditional loft insulation note. Damp reports include customer reinstatement responsibility disclaimer.
 - **Payments:** Survey fee payment flow (public `/pay/[token]` page), deposit collection on quotation acceptance, office mark-as-paid, payment link emails
 - **Calendar:** Booking management with FullCalendar, surveyor availability, provisional bookings (awaiting payment), confirm/mark-as-paid from calendar modal, reschedule with SlotPicker, booking status state machine (valid transitions enforced), confirmation dialogs on all status changes, booking notifications, daily reminders, auto-release of expired provisional bookings (cron)
 - **Notifications:** In-app realtime notifications via Supabase Realtime, preference management
