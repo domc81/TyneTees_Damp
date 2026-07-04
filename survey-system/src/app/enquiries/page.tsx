@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react'
-import Link from 'next/link'
 import {
   Plus,
   AlertTriangle,
@@ -1209,6 +1208,7 @@ export default function EnquiriesPage() {
   // Drawer state
   const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(null)
   const [drawerConvertFlow, setDrawerConvertFlow] = useState(false)
+  const [drawerCreateMode, setDrawerCreateMode] = useState(false)
 
   // Linked survey IDs — lightweight lookup to decide if "Convert & Book" shows
   const [linkedEnquiryIds, setLinkedEnquiryIds] = useState<Set<string>>(new Set())
@@ -1343,11 +1343,13 @@ export default function EnquiriesPage() {
   // ---------------------------------------------------------------------------
 
   function handleCardClick(enquiry: Enquiry) {
+    setDrawerCreateMode(false)
     setDrawerConvertFlow(false)
     setSelectedEnquiryId(enquiry.id)
   }
 
   function handleConvertAndBook(enquiry: Enquiry) {
+    setDrawerCreateMode(false)
     setDrawerConvertFlow(true)
     setSelectedEnquiryId(enquiry.id)
   }
@@ -1581,10 +1583,13 @@ export default function EnquiriesPage() {
                 </p>
               )}
             </div>
-            <Link href="/enquiries/new" className="btn-primary flex items-center gap-2 text-sm">
+            <button
+              onClick={() => { setSelectedEnquiryId(null); setDrawerConvertFlow(false); setDrawerCreateMode(true) }}
+              className="btn-primary flex items-center gap-2 text-sm"
+            >
               <Plus className="w-4 h-4" />
-              New Enquiry
-            </Link>
+              New Lead
+            </button>
           </div>
 
           {/* Loading skeleton (Task B) */}
@@ -1612,12 +1617,15 @@ export default function EnquiriesPage() {
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                   <ClipboardList className="w-8 h-8 text-white/20" />
                 </div>
-                <p className="text-white/60 font-medium mb-1">No enquiries yet</p>
-                <p className="text-white/30 text-sm mb-4">Create your first enquiry to get started</p>
-                <Link href="/enquiries/new" className="btn-primary inline-flex items-center gap-2 text-sm">
+                <p className="text-white/60 font-medium mb-1">No leads yet</p>
+                <p className="text-white/30 text-sm mb-4">Create your first lead to get started</p>
+                <button
+                  onClick={() => { setSelectedEnquiryId(null); setDrawerConvertFlow(false); setDrawerCreateMode(true) }}
+                  className="btn-primary inline-flex items-center gap-2 text-sm"
+                >
                   <Plus className="w-4 h-4" />
-                  New Enquiry
-                </Link>
+                  New Lead
+                </button>
               </div>
             </div>
           )}
@@ -1778,14 +1786,13 @@ export default function EnquiriesPage() {
           )}
         </div>
 
-        {/* Enquiry Detail Drawer */}
-        {selectedEnquiryId && drawerEnquiry && (
+        {/* Enquiry Detail Drawer (view/edit mode) */}
+        {selectedEnquiryId && drawerEnquiry && !drawerCreateMode && (
           <EnquiryDrawer
             enquiry={drawerEnquiry}
             onClose={() => { setSelectedEnquiryId(null); setDrawerConvertFlow(false) }}
             onBoardSync={(updated, prev) => {
               handleBoardSync(updated, prev)
-              // If a survey was just created, add to linked set
               if (drawerConvertFlow) {
                 setLinkedEnquiryIds(prev => new Set([...prev, updated.id]))
               }
@@ -1794,6 +1801,29 @@ export default function EnquiriesPage() {
             holdTemplates={holdTemplates}
             currentUserId={user?.id ?? null}
             initialConvertFlow={drawerConvertFlow}
+          />
+        )}
+
+        {/* Enquiry Drawer (create mode) */}
+        {drawerCreateMode && (
+          <EnquiryDrawer
+            enquiry={null}
+            createMode
+            onClose={() => setDrawerCreateMode(false)}
+            onBoardSync={handleBoardSync}
+            onRequestStatusChange={handleDrawerStatusChange}
+            holdTemplates={holdTemplates}
+            currentUserId={user?.id ?? null}
+            onCreated={(newEnquiry) => {
+              // Add to the board in the 'new' column
+              setBoard(prev => ({
+                ...prev,
+                new: [newEnquiry, ...(prev['new'] || [])],
+              }))
+              // Switch drawer to view mode for the new enquiry
+              setDrawerCreateMode(false)
+              setSelectedEnquiryId(newEnquiry.id)
+            }}
           />
         )}
 

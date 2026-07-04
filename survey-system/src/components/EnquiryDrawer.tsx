@@ -9,6 +9,7 @@ import {
   assignEnquiry,
   logEnquiryActivity,
   createSurveyFromEnquiry,
+  createEnquiry,
   updateSurvey,
   markEnquiryWon,
   markEnquiryClosed,
@@ -30,6 +31,7 @@ import type {
   EnquiryPriority,
   OnHoldReason,
   OnHoldMessageTemplate,
+  SurveyType,
 } from '@/types/database.types'
 import { toast } from 'sonner'
 import {
@@ -613,7 +615,7 @@ type LinkedQuotation = {
 type TabId = 'details' | 'activity' | 'linked'
 
 export type EnquiryDrawerProps = {
-  enquiry: Enquiry
+  enquiry: Enquiry | null
   onClose: () => void
   onBoardSync: (updatedEnquiry: Enquiry, previousStatus?: EnquiryStatus) => void
   onRequestStatusChange: (enquiry: Enquiry, toStatus: 'on_hold' | 'lost') => void
@@ -621,6 +623,10 @@ export type EnquiryDrawerProps = {
   currentUserId: string | null
   /** When true, the drawer opens directly into the Convert & Book flow */
   initialConvertFlow?: boolean
+  /** When true and enquiry is null, opens in create mode */
+  createMode?: boolean
+  /** Called after successful creation with the new enquiry */
+  onCreated?: (enquiry: Enquiry) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -635,6 +641,8 @@ export default function EnquiryDrawer({
   holdTemplates,
   currentUserId,
   initialConvertFlow = false,
+  createMode = false,
+  onCreated,
 }: EnquiryDrawerProps) {
   // Slide animation
   const [isVisible, setIsVisible] = useState(false)
@@ -663,9 +671,9 @@ export default function EnquiryDrawer({
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false)
 
   // Editable fields
-  const [editingNotes, setEditingNotes] = useState(enquiry.notes ?? '')
+  const [editingNotes, setEditingNotes] = useState(enquiry?.notes ?? '')
   const [notesChanged, setNotesChanged] = useState(false)
-  const [editingValue, setEditingValue] = useState(enquiry.estimated_value?.toString() ?? '')
+  const [editingValue, setEditingValue] = useState(enquiry?.estimated_value?.toString() ?? '')
   const [valueChanged, setValueChanged] = useState(false)
 
   // Saving states
@@ -713,7 +721,69 @@ export default function EnquiryDrawer({
   const assigneeRef = useRef<HTMLDivElement>(null)
 
   // Track enquiry changes (for content swaps)
-  const prevEnquiryIdRef = useRef(enquiry.id)
+  const prevEnquiryIdRef = useRef(enquiry?.id ?? null)
+
+  // ── Create mode state ────────────────────────────────────────
+  const [createForm, setCreateForm] = useState({
+    client_name: '',
+    client_email: '',
+    client_phone: '',
+    site_address_1: '',
+    site_address_2: '',
+    site_city: '',
+    site_county: '',
+    site_postcode: '',
+    survey_type: 'damp' as SurveyType,
+    source: '',
+    reported_problem: '',
+    notes: '',
+    priority: 'medium' as EnquiryPriority,
+  })
+  const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  async function handleCreateSubmit() {
+    if (!createForm.client_name.trim()) {
+      setCreateError('Client name is required')
+      return
+    }
+    if (!createForm.site_address_1.trim()) {
+      setCreateError('Site address is required')
+      return
+    }
+    if (!createForm.site_postcode.trim()) {
+      setCreateError('Postcode is required')
+      return
+    }
+
+    setCreateSubmitting(true)
+    setCreateError(null)
+
+    try {
+      const newEnquiry = await createEnquiry({
+        client_name: createForm.client_name.trim(),
+        client_email: createForm.client_email.trim() || undefined,
+        client_phone: createForm.client_phone.trim() || undefined,
+        site_address_1: createForm.site_address_1.trim(),
+        site_address_2: createForm.site_address_2.trim() || undefined,
+        site_city: createForm.site_city.trim() || undefined,
+        site_county: createForm.site_county.trim() || undefined,
+        site_postcode: createForm.site_postcode.trim().toUpperCase(),
+        survey_type: createForm.survey_type,
+        source: createForm.source || undefined,
+        reported_problem: createForm.reported_problem.trim() || undefined,
+        notes: createForm.notes.trim() || undefined,
+        priority: createForm.priority,
+      })
+
+      toast.success('Lead created')
+      onCreated?.(newEnquiry)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create lead')
+    } finally {
+      setCreateSubmitting(false)
+    }
+  }
 
   // ── Slide-in animation ────────────────────────────────────────
   useEffect(() => {
@@ -722,7 +792,7 @@ export default function EnquiryDrawer({
 
   // ── Auto-trigger Convert & Book when opened via card quick action ──
   useEffect(() => {
-    if (initialConvertFlow) {
+    if (initialConvertFlow && enquiry) {
       startConvertFlow()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -771,6 +841,7 @@ export default function EnquiryDrawer({
 
   // ── Reset on enquiry change (content swap) ────────────────────
   useEffect(() => {
+    if (!enquiry) return
     if (prevEnquiryIdRef.current !== enquiry.id) {
       prevEnquiryIdRef.current = enquiry.id
       setActiveTab('details')
@@ -817,13 +888,13 @@ export default function EnquiryDrawer({
 
   // ── Load activities when Activity tab is first viewed ─────────
   const loadActivities = useCallback(async () => {
-    if (activitiesLoaded || activitiesLoading) return
+    if (!enquiry || activitiesLoaded || activitiesLoading) return
     setActivitiesLoading(true)
     const data = await getEnquiryActivities(enquiry.id)
     setActivities(data)
     setActivitiesLoaded(true)
     setActivitiesLoading(false)
-  }, [enquiry.id, activitiesLoaded, activitiesLoading])
+  }, [enquiry?.id, activitiesLoaded, activitiesLoading])
 
   useEffect(() => {
     if (activeTab === 'activity' && !activitiesLoaded) {
@@ -833,7 +904,7 @@ export default function EnquiryDrawer({
 
   // ── Load linked records when Linked tab is first viewed ───────
   const loadLinked = useCallback(async () => {
-    if (linkedLoaded || linkedLoading) return
+    if (!enquiry || linkedLoaded || linkedLoading) return
     setLinkedLoading(true)
 
     const supabase = createClient()
@@ -864,7 +935,7 @@ export default function EnquiryDrawer({
 
     setLinkedLoaded(true)
     setLinkedLoading(false)
-  }, [enquiry.id, linkedLoaded, linkedLoading])
+  }, [enquiry?.id, linkedLoaded, linkedLoading])
 
   useEffect(() => {
     if (activeTab === 'linked' && !linkedLoaded) {
@@ -992,6 +1063,7 @@ export default function EnquiryDrawer({
   // the Supabase client directly (they aren't in updateEnquiry's Pick).
 
   const saveField = useCallback(async (field: string, newValue: string | null) => {
+    if (!enquiry) return
     if (field === 'client_name') {
       const u = await updateEnquiry(enquiry.id, { client_name: newValue ?? '' })
       onBoardSync({ ...enquiry, ...u }); return
@@ -1256,11 +1328,11 @@ export default function EnquiryDrawer({
   const depositPayment = payments.find(p => p.payment_type === 'deposit')
 
   // Hold template lookup
-  const currentHoldTemplate = enquiry.hold_reason
+  const currentHoldTemplate = enquiry?.hold_reason
     ? holdTemplates.find(t => t.reason_key === enquiry.hold_reason)
     : null
 
-  const assigneeName = enquiry.assignee?.display_name ?? null
+  const assigneeName = enquiry?.assignee?.display_name ?? null
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -1288,6 +1360,192 @@ export default function EnquiryDrawer({
           background: 'linear-gradient(135deg, rgba(15,23,36,0.98) 0%, rgba(8,14,24,0.99) 100%)',
         }}
       >
+        {/* ─────────────────── Create Mode ─────────────────── */}
+        {createMode && !enquiry && (
+          <>
+            <div className="flex-shrink-0 border-b border-white/10 p-4 lg:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-xl font-bold text-white leading-tight">
+                  New Lead
+                </h2>
+                <button
+                  onClick={handleClose}
+                  className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+                >
+                  <span className="hidden lg:block"><X className="w-5 h-5" /></span>
+                  <span className="lg:hidden"><ArrowLeft className="w-5 h-5" /></span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 lg:p-5">
+              <div className="space-y-4">
+                {/* Client Name */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Client Name <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={createForm.client_name}
+                    onChange={e => setCreateForm(f => ({ ...f, client_name: e.target.value }))}
+                    className="input-field w-full text-sm"
+                    placeholder="Enter client name"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Phone + Email */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={createForm.client_phone}
+                      onChange={e => setCreateForm(f => ({ ...f, client_phone: e.target.value }))}
+                      className="input-field w-full text-sm"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={createForm.client_email}
+                      onChange={e => setCreateForm(f => ({ ...f, client_email: e.target.value }))}
+                      className="input-field w-full text-sm"
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                </div>
+
+                {/* Survey Type + Source */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">Survey Type</label>
+                    <select
+                      value={createForm.survey_type}
+                      onChange={e => setCreateForm(f => ({ ...f, survey_type: e.target.value as SurveyType }))}
+                      className="input-field w-full text-sm"
+                    >
+                      {SURVEY_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">Source</label>
+                    <select
+                      value={createForm.source}
+                      onChange={e => setCreateForm(f => ({ ...f, source: e.target.value }))}
+                      className="input-field w-full text-sm"
+                    >
+                      {SOURCE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Address Line 1 */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Address Line 1 <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={createForm.site_address_1}
+                    onChange={e => setCreateForm(f => ({ ...f, site_address_1: e.target.value }))}
+                    className="input-field w-full text-sm"
+                    placeholder="Enter site address"
+                  />
+                </div>
+
+                {/* Address Line 2 */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Address Line 2</label>
+                  <input
+                    type="text"
+                    value={createForm.site_address_2}
+                    onChange={e => setCreateForm(f => ({ ...f, site_address_2: e.target.value }))}
+                    className="input-field w-full text-sm"
+                    placeholder="Address line 2"
+                  />
+                </div>
+
+                {/* City + Postcode */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">City</label>
+                    <input
+                      type="text"
+                      value={createForm.site_city}
+                      onChange={e => setCreateForm(f => ({ ...f, site_city: e.target.value }))}
+                      className="input-field w-full text-sm"
+                      placeholder="Enter city"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 block mb-1">Postcode <span className="text-red-400">*</span></label>
+                    <input
+                      type="text"
+                      value={createForm.site_postcode}
+                      onChange={e => setCreateForm(f => ({ ...f, site_postcode: e.target.value }))}
+                      className="input-field w-full text-sm"
+                      placeholder="Enter postcode"
+                    />
+                  </div>
+                </div>
+
+                {/* Reported Problem */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Reported Problem</label>
+                  <textarea
+                    value={createForm.reported_problem}
+                    onChange={e => setCreateForm(f => ({ ...f, reported_problem: e.target.value }))}
+                    rows={2}
+                    className="input-field w-full resize-none text-sm"
+                    placeholder="Describe the reported problem"
+                  />
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Priority</label>
+                  <select
+                    value={createForm.priority}
+                    onChange={e => setCreateForm(f => ({ ...f, priority: e.target.value as EnquiryPriority }))}
+                    className="input-field w-full text-sm"
+                  >
+                    {ALL_PRIORITIES.map(p => (
+                      <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Error */}
+                {createError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">
+                    <p className="text-sm text-red-300">{createError}</p>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  onClick={handleCreateSubmit}
+                  disabled={createSubmitting}
+                  className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-2"
+                >
+                  {createSubmitting ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>
+                  ) : (
+                    <><Plus className="w-4 h-4" /> Create Lead</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ─────────────────── View/Edit Mode ─────────────────── */}
+        {enquiry && (
+          <>
         {/* ─────────────────── Header ─────────────────── */}
         <div className="flex-shrink-0 border-b border-white/10 p-4 lg:p-5">
           <div className="flex items-start justify-between gap-3 mb-2">
@@ -2595,6 +2853,8 @@ export default function EnquiryDrawer({
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
 
     </div>

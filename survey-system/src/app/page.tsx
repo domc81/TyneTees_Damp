@@ -373,9 +373,9 @@ function PipelineWidget({ stats }: { stats: EnquiryPipelineStats }) {
               />
             ))}
           </div>
-          <p className="text-white/40 text-sm">No active enquiries</p>
-          <Link href="/enquiries/new" className="mt-3 btn-secondary text-sm">
-            Add first enquiry
+          <p className="text-white/40 text-sm">No active leads</p>
+          <Link href="/enquiries" className="mt-3 btn-secondary text-sm">
+            Open Pipeline
           </Link>
         </div>
       ) : (
