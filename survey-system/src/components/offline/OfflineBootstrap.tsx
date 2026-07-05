@@ -12,6 +12,7 @@ import { useEffect } from 'react'
 import { startConnectivityMonitor, subscribe as subscribeConnectivity } from '@/lib/offline/connectivity'
 import { startSyncEngine } from '@/lib/offline/sync-engine'
 import { registerPhotoExecutors } from '@/lib/offline/photos-offline'
+import { registerAudioExecutor } from '@/lib/offline/audio-offline'
 import { prefetchSurveyorSurveys } from '@/lib/offline/prefetch'
 import { isOfflineDbAvailable } from '@/lib/offline/db'
 import { useAuth } from '@/context/AuthContext'
@@ -28,6 +29,7 @@ export default function OfflineBootstrap() {
 
     // Register op executors BEFORE the engine may try to flush them.
     registerPhotoExecutors()
+    registerAudioExecutor()
 
     // Register the PWA service worker (offline shell). skipWaiting +
     // clientsClaim mean each deploy activates on next load.

@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mic, Square, Loader2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { isOnline } from '@/lib/offline/connectivity'
+import { queueAudioNote, type TranscriptionTarget } from '@/lib/offline/audio-offline'
 
 // =============================================================================
 // WAV Encoding Utilities
@@ -77,6 +80,10 @@ interface AudioRecorderProps {
   onTranscriptionComplete: (text: string) => void
   disabled?: boolean
   className?: string
+  // Offline support: when set, a note recorded with no signal is queued and a
+  // placeholder is inserted; the sync engine transcribes it when back online.
+  surveyId?: string
+  transcriptionTarget?: TranscriptionTarget
 }
 
 type RecordingState = 'idle' | 'recording' | 'processing' | 'error'
@@ -85,6 +92,8 @@ export default function AudioRecorder({
   onTranscriptionComplete,
   disabled = false,
   className = '',
+  surveyId,
+  transcriptionTarget,
 }: AudioRecorderProps) {
   const [state, setState] = useState<RecordingState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -245,8 +254,31 @@ export default function AudioRecorder({
     }
   }, [])
 
+  // Queue the recording for deferred transcription (offline / network failure).
+  const queueOffline = async (audioBlob: Blob): Promise<boolean> => {
+    if (!surveyId || !transcriptionTarget) return false
+    try {
+      const { placeholderText } = await queueAudioNote(surveyId, audioBlob, transcriptionTarget)
+      onTranscriptionComplete(placeholderText)
+      toast.info('Voice note saved — it will transcribe automatically when back in signal')
+      setState('idle')
+      setError(null)
+      return true
+    } catch (err) {
+      console.error('Failed to queue voice note:', err)
+      setError('Could not save the voice note on this device.')
+      setState('error')
+      return true // handled (don't fall through to online error path)
+    }
+  }
+
   const transcribeAudio = async (audioBlob: Blob) => {
     setState('processing')
+
+    // Offline → queue immediately (no doomed network attempt).
+    if (!isOnline()) {
+      if (await queueOffline(audioBlob)) return
+    }
 
     try {
       const formData = new FormData()
@@ -259,8 +291,8 @@ export default function AudioRecorder({
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Transcription failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Transcription failed (${response.status})`)
       }
 
       const result = await response.json()
@@ -275,6 +307,13 @@ export default function AudioRecorder({
       setState('idle')
       setError(null)
     } catch (err) {
+      // Network failure mid-request → queue rather than lose the note.
+      const networkish =
+        err instanceof TypeError ||
+        (err instanceof Error && /failed to fetch|network|load failed|aborted|timeout/i.test(err.message)) ||
+        !isOnline()
+      if (networkish && (await queueOffline(audioBlob))) return
+
       console.error('Transcription error:', err)
       setError(err instanceof Error ? err.message : 'Transcription failed')
       setState('error')

@@ -29,6 +29,7 @@ import {
   NotAvailableOfflineError,
 } from '@/lib/offline/local-data'
 import { syncNow, onRemoteIdsMapped } from '@/lib/offline/sync-engine'
+import { onAudioTranscribed, deepReplaceString } from '@/lib/offline/audio-offline'
 import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import Layout from '@/components/layout'
@@ -139,6 +140,16 @@ export default function SurveyWizardPage() {
             : photo
         )
       )
+    })
+  }, [projectId])
+
+  // When a queued voice note transcribes, patch the open wizard's in-memory
+  // state so the placeholder becomes the transcript (and a later save doesn't
+  // overwrite the mirror's transcript with the stale placeholder).
+  useEffect(() => {
+    return onAudioTranscribed(projectId, ({ placeholderText, transcript }) => {
+      setWizardData((prev) => deepReplaceString(prev, placeholderText, transcript))
+      setRooms((prev) => deepReplaceString(prev, placeholderText, transcript))
     })
   }, [projectId])
 
@@ -532,6 +543,18 @@ export default function SurveyWizardPage() {
 
         {/* Step content */}
         <div className="mb-8">{renderStepContent()}</div>
+
+        {/* Pending voice-note warning on the Review step */}
+        {currentStep === WIZARD_STEPS.length - 1 && syncStatus.pendingAudio > 0 && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-400/30 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-300 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-amber-300">
+              {syncStatus.pendingAudio} voice note{syncStatus.pendingAudio > 1 ? 's' : ''} not yet
+              transcribed — the text will be added automatically when back in signal. You can still
+              complete the survey now.
+            </p>
+          </div>
+        )}
 
         {/* Navigation buttons */}
         <div className="flex items-center justify-between gap-4">

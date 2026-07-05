@@ -557,6 +557,8 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
                 <AudioRecorder
                   onTranscriptionComplete={handleTranscription}
                   disabled={isPolishing}
+                  surveyId={surveyId}
+                  transcriptionTarget={{ kind: 'room', roomId: selectedRoom.id, field: 'findings' }}
                 />
               </div>
               <button

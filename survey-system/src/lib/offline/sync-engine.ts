@@ -370,6 +370,13 @@ async function applyIdMapping(surveyId: string, mapping: IdMapping): Promise<voi
             payload: { ...p, photo: { ...p.photo, room_id: mapping[p.photo.room_id] } },
           })
         }
+      } else if (o.type === 'audio_transcribe') {
+        const p = o.payload as { target?: { kind?: string; roomId?: string } }
+        if (p.target?.kind === 'room' && p.target.roomId && mapping[p.target.roomId]) {
+          await db.outbox.update(o.id, {
+            payload: { ...p, target: { ...p.target, roomId: mapping[p.target.roomId] } },
+          })
+        }
       }
     }
 

@@ -360,6 +360,8 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
             <AudioRecorder
               onTranscriptionComplete={handleTranscription}
               disabled={isPolishing}
+              surveyId={surveyId}
+              transcriptionTarget={{ kind: 'wizard_section', section: 'external_inspection', field: 'notes' }}
             />
           </div>
           <button
