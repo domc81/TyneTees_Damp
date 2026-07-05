@@ -119,7 +119,9 @@ export async function getPendingSurveyIds(): Promise<string[]> {
     const cur = minId.get(op.surveyId)
     if (cur === undefined || op.id < cur) minId.set(op.surveyId, op.id)
   }
-  return [...minId.entries()].sort((a, b) => a[1] - b[1]).map((e) => e[0])
+  return Array.from(minId.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map((e) => e[0])
 }
 
 /** Pending ops for one survey, ordered by id (== creation order). */

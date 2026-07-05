@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Save, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Loader2, AlertCircle, CheckCircle2, WifiOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useSmartBack } from '@/hooks/useSmartBack'
 import { Button } from '@/components/ui/button'
@@ -21,16 +21,16 @@ import {
   AdditionalWorks,
   SurveyRoomRow,
 } from '@/types/survey-wizard.types'
-import {
-  loadWizardData,
-  saveWizardData,
-  saveAllRooms,
-  updateSurveyTags,
-} from '@/lib/survey-wizard-data'
-import { deriveSurveyTags } from '@/lib/survey-tags'
-import { autoTransitionEnquiryStatus } from '@/lib/supabase-data'
-import { getSupabase } from '@/lib/supabase-client'
 import { loadSurveyPhotos } from '@/lib/survey-photo-service'
+import {
+  loadWizardDataLocalFirst,
+  saveWizardLocal,
+  enqueueCompletionOps,
+  NotAvailableOfflineError,
+} from '@/lib/offline/local-data'
+import { syncNow, onRemoteIdsMapped } from '@/lib/offline/sync-engine'
+import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
+import { useSyncStatus } from '@/hooks/useSyncStatus'
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
@@ -49,15 +49,20 @@ export default function SurveyWizardPage() {
   const projectId = params.projectId as string
   const goBack = useSmartBack(`/surveys/${projectId}`)
   const { role } = useAuth()
+  const syncStatus = useSyncStatus(projectId)
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
   const [completed, setCompleted] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notAvailableOffline, setNotAvailableOffline] = useState(false)
+
+  // Enquiry id captured at load time — needed to enqueue the offline
+  // survey-complete transition without a live lookup.
+  const enquiryIdRef = useRef<string | null>(null)
 
   // Survey data state
   const [wizardData, setWizardData] = useState<SurveyWizardData>({
@@ -84,37 +89,32 @@ export default function SurveyWizardPage() {
     wizardDataRef.current = wizardData
   }, [wizardData])
 
-  // Load existing survey data from Supabase
+  // Load existing survey data — local-first (mirror when ahead of/offline from
+  // the server, fresh fetch when online and clean). Never returns blank
+  // defaults for an offline miss (that would risk clobbering real data).
   useEffect(() => {
     async function loadData() {
       setIsLoading(true)
       setError(null)
+      setNotAvailableOffline(false)
 
       try {
-        const { wizardData: loadedWizardData, rooms: loadedRooms } =
-          await loadWizardData(projectId)
+        const { wizardData, rooms, photos, projectNumber, enquiryId } =
+          await loadWizardDataLocalFirst(projectId)
 
-        setWizardData(loadedWizardData)
-        setRooms(loadedRooms)
-        setCurrentStep(loadedWizardData.wizard_step || 0)
-
-        // Load photos
-        const loadedPhotos = await loadSurveyPhotos(projectId)
-        setPhotos(loadedPhotos)
-
-        // Load the survey reference for the header (falls back to UUID fragment)
-        const supabase = getSupabase()
-        if (supabase) {
-          const { data: surveyRow } = await supabase
-            .from('surveys')
-            .select('project_number')
-            .eq('id', projectId)
-            .single()
-          setProjectNumber(surveyRow?.project_number ?? null)
-        }
+        setWizardData(wizardData)
+        setRooms(rooms)
+        setPhotos(photos)
+        setProjectNumber(projectNumber)
+        setCurrentStep(wizardData.wizard_step || 0)
+        enquiryIdRef.current = enquiryId
       } catch (err) {
-        console.error('Failed to load wizard data:', err)
-        setError('Failed to load survey data. Please refresh the page.')
+        if (err instanceof NotAvailableOfflineError) {
+          setNotAvailableOffline(true)
+        } else {
+          console.error('Failed to load wizard data:', err)
+          setError('Failed to load survey data. Please refresh the page.')
+        }
       } finally {
         setIsLoading(false)
       }
@@ -123,36 +123,39 @@ export default function SurveyWizardPage() {
     loadData()
   }, [projectId])
 
-  // Auto-save function with actual Supabase calls
+  // When the sync engine flushes rooms and maps temp ids → DB ids, patch the
+  // open wizard's in-memory rooms/photos so subsequent saves reference DB ids.
+  useEffect(() => {
+    return onRemoteIdsMapped(projectId, (mapping) => {
+      setRooms((prev) =>
+        prev.map((room) =>
+          mapping[room.id] ? { ...room, id: mapping[room.id], survey_id: projectId } : room
+        )
+      )
+      setPhotos((prev) =>
+        prev.map((photo) =>
+          photo.room_id && mapping[photo.room_id]
+            ? { ...photo, room_id: mapping[photo.room_id] }
+            : photo
+        )
+      )
+    })
+  }, [projectId])
+
+  // Local-first save: writes to IndexedDB + enqueues durable sync ops (fast,
+  // never blocks on the network). Temp-room-id reconciliation now happens in the
+  // sync engine (onRemoteIdsMapped patches state when rooms flush). A throw here
+  // means a device storage/quota error, not a network error.
   const handleAutoSave = useCallback(async () => {
     if (isSaving) return // Prevent concurrent saves
 
     setIsSaving(true)
-    setError(null)
 
     try {
-      // Save wizard data (property-level) - read from ref to get latest value
-      await saveWizardData(projectId, wizardDataRef.current)
-
-      // Save all rooms (batch operation) - read from ref to get latest value
-      const updatedRooms = await saveAllRooms(projectId, roomsRef.current)
-
-      // Auto-populate survey tags from current findings (fire-and-forget, non-blocking)
-      updateSurveyTags(projectId, deriveSurveyTags(wizardDataRef.current, roomsRef.current))
-
-      // Only update IDs that changed (temp → DB), preserve any new rooms added during save
-      setRooms(prev => prev.map(room => {
-        if (room.id.startsWith('room-')) {
-          const saved = updatedRooms.find(r => r.name === room.name && r.display_order === room.display_order)
-          return saved ? { ...room, id: saved.id, survey_id: saved.survey_id, created_at: saved.created_at, updated_at: saved.updated_at } : room
-        }
-        return room
-      }))
-
-      setLastSaved(new Date())
+      await saveWizardLocal(projectId, wizardDataRef.current, roomsRef.current)
     } catch (err) {
-      console.error('Auto-save failed:', err)
-      setError('Failed to save changes. Your data may not be saved.')
+      console.error('Local save failed:', err)
+      setError('Device storage error — do not continue, contact office.')
     } finally {
       setIsSaving(false)
     }
@@ -233,55 +236,29 @@ export default function SurveyWizardPage() {
     handleAutoSave() // Save immediately on step click
   }
 
-  // Final submission handler
+  // Final submission handler — fully offline-capable. Saves locally with
+  // wizard_completed:true (flips mirror + surveys.status on flush) and enqueues
+  // the enquiry transition + completion notification as durable ops.
   const handleCompleteSurvey = async () => {
     setIsSaving(true)
     setError(null)
 
     try {
-      // Save everything first
       const completedData = { ...wizardData, wizard_completed: true }
-      await saveWizardData(projectId, completedData)
-      await saveAllRooms(projectId, rooms)
-
-      // Persist final tags on survey completion (awaited — ensures tags are written before redirect)
-      await updateSurveyTags(projectId, deriveSurveyTags(completedData, rooms))
+      await saveWizardLocal(projectId, completedData, rooms)
+      await enqueueCompletionOps(projectId, enquiryIdRef.current)
 
       setWizardData(completedData)
-      setLastSaved(new Date())
 
-      // Auto-transition linked enquiry status to 'survey_complete' (non-blocking)
-      try {
-        const supabase = getSupabase()
-        if (supabase) {
-          const { data: survey } = await supabase
-            .from('surveys')
-            .select('enquiry_id')
-            .eq('id', projectId)
-            .single()
-
-          if (survey?.enquiry_id) {
-            await autoTransitionEnquiryStatus(survey.enquiry_id, 'survey_complete', null)
-          }
-        }
-      } catch (err) {
-        // Enquiry update must never block survey completion
-        console.error('Enquiry auto-transition failed (non-blocking):', err)
-      }
-
-      // Notify admin/office that the survey wizard is complete (fire-and-forget)
-      fetch('/api/notifications/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_type: 'survey_completed', survey_id: projectId }),
-      }).catch(err => console.error('Notification trigger failed:', err))
-
-      // Surveyors get a confirmation screen — costing is office work, not
-      // the on-site next step. Office/admin go straight to costing as before.
+      // Surveyors get a confirmation screen (costing is office work); the sync
+      // engine flushes in the background. Office/admin are online — wait for the
+      // flush so costing loads with the completed survey.
       if (role === 'surveyor') {
+        void syncNow()
         setCompleted(true)
         setIsSaving(false)
       } else {
+        await syncNow()
         router.push(`/survey/${projectId}/costing`)
       }
     } catch (err) {
@@ -431,8 +408,35 @@ export default function SurveyWizardPage() {
     )
   }
 
+  // Survey not downloaded and no signal to fetch it
+  if (notAvailableOffline) {
+    return (
+      <ProtectedRoute>
+        <Layout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="max-w-md w-full text-center space-y-5">
+              <WifiOff className="w-16 h-16 text-amber-400 mx-auto" />
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Survey not downloaded</h2>
+                <p className="text-sm text-white/60">
+                  This survey isn&apos;t downloaded to this device yet. Connect to signal and it
+                  will download automatically — then reopen it here.
+                </p>
+              </div>
+              <Link href="/surveys" className="btn-primary w-full py-2.5 text-sm text-center inline-block">
+                Back to My Surveys
+              </Link>
+            </div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    )
+  }
+
   // Post-submit confirmation (surveyor role)
   if (completed) {
+    const stillSyncing =
+      syncStatus.pendingData + syncStatus.pendingPhotos + syncStatus.pendingAudio > 0
     return (
       <ProtectedRoute>
         <Layout>
@@ -443,9 +447,20 @@ export default function SurveyWizardPage() {
                 <h2 className="text-2xl font-bold text-white mb-2">Survey Submitted</h2>
                 <p className="text-sm text-white/60">
                   {projectNumber ? `Survey ${projectNumber} is complete. ` : 'Your survey is complete. '}
-                  The office team has been notified and will prepare the costing, report and quotation.
+                  The office team will prepare the costing, report and quotation.
                 </p>
               </div>
+              {stillSyncing ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/30 text-amber-300 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Waiting for signal to send — keep the app installed and it will sync automatically
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-sm">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Synced ✓
+                </div>
+              )}
               <div className="flex flex-col gap-3">
                 <Link href="/surveys" className="btn-primary w-full py-2.5 text-sm text-center">
                   Back to My Surveys
@@ -483,14 +498,12 @@ export default function SurveyWizardPage() {
               <p className="text-sm text-white/60">{projectNumber ?? `Project #${projectId.slice(0, 8)}`}</p>
             </div>
             <div className="flex items-center gap-3">
-              {lastSaved && !error && (
-                <span className="text-xs text-white/50 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Saved {lastSaved.toLocaleTimeString()}
-                </span>
-              )}
+              <SyncStatusPill surveyId={projectId} />
               <button
-                onClick={handleAutoSave}
+                onClick={async () => {
+                  await handleAutoSave()
+                  void syncNow()
+                }}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm text-white/70"
               >

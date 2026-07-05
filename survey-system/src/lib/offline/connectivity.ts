@@ -30,13 +30,13 @@ export function timeoutSignal(ms: number): AbortSignal {
 function setState(next: ConnState) {
   if (next === state) return
   state = next
-  for (const cb of listeners) {
+  listeners.forEach((cb) => {
     try {
       cb(state)
     } catch (err) {
       console.warn('[offline] connectivity listener threw:', err)
     }
-  }
+  })
 }
 
 /**

@@ -10,6 +10,7 @@
 
 import { useEffect } from 'react'
 import { startConnectivityMonitor } from '@/lib/offline/connectivity'
+import { startSyncEngine } from '@/lib/offline/sync-engine'
 import { isOfflineDbAvailable } from '@/lib/offline/db'
 
 export default function OfflineBootstrap() {
@@ -21,8 +22,10 @@ export default function OfflineBootstrap() {
     navigator.storage?.persist?.().catch(() => {})
 
     const stopConnectivity = startConnectivityMonitor()
+    const stopSync = startSyncEngine()
 
     return () => {
+      stopSync()
       stopConnectivity()
     }
   }, [])
