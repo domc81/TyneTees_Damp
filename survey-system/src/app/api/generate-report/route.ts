@@ -131,11 +131,10 @@ VOICE AND TONE:
 
 DATA INTERPRETATION RULES — CRITICAL:
 - Wall measurements (length × height) represent the AFFECTED AREA requiring treatment, NOT the full wall dimensions
-- If a measurement shows 3m × 2m, report it as: "An area measuring approximately 3 metres in length by 2 metres in height was identified as requiring treatment"
+- MEASUREMENTS ARE CONTEXT ONLY — NEVER QUOTE THEM. This report is customer-facing and company policy is to omit all quantities from the narrative: no lengths, heights, areas (m²), volumes, linear metres, board/skip counts, or joist dimensions. Use the figures only to judge the scale of the problem, and describe extent qualitatively instead (e.g. "the affected section of the front wall", "staining to low level", "a localised area beneath the window"). Moisture readings (% WME) MAY be quoted.
 - NEVER state that data is missing, incomplete, or contains errors. If a field has no value, simply omit it from the narrative.
-- NEVER question or contradict the survey data. Present all measurements and findings as factual observations.
+- NEVER question or contradict the survey data. Present findings as factual observations.
 - NEVER use phrases like "was recorded as 0" or "suggests an error" or "was not specified" or "was not recorded"
-- If area is 0 or missing, calculate it yourself from length × height, or simply omit the area figure
 
 FABRICATION PREVENTION — CRITICAL:
 - ONLY reference measurements, readings, and findings that are explicitly provided in the SURVEY DATA CONTEXT below
@@ -151,7 +150,7 @@ TREATMENT REFERENCES:
 - Always state the specific treatment — never suggest the customer "consider" options. The surveyor has already determined what is needed.
 
 ROOM FINDINGS STRUCTURE:
-- Paragraph 1: Describe what was found — which wall(s), the treatment area measurements, and any recorded readings
+- Paragraph 1: Describe what was found — which wall(s) are affected, the qualitative extent, and any recorded moisture readings (never the measurements themselves)
 - Paragraph 2: State the recommended treatment clearly: "We recommend [specific treatment] to the affected area"
 - Do not add a third paragraph
 - Do not suggest further inspection or additional investigation — the survey is complete and the treatment has been determined

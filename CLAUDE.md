@@ -58,7 +58,7 @@ Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 - **Coolify** — Deployment management (API token at `coolify_api_token`)
 - **Resend** — Transactional email (credentials at `.resend-credentials`)
 - **Deepgram** — Speech-to-text (credentials at `.deepgram-credentials`)
-- **OpenRouter** — LLM API access (key in `.env.local`, models: `anthropic/claude-sonnet-5` report narrative, `google/gemini-2.5-flash` polish)
+- **OpenRouter** — LLM API access (key in `.env.local`, model: `anthropic/claude-sonnet-5` (report narrative + polish))
 
 ## Claude-specific policy
 
@@ -67,7 +67,7 @@ Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 - Run `npm run lint` to catch issues — the build ignores type errors (`ignoreBuildErrors: true`)
 - Spawn the `Explore` subagent for codebase-wide searches of 3+ queries
 - Never start dev servers or use Playwright against this app — commit and push, let Coolify deploy
-- All LLM calls go through OpenRouter (models: `anthropic/claude-sonnet-5` report narrative, `google/gemini-2.5-flash` polish) — never call Anthropic API directly
+- All LLM calls go through OpenRouter (model: `anthropic/claude-sonnet-5` (report narrative + polish)) — never call Anthropic API directly
 - After a sprint or doc-update request, use the `update-project-docs` skill — status goes to `docs/PROJECT_STATE.md`, catalogs to `docs/ARCHITECTURE.md`, NOT into this file
 - Skills: none project-specific
 - MCP servers: none project-specific

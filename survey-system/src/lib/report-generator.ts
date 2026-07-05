@@ -1104,7 +1104,7 @@ export async function generateReport(
             {
               key: 'executive_summary',
               prompt:
-                'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist.',
+                'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist. Do NOT quote any measurements, dimensions, areas, volumes, or linear metres in the text — this summary is customer-facing and company policy is to omit all quantities; describe the extent of the problem qualitatively instead. Moisture readings (% WME) may be quoted.',
               context: llmContext,
             },
           ],
@@ -2121,7 +2121,7 @@ export async function regenerateSection(
           {
             key: 'executive_summary',
             prompt:
-              'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist.',
+              'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist. Do NOT quote any measurements, dimensions, areas, volumes, or linear metres in the text — this summary is customer-facing and company policy is to omit all quantities; describe the extent of the problem qualitatively instead. Moisture readings (% WME) may be quoted.',
             context: llmContext,
           },
         ],
