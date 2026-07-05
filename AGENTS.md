@@ -49,6 +49,7 @@ All commands run from `survey-system/` directory:
 - What is ignored: `node_modules/`, `.next/`, `.env`, `.env.local`, `build/`, `dist/`, `.claude/`
 - Toast notifications use `sonner` — never use `alert()` calls
 - Enquiry source values stored in Title Case
+- Display terminology (frozen 2026-07-05): the pipeline object is a **"Lead"** in all UI text (DB tables/types stay `enquiries`/`Enquiry`); booking status `scheduled` displays as **"Booked"** everywhere. `enquiry_activity` titles store raw status slugs — render via `humanizeActivityTitle()` from `src/lib/status-labels.ts`; never write display labels into activity rows
 - Server actions body size limit is 10MB (photo uploads)
 - Route param `[projectId]` in `/survey/` routes is historical — it refers to survey ID
 - Survey list lives at `/surveys`; per-survey sub-pages (wizard, costing, report, handover, installer-info) live under `/survey/[projectId]/`
