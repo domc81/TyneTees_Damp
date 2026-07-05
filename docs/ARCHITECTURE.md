@@ -206,6 +206,25 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - `bag_and_cart` — per-bag debris removal
 - `skip_hire` — reads cost from pricing_config
 
+## Offline layer — survey wizard PWA (`src/lib/offline/`)
+
+Local-first PWA for the surveyor field surface only (the wizard + /surveys). Office surfaces stay online. Every wizard read/write hits IndexedDB first; a durable outbox syncs to Supabase when online, **reusing the existing server-write functions** — the sync engine is their only online caller.
+
+**Module map:**
+- `db.ts` — Dexie `ttdp-offline` v1: stores `surveys` (mirror), `outbox` (`++id`, `[surveyId+type]`), `blobs`, `photos` (registry), `kv`. `clearOfflineDB()` for logout.
+- `connectivity.ts` — online/offline via browser hints + active Supabase `/auth/v1/health` probe (navigator.onLine lies on flaky signal); `timeoutSignal()` fallback for <iOS16.
+- `outbox.ts` — enqueue with coalescing (`wizard_data`/`rooms`/`tags` keep one op per survey, preserving id/queue position), pending counts, retryable/fatal/retry, `cancelPendingPhotoUpload`.
+- `sync-engine.ts` — online-gated flush: per-survey ordered drain (rooms → wizard_data → photo_* → tags → audio → enquiry_transition → notify_complete), Web Locks single-flight, retry/backoff (5s→5min), conditional-delete (op coalesced mid-flush isn't lost), temp `room-` id → DB uuid remapping with `onRemoteIdsMapped` bus. Executors for photo/audio ops are registered by their modules.
+- `local-data.ts` — `loadWizardDataLocalFirst` (mirror-when-ahead/offline, fresh fetch when online+clean, `NotAvailableOfflineError` on offline miss — never blank defaults), `saveWizardLocal` (mirror + coalesced ops in one tx), `enqueueCompletionOps`, `prefetchMirror`, `writeSyncedPhotos`.
+- `photos-offline.ts` — `capturePhotoLocal` (blob + pending registry + queued upload; QuotaError), `usePhotoUrl` (blob URL pending / public URL synced), `loadSurveyPhotosLocalFirst`, `deletePhotoLocal`, `updatePhotoMetaLocal`, upload executor (deterministic path + upsert).
+- `audio-offline.ts` — `queueAudioNote` (WAV blob + op + placeholder), transcribe executor (POST `/api/transcribe`, replace unique placeholder across the mirror, enqueue coalesced op), `onAudioTranscribed` bus.
+- `prefetch.ts` — `prefetchSurveyorSurveys` mirrors today+tomorrow bookings, warms photo cache, posts `SEED_URLS` to the SW.
+- `profile-cache.ts` — caches the `user_profiles` row for offline `role`/`profile.id`.
+- Hooks `useConnectivity`/`useSyncStatus`; components `SyncStatusPill`/`OfflineReadyBadge`/`StaleSyncBanner`/`InstallHint`/`OfflineBootstrap` (mounted in root layout — registers SW + executors, starts monitor/engine, kicks prefetch).
+- PWA shell: `src/app/sw.ts` (Serwist) + `src/app/manifest.ts` + `public/icons/`.
+
+**Sync data flow (write):** wizard field edit → `saveWizardLocal` writes the Dexie mirror + coalesce-enqueues `wizard_data`/`rooms`/`tags` in one transaction → `requestFlush()`. When online, the sync engine drains per survey in dependency order, calling `saveAllRooms`/`saveWizardData`/`updateSurveyTags`; on the rooms flush it maps temp ids and rewrites the mirror + pending photo/audio payloads. Photos capture to a local blob + pending registry row + `photo_upload` op; the executor uploads to the deterministic path and appends metadata (dedupe-by-id). Completion enqueues `enquiry_transition` + `notify_complete`. **Read:** `loadWizardDataLocalFirst` returns the mirror when it's ahead of / offline from the server, else fetches fresh and refreshes the mirror.
+
 ## Environment variables
 
 | Variable | Scope | Purpose |
