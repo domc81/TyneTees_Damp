@@ -73,19 +73,24 @@ async function readLocalPhotos(surveyId: string): Promise<SurveyPhoto[]> {
   return sortPhotos(rows.map((r) => r.meta))
 }
 
-/** Replace the survey's SYNCED photo registry rows; pending rows always win. */
-async function writeSyncedPhotos(surveyId: string, photos: SurveyPhoto[]): Promise<void> {
+/** Replace the survey's SYNCED photo registry rows; pending rows always win.
+ *  Transaction-safe standalone AND when nested in an outer photos-scoped tx. */
+export async function writeSyncedPhotos(surveyId: string, photos: SurveyPhoto[]): Promise<void> {
   const db = getDB()
-  const existing = await db.photos.where('surveyId').equals(surveyId).toArray()
-  const pendingIds = new Set(existing.filter((p) => p.syncState === 'pending').map((p) => p.photoId))
-  const syncedToDelete = existing
-    .filter((p) => p.syncState === 'synced')
-    .map((p) => p.photoId)
-  await db.photos.bulkDelete(syncedToDelete)
-  const rows: LocalPhoto[] = photos
-    .filter((p) => !pendingIds.has(p.id))
-    .map((p) => ({ photoId: p.id, surveyId, meta: p, syncState: 'synced', blobKey: null }))
-  if (rows.length) await db.photos.bulkPut(rows)
+  await db.transaction('rw', db.photos, async () => {
+    const existing = await db.photos.where('surveyId').equals(surveyId).toArray()
+    const pendingIds = new Set(
+      existing.filter((p) => p.syncState === 'pending').map((p) => p.photoId)
+    )
+    const syncedToDelete = existing
+      .filter((p) => p.syncState === 'synced')
+      .map((p) => p.photoId)
+    await db.photos.bulkDelete(syncedToDelete)
+    const rows: LocalPhoto[] = photos
+      .filter((p) => !pendingIds.has(p.id))
+      .map((p) => ({ photoId: p.id, surveyId, meta: p, syncState: 'synced', blobKey: null }))
+    if (rows.length) await db.photos.bulkPut(rows)
+  })
 }
 
 async function fromMirror(mirror: LocalSurvey): Promise<WizardLoadResult> {

@@ -159,7 +159,7 @@ export async function getGeolocation(surveyId?: string): Promise<{
 /**
  * Get image dimensions from a File
  */
-async function getImageDimensions(
+export async function getImageDimensions(
   file: File
 ): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -252,52 +252,65 @@ export async function uploadSurveyPhoto(
       created_at: new Date().toISOString(),
     }
 
-    // Steps 8-10: Serialize metadata write to prevent race condition.
-    // Multiple concurrent uploads can compress + upload to storage in
-    // parallel, but the read-modify-write on survey_data.photos must
-    // be serialized to avoid one upload overwriting another's metadata.
-    await serializeWrite(surveyId, async () => {
-      // Step 8: Load existing survey data
-      const { data: survey, error: fetchError } = await supabase
-        .from('surveys')
-        .select('survey_data')
-        .eq('id', surveyId)
-        .single()
-
-      if (fetchError) {
-        console.error('Failed to load survey for photo metadata:', fetchError)
-        await supabase.storage.from('survey-photos').remove([uploadData.path])
-        throw new Error(`Failed to load survey: ${fetchError.message}`)
-      }
-
-      // Step 9: Add photo to survey_data.photos array
-      const surveyData = survey.survey_data || {}
-      const photos = Array.isArray(surveyData.photos) ? surveyData.photos : []
-      photos.push(newPhoto)
-
-      // Step 10: Update survey_data with new photos array
-      const { error: updateError } = await supabase
-        .from('surveys')
-        .update({
-          survey_data: {
-            ...surveyData,
-            photos,
-          },
-        })
-        .eq('id', surveyId)
-
-      if (updateError) {
-        console.error('Failed to save photo metadata:', updateError)
-        await supabase.storage.from('survey-photos').remove([uploadData.path])
-        throw new Error(`Failed to save photo metadata: ${updateError.message}`)
-      }
-    })
+    // Steps 8-10: Serialize metadata append (shared RMW helper). On failure,
+    // roll back the just-uploaded storage object.
+    try {
+      await appendPhotoMetadata(surveyId, newPhoto)
+    } catch (metaError) {
+      await supabase.storage.from('survey-photos').remove([uploadData.path])
+      throw metaError
+    }
 
     return newPhoto
   } catch (error) {
     console.error('Photo upload failed:', error)
     throw error
   }
+}
+
+/**
+ * Append a photo's metadata to surveys.survey_data.photos under the shared
+ * per-survey write queue (serialized against wizard-data + other photo writes).
+ * Idempotent: skips if a photo with the same id is already present, so a
+ * replayed offline photo_upload op (deterministic path + upsert) never
+ * double-records metadata. Throws on failure so callers can roll back.
+ */
+export async function appendPhotoMetadata(surveyId: string, photo: SurveyPhoto): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase not initialized')
+  }
+
+  await serializeWrite(surveyId, async () => {
+    const { data: survey, error: fetchError } = await supabase
+      .from('surveys')
+      .select('survey_data')
+      .eq('id', surveyId)
+      .single()
+
+    if (fetchError) {
+      throw new Error(`Failed to load survey: ${fetchError.message}`)
+    }
+
+    const surveyData = survey.survey_data || {}
+    const photos = Array.isArray(surveyData.photos) ? surveyData.photos : []
+
+    // Dedupe by id — idempotent replay guard.
+    if (photos.some((p: SurveyPhoto) => p.id === photo.id)) {
+      return
+    }
+
+    photos.push(photo)
+
+    const { error: updateError } = await supabase
+      .from('surveys')
+      .update({ survey_data: { ...surveyData, photos } })
+      .eq('id', surveyId)
+
+    if (updateError) {
+      throw new Error(`Failed to save photo metadata: ${updateError.message}`)
+    }
+  })
 }
 
 /**

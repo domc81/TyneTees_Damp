@@ -11,6 +11,7 @@
 import { useEffect } from 'react'
 import { startConnectivityMonitor } from '@/lib/offline/connectivity'
 import { startSyncEngine } from '@/lib/offline/sync-engine'
+import { registerPhotoExecutors } from '@/lib/offline/photos-offline'
 import { isOfflineDbAvailable } from '@/lib/offline/db'
 
 export default function OfflineBootstrap() {
@@ -20,6 +21,9 @@ export default function OfflineBootstrap() {
     // Best-effort persistent storage — reduces IndexedDB eviction risk on
     // iOS/Android under storage pressure. Ignore the result.
     navigator.storage?.persist?.().catch(() => {})
+
+    // Register op executors BEFORE the engine may try to flush them.
+    registerPhotoExecutors()
 
     const stopConnectivity = startConnectivityMonitor()
     const stopSync = startSyncEngine()

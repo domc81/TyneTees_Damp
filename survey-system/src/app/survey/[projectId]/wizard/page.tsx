@@ -21,7 +21,7 @@ import {
   AdditionalWorks,
   SurveyRoomRow,
 } from '@/types/survey-wizard.types'
-import { loadSurveyPhotos } from '@/lib/survey-photo-service'
+import { loadSurveyPhotosLocalFirst } from '@/lib/offline/photos-offline'
 import {
   loadWizardDataLocalFirst,
   saveWizardLocal,
@@ -334,7 +334,7 @@ export default function SurveyWizardPage() {
   // Photos change handler (reload from DB)
   const handlePhotosChange = useCallback(async () => {
     try {
-      const loadedPhotos = await loadSurveyPhotos(projectId)
+      const loadedPhotos = await loadSurveyPhotosLocalFirst(projectId)
       setPhotos(loadedPhotos)
     } catch (err) {
       console.error('Failed to reload photos:', err)

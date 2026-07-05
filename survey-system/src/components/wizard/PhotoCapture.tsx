@@ -5,11 +5,28 @@ import { Camera, Upload, X, Trash2, MapPin, Calendar, Loader2, Check } from 'luc
 import type { SurveyPhoto, PhotoCapture as PhotoCaptureType, PhotoVisibility } from '@/types/survey-photo.types'
 import { PHOTO_VISIBILITY_OPTIONS } from '@/types/survey-photo.types'
 import {
-  uploadSurveyPhoto,
-  deleteSurveyPhoto,
-  updateSurveyPhotoMeta,
-  getPhotoUrl,
-} from '@/lib/survey-photo-service'
+  capturePhotoLocal,
+  deletePhotoLocal,
+  updatePhotoMetaLocal,
+  usePhotoUrl,
+  PhotoQuotaError,
+} from '@/lib/offline/photos-offline'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
+// Renders a photo thumbnail from a blob URL (pending, offline) or the public
+// storage URL (synced) — see usePhotoUrl.
+function PhotoImg({
+  photo,
+  className,
+  onError,
+}: {
+  photo: SurveyPhoto
+  className?: string
+  onError?: (e: React.SyntheticEvent<HTMLImageElement>) => void
+}) {
+  const url = usePhotoUrl(photo)
+  return <img src={url} alt={photo.description} className={className} onError={onError} />
+}
 
 // Tier badge styling — always visible on thumbnails so a mis-tiered photo
 // (e.g. a technician shot heading for the customer report) is spottable at a glance
@@ -55,14 +72,17 @@ export default function PhotoCapture({
   const [editDescription, setEditDescription] = useState('')
   const [editVisibility, setEditVisibility] = useState<PhotoVisibility>('customer')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [confirmDeletePhoto, setConfirmDeletePhoto] = useState<SurveyPhoto | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const canAddMore = existingPhotos.length < maxPhotos
 
-  const MAX_RETRIES = 2
-
+  // Capture is now local-first: the photo is stored on-device instantly and the
+  // upload happens in the background (tracked by the sync pill), so there is no
+  // network retry loop here. Only device-storage errors can fail this path.
   const performUpload = async (file: File, desc: string, vis?: PhotoVisibility) => {
     setIsUploading(true)
     setUploadProgress(0)
@@ -76,43 +96,28 @@ export default function PhotoCapture({
       visibility: vis || 'customer',
     }
 
-    let lastError: unknown = null
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => Math.min(prev + 10, 90))
-        }, 200)
-
-        const newPhoto = await uploadSurveyPhoto(surveyId, capture)
-
-        clearInterval(progressInterval)
-        setUploadProgress(100)
-
-        onPhotosChange([...existingPhotos, newPhoto])
-
-        setTimeout(() => {
-          setIsUploading(false)
-          setUploadProgress(0)
-          setPendingFile(null)
-          setDescription('')
-        }, 500)
-        return // success
-      } catch (err) {
-        lastError = err
-        console.warn(`Upload attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`, err)
-        if (attempt < MAX_RETRIES) {
-          setUploadProgress(0)
-          // Brief pause before retry
-          await new Promise(r => setTimeout(r, 1000))
-        }
-      }
+    try {
+      const newPhoto = await capturePhotoLocal(surveyId, capture)
+      setUploadProgress(100)
+      onPhotosChange([...existingPhotos, newPhoto])
+      setTimeout(() => {
+        setIsUploading(false)
+        setUploadProgress(0)
+        setPendingFile(null)
+        setDescription('')
+      }, 400)
+    } catch (err) {
+      console.error('Photo capture failed:', err)
+      setError(
+        err instanceof PhotoQuotaError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Could not save photo'
+      )
+      setIsUploading(false)
+      setUploadProgress(0)
     }
-
-    console.error('Upload failed after retries:', lastError)
-    setError(lastError instanceof Error ? lastError.message : 'Upload failed after retries')
-    setIsUploading(false)
-    setUploadProgress(0)
   }
 
   const handleFileSelect = (file: File) => {
@@ -170,18 +175,20 @@ export default function PhotoCapture({
     await performUpload(pendingFile, description, visibility)
   }
 
-  const handleDeletePhoto = async (photo: SurveyPhoto) => {
-    if (!confirm('Delete this photo? This cannot be undone.')) {
-      return
-    }
-
+  const doDeletePhoto = async () => {
+    const photo = confirmDeletePhoto
+    if (!photo) return
+    setDeleting(true)
     try {
-      await deleteSurveyPhoto(surveyId, photo)
+      await deletePhotoLocal(surveyId, photo)
       onPhotosChange(existingPhotos.filter((p) => p.id !== photo.id))
       setEditingPhoto(null)
     } catch (err) {
       console.error('Delete failed:', err)
       setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleting(false)
+      setConfirmDeletePhoto(null)
     }
   }
 
@@ -195,7 +202,7 @@ export default function PhotoCapture({
     if (!editingPhoto) return
     setSavingEdit(true)
     try {
-      const updated = await updateSurveyPhotoMeta(surveyId, editingPhoto.id, {
+      const updated = await updatePhotoMetaLocal(surveyId, editingPhoto.id, {
         description: editDescription,
         visibility: editVisibility,
       })
@@ -252,9 +259,8 @@ export default function PhotoCapture({
             }}
           >
             {/* Photo */}
-            <img
-              src={getPhotoUrl(photo.storage_path)}
-              alt={photo.description}
+            <PhotoImg
+              photo={photo}
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.src = '/placeholder-photo.jpg'
@@ -298,7 +304,7 @@ export default function PhotoCapture({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                handleDeletePhoto(photo)
+                setConfirmDeletePhoto(photo)
               }}
               className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             >
@@ -449,9 +455,8 @@ export default function PhotoCapture({
             </div>
 
             <div className="relative rounded-lg overflow-hidden border border-white/10">
-              <img
-                src={getPhotoUrl(editingPhoto.storage_path)}
-                alt={editingPhoto.description}
+              <PhotoImg
+                photo={editingPhoto}
                 className="w-full max-h-56 object-contain bg-black/40"
               />
               <span
@@ -490,7 +495,7 @@ export default function PhotoCapture({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleDeletePhoto(editingPhoto)}
+                onClick={() => setConfirmDeletePhoto(editingPhoto)}
                 disabled={savingEdit}
                 className="px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/35 border border-red-500/30 text-red-200 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
@@ -517,6 +522,20 @@ export default function PhotoCapture({
           </div>
         </div>
       )}
+
+      {/* Delete confirmation — styled dialog (native confirm is invisible under
+          automation and silently no-ops). */}
+      <ConfirmDialog
+        open={confirmDeletePhoto !== null}
+        title="Delete photo?"
+        message="This photo will be removed. This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Keep"
+        danger
+        busy={deleting}
+        onConfirm={doDeletePhoto}
+        onCancel={() => setConfirmDeletePhoto(null)}
+      />
     </div>
   )
 }

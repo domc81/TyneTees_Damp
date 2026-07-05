@@ -370,11 +370,6 @@ async function applyIdMapping(surveyId: string, mapping: IdMapping): Promise<voi
             payload: { ...p, photo: { ...p.photo, room_id: mapping[p.photo.room_id] } },
           })
         }
-      } else if (o.type === 'photo_meta') {
-        const p = o.payload as { photoId: string; roomId?: string }
-        if (p.roomId && mapping[p.roomId]) {
-          await db.outbox.update(o.id, { payload: { ...p, roomId: mapping[p.roomId] } })
-        }
       }
     }
 
