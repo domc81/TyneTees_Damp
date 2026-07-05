@@ -1,7 +1,7 @@
 # TyneTees Damp — Project State
 
 **Last updated:** 2026-07-05
-**Last commit:** b3aee8f — feat: pipeline is the single canonical path for new surveys
+**Last commit:** d175884 — docs: AGENTS.md convention — pipeline-only survey creation
 **Current phase:** Canonical survey-creation path locked in (pipeline-only); both UX audits closed
 
 ## Current focus
@@ -14,6 +14,7 @@
 
 ## Open threads
 
+- **CF replacement (PARKED 2026-07-05 — revisit from late July 2026):** confirmed direction — this platform will replace Contractor Foreman entirely once its used feature set is mapped and built. Agreed approach when resumed: audit-first — map the client's live CF account via Steel Browser (module inventory with usage evidence, workflow maps, data/migration inventory → `docs/cf-audit/`), then gap-analyse against the platform, then a phased build plan (likely project/works management first; invoicing + payments second, blocked on Steven's answers: bookkeeping software, payment provider, invoicing structure, operative count, offline needs). Explicitly decided against: Steel Browser automation of CF project creation from the handover pack (feasible but throwaway against a product being retired). The CSV handover pack remains the bridge. Prerequisites to resume: CF login credentials (`~/.credentials/.contractor-foreman-credentials`), 2FA status, a supervised first session at browser.dc81.io.
 - **Workbook formula accuracy pass:** all 220 line template calculations need verification against the original Excel workbooks (Damp v48, Condensation v37, Timber v33, Woodworm v26). Deviations cause real business impact.
 - **Costing manual overrides:** surveyors need to adjust individual line items on the costing page. Not yet built.
 - **Woodworm wizard fields:** not at full parity with the workbook. Some fields missing. Report now includes beetle reference image, equipment photos, and loft insulation note — but wizard field coverage still incomplete.
