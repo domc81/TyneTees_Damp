@@ -416,11 +416,11 @@ After each phase deploys, on desktop Chrome against ttdp.dc81.io using DevTools 
 - **T7**: delete a pending photo offline → nothing hits the server after reconnect. Edit description of a pending photo offline → server gets the edited version.
 - **T8**: retry idempotency — throttle to Slow 3G so an upload is slow, kill mid-upload, reopen → exactly one storage object, one metadata entry.
 - **T9**: prefetch — book tomorrow's survey for the test surveyor, log in on a fresh browser online, wait for prefetch, go fully offline, cold-navigate to /surveys → badge "Downloaded"; open the wizard for a survey never opened in this browser → loads (SEED_URLS worked).
-- **T10** *(iPhone)*: install to home screen, airplane mode, cold-launch from icon → app opens, prefetched survey editable, photos render (cached + pending).
+- **T10** *(Android — Steve's platform, primary)*: install via Chrome's install prompt, airplane mode, cold-launch from icon → app opens, prefetched survey editable, photos render (cached + pending). Repeat on an iPhone as the secondary check (Share → Add to Home Screen) — iOS is the more constrained platform, so it must still pass even though no current surveyor uses it.
 - **T11**: deploy-staleness — push a trivial visible change after Phase 5; confirm an already-installed PWA picks it up on next open (SW update path works).
 - **T12**: public pages unaffected — `/q/[token]`, `/pay/[token]`, `/report/[id]` still serve fresh state (SW must not cache them into staleness; they're already `force-dynamic` server-side — confirm the SW navigation cache respects their no-store headers or exclude those paths from `ttdp-pages`).
 - **T13**: record a voice note offline → placeholder appears in the field; reconnect → transcript replaces placeholder, saved to DB.
-- **T14** *(field pilot)*: Steve runs one real rural survey with the installed PWA before the old workflow assumption is retired; capture his sync-pill comprehension feedback.
+- **T14** *(field pilot)*: Steve runs one real rural survey with the PWA installed on his Android phone before the old workflow assumption is retired; capture his sync-pill comprehension feedback. If it shows the stale-sync nudge firing often, consider layering the Background Sync API as an Android-only enhancement (flushes the queue even with the app closed; unsupported on iOS, which is why the core design doesn't rely on it).
 
 Use the UX-audit test accounts (`~/.credentials/.ux-audit-credentials`) and a pipeline-created test survey (New Lead → Convert & Book — never a direct insert; pipeline-only creation is a standing rule). Restore/mark test records afterwards as the audits did.
 
