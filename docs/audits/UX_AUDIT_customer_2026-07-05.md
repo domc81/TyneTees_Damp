@@ -15,6 +15,8 @@ The customer surfaces are fundamentally strong: sub-second loads, a clear £-bre
 
 **Counts:** 0× P0 · 3× P1 · 5× P2 · 4× P3 (+3 platform-side addenda found while minting tokens).
 
+**Update 2026-07-05 (same day):** all 12 customer findings and all 3 addenda fixed in commit `b460f87` and verified live (accepted banner + `isRespondable:false` served on /q; /pay shows paid state, tel:/mailto: contact links; "Works subtotal" labels; TT-2026-0026 in the report footer). Decisions taken with Dominic: C4 auto-polish at generation; C5 WME everywhere; C6 cross-reference-report note; C7 section names only + single works subtotal (optional works keep prices); C11 report aligned to quote T&C wording; C3 new "High external ground levels" checklist item. Content-level report fixes (C3/C4/C5/C8/C11) apply to reports generated from now on — the existing published test report retains its old content. **Correction to A2:** re-examination of the 1.5 s evidence screenshot shows a toast DID fire ("Failed to publish report. Please try again.") — the failure was not fully silent as first reported; the shipped fix addresses the actual defects (button enabled when publishing could never succeed, and a retry-oriented message for a non-retryable error). **Audit closed.**
+
 ## Findings table
 
 | ID | Sev | Surface | Summary |
