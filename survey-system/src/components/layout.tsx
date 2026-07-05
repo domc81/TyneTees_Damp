@@ -21,6 +21,10 @@ import { useAuth } from '@/context/AuthContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { NotificationBell } from '@/components/NotificationBell'
+import { StaleSyncBanner } from '@/components/offline/StaleSyncBanner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useSyncStatus } from '@/hooks/useSyncStatus'
+import { clearOfflineDB } from '@/lib/offline/db'
 
 const navItems: { icon: typeof LayoutDashboard; label: string; href: string; roles?: string[] }[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -40,17 +44,32 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { signOut, isAdmin, isOffice, profile, role } = useAuth()
   const companyProfile = useCompanyProfile()
+  const sync = useSyncStatus()
+  const pendingTotal = sync.pendingData + sync.pendingPhotos + sync.pendingAudio + sync.failed
 
   const roleLabel = role === 'admin' ? 'Admin' : role === 'office' ? 'Office' : role === 'surveyor' ? 'Surveyor' : ''
   const cardName = profile?.display_name || companyProfile.trading_name || companyProfile.name
 
-  const handleSignOut = async () => {
+  const performSignOut = async () => {
+    setConfirmLogout(false)
+    // Clear the per-device offline store so no cross-user residue remains.
+    await clearOfflineDB()
     await signOut()
     router.push('/login')
+  }
+
+  const handleSignOut = async () => {
+    // Warn if unsynced survey data would be lost on this device.
+    if (pendingTotal > 0) {
+      setConfirmLogout(true)
+      return
+    }
+    await performSignOut()
   }
 
   const isActive = (href: string) => {
@@ -158,9 +177,21 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Page content */}
         <main className="p-4 lg:p-8 lg:pr-20">
+          <StaleSyncBanner />
           {children}
         </main>
       </div>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Sign out with unsynced data?"
+        message="Some survey work saved on this device hasn't reached the office yet. If you sign out here it will be lost — like losing paper notes. Connect to WiFi and let it sync first if you can."
+        confirmLabel="Sign out anyway"
+        cancelLabel="Stay signed in"
+        danger
+        onConfirm={performSignOut}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </div>
   )
 }

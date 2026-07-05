@@ -25,6 +25,12 @@ export function OfflineReadyBadge({ surveyId, className = '' }: { surveyId: stri
     return pending > 0 ? 'unsynced' : 'downloaded'
   }, [surveyId])
 
+  const lastPrefetchAt = useLiveQuery<number | null>(async () => {
+    if (!isOfflineDbAvailable()) return null
+    const row = await getDB().kv.get('lastPrefetchAt')
+    return (row?.value as number) ?? null
+  }, [])
+
   if (!state || state === 'none') return null
 
   if (state === 'unsynced') {
@@ -39,13 +45,16 @@ export function OfflineReadyBadge({ surveyId, className = '' }: { surveyId: stri
     )
   }
 
+  const time = lastPrefetchAt
+    ? new Date(lastPrefetchAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : ''
   return (
     <span
       className={`inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 ${className}`}
       title="Downloaded for offline use"
     >
       <CheckCircle2 className="w-3 h-3" />
-      Downloaded
+      Downloaded{time ? ` ${time}` : ''}
     </span>
   )
 }

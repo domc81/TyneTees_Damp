@@ -90,7 +90,50 @@ Before heading out to a survey:
 2. **Open the survey** — From the calendar or from Surveys in the sidebar
 3. **Check the customer details** — Name, phone number, and any notes
 4. **Make sure your phone/tablet is charged** — You'll need it for the wizard, photos, and voice notes
-5. **Check your internet connection** — The system needs an internet connection to save data. Mobile data works fine
+5. **Open the app while you still have signal** — Today's and tomorrow's booked surveys download to your phone automatically when the app is open with signal. On the **Surveys** list you'll see a green **"Downloaded"** tag on each survey that's ready to use offline. As long as you see that tag before you set off, you can do the whole survey with no signal at all.
+
+### Install the App (One-Time Setup)
+
+Install the app to your home screen so it opens like a normal app and works fully offline. **Do this once, on WiFi.**
+
+**Android (Chrome):**
+1. Open **https://ttdp.dc81.io** in Chrome and log in.
+2. Tap the **"Install app"** button on the Surveys page (or Chrome's menu ⋮ → **"Install app" / "Add to Home screen"**).
+3. Confirm. A **TTDP** icon appears on your home screen.
+
+**iPhone/iPad (Safari):**
+1. Open **https://ttdp.dc81.io** in Safari and log in.
+2. Tap the **Share** button (the square with an up arrow).
+3. Scroll down and tap **"Add to Home Screen"**, then **Add**. A **TTDP** icon appears on your home screen.
+
+Always launch surveys from the **home-screen icon**, not the browser — the icon version is the one that works offline.
+
+### Working Offline
+
+The survey wizard is **built to work with no signal**. When you have no signal, weak signal, or signal that keeps dropping (common inside properties and on rural jobs):
+
+- **Everything you type, every photo, and every voice note is saved instantly on your phone.** Nothing waits for signal.
+- The moment you get signal back, it all sends to the office automatically. You don't have to do anything.
+- You can complete a survey entirely offline. When you tap **Complete Survey** with no signal, you'll see **"Waiting for signal to send"** — that's normal. It sends itself when you're back in range.
+
+### The Sync Indicator
+
+At the top of the wizard and the Surveys page there's a small **sync pill** that tells you where your work is:
+
+| Pill | Meaning |
+|---|---|
+| 🟢 **All synced** | Everything is saved at the office. Safe. |
+| 🟠 **Saved on phone — N changes waiting for signal** | Saved on your phone, waiting for signal. Keep the app installed. |
+| 🔵 **Syncing…** | Sending to the office right now. |
+| 🔴 **Sync problem — tap to retry** | Something couldn't send. Tap it to try again; if it sticks, tell the office. |
+
+### Important: Your Phone Holds Unsynced Work
+
+While the pill is orange, that survey work lives **only on your phone** — exactly like paper notes. If you lose or break the phone before it goes green, that work is gone. So:
+
+- **Sync before you leave site whenever you can** — wait for the pill to turn green 🟢.
+- If the app warns you that data is more than 12 hours old, get to WiFi and open the app so it can send.
+- **Don't sign out** while the pill is orange — signing out clears the phone. The app will warn you if you try.
 
 ---
 
