@@ -9,12 +9,16 @@
 // =============================================================================
 
 import { useEffect } from 'react'
-import { startConnectivityMonitor } from '@/lib/offline/connectivity'
+import { startConnectivityMonitor, subscribe as subscribeConnectivity } from '@/lib/offline/connectivity'
 import { startSyncEngine } from '@/lib/offline/sync-engine'
 import { registerPhotoExecutors } from '@/lib/offline/photos-offline'
+import { prefetchSurveyorSurveys } from '@/lib/offline/prefetch'
 import { isOfflineDbAvailable } from '@/lib/offline/db'
+import { useAuth } from '@/context/AuthContext'
 
 export default function OfflineBootstrap() {
+  const { profile } = useAuth()
+
   useEffect(() => {
     if (typeof window === 'undefined' || !isOfflineDbAvailable()) return
 
@@ -33,6 +37,31 @@ export default function OfflineBootstrap() {
       stopConnectivity()
     }
   }, [])
+
+  // Booking-driven prefetch: mirror today+tomorrow's surveys whenever online.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isOfflineDbAvailable()) return
+    const pid = profile?.id
+    if (!pid) return
+
+    const run = () => {
+      void prefetchSurveyorSurveys(pid)
+    }
+    run() // on mount / when profile resolves
+
+    const onOnline = () => run()
+    window.addEventListener('online', onOnline)
+    const unsub = subscribeConnectivity((s) => {
+      if (s === 'online') run()
+    })
+    const timer = setInterval(run, 15 * 60 * 1000) // every 15 min while open
+
+    return () => {
+      window.removeEventListener('online', onOnline)
+      unsub()
+      clearInterval(timer)
+    }
+  }, [profile?.id])
 
   return null
 }

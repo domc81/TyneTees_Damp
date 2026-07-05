@@ -212,6 +212,22 @@ export async function loadWizardDataLocalFirst(surveyId: string): Promise<Wizard
 }
 
 /**
+ * Mirror a survey into IndexedDB without opening the wizard (prefetch). Never
+ * overwrites local-ahead state (pending ops / localUpdatedAt). Returns the
+ * server photos so the caller can warm the image cache, or null if skipped.
+ */
+export async function prefetchMirror(surveyId: string): Promise<{ photos: SurveyPhoto[] } | null> {
+  if (!isOfflineDbAvailable()) return null
+  if (await hasPendingOps(surveyId)) return null
+  const db = getDB()
+  const existing = await db.surveys.get(surveyId)
+  if (existing && existing.localUpdatedAt > existing.mirroredAt) return null
+  const fresh = await fetchFromServer(surveyId)
+  await upsertMirrorFromServer(surveyId, fresh)
+  return { photos: fresh.photos }
+}
+
+/**
  * Local write: update mirror + coalesce-enqueue wizard_data / rooms / tags in a
  * single Dexie transaction, then poke the sync engine (no-op when offline).
  */

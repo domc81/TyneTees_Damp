@@ -21,6 +21,8 @@ import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import { useAuth } from '@/context/AuthContext'
+import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
+import { OfflineReadyBadge } from '@/components/offline/OfflineReadyBadge'
 import Layout from '@/components/layout'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string }> = {
@@ -39,7 +41,7 @@ const statusConfig: Record<string, { color: string; bg: string; label: string }>
 }
 
 export default function ProjectsPage() {
-  const { isAdmin, isOffice } = useAuth()
+  const { isAdmin, isOffice, isSurveyor } = useAuth()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -91,16 +93,19 @@ export default function ProjectsPage() {
                 <h1 className="text-2xl lg:text-3xl font-bold text-white">Projects</h1>
                 <p className="text-white/60">{filteredSurveys.length} projects</p>
               </div>
-              {(isAdmin || isOffice) && (
-                <Link
-                  href="/enquiries?new=1"
-                  className="btn-primary flex items-center gap-2 w-fit"
-                  title="All surveys start as a lead in the pipeline"
-                >
-                  <Plus className="w-5 h-5" />
-                  New Lead
-                </Link>
-              )}
+              <div className="flex items-center gap-3">
+                {isSurveyor && <SyncStatusPill />}
+                {(isAdmin || isOffice) && (
+                  <Link
+                    href="/enquiries?new=1"
+                    className="btn-primary flex items-center gap-2 w-fit"
+                    title="All surveys start as a lead in the pipeline"
+                  >
+                    <Plus className="w-5 h-5" />
+                    New Lead
+                  </Link>
+                )}
+              </div>
             </div>
 
             {/* Search and Filters */}
@@ -234,7 +239,10 @@ export default function ProjectsPage() {
 
                       {/* Card footer */}
                       <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-sm text-white/40">{config.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white/40">{config.label}</span>
+                          {isSurveyor && <OfflineReadyBadge surveyId={survey.id} />}
+                        </div>
                         <ChevronRight className="w-5 h-5 text-white/30" />
                       </div>
                     </Link>
@@ -269,6 +277,7 @@ export default function ProjectsPage() {
                                 <Icon className={`w-4 h-4 ${config.color}`} />
                               </div>
                               <span className="font-mono text-sm text-white/70">{survey.project_number}</span>
+                              {isSurveyor && <OfflineReadyBadge surveyId={survey.id} />}
                             </div>
                           </td>
                           <td className="font-medium text-white">{survey.client_name}</td>
