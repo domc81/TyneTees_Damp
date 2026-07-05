@@ -33,7 +33,6 @@ TyneTees_Damp/
 │   │   │   ├── report/[reportId]/   # Public report view
 │   │   │   ├── settings/            # Settings hub + company profile + notification prefs
 │   │   │   ├── training/            # In-app training hub + 4 role-based guides
-│   │   │   ├── survey/new/          # New survey creation
 │   │   │   ├── survey/[projectId]/  # costing/ handover/ installer-info/ quotation/ report/ wizard/
 │   │   │   ├── surveys/             # Survey list + [surveyId] detail
 │   │   │   └── login/ forgot-password/ change-password/ update-password/
