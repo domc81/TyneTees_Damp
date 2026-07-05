@@ -33,7 +33,7 @@ All commands run from `survey-system/` directory:
 ## Ground truth
 
 - Code of record: `survey-system/src/`
-- Data model: `survey-system/supabase/migrations/` (41 SQL migrations — 40 + 1 root-level, applied manually via docker exec)
+- Data model: `survey-system/supabase/migrations/` (42 SQL migrations + 1 root-level, applied manually via docker exec)
 - Pricing logic source of truth: original Excel workbooks at project root (`*.xlsm`, `*.xls`) — all 220 costing line templates must match these
 - Architecture: `docs/ARCHITECTURE.md`
 - Deploy/rollback: `docs/DEPLOYMENT.md`
@@ -51,6 +51,7 @@ All commands run from `survey-system/` directory:
 - Enquiry source values stored in Title Case
 - Server actions body size limit is 10MB (photo uploads)
 - Route param `[projectId]` in `/survey/` routes is historical — it refers to survey ID
+- Survey list lives at `/surveys`; per-survey sub-pages (wizard, costing, report, handover, installer-info) live under `/survey/[projectId]/`
 - `client_name` can be null — always use `(project.client_name || '')`
 
 ## Gotchas
@@ -75,6 +76,8 @@ All commands run from `survey-system/` directory:
 - Sketch plan uploads in the report editor store files in `survey-photos` bucket under `{surveyId}/sketch/` and link to the `sketch_plan` report section's `photos` array via `updateReportSectionPhotos()`. Supports JPEG, PNG, and PDF.
 - Supabase Auth SMTP is not configured on the TTDP instance (`GOTRUE_SMTP_HOST` is blank). Password reset emails silently fail. To reset a user's password: Admin API PUT + `must_change_password` flag on `user_profiles`.
 - The shared `Input` component (`src/components/ui/input.tsx`) auto-shows a password visibility toggle (Eye/EyeOff) for any `type="password"` field.
+- Pricing config values live in the `pricing_config` table and are editable at `/admin/rates` — never hardcode rates in code (`cf-csv-export.ts` currently hardcodes £30.63/hr; known issue, read from `pricing_config` instead when touching it).
+- The customer reinstatement responsibility note appears on all damp survey reports (membrane, injection, tanking) — amber callout in scope of works, same pattern as the electrical standards and asbestos notes. Do not remove it.
 
 ## Do not touch
 
