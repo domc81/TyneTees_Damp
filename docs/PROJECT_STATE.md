@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-05
 **Last commit:** d6e49a0 — docs: UX audit — payment-link finding downgraded to by-design
-**Current phase:** Platform UX audit complete; both P0s fixed and verified; LLM stack on Claude Sonnet 5
+**Current phase:** UX audit P0s + all actionable P1s fixed and verified; P2/P3 polish remains
 
 ## Current focus
 
@@ -20,7 +20,7 @@
 - **API route role checks:** payment mark-paid/send-link, quotation generation, company profile, and logo endpoints now require admin/office role (fixed in both audits). LLM/transcription endpoints remain open to all authenticated users (acceptable — no PII exposure, API credit risk is low with single-user team).
 - **Supabase Auth SMTP not configured:** `GOTRUE_SMTP_HOST`, `GOTRUE_SMTP_USER`, `GOTRUE_SMTP_PASS`, `GOTRUE_SMTP_ADMIN_EMAIL` are all blank on the TTDP auth container. Password reset emails (`resetPasswordForEmail()`) silently fail. Requires root-session fix to update Coolify environment variables with SMTP credentials (Resend SMTP is available). Workaround: admin resets passwords via Supabase Admin API + `must_change_password` flag.
 - **Payment provider integration:** deliberately deferred — client is not ready. Survey fees are paid through the client's external payment system and office marks them paid manually; deposits are taken in Contractor Foreman after handover. The `/pay/[token]` page and `/api/payments/send-link` route stay dormant until a provider is integrated (fix send-link's empty `appUrl` fallback before first activation). Architecture is Stripe-ready (fields in payments table).
-- **UX audit follow-ups:** remaining P1/P2 findings from `docs/audits/UX_AUDIT_platform_2026-07-05.md` — unguarded Kanban Won/Closed moves (`won_at` left NULL), photo visibility tiers invisible/immutable after upload, sidebar user card hardcoded to "Tyne Tees Damp Proofing / Admin", inactive non-surveyors offered in booking, availability page view-only for office, plus P2/P3 polish. All with file:line fix pointers. Customer-side audit (journeys 1–4) not yet run.
+- **UX audit follow-ups:** all four actionable P1s from `docs/audits/UX_AUDIT_platform_2026-07-05.md` fixed and verified live (Kanban move guards + `won_at` integrity, photo tier badges/edit, Approve & Send preflight; P1-6 withdrawn). **Remaining = P2/P3 polish:** sidebar user card hardcoded to "Tyne Tees Damp Proofing / Admin", availability page view-only for office (blocks booking a new surveyor's first job), blank Surveyor row on booking Confirm/success, stale Records-tab customer link, US date on wizard Review, booking calendar opens on current (mostly-past) week, one-error-at-a-time New Lead validation, no post-Complete-Survey confirmation; P3s: raw status slugs in feeds, UUID wizard header, Lead/enquiry terminology. Customer-side audit (journeys 1–4) not yet run. Data hygiene: three duplicate "Steven Robinson" `user_profiles` rows (one active surveyor + two inactive) — dedupe when convenient.
 - **Release-unpaid-bookings cron:** `/api/cron/release-unpaid-bookings` needs a Coolify scheduled task (daily, e.g. 09:00) calling `POST` with `Authorization: Bearer $CRON_SECRET`.
 
 ## Known issues
