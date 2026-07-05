@@ -33,8 +33,8 @@ Platform:
 
 ## Test data & credentials
 
-- Staff logins: setup docs at `docs/setup/AUTHENTICATION.md` / `SUPER_ADMIN_SETUP.md`; Supabase creds at `~/.credentials/.ttdp-supabase-credentials`. **No dedicated audit accounts yet — create one per role (office, surveyor, admin) before the first platform audit.** Password-reset email is known-unconfigured (SMTP) — resets silently fail; that itself is a standing finding.
-- **Test enquiry/customer**: created in journey 5, name-prefixed `UX-AUDIT`, customer email = a test inbox Dominic designates. All email sends in journey 7 go only to it. Delete/mark-Lost the test enquiry after the audit.
+- Audit accounts exist (office + surveyor roles): credentials in `~/.credentials/.ux-audit-credentials` (`UX_TTDP_*` keys). Password-reset email is known-unconfigured (SMTP) — resets silently fail; that itself is a standing finding.
+- **Test enquiry/customer**: created in journey 5, name-prefixed `UX-AUDIT`, customer email = the plus-addressed test inbox (customer-side pattern in the header of `~/.credentials/.ux-audit-credentials`). All email sends in journey 7 go only to it. Delete/mark-Lost the test enquiry after the audit.
 - No seed/demo data exists — treat every pre-existing record as a real customer.
 
 ## Safe actions
