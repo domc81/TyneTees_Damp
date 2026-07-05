@@ -1163,6 +1163,66 @@ function LostModal({
 }
 
 // ---------------------------------------------------------------------------
+// Move Confirm Modal — guards every manual stage move (drag or dropdown).
+// on_hold and lost have their own richer modals; this covers the rest.
+// ---------------------------------------------------------------------------
+
+const MOVE_CONSEQUENCE: Partial<Record<EnquiryStatus, string>> = {
+  won: 'This records the job as won and stamps the won date used in reporting.',
+  closed: 'This closes the enquiry — the end of the pipeline for a completed job.',
+  new: 'This sends the enquiry back to the start of the pipeline.',
+}
+
+function MoveConfirmModal({
+  enquiry,
+  toStatus,
+  onConfirm,
+  onCancel,
+}: {
+  enquiry: Enquiry
+  toStatus: EnquiryStatus
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const fromLabel = COLUMNS.find((c) => c.status === enquiry.status)?.label ?? enquiry.status
+  const toCol = COLUMNS.find((c) => c.status === toStatus)
+  const toLabel = toCol?.label ?? toStatus
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+      <div
+        className="relative w-full max-w-md rounded-2xl border border-white/15 p-6 space-y-5"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30,42,56,0.98) 0%, rgba(13,21,32,0.99) 100%)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+        }}
+      >
+        <div>
+          <h2 className="text-lg font-bold text-white">Move enquiry?</h2>
+          <p className="text-sm text-white/60 mt-2">
+            Move <span className="text-white font-medium">&ldquo;{enquiry.client_name || 'Unnamed enquiry'}&rdquo;</span>{' '}
+            from <span className="text-white/90">{fromLabel}</span> to{' '}
+            <span className="font-semibold" style={{ color: toCol?.color ?? '#fff' }}>{toLabel}</span>?
+          </p>
+          {MOVE_CONSEQUENCE[toStatus] && (
+            <p className="text-xs text-amber-300/80 mt-2">{MOVE_CONSEQUENCE[toStatus]}</p>
+          )}
+        </div>
+        <div className="flex justify-end gap-3 pt-1">
+          <button onClick={onCancel} className="btn-secondary px-5 py-2.5 text-sm">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="btn-primary px-5 py-2.5 text-sm">
+            Move to {toLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
@@ -1182,11 +1242,12 @@ export default function EnquiriesPage() {
   const [activeEnquiry, setActiveEnquiry] = useState<Enquiry | null>(null)
   const [overColumnId, setOverColumnId] = useState<string | null>(null)
 
-  // Modal state (shared by desktop drag and mobile move)
+  // Modal state (shared by desktop drag, mobile move, and the generic
+  // move-confirm dialog — every manual move confirms before applying)
   const [pendingDrag, setPendingDrag] = useState<{
     enquiry: Enquiry
     fromStatus: EnquiryStatus
-    toStatus: 'on_hold' | 'lost'
+    toStatus: EnquiryStatus
   } | null>(null)
 
   // Toast (supports error, success, and warning variants)
@@ -1436,12 +1497,9 @@ export default function EnquiriesPage() {
 
     if (sourceStatus === targetStatus) return
 
-    if (targetStatus === 'on_hold' || targetStatus === 'lost') {
-      setPendingDrag({ enquiry, fromStatus: sourceStatus, toStatus: targetStatus })
-      return
-    }
-
-    moveCard(enquiry, sourceStatus, targetStatus)
+    // Every manual move gets a confirmation — on_hold and lost open their
+    // richer modals; everything else opens the generic MoveConfirmModal.
+    setPendingDrag({ enquiry, fromStatus: sourceStatus, toStatus: targetStatus })
   }
 
   // Move card in local state + fire DB update
@@ -1464,11 +1522,24 @@ export default function EnquiriesPage() {
       return next
     })
 
+    const toLabel = COLUMNS.find((c) => c.status === to)?.label ?? to
     updateEnquiryStatus(enquiry.id, to, user?.id ?? null, options)
+      .then(() => {
+        showToast(`Moved "${enquiry.client_name || 'enquiry'}" to ${toLabel}`, 'success')
+      })
       .catch(() => {
         setBoard(prevBoard)
         showToast(`Failed to move "${enquiry.client_name}" — reverted`)
       })
+  }
+
+  // Generic move confirmation (all statuses except on_hold/lost, which have
+  // their own modals with reason capture)
+  function handleMoveConfirm() {
+    if (!pendingDrag) return
+    const { enquiry, fromStatus, toStatus } = pendingDrag
+    moveCard(enquiry, fromStatus, toStatus)
+    setPendingDrag(null)
   }
 
   // ---------------------------------------------------------------------------
@@ -1547,11 +1618,8 @@ export default function EnquiriesPage() {
   function handleMobileMove(enquiry: Enquiry, toStatus: EnquiryStatus) {
     const fromStatus = enquiry.status
     if (toStatus === fromStatus) return
-    if (toStatus === 'on_hold' || toStatus === 'lost') {
-      setPendingDrag({ enquiry, fromStatus, toStatus })
-      return
-    }
-    moveCard(enquiry, fromStatus, toStatus)
+    // Every manual move confirms first (see handleDragEnd)
+    setPendingDrag({ enquiry, fromStatus, toStatus })
   }
 
   // Mobile accordion toggle
@@ -1842,6 +1910,16 @@ export default function EnquiriesPage() {
           <LostModal
             enquiry={pendingDrag.enquiry}
             onConfirm={handleLostConfirm}
+            onCancel={handleModalCancel}
+          />
+        )}
+
+        {/* Generic Move Confirm Modal (all other stages) */}
+        {pendingDrag && pendingDrag.toStatus !== 'on_hold' && pendingDrag.toStatus !== 'lost' && (
+          <MoveConfirmModal
+            enquiry={pendingDrag.enquiry}
+            toStatus={pendingDrag.toStatus}
+            onConfirm={handleMoveConfirm}
             onCancel={handleModalCancel}
           />
         )}

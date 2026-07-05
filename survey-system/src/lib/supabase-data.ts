@@ -677,7 +677,7 @@ export async function updateEnquiryStatus(
   // Fetch current enquiry to capture old status for the activity log
   const { data: current, error: fetchError } = await supabase
     .from('enquiries')
-    .select('id, status, hold_reason, hold_reason_note')
+    .select('id, status, hold_reason, hold_reason_note, won_at')
     .eq('id', id)
     .single()
 
@@ -697,6 +697,15 @@ export async function updateEnquiryStatus(
     // Moving away from on_hold — clear hold fields
     updatePayload.hold_reason = null
     updatePayload.hold_reason_note = null
+  }
+
+  // Keep won_at consistent with manual moves: entering won stamps it,
+  // leaving won (except onward to closed) clears it so reporting doesn't
+  // count a mis-move that was corrected.
+  if (newStatus === 'won' && !current.won_at) {
+    updatePayload.won_at = new Date().toISOString()
+  } else if (current.won_at && newStatus !== 'won' && newStatus !== 'closed') {
+    updatePayload.won_at = null
   }
 
   if (newStatus === 'lost' && options?.lossReason) {

@@ -741,6 +741,9 @@ export default function EnquiryDrawer({
   })
   const [createSubmitting, setCreateSubmitting] = useState(false)
   const [approveSending, setApproveSending] = useState(false)
+  const [approveSendError, setApproveSendError] = useState<string | null>(null)
+  // Preflight for Approve & Send: null = checking, false = not ready, true = ready
+  const [reportReady, setReportReady] = useState<boolean | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
 
   async function handleCreateSubmit() {
@@ -954,6 +957,38 @@ export default function EnquiryDrawer({
     }
   }, [enquiry?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Approve & Send preflight ──────────────────────────────────
+  // Mirrors the API precondition (report published + publish token) so the
+  // panel can explain what's blocking BEFORE the user clicks. Re-checks when
+  // the window regains focus (e.g. after publishing the report in another tab).
+  const checkReportReady = useCallback(async () => {
+    if (!enquiry || enquiry.status !== 'survey_complete' || linkedSurveys.length === 0) return
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('survey_reports')
+      .select('status, publish_token')
+      .eq('survey_id', linkedSurveys[0].id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setReportReady(!!data && data.status === 'published' && !!data.publish_token)
+  }, [enquiry?.id, enquiry?.status, linkedSurveys])
+
+  useEffect(() => {
+    setReportReady(null)
+    setApproveSendError(null)
+    if (enquiry?.status === 'survey_complete' && linkedSurveys.length > 0) {
+      checkReportReady()
+    }
+  }, [enquiry?.id, enquiry?.status, linkedSurveys.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (enquiry?.status !== 'survey_complete') return
+    const onFocus = () => checkReportReady()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [enquiry?.status, checkReportReady])
+
   // ── Handlers ──────────────────────────────────────────────────
 
   function handleClose() {
@@ -967,6 +1002,21 @@ export default function EnquiryDrawer({
 
     if (newStatus === 'on_hold' || newStatus === 'lost') {
       onRequestStatusChange(enquiry, newStatus)
+      return
+    }
+
+    // Every manual stage move confirms first (mirrors the Kanban board guard)
+    const consequence =
+      newStatus === 'won'
+        ? '\n\nThis records the job as won and stamps the won date used in reporting.'
+        : newStatus === 'closed'
+          ? '\n\nThis closes the enquiry — the end of the pipeline.'
+          : ''
+    if (
+      !window.confirm(
+        `Move "${enquiry.client_name || 'this enquiry'}" from ${STATUS_CONFIG[enquiry.status].label} to ${STATUS_CONFIG[newStatus].label}?${consequence}`
+      )
+    ) {
       return
     }
 
@@ -1343,6 +1393,7 @@ export default function EnquiryDrawer({
   async function handleApproveAndSend() {
     if (!enquiry || linkedSurveys.length === 0) return
     setApproveSending(true)
+    setApproveSendError(null)
     try {
       const res = await fetch(`/api/surveys/${linkedSurveys[0].id}/approve-and-send`, {
         method: 'POST',
@@ -1350,13 +1401,19 @@ export default function EnquiryDrawer({
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || 'Failed to send report and quotation')
+        const message = data.error || 'Failed to send report and quotation'
+        // Persist the reason inline in the panel — a toast alone is too
+        // transient for an actionable precondition (UX audit P1-3)
+        setApproveSendError(message)
+        toast.error(message)
+        checkReportReady()
         return
       }
       onBoardSync({ ...enquiry, status: 'sent' }, enquiry.status)
       toast.success(`Report and quotation sent to ${data.sentTo}`)
     } catch (err) {
       console.error('Approve & Send failed:', err)
+      setApproveSendError('Failed to send report and quotation — check your connection and try again.')
       toast.error('Failed to send report and quotation')
     } finally {
       setApproveSending(false)
@@ -1928,10 +1985,18 @@ export default function EnquiryDrawer({
                       <FileText className="w-4 h-4" />
                       Review Report
                     </a>
+                    {reportReady === false && (
+                      <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90">
+                        Report not yet published — open Review Report and publish it, then come back here.{' '}
+                        <button onClick={checkReportReady} className="underline underline-offset-2 hover:text-amber-100">
+                          Re-check
+                        </button>
+                      </div>
+                    )}
                     <button
                       onClick={handleApproveAndSend}
-                      disabled={approveSending}
-                      className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+                      disabled={approveSending || reportReady === false}
+                      className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {approveSending ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
@@ -1939,6 +2004,11 @@ export default function EnquiryDrawer({
                         <><Send className="w-4 h-4" /> Approve &amp; Send</>
                       )}
                     </button>
+                    {approveSendError && (
+                      <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-200/90">
+                        {approveSendError}
+                      </div>
+                    )}
                     <p className="text-[11px] text-white/30 text-center">Sends report and quotation to customer via email</p>
                   </div>
                 )}

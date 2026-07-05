@@ -7,8 +7,17 @@ import { PHOTO_VISIBILITY_OPTIONS } from '@/types/survey-photo.types'
 import {
   uploadSurveyPhoto,
   deleteSurveyPhoto,
+  updateSurveyPhotoMeta,
   getPhotoUrl,
 } from '@/lib/survey-photo-service'
+
+// Tier badge styling — always visible on thumbnails so a mis-tiered photo
+// (e.g. a technician shot heading for the customer report) is spottable at a glance
+const VISIBILITY_BADGE: Record<PhotoVisibility, { label: string; className: string }> = {
+  customer: { label: 'Customer', className: 'bg-emerald-500/85 text-white' },
+  technician: { label: 'Technician', className: 'bg-amber-500/85 text-black' },
+  office: { label: 'Office', className: 'bg-slate-500/85 text-white' },
+}
 
 interface PhotoCaptureProps {
   surveyId: string
@@ -42,6 +51,10 @@ export default function PhotoCapture({
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<PhotoVisibility>('customer')
+  const [editingPhoto, setEditingPhoto] = useState<SurveyPhoto | null>(null)
+  const [editDescription, setEditDescription] = useState('')
+  const [editVisibility, setEditVisibility] = useState<PhotoVisibility>('customer')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
@@ -165,9 +178,34 @@ export default function PhotoCapture({
     try {
       await deleteSurveyPhoto(surveyId, photo)
       onPhotosChange(existingPhotos.filter((p) => p.id !== photo.id))
+      setEditingPhoto(null)
     } catch (err) {
       console.error('Delete failed:', err)
       setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  const openEditModal = (photo: SurveyPhoto) => {
+    setEditingPhoto(photo)
+    setEditDescription(photo.description || '')
+    setEditVisibility(photo.visibility || 'customer')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingPhoto) return
+    setSavingEdit(true)
+    try {
+      const updated = await updateSurveyPhotoMeta(surveyId, editingPhoto.id, {
+        description: editDescription,
+        visibility: editVisibility,
+      })
+      onPhotosChange(existingPhotos.map((p) => (p.id === updated.id ? updated : p)))
+      setEditingPhoto(null)
+    } catch (err) {
+      console.error('Photo update failed:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update photo')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -205,7 +243,13 @@ export default function PhotoCapture({
         {existingPhotos.map((photo) => (
           <div
             key={photo.id}
-            className="group relative aspect-square rounded-lg overflow-hidden bg-white/5 border border-white/10"
+            className="group relative aspect-square rounded-lg overflow-hidden bg-white/5 border border-white/10 cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => openEditModal(photo)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') openEditModal(photo)
+            }}
           >
             {/* Photo */}
             <img
@@ -216,6 +260,15 @@ export default function PhotoCapture({
                 e.currentTarget.src = '/placeholder-photo.jpg'
               }}
             />
+
+            {/* Visibility tier badge — always visible */}
+            <span
+              className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${
+                VISIBILITY_BADGE[photo.visibility || 'customer'].className
+              }`}
+            >
+              {VISIBILITY_BADGE[photo.visibility || 'customer'].label}
+            </span>
 
             {/* Overlay with info */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -241,10 +294,13 @@ export default function PhotoCapture({
               </div>
             </div>
 
-            {/* Delete button */}
+            {/* Delete button — always visible on touch, hover-reveal on desktop */}
             <button
-              onClick={() => handleDeletePhoto(photo)}
-              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeletePhoto(photo)
+              }}
+              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -372,6 +428,90 @@ export default function PhotoCapture({
                 className="flex-1 px-4 py-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors"
               >
                 Upload Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Photo Modal — change description/visibility or delete after upload */}
+      {editingPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Edit Photo</h3>
+              <button
+                onClick={() => setEditingPhoto(null)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative rounded-lg overflow-hidden border border-white/10">
+              <img
+                src={getPhotoUrl(editingPhoto.storage_path)}
+                alt={editingPhoto.description}
+                className="w-full max-h-56 object-contain bg-black/40"
+              />
+              <span
+                className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${
+                  VISIBILITY_BADGE[editVisibility].className
+                }`}
+              >
+                {VISIBILITY_BADGE[editVisibility].label}
+              </span>
+            </div>
+
+            <div>
+              <label className="text-sm text-white/70 mb-2 block">Description</label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 resize-none focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-white/70 mb-2 block">Visibility</label>
+              <select
+                value={editVisibility}
+                onChange={(e) => setEditVisibility(e.target.value as PhotoVisibility)}
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20"
+              >
+                {PHOTO_VISIBILITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-navy-900 text-white">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleDeletePhoto(editingPhoto)}
+                disabled={savingEdit}
+                className="px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/35 border border-red-500/30 text-red-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => setEditingPhoto(null)}
+                disabled={savingEdit}
+                className="px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="px-4 py-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {savingEdit && <Loader2 className="w-4 h-4 animate-spin" />}
+                Save
               </button>
             </div>
           </div>

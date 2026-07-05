@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { getSupabase } from './supabase-client'
-import type { SurveyPhoto, PhotoCapture } from '@/types/survey-photo.types'
+import type { SurveyPhoto, PhotoCapture, PhotoVisibility } from '@/types/survey-photo.types'
 
 // Shared write queue — serializes all survey_data writes (photos + wizard)
 import { serializeWrite } from './write-queue'
@@ -498,6 +498,62 @@ export async function deleteSurveyPhoto(
     console.error('Photo deletion failed:', error)
     throw error
   }
+}
+
+/**
+ * Update a photo's metadata (description and/or visibility tier) in
+ * surveys.survey_data.photos. Serialized on the same per-survey write
+ * queue as uploads/deletes to avoid clobbering concurrent saves.
+ */
+export async function updateSurveyPhotoMeta(
+  surveyId: string,
+  photoId: string,
+  changes: { description?: string; visibility?: PhotoVisibility }
+): Promise<SurveyPhoto> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase not initialized')
+  }
+
+  let updatedPhoto: SurveyPhoto | null = null
+
+  await serializeWrite(surveyId, async () => {
+    const { data: survey, error: fetchError } = await supabase
+      .from('surveys')
+      .select('survey_data')
+      .eq('id', surveyId)
+      .single()
+
+    if (fetchError) {
+      throw new Error(`Failed to load survey: ${fetchError.message}`)
+    }
+
+    const surveyData = survey.survey_data || {}
+    const photos = (surveyData.photos || []).map((p: SurveyPhoto) => {
+      if (p.id !== photoId) return p
+      updatedPhoto = {
+        ...p,
+        ...(changes.description !== undefined ? { description: changes.description } : {}),
+        ...(changes.visibility !== undefined ? { visibility: changes.visibility } : {}),
+      }
+      return updatedPhoto
+    })
+
+    if (!updatedPhoto) {
+      throw new Error('Photo not found on survey')
+    }
+
+    const { error: updateError } = await supabase
+      .from('surveys')
+      .update({ survey_data: { ...surveyData, photos } })
+      .eq('id', surveyId)
+
+    if (updateError) {
+      throw new Error(`Failed to update photo metadata: ${updateError.message}`)
+    }
+  })
+
+  return updatedPhoto!
 }
 
 /**
