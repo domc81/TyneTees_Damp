@@ -351,7 +351,7 @@ function HandoverContent() {
     } finally {
       setConfirmingHandover(false)
     }
-  }, [handoverData, user])
+  }, [handoverData, profile])
 
   // Loading state
   if (loading) {

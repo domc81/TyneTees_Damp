@@ -18,6 +18,10 @@ import { hashTermsContent } from '@/lib/terms-hash'
 import { QuotationViewTracker, QuotationActions, QuotationResponseSection } from './client'
 import './quotation-public.css'
 
+// Quotation status changes between visits (sent → viewed → accepted/declined) —
+// never serve a cached render of this page
+export const dynamic = 'force-dynamic'
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Quotation {
@@ -271,6 +275,10 @@ export default async function PublicQuotationPage({
 
   const mandatoryWorksTotal = mandatorySections.reduce((sum, s) => sum + s.section_total, 0)
   const optionalWorksTotal = optionalSections.reduce((sum, s) => sum + s.section_total, 0)
+  // Customer-facing presentation: overheads are folded into a single works
+  // figure; individual mandatory sections list names only (internal costing
+  // still records everything separately)
+  const worksSubtotal = mandatoryWorksTotal + psoDisplayTotal
   const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
   const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
 
@@ -456,23 +464,20 @@ export default async function PublicQuotationPage({
                     {typeSections.map((section) => (
                       <div
                         key={section.id}
-                        className="flex items-center justify-between px-5 py-4 border-b border-[#F3F4F6]"
+                        className="px-5 py-4 border-b border-[#F3F4F6]"
                       >
                         <span className="text-sm text-[#374151]">{section.display_name}</span>
-                        <span className="text-sm font-semibold text-[#1F2937] tabular-nums ml-6">
-                          {formatCurrency(section.section_total)}
-                        </span>
                       </div>
                     ))}
                   </div>
                 ))}
 
-                {/* Mandatory subtotal */}
+                {/* Works subtotal — includes project overheads */}
                 {mandatorySections.length > 0 && (
                   <div className="flex items-center justify-between px-5 py-4 bg-[#F9FAFB] border-t border-[#E5E7EB]">
-                    <span className="text-sm font-semibold text-[#374151]">Mandatory Works Subtotal</span>
+                    <span className="text-sm font-semibold text-[#374151]">Works subtotal</span>
                     <span className="text-sm font-bold text-[#1F2937] tabular-nums ml-6">
-                      {formatCurrency(mandatoryWorksTotal)}
+                      {formatCurrency(worksSubtotal)}
                     </span>
                   </div>
                 )}
@@ -505,17 +510,11 @@ export default async function PublicQuotationPage({
                   </>
                 )}
 
-                {/* Project Specific Overheads */}
-                {psoDisplayTotal > 0 && (
-                  <div className="flex items-center justify-between px-5 py-4 bg-sky-50 border-t border-[#E5E7EB]">
-                    <span className="text-sm text-[#374151]">Project Specific Overheads</span>
-                    <span className="text-sm font-semibold text-[#1F2937] tabular-nums ml-6">
-                      {formatCurrency(psoDisplayTotal)}
-                    </span>
-                  </div>
-                )}
-
               </div>
+
+              <p className="mt-3 text-xs text-[#6B7280]">
+                The full scope of works for each item is set out in your survey report.
+              </p>
             </div>
 
             {/* ── Financial summary ──────────────────────────────────────────── */}
@@ -526,8 +525,8 @@ export default async function PublicQuotationPage({
               <div className="p-6 space-y-3">
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">Mandatory Works</span>
-                  <span className="text-[#1F2937] tabular-nums">{formatCurrency(mandatoryWorksTotal)}</span>
+                  <span className="text-[#6B7280]">Works subtotal</span>
+                  <span className="text-[#1F2937] tabular-nums">{formatCurrency(worksSubtotal)}</span>
                 </div>
 
                 {hasOptional && (
@@ -537,17 +536,13 @@ export default async function PublicQuotationPage({
                   </div>
                 )}
 
-                {psoDisplayTotal > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#6B7280]">Project Specific Overheads</span>
-                    <span className="text-[#1F2937] tabular-nums">{formatCurrency(psoDisplayTotal)}</span>
+                {/* With no optional works this row duplicates the works subtotal */}
+                {hasOptional && (
+                  <div className="flex justify-between text-sm pt-4 border-t border-[#E5E7EB]">
+                    <span className="text-[#374151] font-semibold">Subtotal (exc. VAT)</span>
+                    <span className="text-[#1F2937] font-bold tabular-nums">{formatCurrency(subtotalExVat)}</span>
                   </div>
                 )}
-
-                <div className="flex justify-between text-sm pt-4 border-t border-[#E5E7EB]">
-                  <span className="text-[#374151] font-semibold">Subtotal (exc. VAT)</span>
-                  <span className="text-[#1F2937] font-bold tabular-nums">{formatCurrency(subtotalExVat)}</span>
-                </div>
 
                 <div className="flex justify-between text-sm">
                   <span className="text-[#6B7280]">VAT ({Math.round(quotation.vat_rate * 100)}%)</span>

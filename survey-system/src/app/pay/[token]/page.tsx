@@ -13,6 +13,10 @@ import { createServerClient } from '@supabase/ssr'
 import { Phone, Mail, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
 import { PaymentClient } from './client'
 
+// Payment status changes between visits (pending → paid) — never serve a
+// cached render of this page
+export const dynamic = 'force-dynamic'
+
 // ─── Data fetching ──────────────────────────────────────────────────────────
 
 async function getPaymentData(token: string) {
@@ -52,12 +56,27 @@ async function getPaymentData(token: string) {
     quotation = data
   }
 
-  // Fetch company profile
+  // Fetch company profile — aliased to this page's field names; the table's
+  // real columns are name/phone_primary/email_primary/registered_address_*
+  interface CompanyContact {
+    company_name: string | null
+    phone: string | null
+    email: string | null
+    address_line_1: string | null
+    address_line_2: string | null
+    city: string | null
+    county: string | null
+    postcode: string | null
+  }
   const { data: company } = await supabase
     .from('company_profile')
-    .select('company_name, phone, email, address_line_1, address_line_2, city, county, postcode')
+    .select(
+      'company_name:name, phone:phone_primary, email:email_primary, ' +
+      'address_line_1:registered_address_line1, address_line_2:registered_address_line2, ' +
+      'city:registered_address_city, county:registered_address_county, postcode:registered_address_postcode'
+    )
     .eq('is_singleton', true)
-    .single()
+    .single<CompanyContact>()
 
   return { payment, booking, quotation, company }
 }
@@ -183,7 +202,7 @@ export default async function PaymentPage({ params }: { params: { token: string 
                   </p>
                   <p>
                     <span className="font-medium text-gray-700">Time: </span>
-                    {booking.start_time} – {booking.end_time}
+                    {booking.start_time?.slice(0, 5)} – {booking.end_time?.slice(0, 5)}
                   </p>
                   {address && (
                     <p>

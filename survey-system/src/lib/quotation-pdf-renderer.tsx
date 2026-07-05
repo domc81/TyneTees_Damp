@@ -204,6 +204,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
   },
+  scopeNote: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: -10,
+    marginBottom: 16,
+  },
   typeHeaderRow: {
     flexDirection: 'row',
     backgroundColor: '#F3F4F6',
@@ -474,6 +480,9 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
 
   const mandatoryWorksTotal = mandatorySections.reduce((sum, s) => sum + s.section_total, 0)
   const optionalWorksTotal = optionalSections.reduce((sum, s) => sum + s.section_total, 0)
+  // Customer-facing presentation: overheads fold into one works figure and
+  // mandatory sections list names only — must mirror the public page
+  const worksSubtotal = mandatoryWorksTotal + psoDisplayTotal
   const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
   const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
 
@@ -545,26 +554,19 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
                   {SURVEY_TYPE_WORK_NAMES[surveyType] ?? surveyType}
                 </Text>
               </View>
-              {typeSections.map((section, idx) => {
-                const isLast = idx === typeSections.length - 1 &&
-                  !hasOptional &&
-                  psoDisplayTotal === 0 &&
-                  typeIdx === Object.keys(mandatoryByType).length - 1
-                return (
-                  <View key={`${surveyType}-${idx}`} style={isLast ? styles.tableRowLast : styles.tableRow}>
-                    <Text style={styles.tableRowName}>{section.display_name}</Text>
-                    <Text style={styles.tableRowAmount}>{formatCurrency(section.section_total)}</Text>
-                  </View>
-                )
-              })}
+              {typeSections.map((section, idx) => (
+                <View key={`${surveyType}-${idx}`} style={styles.tableRow}>
+                  <Text style={styles.tableRowName}>{section.display_name}</Text>
+                </View>
+              ))}
             </View>
           ))}
 
-          {/* Mandatory subtotal */}
+          {/* Works subtotal — includes project overheads */}
           {mandatorySections.length > 0 ? (
             <View style={styles.subtotalRow}>
-              <Text style={styles.subtotalLabel}>Mandatory Works Subtotal</Text>
-              <Text style={styles.subtotalAmount}>{formatCurrency(mandatoryWorksTotal)}</Text>
+              <Text style={styles.subtotalLabel}>Works subtotal</Text>
+              <Text style={styles.subtotalAmount}>{formatCurrency(worksSubtotal)}</Text>
             </View>
           ) : null}
 
@@ -575,7 +577,7 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
                 <Text style={styles.optionalTypeText}>Optional Works</Text>
               </View>
               {optionalSections.map((section, idx) => {
-                const isLast = idx === optionalSections.length - 1 && psoDisplayTotal === 0
+                const isLast = idx === optionalSections.length - 1
                 return (
                   <View key={`opt-${idx}`} style={isLast ? styles.tableRowLast : styles.tableRow}>
                     <Text style={styles.tableRowName}>{section.display_name}</Text>
@@ -590,15 +592,11 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
             </>
           ) : null}
 
-          {/* PSO */}
-          {psoDisplayTotal > 0 ? (
-            <View style={styles.psoRow}>
-              <Text style={styles.tableRowName}>Project Specific Overheads</Text>
-              <Text style={styles.tableRowAmount}>{formatCurrency(psoDisplayTotal)}</Text>
-            </View>
-          ) : null}
-
         </View>
+
+        <Text style={styles.scopeNote}>
+          The full scope of works for each item is set out in your survey report.
+        </Text>
 
         {/* ── Financial summary ─────────────────────────────────────────── */}
         <View style={styles.totalsContainer}>
@@ -608,8 +606,8 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
           <View style={styles.totalsBody}>
 
             <View style={styles.totalsLine}>
-              <Text style={styles.totalsLineLabel}>Mandatory Works</Text>
-              <Text style={styles.totalsLineValue}>{formatCurrency(mandatoryWorksTotal)}</Text>
+              <Text style={styles.totalsLineLabel}>Works subtotal</Text>
+              <Text style={styles.totalsLineValue}>{formatCurrency(worksSubtotal)}</Text>
             </View>
 
             {hasOptional ? (
@@ -619,23 +617,19 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
               </View>
             ) : null}
 
-            {psoDisplayTotal > 0 ? (
-              <View style={styles.totalsLine}>
-                <Text style={styles.totalsLineLabel}>Project Specific Overheads</Text>
-                <Text style={styles.totalsLineValue}>{formatCurrency(psoDisplayTotal)}</Text>
-              </View>
-            ) : null}
-
             <View style={styles.totalsDivider} />
 
-            <View style={styles.totalsLine}>
-              <Text style={{ ...styles.totalsLineLabel, fontFamily: 'Helvetica-Bold', color: SLATE }}>
-                Subtotal (exc. VAT)
-              </Text>
-              <Text style={{ ...styles.totalsLineValue, fontFamily: 'Helvetica-Bold' }}>
-                {formatCurrency(subtotalExVat)}
-              </Text>
-            </View>
+            {/* With no optional works this row duplicates the works subtotal */}
+            {hasOptional ? (
+              <View style={styles.totalsLine}>
+                <Text style={{ ...styles.totalsLineLabel, fontFamily: 'Helvetica-Bold', color: SLATE }}>
+                  Subtotal (exc. VAT)
+                </Text>
+                <Text style={{ ...styles.totalsLineValue, fontFamily: 'Helvetica-Bold' }}>
+                  {formatCurrency(subtotalExVat)}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.totalsLine}>
               <Text style={styles.totalsLineLabel}>

@@ -56,8 +56,11 @@ export function SurveyContextSection({ section }: SurveyContextSectionProps) {
             )
           }
 
-          // The "Reported defect:" paragraph — render as callout
+          // The "Reported defect:" paragraph — render as callout. The
+          // generator omits this line entirely when no defect was recorded,
+          // so no filler fallback is needed (or wanted) here.
           if (trimmed.startsWith('Reported defect:')) {
+            if (!defectText) return null
             return (
               <div
                 key={idx}
@@ -67,7 +70,7 @@ export function SurveyContextSection({ section }: SurveyContextSectionProps) {
                   Reported Defect
                 </p>
                 <p className="text-sm font-medium text-[#1E40AF]">
-                  {defectText || 'As instructed by client.'}
+                  {defectText}
                 </p>
               </div>
             )

@@ -58,9 +58,14 @@ export async function loadDefaultTemplate(
 // ABOUT_US_TEXT — now loaded from company_profile.about_us_text
 
 function buildSurveyContextText(reportedDefect: string): string {
-  return `In accordance with your instructions, we carried out a specific defects inspection of the above property for the following reported problem:
+  // Only state the reported problem when one was actually recorded — a
+  // circular filler sentence tells the customer nothing
+  const reportedBlock = reportedDefect
+    ? `In accordance with your instructions, we carried out a specific defects inspection of the above property for the following reported problem:
 
-Reported defect: ${reportedDefect || 'As instructed by client.'}
+Reported defect: ${reportedDefect}`
+    : `In accordance with your instructions, we carried out a specific defects inspection of the above property.`
+  return `${reportedBlock}
 
 Orientation
 
@@ -74,7 +79,7 @@ Where treatment has been recommended, this is on the understanding that the spec
 
 Abbreviations
 
-DPC — Damp Proof Course · DPM — Damp Proof Membrane · USCC — Under Separate Contract and Costs · ACMs — Asbestos Containing Materials · W/W — Water Weight`
+DPC — Damp Proof Course · DPM — Damp Proof Membrane · USCC — Under Separate Contract and Costs · ACMs — Asbestos Containing Materials · WME — Wood Moisture Equivalent (the standard moisture meter reading)`
 }
 
 const ANCILLARY_TEXT = `Our estimate does not include the removal or replacement of floor coverings, furnishings, furniture, stored items in roof voids, or any other items that may obstruct the works.
@@ -93,7 +98,7 @@ const SOLID_FLOORS_DISCLAIMER =
 
 const PAYMENT_TEXT = `An initial payment of 30% of the contract value is required before works commence. This covers the cost of ordering materials specific to your project and securing a date in our installation schedule.
 
-The remaining balance is due within 7 days of completion.`
+The remaining balance is due upon satisfactory completion of all works.`
 
 function buildGuaranteeParagraph(profile: CompanyProfile): string {
   return `We offer 25-year company guarantees on rising damp, dry rot, and woodworm treatments, with a 7-year warranty on mould treatment. All guarantees cover both materials and labour. Our membrane products carry a 25-year manufacturer's product guarantee. Insurance-backed guarantees are available through the Protected Guarantee scheme, which operates independently of the contractor and does not rely on renewal premiums for continued cover — providing genuine long-term protection that is fully transferable to future property owners.`
@@ -803,6 +808,10 @@ export async function generateReport(
   //    Must run before section pushing so executive_summary LLM call has context.
   const roomSubSections: ReportSection[] = []
   const llmContextParts: string[] = []
+  // Raw dictation-style surveyor notes are polished by the LLM in the same
+  // batched request as the executive summary; raw text is kept as fallback
+  // and preserved in section data.raw_notes
+  const polishTargets: Array<{ key: string; sectionKey: string | null; raw: string }> = []
   // Track assigned photo IDs so each photo appears in at most one room section.
   // Recovered photos have room_id = null, so they fall back to step-based matching.
   const assignedPhotoIds = new Set<string>()
@@ -815,6 +824,13 @@ export async function generateReport(
 
     // Use surveyor's observation text if available
     let roomContent = room.findings || ''
+    if (roomContent.trim()) {
+      polishTargets.push({
+        key: `polish_room_${room.id}`,
+        sectionKey: `room_${room.id}`,
+        raw: roomContent.trim(),
+      })
+    }
     if (!roomContent && dampData) {
       roomContent = `Inspection of this room identified ${room.issues_identified.join(', ')} issues requiring attention.`
     }
@@ -859,7 +875,7 @@ export async function generateReport(
           )
           const maxReading = Math.max(...readings)
           if (maxReading > 0) {
-            wallEntry.moisture_reading = `${maxReading}% W/W`
+            wallEntry.moisture_reading = `${maxReading}% WME`
           }
         }
 
@@ -1089,8 +1105,17 @@ export async function generateReport(
     .filter(Boolean)
     .join('\n')
 
+  // External inspection notes join the polish batch (consumed in section 4)
+  if (ext?.notes?.trim()) {
+    polishTargets.push({ key: 'polish_external', sectionKey: null, raw: ext.notes.trim() })
+  }
+
+  const POLISH_PROMPT =
+    "Rewrite the surveyor's raw field notes (the context below) into clear, professionally written prose for a customer-facing survey report. Correct punctuation, capitalisation and grammar, and write in complete sentences using the first person plural (\"we noted…\"). Keep every factual observation exactly as recorded — do not add findings, recommendations, or severity judgements that are not in the notes, and do not omit any observation. Expand informal abbreviations (dpc → damp proof course; wme → WME). Return only the rewritten text with no preamble."
+
   let execSummaryLlmText = ''
-  if (llmContextParts.length > 0) {
+  const polishedByKey = new Map<string, string>()
+  if (llmContextParts.length > 0 || polishTargets.length > 0) {
     try {
       // Relative URL — this runs in the browser; an absolute URL built from
       // NEXT_PUBLIC_SITE_URL silently pointed at localhost:3000 when the env
@@ -1101,12 +1126,21 @@ export async function generateReport(
         body: JSON.stringify({
           surveyId,
           sections: [
-            {
-              key: 'executive_summary',
-              prompt:
-                'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist. Do NOT quote any measurements, dimensions, areas, volumes, or linear metres in the text — this summary is customer-facing and company policy is to omit all quantities; describe the extent of the problem qualitatively instead. Moisture readings (% WME) may be quoted.',
-              context: llmContext,
-            },
+            ...(llmContextParts.length > 0
+              ? [
+                  {
+                    key: 'executive_summary',
+                    prompt:
+                      'Write an executive summary for this survey report in 2 paragraphs. Paragraph 1: Briefly summarise the key findings — which rooms are affected, what issues were identified, and what treatment has been specified. Be specific with room names and treatments. Paragraph 2: Explain why these works should be carried out promptly — reference the risks of delay (further deterioration, increased repair costs, potential health risks from damp/mould). Keep the tone professional and authoritative but not alarmist. Do NOT quote any measurements, dimensions, areas, volumes, or linear metres in the text — this summary is customer-facing and company policy is to omit all quantities; describe the extent of the problem qualitatively instead. Moisture readings (% WME) may be quoted.',
+                    context: llmContext,
+                  },
+                ]
+              : []),
+            ...polishTargets.map((t) => ({
+              key: t.key,
+              prompt: POLISH_PROMPT,
+              context: t.raw,
+            })),
           ],
         }),
       })
@@ -1122,9 +1156,29 @@ export async function generateReport(
         if (match && !match.error) {
           execSummaryLlmText = match.content
         }
+        for (const target of polishTargets) {
+          const polished = generated?.find((s) => s.key === target.key)
+          if (polished && !polished.error && polished.content?.trim()) {
+            polishedByKey.set(target.key, polished.content.trim())
+          }
+        }
       }
     } catch (err) {
       console.error('LLM call failed for executive summary:', err)
+    }
+  }
+
+  // Substitute polished narrative into the already-built room sections; the
+  // raw dictation is preserved in data.raw_notes. On any LLM failure the raw
+  // text simply remains in place.
+  for (const target of polishTargets) {
+    if (!target.sectionKey) continue
+    const polished = polishedByKey.get(target.key)
+    if (!polished) continue
+    const section = roomSubSections.find((s) => s.key === target.sectionKey)
+    if (section) {
+      section.content = polished
+      section.data = { ...(section.data ?? {}), raw_notes: target.raw }
     }
   }
 
@@ -1177,7 +1231,15 @@ export async function generateReport(
       'The Survey',
       'boilerplate',
       'template',
-      buildSurveyContextText(wizardData.reported_defect || (sd as any)?.reported_defect || '')
+      // Fallback chain ends at the enquiry's reported problem, which
+      // conversion copies onto surveys.reported_problem — without it,
+      // converted enquiries always produced an empty reported defect
+      buildSurveyContextText(
+        wizardData.reported_defect ||
+          (sd as any)?.reported_defect ||
+          survey.reported_problem ||
+          ''
+      )
     )
   )
 
@@ -1303,33 +1365,44 @@ export async function generateReport(
       )
     }
 
-    const hasGroundIssues = (aw?.aco_drain_length || 0) > 0 || (aw?.french_drain_length || 0) > 0
-    if (hasGroundIssues) {
-      extSubSections.push(
-        buildSection(
-          'ground_levels',
-          'External Ground Levels',
-          'findings',
-          'survey_data',
-          'External ground levels were found to be at or above the level of the internal floor, which can contribute to damp ingress. We recommend the installation of drainage to reduce ground water levels adjacent to the property.'
+    // Ground levels: driven by the surveyor's checklist finding and/or
+    // specified drainage works. When neither exists the subsection is omitted
+    // entirely — the report must never assert "no issues" it didn't assess
+    // (a raised-notes vs "no issues" contradiction shipped to a customer).
+    const highGroundLevels = ext.building_defects?.includes('high_ground_levels') ?? false
+    const drainageSpecified = (aw?.aco_drain_length || 0) > 0 || (aw?.french_drain_length || 0) > 0
+    if (highGroundLevels || drainageSpecified) {
+      const groundParts: string[] = []
+      if (highGroundLevels) {
+        groundParts.push(
+          'External ground levels were found to be at or above the level of the damp proof course, which can contribute to damp ingress.'
         )
-      )
-    } else {
+      }
+      if (drainageSpecified) {
+        groundParts.push(
+          'We recommend the installation of drainage to reduce ground water levels adjacent to the property.'
+        )
+      } else {
+        groundParts.push(
+          'We recommend that external ground levels are reduced to below the level of the damp proof course where practicable.'
+        )
+      }
       extSubSections.push(
         buildSection(
           'ground_levels',
           'External Ground Levels',
           'findings',
           'survey_data',
-          'There were no apparent ground level issues.'
+          groundParts.join(' ')
         )
       )
     }
   }
 
   // Surveyor observation notes always take priority as top-level content
+  // (LLM-polished when the batch call succeeded, raw otherwise)
   if (ext?.notes?.trim()) {
-    extContent = ext.notes.trim()
+    extContent = polishedByKey.get('polish_external') ?? ext.notes.trim()
   } else if (ext && !ext.building_defects_found) {
     extContent =
       'No significant building defects were noted during our external inspection.'

@@ -98,6 +98,7 @@ export type BuildingDefect =
   | 'defective_joint'
   | 'wall_cracks'
   | 'lintel_cracks'
+  | 'high_ground_levels'
 
 export type DefectUrgency =
   | 'immediate'
@@ -671,6 +672,7 @@ export const BUILDING_DEFECTS: { value: BuildingDefect; label: string }[] = [
   { value: 'defective_joint', label: 'Defective perimeter joint' },
   { value: 'wall_cracks', label: 'Cracks/movement to walls' },
   { value: 'lintel_cracks', label: 'Cracks/movement to lintels' },
+  { value: 'high_ground_levels', label: 'High external ground levels' },
 ]
 
 export const ISSUE_TYPE_LABELS: Record<IssueType, string> = {

@@ -14,6 +14,8 @@ interface ReportFooterProps {
     website: string
   }
   reportId: string
+  /** Survey reference (e.g. TT-2026-0026) — preferred over the report UUID */
+  projectNumber?: string | null
   generatedAt: string | null
 }
 
@@ -21,6 +23,7 @@ export function ReportFooter({
   customerName,
   company,
   reportId,
+  projectNumber,
   generatedAt,
 }: ReportFooterProps) {
   return (
@@ -65,7 +68,7 @@ export function ReportFooter({
             <p className="text-xs text-[#d8e7ef] mb-1">
               Reference:{' '}
               <span className="font-mono text-white">
-                {reportId.slice(0, 8).toUpperCase()}
+                {projectNumber || reportId.slice(0, 8).toUpperCase()}
               </span>
             </p>
             {generatedAt && (

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { generateReport, regenerateSection } from '@/lib/report-generator'
 import {
   loadReportBySurvey,
@@ -138,6 +139,8 @@ export default function ReportEditorPage() {
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [customerEmail, setCustomerEmail] = useState<string | null>(null)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
+  // Pending styled-dialog confirmation (replaces native window.confirm)
+  const [confirmAction, setConfirmAction] = useState<null | 'finalise' | 'unpublish'>(null)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -307,24 +310,27 @@ export default function ReportEditorPage() {
   }
 
   // Update report status
-  async function handleUpdateStatus(newStatus: ReportStatus) {
+  async function applyStatus(newStatus: ReportStatus) {
     if (!report) return
-
-    // Confirmation for finalisation
-    if (newStatus === 'finalised') {
-      const confirmed = confirm(
-        'Are you sure you want to finalise this report? Once finalised, the report will be locked and no further edits can be made.'
-      )
-      if (!confirmed) return
-    }
-
     try {
       await updateReportStatus(report.id, newStatus)
       setReport({ ...report, status: newStatus })
+      if (newStatus === 'finalised') toast.success('Report finalised')
     } catch (err) {
       console.error('Error updating status:', err)
       toast.error('Failed to update report status. Please try again.')
     }
+  }
+
+  function handleUpdateStatus(newStatus: ReportStatus) {
+    if (!report) return
+    // Finalisation locks the report — confirm via styled dialog (native
+    // confirm() is blockable/invisible and off-convention)
+    if (newStatus === 'finalised') {
+      setConfirmAction('finalise')
+      return
+    }
+    void applyStatus(newStatus)
   }
 
   // Publish report
@@ -353,20 +359,19 @@ export default function ReportEditorPage() {
       }).catch(err => console.error('Notification trigger failed:', err))
     } catch (err) {
       console.error('Error publishing report:', err)
-      toast.error('Failed to publish report. Please try again.')
+      toast.error(err instanceof Error ? err.message : 'Failed to publish report. Please try again.')
     } finally {
       setIsPublishing(false)
     }
   }
 
   // Unpublish report
-  async function handleUnpublish() {
-    if (!report) return
+  function handleUnpublish() {
+    setConfirmAction('unpublish')
+  }
 
-    const confirmed = confirm(
-      'This will disable the customer link. Are you sure?'
-    )
-    if (!confirmed) return
+  async function applyUnpublish() {
+    if (!report) return
 
     try {
       await unpublishReport(report.id)
@@ -858,24 +863,31 @@ export default function ReportEditorPage() {
                           <p className="text-xs text-white/50">Generate a shareable link for your customer</p>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handlePublish}
-                        disabled={isPublishing}
-                      >
-                        {isPublishing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Publishing...
-                          </>
-                        ) : (
-                          <>
-                            <Globe className="w-4 h-4 mr-2" />
-                            Publish Report
-                          </>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handlePublish}
+                          disabled={isPublishing || report.status !== 'finalised'}
+                        >
+                          {isPublishing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Publishing...
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="w-4 h-4 mr-2" />
+                              Publish Report
+                            </>
+                          )}
+                        </Button>
+                        {report.status !== 'finalised' && (
+                          <p className="text-xs text-white/40">
+                            Finalise the report to enable publishing
+                          </p>
                         )}
-                      </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -975,6 +987,30 @@ export default function ReportEditorPage() {
         </div>
       </div>
     </div>
+
+      <ConfirmDialog
+        open={confirmAction === 'finalise'}
+        title="Finalise this report?"
+        message="Once finalised, the report will be locked and no further edits can be made. You can then publish it to share with the customer."
+        confirmLabel="Finalise Report"
+        onConfirm={() => {
+          setConfirmAction(null)
+          void applyStatus('finalised')
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmDialog
+        open={confirmAction === 'unpublish'}
+        title="Unpublish this report?"
+        message="This will disable the customer's link — anyone who has it will no longer be able to view the report."
+        confirmLabel="Unpublish"
+        danger
+        onConfirm={() => {
+          setConfirmAction(null)
+          void applyUnpublish()
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
       </Layout>
     </ProtectedRoute>
   )

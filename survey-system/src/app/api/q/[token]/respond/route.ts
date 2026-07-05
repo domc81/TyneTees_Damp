@@ -127,7 +127,7 @@ export async function POST(
     if (quotation.accepted_at) {
       const respondedDate = formatDate(quotation.accepted_at)
       return NextResponse.json(
-        { error: `You have already responded to this quotation on ${respondedDate}.` },
+        { error: `You accepted this quotation on ${respondedDate} — no further action is needed. If anything looks wrong, call us.` },
         { status: 409 }
       )
     }
@@ -135,7 +135,7 @@ export async function POST(
     if (quotation.declined_at) {
       const respondedDate = formatDate(quotation.declined_at)
       return NextResponse.json(
-        { error: `You have already responded to this quotation on ${respondedDate}.` },
+        { error: `You declined this quotation on ${respondedDate}. If you have changed your mind, please call us.` },
         { status: 409 }
       )
     }
@@ -460,7 +460,7 @@ async function autoTransitionLinkedEnquiry(
   // Fetch current enquiry status
   const { data: enquiry } = await supabase
     .from('enquiries')
-    .select('status')
+    .select('status, won_at')
     .eq('id', survey.enquiry_id)
     .single()
 
@@ -473,10 +473,15 @@ async function autoTransitionLinkedEnquiry(
 
   const oldStatus = enquiry.status
 
-  // Update enquiry status
+  // Update enquiry status — entering won stamps won_at, matching the manual
+  // path in supabase-data.ts updateEnquiryStatus (reporting reads won_at)
+  const updatePayload: Record<string, unknown> = { status: targetStatus }
+  if (targetStatus === 'won' && !enquiry.won_at) {
+    updatePayload.won_at = new Date().toISOString()
+  }
   await supabase
     .from('enquiries')
-    .update({ status: targetStatus })
+    .update(updatePayload)
     .eq('id', survey.enquiry_id)
 
   // Log activity (matches logEnquiryActivity pattern from supabase-data.ts)

@@ -14,6 +14,10 @@ import { isSectionEmpty } from '@/components/report/utils'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
 import './report.css'
 
+// Report content can be republished/updated — never serve a cached render.
+// (searchParams already forces dynamic rendering; this makes it explicit.)
+export const dynamic = 'force-dynamic'
+
 // Section components
 import { ReportHeader } from '@/components/report/ReportHeader'
 import { ReportFooter } from '@/components/report/ReportFooter'
@@ -487,7 +491,7 @@ export default async function PublicReportPage({
   // Load survey (include survey_data for photo resolution)
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, survey_type, customer_id, surveyor_id, survey_data')
+    .select('id, project_number, survey_type, customer_id, surveyor_id, survey_data')
     .eq('id', report.survey_id)
     .single()
 
@@ -594,6 +598,7 @@ export default async function PublicReportPage({
           customerName={customerName}
           company={company}
           reportId={report.id}
+          projectNumber={survey.project_number ?? null}
           generatedAt={report.generated_at ?? null}
         />
       </footer>
