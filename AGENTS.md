@@ -52,6 +52,7 @@ All commands run from `survey-system/` directory:
 - Display terminology (frozen 2026-07-05): the pipeline object is a **"Lead"** in all UI text (DB tables/types stay `enquiries`/`Enquiry`); booking status `scheduled` displays as **"Booked"** everywhere. `enquiry_activity` titles store raw status slugs — render via `humanizeActivityTitle()` from `src/lib/status-labels.ts`; never write display labels into activity rows
 - Server actions body size limit is 10MB (photo uploads)
 - Route param `[projectId]` in `/survey/` routes is historical — it refers to survey ID
+- **Surveys are created only through the pipeline** (New Lead → Convert & Book → `createSurveyFromEnquiry()`, the sole creation path since 2026-07-05). Never re-add a direct survey-creation form — surveys without `enquiry_id` are invisible to fees, bookings, and pipeline tracking. Repeat customers (landlords/agents) link via the New Lead existing-customer search (`enquiries.customer_id`); free revisits use Convert & Book's "No survey fee" option (booking created `scheduled`, lead goes straight to `booked`, no payment record)
 - Survey list lives at `/surveys`; per-survey sub-pages (wizard, costing, report, handover, installer-info) live under `/survey/[projectId]/`
 - `client_name` can be null — always use `(project.client_name || '')`
 
