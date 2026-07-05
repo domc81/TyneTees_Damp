@@ -20,6 +20,7 @@ import { getSurveys } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
+import { useAuth } from '@/context/AuthContext'
 import Layout from '@/components/layout'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string }> = {
@@ -38,6 +39,7 @@ const statusConfig: Record<string, { color: string; bg: string; label: string }>
 }
 
 export default function ProjectsPage() {
+  const { isAdmin, isOffice } = useAuth()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -89,13 +91,16 @@ export default function ProjectsPage() {
                 <h1 className="text-2xl lg:text-3xl font-bold text-white">Projects</h1>
                 <p className="text-white/60">{filteredSurveys.length} projects</p>
               </div>
-              <Link
-                href="/survey/new"
-                className="btn-primary flex items-center gap-2 w-fit"
-              >
-                <Plus className="w-5 h-5" />
-                New Survey
-              </Link>
+              {(isAdmin || isOffice) && (
+                <Link
+                  href="/enquiries?new=1"
+                  className="btn-primary flex items-center gap-2 w-fit"
+                  title="All surveys start as a lead in the pipeline"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Lead
+                </Link>
+              )}
             </div>
 
             {/* Search and Filters */}

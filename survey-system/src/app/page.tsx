@@ -186,12 +186,14 @@ export default function Dashboard() {
                       : 'Welcome back'}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Link href="/survey/new" className="btn-primary flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  New Survey
-                </Link>
-              </div>
+              {isAdminOrOffice && (
+                <div className="flex items-center gap-3">
+                  <Link href="/enquiries?new=1" className="btn-primary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    New Lead
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Pipeline Summary Widget (admin/office only) */}

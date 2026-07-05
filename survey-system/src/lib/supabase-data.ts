@@ -1,7 +1,6 @@
 // Supabase Data Layer — canonical query functions for all tables
 // Replaces localStorage with real database operations
 
-import { toast } from 'sonner'
 import { getSupabase } from './supabase-client'
 import type {
   Customer,
@@ -511,6 +510,7 @@ export async function logEnquiryActivity(
  * Retries up to 3 times on unique constraint violation (race condition guard).
  */
 export async function createEnquiry(data: {
+  customer_id?: string
   client_name: string
   client_email?: string
   client_phone?: string
@@ -531,9 +531,10 @@ export async function createEnquiry(data: {
   const supabase = getSupabase()
   if (!supabase) throw new Error('Supabase client not available')
 
-  // Attempt customer match by email (phone matching skipped — formatting is unreliable)
-  let customer_id: string | null = null
-  if (data.client_email?.trim()) {
+  // Explicit link (picked from the existing-customer search) wins; otherwise
+  // attempt customer match by email (phone matching skipped — formatting is unreliable)
+  let customer_id: string | null = data.customer_id ?? null
+  if (!customer_id && data.client_email?.trim()) {
     const { data: match } = await supabase
       .from('customers')
       .select('id')
@@ -1220,89 +1221,11 @@ export async function createSurvey(
   return data
 }
 
-// Create project from form data (simpler version for new survey form)
-// Returns the project with generated ID and number
-export async function createSurveyFromForm(data: {
-  customer_id?: string
-  client_name?: string
-  site_address: string
-  site_address_line2?: string
-  site_city?: string
-  site_county?: string
-  site_postcode: string
-  survey_type: string
-  status: string
-  weather_conditions?: string
-  survey_date?: string
-  notes?: string
-  reported_defect?: string
-}): Promise<Survey | null> {
-  const supabase = getSupabase()
-  if (!supabase) return null
-
-  // Generate project number
-  const { count: countData } = await supabase
-    .from('surveys')
-    .select('*', { count: 'exact', head: true })
-
-  const count = (countData || 0) + 1
-  const year = new Date().getFullYear()
-  const projectNumber = `TT-${year}-${count.toString().padStart(4, '0')}`
-
-  // Fetch customer name for denormalised client_name field
-  let clientName: string | null = null
-  if (data.customer_id) {
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('first_name, last_name, title')
-      .eq('id', data.customer_id)
-      .single()
-    if (customer) {
-      const titlePrefix = customer.title ? `${customer.title} ` : ''
-      clientName = `${titlePrefix}${customer.first_name} ${customer.last_name}`
-    }
-  }
-
-  // Store reported_defect in survey_data JSONB at the top level
-  const surveyData: Record<string, unknown> = {}
-  if (data.reported_defect) {
-    surveyData.reported_defect = data.reported_defect
-  }
-
-  const { data: project, error } = await supabase
-    .from('surveys')
-    .insert({
-      customer_id: data.customer_id,
-      client_name: clientName,
-      site_address: data.site_address,
-      site_address_line2: data.site_address_line2 || null,
-      site_city: data.site_city || null,
-      site_county: data.site_county || null,
-      site_postcode: data.site_postcode,
-      survey_type: data.survey_type,
-      status: data.status || 'draft',
-      weather_conditions: data.weather_conditions || null,
-      survey_date: data.survey_date || null,
-      notes: data.notes || null,
-      project_number: projectNumber,
-      survey_data: surveyData,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating project from form:', JSON.stringify(error, null, 2))
-    toast.error('Failed to create survey. Please try again.')
-    return null
-  }
-
-  return project
-}
-
 /**
  * Generate a project number in TT-{YYYY}-{NNNN} format.
  * Queries the surveys table for the current count and increments.
- * Shared between createSurveyFromForm() (above) and createSurveyFromEnquiry().
+ * Used by createSurveyFromEnquiry() — the only survey-creation path;
+ * every survey enters via the pipeline (enquiry → Convert & Book).
  */
 async function generateProjectNumber(): Promise<string> {
   const supabase = getSupabase()

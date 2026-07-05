@@ -1308,6 +1308,19 @@ export default function EnquiriesPage() {
     loadBoard()
   }, [loadBoard])
 
+  // Deep link: /enquiries?new=1 (dashboard + Projects "New Lead" buttons) opens
+  // the create drawer directly. Read from window.location to avoid the
+  // useSearchParams Suspense requirement; clean the URL so refresh doesn't re-open.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('new') === '1') {
+      setSelectedEnquiryId(null)
+      setDrawerConvertFlow(false)
+      setDrawerCreateMode(true)
+      window.history.replaceState(null, '', '/enquiries')
+    }
+  }, [])
+
   // Preload on-hold templates
   useEffect(() => {
     if (holdTemplatesRef.current) return

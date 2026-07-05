@@ -193,13 +193,13 @@ export default function GettingStartedPage() {
                 <strong>Welcome message</strong> — &quot;Welcome back, [your name]&quot; at the top
               </li>
               <li>
-                <strong>Quick action buttons</strong> — In the top-right corner:
+                <strong>Quick action button</strong> — In the top-right corner:
                 <ul>
                   <li>
-                    <strong>+ New Survey</strong> (blue button) — Start a new survey
-                  </li>
-                  <li>
-                    <strong>Create Customer</strong> — Add a new customer to the system
+                    <strong>+ New Lead</strong> (blue button) — Every job starts here. It opens
+                    the Lead Pipeline&apos;s new-lead form, where you enter the customer and
+                    property details (or link a returning customer). The survey itself is
+                    created later from the lead via <strong>Convert &amp; Book</strong>
                   </li>
                 </ul>
               </li>
@@ -246,7 +246,8 @@ export default function GettingStartedPage() {
             </p>
             <ol>
               <li>
-                <strong>Quick action buttons</strong> — Same as above (+ New Survey, Create Customer)
+                <strong>No create buttons</strong> — new jobs are set up by the office as
+                leads in the pipeline; surveys arrive as bookings on your calendar
               </li>
               <li>
                 <strong>Key statistics</strong> — The same four stat cards

@@ -10,6 +10,7 @@ import {
   logEnquiryActivity,
   createSurveyFromEnquiry,
   createEnquiry,
+  getCustomers,
   updateSurvey,
   markEnquiryWon,
   markEnquiryClosed,
@@ -25,6 +26,7 @@ import { SlotPicker } from '@/components/calendar/SlotPicker'
 import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
 import type {
+  Customer,
   Enquiry,
   EnquiryStatus,
   EnquiryActivity,
@@ -711,6 +713,7 @@ export default function EnquiryDrawer({
   const [flowPartialSuccess, setFlowPartialSuccess] = useState(false)
   const [flowCreatedSurvey, setFlowCreatedSurvey] = useState<{ id: string; project_number: string } | null>(null)
   const [flowExistingSurveyId, setFlowExistingSurveyId] = useState<string | null>(null)
+  const [flowSkipFee, setFlowSkipFee] = useState(false)
 
   // Payments
   const [payments, setPayments] = useState<Payment[]>([])
@@ -744,6 +747,10 @@ export default function EnquiryDrawer({
     priority: 'medium' as EnquiryPriority,
   })
   const [createSubmitting, setCreateSubmitting] = useState(false)
+  // Existing-customer link (repeat customers — landlords, agents, second surveys)
+  const [existingCustomers, setExistingCustomers] = useState<Customer[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [linkedCreateCustomer, setLinkedCreateCustomer] = useState<Customer | null>(null)
   const [approveSending, setApproveSending] = useState(false)
   const [approveSendError, setApproveSendError] = useState<string | null>(null)
   // Preflight for Approve & Send: null = checking, false = not ready, true = ready
@@ -761,6 +768,49 @@ export default function EnquiryDrawer({
       delete next[key]
       return next
     })
+  }
+
+  // Load customer list when the drawer opens in create mode (small dataset — filtered client-side)
+  useEffect(() => {
+    if (!createMode) return
+    getCustomers()
+      .then(setExistingCustomers)
+      .catch(err => console.error('Failed to load customers for search:', err))
+  }, [createMode])
+
+  const customerMatches = customerSearch.trim().length >= 2
+    ? existingCustomers.filter(c => {
+        const q = customerSearch.trim().toLowerCase()
+        return (
+          `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
+          (c.email || '').toLowerCase().includes(q) ||
+          (c.phone || '').replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+          (c.postcode || '').toLowerCase().replace(/\s/g, '').includes(q.replace(/\s/g, ''))
+        )
+      }).slice(0, 6)
+    : []
+
+  function linkExistingCustomer(customer: Customer) {
+    setLinkedCreateCustomer(customer)
+    setCustomerSearch('')
+    // Prefill contact details only — the site address is for the property being
+    // surveyed, which for landlords/agents is usually NOT the customer's own address
+    setCreateForm(f => ({
+      ...f,
+      client_name: [customer.title, customer.first_name, customer.last_name].filter(Boolean).join(' '),
+      client_email: customer.email?.includes('@placeholder.local') ? '' : (customer.email || ''),
+      client_phone: customer.phone || '',
+    }))
+    setCreateFieldErrors(prev => {
+      const next = { ...prev }
+      delete next.client_name
+      delete next.client_email
+      return next
+    })
+  }
+
+  function unlinkExistingCustomer() {
+    setLinkedCreateCustomer(null)
   }
 
   function validateCreateForm(): Record<string, string> {
@@ -797,6 +847,7 @@ export default function EnquiryDrawer({
 
     try {
       const newEnquiry = await createEnquiry({
+        customer_id: linkedCreateCustomer?.id,
         client_name: createForm.client_name.trim(),
         client_email: createForm.client_email.trim() || undefined,
         client_phone: createForm.client_phone.trim() || undefined,
@@ -1295,6 +1346,7 @@ export default function EnquiryDrawer({
     setFlowError(null)
     setFlowPartialSuccess(false)
     setFlowCreatedSurvey(null)
+    setFlowSkipFee(false)
     setShowConvertFlow(true)
   }
 
@@ -1345,12 +1397,9 @@ export default function EnquiryDrawer({
         .join(', ')
 
       try {
-        // Load survey fee config
-        const pricingConfig = await loadPricingConfig()
-        const surveyFeeAmount = pricingConfig['survey_fee_amount'] ?? 150
-        const surveyFeeExpiryDays = pricingConfig['survey_fee_expiry_days'] ?? 3
-
-        // Create provisional booking (pending payment)
+        // Fee waived (free revisit / re-inspection): booking goes straight to
+        // scheduled (surveyor notified immediately). Otherwise provisional,
+        // pending survey-fee payment.
         const booking = await createBooking({
           surveyId: createdSurvey.id,
           surveyorId: flowSlot.surveyorId,
@@ -1361,13 +1410,17 @@ export default function EnquiryDrawer({
           bookingDate: flowSlot.date,
           startTime: flowSlot.startTime,
           endTime: flowSlot.endTime,
-          status: 'provisional',
+          status: flowSkipFee ? 'scheduled' : 'provisional',
           notes: null,
           createdBy: teamMembers.find(m => m.user_id === currentUserId)?.id || currentUserId || '',
         })
 
-        // Create survey fee payment record
-        await createSurveyFeePayment(booking.id, surveyFeeAmount, surveyFeeExpiryDays)
+        if (!flowSkipFee) {
+          const pricingConfig = await loadPricingConfig()
+          const surveyFeeAmount = pricingConfig['survey_fee_amount'] ?? 150
+          const surveyFeeExpiryDays = pricingConfig['survey_fee_expiry_days'] ?? 3
+          await createSurveyFeePayment(booking.id, surveyFeeAmount, surveyFeeExpiryDays)
+        }
       } catch (bookingErr) {
         // Partial success: survey created but booking failed
         setFlowCreatedSurvey(createdSurvey)
@@ -1377,10 +1430,11 @@ export default function EnquiryDrawer({
         return
       }
 
-      // Transition enquiry to awaiting_payment in the DB
+      // Transition enquiry: fee waived skips awaiting_payment and lands on booked
       if (enquiry.status === 'new') {
-        await updateEnquiryStatus(enquiry.id, 'awaiting_payment', currentUserId)
-        onBoardSync({ ...enquiry, status: 'awaiting_payment' }, enquiry.status)
+        const nextStatus: EnquiryStatus = flowSkipFee ? 'booked' : 'awaiting_payment'
+        await updateEnquiryStatus(enquiry.id, nextStatus, currentUserId)
+        onBoardSync({ ...enquiry, status: nextStatus }, enquiry.status)
       }
 
       setFlowCreatedSurvey(createdSurvey)
@@ -1521,6 +1575,66 @@ export default function EnquiryDrawer({
 
             <div className="flex-1 overflow-y-auto p-4 lg:p-5">
               <div className="space-y-4">
+                {/* Existing customer search — repeat customers (landlords, agents, second surveys) */}
+                <div>
+                  <label className="text-xs text-white/40 block mb-1">Existing Customer</label>
+                  {linkedCreateCustomer ? (
+                    <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-blue-400/25 bg-blue-500/10">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white/90 font-medium truncate">
+                          {[linkedCreateCustomer.title, linkedCreateCustomer.first_name, linkedCreateCustomer.last_name].filter(Boolean).join(' ')}
+                        </p>
+                        <p className="text-xs text-white/40 truncate">
+                          {linkedCreateCustomer.email?.includes('@placeholder.local') ? 'No email on record' : linkedCreateCustomer.email}
+                        </p>
+                      </div>
+                      <button
+                        onClick={unlinkExistingCustomer}
+                        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                        title="Unlink customer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={customerSearch}
+                        onChange={e => setCustomerSearch(e.target.value)}
+                        className="input-field w-full text-sm"
+                        placeholder="Search by name, email, phone or postcode…"
+                      />
+                      {customerMatches.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full rounded-xl border border-white/15 bg-[#0d1522] shadow-2xl overflow-hidden">
+                          {customerMatches.map(c => (
+                            <button
+                              key={c.id}
+                              onClick={() => linkExistingCustomer(c)}
+                              className="w-full text-left px-3 py-2.5 hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
+                            >
+                              <p className="text-sm text-white/90">
+                                {[c.title, c.first_name, c.last_name].filter(Boolean).join(' ')}
+                              </p>
+                              <p className="text-xs text-white/40 truncate">
+                                {[c.email?.includes('@placeholder.local') ? null : c.email, c.phone, c.postcode].filter(Boolean).join(' · ')}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {customerSearch.trim().length >= 2 && customerMatches.length === 0 && (
+                        <p className="text-xs text-white/30 mt-1">No matching customers — fill in the details below to create one</p>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-white/30 mt-1">
+                    {linkedCreateCustomer
+                      ? 'This lead will be linked to the existing customer record. Enter the site address for the property being surveyed below.'
+                      : 'Optional — link a returning customer instead of creating a duplicate record'}
+                  </p>
+                </div>
+
                 {/* Client Name */}
                 <div>
                   <label className="text-xs text-white/40 block mb-1">Client Name <span className="text-red-400">*</span></label>
@@ -2414,6 +2528,22 @@ export default function EnquiryDrawer({
                       <span className="text-sm text-white/80">{flowSlot.startTime} – {flowSlot.endTime}</span>
                     </div>
                   </div>
+
+                  {/* Survey fee toggle — waive for free revisits / re-inspections */}
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.03] cursor-pointer hover:bg-white/[0.05] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={flowSkipFee}
+                      onChange={e => setFlowSkipFee(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded accent-blue-500 flex-shrink-0"
+                    />
+                    <span>
+                      <span className="block text-sm text-white/80 font-medium">No survey fee</span>
+                      <span className="block text-xs text-white/40 mt-0.5">
+                        For free revisits and re-inspections. The booking is confirmed immediately and the lead moves straight to Booked — no payment is requested.
+                      </span>
+                    </span>
+                  </label>
 
                   {flowError && (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">

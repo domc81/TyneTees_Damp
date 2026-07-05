@@ -62,7 +62,7 @@ export default function SurveyorGuidePage() {
             <p>Your dashboard is your home screen. It shows:</p>
 
             <ul>
-              <li><strong>Quick action buttons</strong> — &ldquo;+ New Survey&rdquo; and &ldquo;Create Customer&rdquo; in the top-right</li>
+              <li><strong>No create buttons</strong> — new jobs are set up by the office as leads in the pipeline; your surveys arrive as bookings on your calendar</li>
               <li><strong>Four stat cards</strong> — Active Surveys, Completed, Won This Month, Total Projects</li>
               <li><strong>Recent Projects</strong> — A list of your most recent surveys, showing the customer name, address, status, quotation status, date, and survey type</li>
             </ul>
