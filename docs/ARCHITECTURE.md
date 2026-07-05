@@ -172,7 +172,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 | Service | Purpose | Credential file |
 |---------|---------|----------------|
 | Supabase (self-hosted) | Auth, database, storage, realtime | `.ttdp-supabase-credentials` |
-| OpenRouter (Grok 4.1 Fast) | Report narrative generation, observation polishing | `OPENROUTER_API_KEY` in `.env.local` |
+| OpenRouter (Claude Sonnet 5) | Report narrative generation, observation polishing | `OPENROUTER_API_KEY` in `.env.local` |
 | Deepgram (Nova-3) | Speech-to-text for survey observations | `.deepgram-credentials` |
 | Resend | Transactional emails (quotations, reports, bookings) | `.resend-credentials` |
 | Cloudflare | DNS + CDN proxy | `.cloudflare-credentials` |
