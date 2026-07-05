@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { createClient } from '@/lib/supabase-client'
 import type { Session, User } from '@supabase/supabase-js'
 import type { UserProfile, UserRole } from '@/types/database.types'
+import { cacheProfile, getCachedProfile, clearCachedProfiles } from '@/lib/offline/profile-cache'
 
 type AuthContextType = {
   session: Session | null
@@ -65,6 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(eventSession)
         setUser(eventSession?.user ?? null)
 
+        // Clear cached offline profiles on explicit sign-out so a shared
+        // device carries no cross-user residue.
+        if (event === 'SIGNED_OUT') {
+          void clearCachedProfiles()
+        }
+
         if (!eventSession?.user) {
           setProfile(null)
           setProfileError(null)
@@ -87,10 +94,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false
 
-    fetchProfile(user.id).then(async (userProfile) => {
+    const authUserId = user.id
+
+    fetchProfile(authUserId).then(async (userProfile) => {
       if (cancelled) return
 
       if (!userProfile) {
+        // Fetch failed (commonly: offline). Fall back to the cached profile so
+        // role / profile.id keep working with no signal.
+        const cached = await getCachedProfile(authUserId)
+        if (cancelled) return
+        if (cached) {
+          console.warn('[Auth] Profile fetch failed — hydrating from offline cache')
+          setProfile(cached)
+          setProfileError(null)
+          setIsLoading(false)
+          return
+        }
         console.warn('[Auth] No profile found or fetch failed — allowing login without profile')
         setProfile(null)
         setProfileError(null)
@@ -108,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false)
         return
       }
+
+      // Cache the good profile for offline use on next cold load.
+      void cacheProfile(authUserId, userProfile)
 
       setProfile(userProfile)
       setProfileError(null)

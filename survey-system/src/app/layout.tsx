@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { CompanyProfileProvider } from '@/context/CompanyProfileContext'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
+import OfflineBootstrap from '@/components/offline/OfflineBootstrap'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -53,6 +54,7 @@ export default async function RootLayout({
           <CompanyProfileProvider company={company}>
             {children}
           </CompanyProfileProvider>
+          <OfflineBootstrap />
         </AuthProvider>
         <Toaster richColors position="top-right" theme="dark" />
       </body>
