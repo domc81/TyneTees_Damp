@@ -136,15 +136,15 @@ CLEANUP RULES:
             'X-Title': `${companyName} Survey System`,
           },
           body: JSON.stringify({
-            model: 'x-ai/grok-4.1-fast',
+            model: 'google/gemini-2.5-flash',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt },
             ],
             temperature: 0.1,
             max_tokens: 1000,
-            // grok-4.1-fast is a reasoning model; disable reasoning so thinking tokens
-            // don't bleed into the content field and corrupt the polished output.
+            // Disable reasoning so thinking tokens don't bleed into the content
+            // field / eat the max_tokens budget and corrupt the polished output.
             reasoning: { enabled: false },
           }),
           signal: controller.signal,

@@ -201,7 +201,7 @@ Generate the narrative content for this section now. Output ONLY the report text
         'X-Title': `${companyName} Survey System`,
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-4.1-fast',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -215,6 +215,9 @@ Generate the narrative content for this section now. Output ONLY the report text
         temperature: 0.2, // Maximum precision and consistency, minimal creativity
         max_tokens: 3000, // Increased to prevent truncation of long sections
         top_p: 0.9,
+        // Disable reasoning so thinking tokens don't eat the max_tokens budget
+        // and truncate long report sections.
+        reasoning: { enabled: false },
       }),
     }
   )

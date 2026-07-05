@@ -1092,9 +1092,10 @@ export async function generateReport(
   let execSummaryLlmText = ''
   if (llmContextParts.length > 0) {
     try {
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const response = await fetch(`${siteUrl}/api/generate-report`, {
+      // Relative URL — this runs in the browser; an absolute URL built from
+      // NEXT_PUBLIC_SITE_URL silently pointed at localhost:3000 when the env
+      // var was missing at build time, so the request never reached the app.
+      const response = await fetch(`/api/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2109,9 +2110,9 @@ export async function regenerateSection(
   let newLlmText = ''
 
   try {
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    const response = await fetch(`${siteUrl}/api/generate-report`, {
+    // Relative URL — see generateReport(); absolute NEXT_PUBLIC_SITE_URL
+    // fallback pointed browser fetches at localhost:3000 in production.
+    const response = await fetch(`/api/generate-report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

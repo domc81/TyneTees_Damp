@@ -12,7 +12,7 @@ Web platform for a Newcastle damp proofing contractor (Tyne Tees Damp Proofing).
 - Styling: Tailwind CSS 3.4 with custom brand theme
 - Email: Resend (transactional emails)
 - Speech-to-text: Deepgram Nova-3 (survey observation transcription)
-- LLM: OpenRouter / `x-ai/grok-4.1-fast` (report narratives, observation polishing)
+- LLM: OpenRouter / `google/gemini-2.5-flash` (report narratives, observation polishing)
 - PDF: @react-pdf/renderer (quotation PDFs)
 - Drag-and-drop: @dnd-kit (Kanban board)
 - Calendar: FullCalendar 6.x (booking management)
