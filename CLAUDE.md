@@ -41,7 +41,7 @@ Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 - **Room-first survey wizard** — 5 steps: Site Details → External Inspection → Room-by-Room (repeats) → Additional Works → Review. Rooms multi-select issues (damp / condensation / timber / woodworm); only relevant fields appear. Data: `surveys.survey_data` JSONB (property-level) + `survey_rooms.room_data` JSONB (per room).
 - **Costing flow** — mapping engine aggregates rooms → `LineInput[]` → pricing engine (11 formula types against `costing_line_templates` + `pricing_config`) → travel overhead post-engine.
 - **Enquiry pipeline** — Kanban with stages New → Awaiting Payment → Booked → Survey Complete → Sent → Won → Closed (side lanes: On Hold, Lost); auto-transitions; detail drawer with integrated customer management.
-- **Quotations & reports** — quotation PDF + public accept/decline with e-signature (deposit auto-created on acceptance); report LLM narrative (OpenRouter `google/gemini-2.5-flash`) → section editor → published branded public page.
+- **Quotations & reports** — quotation PDF + public accept/decline with e-signature (deposit auto-created on acceptance); report LLM narrative (OpenRouter `anthropic/claude-sonnet-5`) → section editor → published branded public page.
 
 ## TypeScript Conventions
 
@@ -58,7 +58,7 @@ Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 - **Coolify** — Deployment management (API token at `coolify_api_token`)
 - **Resend** — Transactional email (credentials at `.resend-credentials`)
 - **Deepgram** — Speech-to-text (credentials at `.deepgram-credentials`)
-- **OpenRouter** — LLM API access (key in `.env.local`, model: `google/gemini-2.5-flash`)
+- **OpenRouter** — LLM API access (key in `.env.local`, models: `anthropic/claude-sonnet-5` report narrative, `google/gemini-2.5-flash` polish)
 
 ## Claude-specific policy
 
@@ -67,7 +67,7 @@ Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 - Run `npm run lint` to catch issues — the build ignores type errors (`ignoreBuildErrors: true`)
 - Spawn the `Explore` subagent for codebase-wide searches of 3+ queries
 - Never start dev servers or use Playwright against this app — commit and push, let Coolify deploy
-- All LLM calls go through OpenRouter (model: `google/gemini-2.5-flash`) — never call Anthropic API directly
+- All LLM calls go through OpenRouter (models: `anthropic/claude-sonnet-5` report narrative, `google/gemini-2.5-flash` polish) — never call Anthropic API directly
 - After a sprint or doc-update request, use the `update-project-docs` skill — status goes to `docs/PROJECT_STATE.md`, catalogs to `docs/ARCHITECTURE.md`, NOT into this file
 - Skills: none project-specific
 - MCP servers: none project-specific

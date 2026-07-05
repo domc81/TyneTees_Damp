@@ -201,7 +201,7 @@ Generate the narrative content for this section now. Output ONLY the report text
         'X-Title': `${companyName} Survey System`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'anthropic/claude-sonnet-5',
         messages: [
           {
             role: 'system',
