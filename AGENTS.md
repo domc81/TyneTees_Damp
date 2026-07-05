@@ -47,7 +47,7 @@ All commands run from `survey-system/` directory:
 - PRs: not used on this repo (server-wide rule)
 - What is committed: `survey-system/src/`, `survey-system/supabase/migrations/`, docs, config files, Dockerfile
 - What is ignored: `node_modules/`, `.next/`, `.env`, `.env.local`, `build/`, `dist/`, `.claude/`
-- Toast notifications use `sonner` — never use `alert()` calls
+- Toast notifications use `sonner` — never use `alert()` calls; confirmations use `ConfirmDialog` (`src/components/ui/confirm-dialog.tsx`), never native `window.confirm()` (invisible under automation, blockable, and silently no-ops — the report Finalise button shipped broken this way). Two legacy `window.confirm` calls remain in `EnquiryDrawer.tsx`
 - Enquiry source values stored in Title Case
 - Display terminology (frozen 2026-07-05): the pipeline object is a **"Lead"** in all UI text (DB tables/types stay `enquiries`/`Enquiry`); booking status `scheduled` displays as **"Booked"** everywhere. `enquiry_activity` titles store raw status slugs — render via `humanizeActivityTitle()` from `src/lib/status-labels.ts`; never write display labels into activity rows
 - Server actions body size limit is 10MB (photo uploads)
@@ -57,6 +57,9 @@ All commands run from `survey-system/` directory:
 
 ## Gotchas
 
+- **Public tokenized pages (`/q/[token]`, `/pay/[token]`, `/report/[reportId]`) must export `dynamic = 'force-dynamic'`.** Next 14 caches server-component Supabase fetches by default — /q served "Accept/Decline" after acceptance and /pay served "Awaiting Payment" after payment until this was added. Any new public page that reads mutable state needs the same export.
+- **`company_profile` has no `phone`/`email`/`company_name` columns.** Real names: `name`, `trading_name`, `phone_primary`, `email_primary`, `registered_address_*`. A select with guessed column names fails and the data arrives as `null` with no visible error (the /pay contact block vanished this way) — alias in the select if a page wants different field names.
+- **Moisture readings display as `% WME`** (Wood Moisture Equivalent) everywhere — table renders, LLM prompts, and the report abbreviations key. Never reintroduce `W/W`.
 - **Two different user UUIDs exist — always use `profile.id`, never `user.id`.** `useAuth()` exposes `user.id` (Supabase Auth UUID from `auth.users`) and `profile.id` (`user_profiles` UUID). All FK columns (`enquiry_activity.user_id`, `enquiries.assigned_to`, `payments.recorded_by`, `survey_bookings.created_by`, `notifications.user_id`) reference `user_profiles.id`. Passing `user.id` causes FK violations.
 - `typescript.ignoreBuildErrors: true` in next.config.mjs — type errors do not fail the build. Run `npm run lint` to catch issues before push.
 - TTDP Postgres is not host-mapped. Access only via Kong API gateway or `docker exec -it supabase-db-y04kk0wwoswogw0oowcs04gw psql -U supabase_admin -d postgres`.

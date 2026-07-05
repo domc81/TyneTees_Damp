@@ -126,7 +126,8 @@ TyneTees_Damp/
   - Notifications: `notifications-server.ts`, `notification-preferences.ts` · Payments: `payment-data.ts`
   - CSV/handover: `cf-csv-export.ts`, `cf-export-config.ts`, `handover-pack.ts` (incl. `deriveGuaranteeType()`)
   - Concurrency: `write-queue.ts` (per-survey serialized writes) · Proposals: `proposal-items.ts`
-  - Utilities: `cron-auth.ts`, `terms-hash.ts` · Tests: `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
+  - Utilities: `cron-auth.ts`, `terms-hash.ts`, `status-labels.ts` (activity-title humanizer) · Tests: `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
+- **UI primitives (`components/ui/`):** `button`, `card`, `input` (auto password toggle), `confirm-dialog` (styled `window.confirm` replacement — required for all confirmations)
 
 ### Database (Supabase / PostgreSQL)
 
@@ -236,3 +237,6 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **NotificationBell realtime reconnection:** The Supabase Realtime subscription uses a `reconnectKey` state counter. On `CHANNEL_ERROR` or `TIMED_OUT`, the channel is removed and the counter increments after 5 seconds, forcing the useEffect to re-run and create a fresh subscription.
 - **Sketch plan storage:** Sketch files uploaded in the report editor are stored in the `survey-photos` bucket under `{surveyId}/sketch/`. Photo metadata goes into `survey_data.photos` (same as survey wizard photos). The photo IDs are linked to the `sketch_plan` report section's `photos` array via `updateReportSectionPhotos()` in `report-data.ts`.
 - **Supabase Auth SMTP gap:** The TTDP Supabase Auth container has no SMTP configured (`GOTRUE_SMTP_HOST` is blank). Password reset and invite emails silently fail. Workaround: reset passwords via Admin API and set `must_change_password` on the user profile.
+- **Customer quote presentation (decided 2026-07-05):** the public quote page and its PDF (`quotation-pdf-renderer.tsx` — the two must stay in sync) list mandatory section *names only* under a single "Works subtotal" that folds in project overheads; optional works keep individual prices (an option without a price can't be chosen); a note points to the survey report for full scope. Internal costing keeps full itemisation — this is display-only.
+- **Generation-time narrative polish:** `generateReport()` sends room findings and external notes through the LLM in the same batched `/api/generate-report` call as the executive summary (raw dictation shipped verbatim to customers before this). Raw text is the fallback on any LLM failure and is preserved in section `data.raw_notes`. Sections process sequentially (~4 s each), so multi-room reports take 15–30 s to generate.
+- **Report ground-levels honesty rule:** the "External Ground Levels" subsection derives from the wizard's "High external ground levels" checklist item and/or specified drainage works, and is omitted entirely when neither exists. It must never assert "no issues" for something the surveyor didn't structurally record (a published report once contradicted its own narrative this way).
