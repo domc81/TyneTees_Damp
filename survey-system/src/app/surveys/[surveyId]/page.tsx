@@ -398,7 +398,9 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                             ? 'bg-red-500/15 text-red-300 border-red-400/30'
                             : 'bg-white/10 text-white/60 border-white/20'
                     }`}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
+                      {booking.status === 'scheduled'
+                        ? 'Booked'
+                        : booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
                     </span>
                   </div>
                 </div>

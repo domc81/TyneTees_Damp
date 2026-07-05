@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { RoleGuard } from '@/components/RoleGuard'
 
 export const metadata: Metadata = {
-  title: 'Enquiry Pipeline — Tyne Tees Damp Proofing',
+  title: 'Lead Pipeline — Tyne Tees Damp Proofing',
 }
 
 export default function EnquiriesLayout({ children }: { children: React.ReactNode }) {

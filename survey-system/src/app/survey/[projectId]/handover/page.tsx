@@ -337,7 +337,7 @@ function HandoverContent() {
     if (!handoverData?.enquiry?.id) return
 
     if (handoverData.enquiry.status !== 'won') {
-      toast.error('Enquiry must be in Won status before closing')
+      toast.error('Lead must be in Won status before closing')
       return
     }
 
@@ -345,7 +345,7 @@ function HandoverContent() {
     try {
       await markEnquiryClosed(handoverData.enquiry.id, user?.id || null)
       setHandedOver(true)
-      toast.success('Handover complete — enquiry closed')
+      toast.success('Handover complete — lead closed')
     } catch {
       toast.error('Failed to close handover')
     } finally {
@@ -703,7 +703,7 @@ function HandoverContent() {
             </Button>
           ) : (
             <p className="text-xs text-white/30 text-center">
-              Enquiry must be in Won status before completing handover
+              Lead must be in Won status before completing handover
             </p>
           )}
         </div>

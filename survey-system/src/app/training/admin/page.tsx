@@ -42,7 +42,7 @@ export default function AdminGuidePage() {
             <p><strong>Before reading this guide</strong>, make sure you have completed:</p>
             <ul>
               <li><Link href="/training/getting-started">Getting Started</Link> — Logging in and navigation</li>
-              <li><Link href="/training/office-staff">Office Staff Guide</Link> — Enquiries, customers, calendar, quotations, and reports</li>
+              <li><Link href="/training/office-staff">Office Staff Guide</Link> — Leads, customers, calendar, quotations, and reports</li>
             </ul>
             <p>As an admin, you can do everything office staff can do, plus the admin-only features covered here.</p>
           </Tip>
@@ -54,7 +54,7 @@ export default function AdminGuidePage() {
             <h2>1. Admin Overview</h2>
 
             <p>
-              As an administrator, you have access to everything in the system. In addition to all the features available to office staff (enquiries, customers, calendar, quotations, reports), you can:
+              As an administrator, you have access to everything in the system. In addition to all the features available to office staff (leads, customers, calendar, quotations, reports), you can:
             </p>
 
             <ul>
@@ -118,7 +118,7 @@ export default function AdminGuidePage() {
                   <li><strong>Role</strong> — Choose one:
                     <ul>
                       <li><strong>Admin</strong> — Full access to everything</li>
-                      <li><strong>Office</strong> — Enquiry management, calendar, quotations, reports</li>
+                      <li><strong>Office</strong> — Lead management, calendar, quotations, reports</li>
                       <li><strong>Surveyor</strong> — Survey wizard, own calendar, limited access</li>
                     </ul>
                   </li>
@@ -159,7 +159,7 @@ export default function AdminGuidePage() {
             <ul>
               <li>Cannot log in</li>
               <li>Are automatically logged out if currently active</li>
-              <li>Keep their historical data (surveys, enquiries, etc.) intact</li>
+              <li>Keep their historical data (surveys, leads, etc.) intact</li>
               <li>Can be reactivated later if needed</li>
             </ul>
 
@@ -743,9 +743,9 @@ export default function AdminGuidePage() {
               <li>Report published and emailed → Customer</li>
             </ul>
 
-            <h4>Enquiries &amp; System</h4>
+            <h4>Leads &amp; System</h4>
             <ul>
-              <li>New enquiry received → Internal</li>
+              <li>New lead received → Internal</li>
               <li>System notification → Internal</li>
             </ul>
 
@@ -881,7 +881,7 @@ export default function AdminGuidePage() {
               <li><strong>You cannot change your own role or deactivate your own account</strong> — this is a safety feature</li>
               <li><strong>Team members with &quot;Must Change Password&quot; set</strong> will be forced to choose a new password on their next login</li>
               <li><strong>The &quot;Is Surveyor&quot; flag is separate from the role</strong> — an Admin or Office user can also be flagged as a surveyor if they carry out surveys</li>
-              <li><strong>Deactivated accounts keep their data</strong> — surveys, enquiries, and historical records are preserved</li>
+              <li><strong>Deactivated accounts keep their data</strong> — surveys, leads, and historical records are preserved</li>
               <li><strong>Notification preferences apply system-wide</strong> — they affect all users, not just your own notifications</li>
             </ul>
           </section>

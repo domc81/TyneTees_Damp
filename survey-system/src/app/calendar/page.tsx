@@ -76,7 +76,7 @@ const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
 
 const STATUS_CONFIG: Record<BookingStatus, { label: string; colour: string; icon: typeof CheckCircle }> = {
   provisional: { label: 'Awaiting Payment', colour: 'bg-amber-500/20 text-amber-300', icon: Clock },
-  scheduled: { label: 'Scheduled', colour: 'bg-blue-500/20 text-blue-300', icon: Clock },
+  scheduled: { label: 'Booked', colour: 'bg-blue-500/20 text-blue-300', icon: Clock },
   completed: { label: 'Completed', colour: 'bg-green-500/20 text-green-300', icon: CheckCircle },
   cancelled: { label: 'Cancelled', colour: 'bg-red-500/20 text-red-300', icon: XCircle },
   no_show: { label: 'No Show', colour: 'bg-amber-500/20 text-amber-300', icon: AlertTriangle },

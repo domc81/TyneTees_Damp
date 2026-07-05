@@ -316,6 +316,7 @@ export default function CostingReviewPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   // CF CSV export feedback message (auto-clears)
   const [cfExportMessage, setCfExportMessage] = useState<string | null>(null)
+  const [projectNumber, setProjectNumber] = useState<string | null>(null)
 
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -374,15 +375,23 @@ export default function CostingReviewPage() {
         // Load existing quotation (latest version) if any
         const supabase = getSupabase()
         if (supabase) {
-          const { data: existingQ } = await supabase
-            .from('quotations')
-            .select('version, created_at, quotation_number')
-            .eq('survey_id', projectId)
-            .order('version', { ascending: false })
-            .limit(1)
+          const [{ data: existingQ }, { data: surveyRow }] = await Promise.all([
+            supabase
+              .from('quotations')
+              .select('version, created_at, quotation_number')
+              .eq('survey_id', projectId)
+              .order('version', { ascending: false })
+              .limit(1),
+            supabase
+              .from('surveys')
+              .select('project_number')
+              .eq('id', projectId)
+              .single(),
+          ])
           if (existingQ && existingQ.length > 0) {
             setExistingQuotation(existingQ[0])
           }
+          setProjectNumber(surveyRow?.project_number ?? null)
         }
 
         // Set the first non-site_preparation survey type as active tab
@@ -708,7 +717,7 @@ export default function CostingReviewPage() {
               Back
             </button>
             <h2 className="text-2xl font-bold text-white mt-2">Survey Costing</h2>
-            <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
+            <p className="text-sm text-white/60">{projectNumber ?? `Project #${projectId.slice(0, 8)}`}</p>
           </div>
 
           {missingTemplates.length > 0 && (

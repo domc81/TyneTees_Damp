@@ -72,7 +72,7 @@ export default function SurveyorGuidePage() {
             <h3>What You Won't See</h3>
 
             <p>
-              As a surveyor, your dashboard does <strong>not</strong> show the Enquiry Pipeline or the Recent Activity feed. These are managed by the office team. Your sidebar menu also does not include &ldquo;Enquiries&rdquo; or &ldquo;Workload&rdquo;. This is completely normal — the system only shows you what you need for your role.
+              As a surveyor, your dashboard does <strong>not</strong> show the Lead Pipeline or the Recent Activity feed. These are managed by the office team. Your sidebar menu also does not include &ldquo;Leads&rdquo; or &ldquo;Workload&rdquo;. This is completely normal — the system only shows you what you need for your role.
             </p>
           </section>
 
@@ -933,8 +933,8 @@ export default function SurveyorGuidePage() {
                     <td className="p-2 text-white/70">Check the date — use the navigation arrows. If it's still missing, contact the office</td>
                   </tr>
                   <tr className="border-b border-white/5">
-                    <td className="p-2 text-white/70">Can't see Enquiries in the menu</td>
-                    <td className="p-2 text-white/70">This is normal — the Enquiries section is only for office staff</td>
+                    <td className="p-2 text-white/70">Can't see Leads in the menu</td>
+                    <td className="p-2 text-white/70">This is normal — the Leads section is only for office staff</td>
                   </tr>
                 </tbody>
               </table>

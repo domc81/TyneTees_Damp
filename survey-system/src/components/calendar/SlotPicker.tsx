@@ -19,6 +19,7 @@ import {
   getAvailabilityBlocks,
   getSurveyorAvailability,
 } from '@/lib/calendar-data'
+import { createClient } from '@/lib/supabase-client'
 import type {
   TimeSlot,
   AvailabilityBlock,
@@ -163,6 +164,7 @@ export function SlotPicker({
   const [availability, setAvailability] = useState<SurveyorAvailability[]>([])
   const [loading, setLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
+  const [findingFirstWeek, setFindingFirstWeek] = useState(false)
 
   // Week dates derived from weekStart
   const weekDates = useMemo(() => buildWeekDates(weekStart), [weekStart])
@@ -195,6 +197,56 @@ export function SlotPicker({
   useEffect(() => {
     fetchSlots()
   }, [fetchSlots])
+
+  // Backfill the surveyor name when opened with defaultSurveyorId — the
+  // select doesn't fire onSelect for a preselected value, which left
+  // SelectedSlot.surveyorName empty on Confirm/success screens
+  useEffect(() => {
+    if (!surveyorId || surveyorName) return
+    let cancelled = false
+    const supabase = createClient()
+    supabase
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', surveyorId)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled && data?.display_name) setSurveyorName(data.display_name)
+      })
+    return () => { cancelled = true }
+  }, [surveyorId, surveyorName])
+
+  // On surveyor selection, open the first week containing a bookable slot
+  // (by late week the current week is mostly "Past"/"No hours"). An existing
+  // selection wins — navigating back shows the week of the chosen slot.
+  useEffect(() => {
+    if (!surveyorId) return
+    if (selectedSlot && selectedSlot.surveyorId === surveyorId) {
+      setWeekStart(getWeekStart(parseDate(selectedSlot.date)))
+      return
+    }
+    let cancelled = false
+    setFindingFirstWeek(true)
+    const scan = async () => {
+      const horizon = new Date()
+      horizon.setDate(horizon.getDate() + 56)
+      const upcoming = await getAvailableSlots(
+        surveyorId,
+        todayStr(),
+        formatDateStr(horizon),
+        slotDurationMinutes,
+        excludeBookingId || undefined
+      )
+      if (cancelled) return
+      // Slots come back in date order; fall back to the current week if none
+      setWeekStart(upcoming.length > 0 ? getWeekStart(parseDate(upcoming[0].date)) : getWeekStart(new Date()))
+      setFindingFirstWeek(false)
+    }
+    scan()
+    return () => { cancelled = true }
+  // Only re-scan when the surveyor changes — selectedSlot is read once on entry
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surveyorId])
 
   // --- Build per-day info ---
   const days: DayInfo[] = useMemo(() => {
@@ -339,7 +391,7 @@ export function SlotPicker({
 
           {/* Slot Grid */}
           <div className="p-4">
-            {loading ? (
+            {loading || findingFirstWeek ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-5 h-5 text-brand-400 animate-spin" />
                 <span className="ml-2 text-sm text-white/50">Loading availability...</span>
@@ -352,10 +404,12 @@ export function SlotPicker({
                   No working hours configured for this surveyor
                 </p>
                 <Link
-                  href="/admin/availability"
+                  href={surveyorId ? `/admin/availability?surveyor=${surveyorId}` : '/admin/availability'}
+                  target="_blank"
+                  rel="noopener"
                   className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
                 >
-                  Set up availability
+                  Set up availability (opens in a new tab)
                 </Link>
               </div>
             ) : !weekHasSlots && hasLoaded ? (

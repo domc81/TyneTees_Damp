@@ -37,6 +37,7 @@ import type {
   RecentActivityItem,
 } from '@/lib/supabase-data'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
+import { humanizeActivityTitle } from '@/lib/status-labels'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
@@ -348,8 +349,8 @@ function PipelineWidget({ stats }: { stats: EnquiryPipelineStats }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">Enquiry Pipeline</h3>
-          <p className="text-sm text-white/50 mt-0.5">Live overview of active enquiries</p>
+          <h3 className="text-lg font-semibold text-white">Lead Pipeline</h3>
+          <p className="text-sm text-white/50 mt-0.5">Live overview of active leads</p>
         </div>
         <Link
           href="/enquiries"
@@ -490,7 +491,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
       <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
-          <p className="text-sm text-white/50 mt-0.5">Across all enquiries</p>
+          <p className="text-sm text-white/50 mt-0.5">Across all leads</p>
         </div>
         <Activity className="w-4 h-4 text-white/30" />
       </div>
@@ -514,7 +515,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
                   <Icon className="w-3.5 h-3.5 text-white/50" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-white/70 leading-snug">{item.title}</p>
+                  <p className="text-xs text-white/70 leading-snug">{humanizeActivityTitle(item.title)}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {item.client_name && (
                       <span className="text-xs text-white/50 truncate">{item.client_name}</span>

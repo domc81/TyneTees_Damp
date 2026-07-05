@@ -20,6 +20,7 @@ import type { SurveyBooking } from '@/lib/calendar-data'
 import { createSurveyFeePayment, getPaymentsForEnquiry, markPaymentPaid } from '@/lib/payment-data'
 import type { Payment, PaymentMethod } from '@/lib/payment-data'
 import { loadPricingConfig } from '@/lib/pricing-data'
+import { humanizeActivityTitle } from '@/lib/status-labels'
 import { SlotPicker } from '@/components/calendar/SlotPicker'
 import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
@@ -664,6 +665,9 @@ export default function EnquiryDrawer({
   const [linkedLoaded, setLinkedLoaded] = useState(false)
   const [linkedLoading, setLinkedLoading] = useState(false)
   const [linkedBooking, setLinkedBooking] = useState<SurveyBooking | null>(null)
+  // Fresh customer_id from the DB — the enquiry prop is a board snapshot that
+  // goes stale after Convert & Book links a customer
+  const [linkedCustomerId, setLinkedCustomerId] = useState<string | null>(null)
 
   // Dropdowns
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
@@ -745,18 +749,46 @@ export default function EnquiryDrawer({
   // Preflight for Approve & Send: null = checking, false = not ready, true = ready
   const [reportReady, setReportReady] = useState<boolean | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({})
+
+  // Update a validated create-form field and clear its inline error as the
+  // user corrects it
+  function setCreateField(key: 'client_name' | 'client_email' | 'site_address_1' | 'site_postcode', value: string) {
+    setCreateForm(f => ({ ...f, [key]: value }))
+    setCreateFieldErrors(prev => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  function validateCreateForm(): Record<string, string> {
+    const errors: Record<string, string> = {}
+    if (!createForm.client_name.trim()) errors.client_name = 'Client name is required'
+    const email = createForm.client_email.trim()
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.client_email = 'Enter a valid email address, or leave blank'
+    }
+    if (!createForm.site_address_1.trim()) errors.site_address_1 = 'Site address is required'
+    const postcode = createForm.site_postcode.trim()
+    if (!postcode) {
+      errors.site_postcode = 'Postcode is required'
+    } else if (!/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/.test(postcode)) {
+      errors.site_postcode = 'Enter a valid UK postcode, e.g. NE1 4XD'
+    }
+    return errors
+  }
 
   async function handleCreateSubmit() {
-    if (!createForm.client_name.trim()) {
-      setCreateError('Client name is required')
-      return
-    }
-    if (!createForm.site_address_1.trim()) {
-      setCreateError('Site address is required')
-      return
-    }
-    if (!createForm.site_postcode.trim()) {
-      setCreateError('Postcode is required')
+    const errors = validateCreateForm()
+    setCreateFieldErrors(errors)
+    const errorCount = Object.keys(errors).length
+    if (errorCount > 0) {
+      setCreateError(errorCount === 1 ? 'Please fix the highlighted field' : `Please fix the ${errorCount} highlighted fields`)
+      // The submit button sits at the bottom — bring the first invalid field into view
+      const firstKey = ['client_name', 'client_email', 'site_address_1', 'site_postcode'].find(k => errors[k])
+      if (firstKey) document.getElementById(`create-${firstKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
@@ -854,6 +886,7 @@ export default function EnquiryDrawer({
       setLinkedSurveys([])
       setLinkedQuotations([])
       setLinkedLoaded(false)
+      setLinkedCustomerId(null)
       setShowAddNote(false)
       setShowLogCall(false)
       setNoteText('')
@@ -907,11 +940,22 @@ export default function EnquiryDrawer({
   }, [activeTab, activitiesLoaded, loadActivities])
 
   // ── Load linked records when Linked tab is first viewed ───────
-  const loadLinked = useCallback(async () => {
-    if (!enquiry || linkedLoaded || linkedLoading) return
+  // force bypasses the loaded guard — needed right after Convert & Book,
+  // when the enquiry prop from the board is a pre-conversion snapshot.
+  const loadLinked = useCallback(async (force = false) => {
+    if (!enquiry || linkedLoading || (linkedLoaded && !force)) return
     setLinkedLoading(true)
 
     const supabase = createClient()
+
+    // Re-read the enquiry row — the board prop's customer_id goes stale
+    // the moment conversion links a customer (P2-4)
+    const { data: freshEnquiry } = await supabase
+      .from('enquiries')
+      .select('customer_id')
+      .eq('id', enquiry.id)
+      .single()
+    setLinkedCustomerId(freshEnquiry?.customer_id ?? null)
 
     const { data: surveys } = await supabase
       .from('surveys')
@@ -1010,11 +1054,11 @@ export default function EnquiryDrawer({
       newStatus === 'won'
         ? '\n\nThis records the job as won and stamps the won date used in reporting.'
         : newStatus === 'closed'
-          ? '\n\nThis closes the enquiry — the end of the pipeline.'
+          ? '\n\nThis closes the lead — the end of the pipeline.'
           : ''
     if (
       !window.confirm(
-        `Move "${enquiry.client_name || 'this enquiry'}" from ${STATUS_CONFIG[enquiry.status].label} to ${STATUS_CONFIG[newStatus].label}?${consequence}`
+        `Move "${enquiry.client_name || 'this lead'}" from ${STATUS_CONFIG[enquiry.status].label} to ${STATUS_CONFIG[newStatus].label}?${consequence}`
       )
     ) {
       return
@@ -1481,13 +1525,17 @@ export default function EnquiryDrawer({
                 <div>
                   <label className="text-xs text-white/40 block mb-1">Client Name <span className="text-red-400">*</span></label>
                   <input
+                    id="create-client_name"
                     type="text"
                     value={createForm.client_name}
-                    onChange={e => setCreateForm(f => ({ ...f, client_name: e.target.value }))}
-                    className="input-field w-full text-sm"
+                    onChange={e => setCreateField('client_name', e.target.value)}
+                    className={`input-field w-full text-sm ${createFieldErrors.client_name ? 'border-red-400/70' : ''}`}
                     placeholder="Enter client name"
                     autoFocus
                   />
+                  {createFieldErrors.client_name && (
+                    <p className="text-xs text-red-300 mt-1">{createFieldErrors.client_name}</p>
+                  )}
                 </div>
 
                 {/* Phone + Email */}
@@ -1505,12 +1553,16 @@ export default function EnquiryDrawer({
                   <div>
                     <label className="text-xs text-white/40 block mb-1">Email</label>
                     <input
+                      id="create-client_email"
                       type="email"
                       value={createForm.client_email}
-                      onChange={e => setCreateForm(f => ({ ...f, client_email: e.target.value }))}
-                      className="input-field w-full text-sm"
+                      onChange={e => setCreateField('client_email', e.target.value)}
+                      className={`input-field w-full text-sm ${createFieldErrors.client_email ? 'border-red-400/70' : ''}`}
                       placeholder="Enter email address"
                     />
+                    {createFieldErrors.client_email && (
+                      <p className="text-xs text-red-300 mt-1">{createFieldErrors.client_email}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1546,12 +1598,16 @@ export default function EnquiryDrawer({
                 <div>
                   <label className="text-xs text-white/40 block mb-1">Address Line 1 <span className="text-red-400">*</span></label>
                   <input
+                    id="create-site_address_1"
                     type="text"
                     value={createForm.site_address_1}
-                    onChange={e => setCreateForm(f => ({ ...f, site_address_1: e.target.value }))}
-                    className="input-field w-full text-sm"
+                    onChange={e => setCreateField('site_address_1', e.target.value)}
+                    className={`input-field w-full text-sm ${createFieldErrors.site_address_1 ? 'border-red-400/70' : ''}`}
                     placeholder="Enter site address"
                   />
+                  {createFieldErrors.site_address_1 && (
+                    <p className="text-xs text-red-300 mt-1">{createFieldErrors.site_address_1}</p>
+                  )}
                 </div>
 
                 {/* Address Line 2 */}
@@ -1581,12 +1637,16 @@ export default function EnquiryDrawer({
                   <div>
                     <label className="text-xs text-white/40 block mb-1">Postcode <span className="text-red-400">*</span></label>
                     <input
+                      id="create-site_postcode"
                       type="text"
                       value={createForm.site_postcode}
-                      onChange={e => setCreateForm(f => ({ ...f, site_postcode: e.target.value }))}
-                      className="input-field w-full text-sm"
+                      onChange={e => setCreateField('site_postcode', e.target.value)}
+                      className={`input-field w-full text-sm ${createFieldErrors.site_postcode ? 'border-red-400/70' : ''}`}
                       placeholder="Enter postcode"
                     />
+                    {createFieldErrors.site_postcode && (
+                      <p className="text-xs text-red-300 mt-1">{createFieldErrors.site_postcode}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1948,7 +2008,7 @@ export default function EnquiryDrawer({
               <div className="rounded-xl border border-purple-400/20 bg-purple-500/5 p-3.5">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Survey Scheduled</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Survey Booked</span>
                 </div>
                 {linkedBooking ? (
                   <div className="space-y-1">
@@ -2130,7 +2190,7 @@ export default function EnquiryDrawer({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-xs text-white/40">Surveyor</span>
-                      <span className="text-sm text-white/80">{flowSlot.surveyorName}</span>
+                      <span className="text-sm text-white/80">{flowSlot.surveyorName || flowSurveyorName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-xs text-white/40">Date</span>
@@ -2146,8 +2206,7 @@ export default function EnquiryDrawer({
                   <button
                     onClick={() => {
                       cancelConvertFlow()
-                      setLinkedLoaded(false)
-                      loadLinked()
+                      loadLinked(true)
                     }}
                     className="btn-primary w-full text-sm py-2 flex items-center justify-center gap-2"
                   >
@@ -2342,7 +2401,7 @@ export default function EnquiryDrawer({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-xs text-white/40">Surveyor</span>
-                      <span className="text-sm text-white/80">{flowSlot.surveyorName}</span>
+                      <span className="text-sm text-white/80">{flowSlot.surveyorName || flowSurveyorName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-xs text-white/40">Date</span>
@@ -2392,7 +2451,7 @@ export default function EnquiryDrawer({
                 <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
                   Customer Information
                 </h3>
-                {enquiry.customer_id && (
+                {(linkedCustomerId ?? enquiry.customer_id) && (
                   <div className="flex items-center gap-1.5 mb-2 px-1">
                     <Info className="w-3 h-3 text-white/30 flex-shrink-0" />
                     <span className="text-xs text-white/40">Linked to customer record</span>
@@ -2813,7 +2872,7 @@ export default function EnquiryDrawer({
                         {/* Content */}
                         <div className="pb-4 min-w-0 flex-1">
                           <p className="text-sm text-white/80 leading-snug">
-                            {activity.title}
+                            {humanizeActivityTitle(activity.title)}
                           </p>
                           {activity.description && (
                             <p className="text-xs text-white/40 mt-0.5 leading-relaxed">
@@ -2856,7 +2915,7 @@ export default function EnquiryDrawer({
                       <UserIcon className="w-4 h-4 text-white/30" />
                       <h4 className="text-sm font-semibold text-white/60">Customer</h4>
                     </div>
-                    {enquiry.customer_id ? (
+                    {(linkedCustomerId ?? enquiry.customer_id) ? (
                       <div className="space-y-1.5">
                         <p className="text-sm text-white/80">{enquiry.client_name}</p>
                         {enquiry.client_email && (
@@ -2910,7 +2969,7 @@ export default function EnquiryDrawer({
                                 )}
                                 {linkedBooking.status === 'scheduled' && (
                                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-400/30">
-                                    Confirmed
+                                    Booked
                                   </span>
                                 )}
                               </div>
@@ -3155,14 +3214,14 @@ export default function EnquiryDrawer({
                           {enquiry.status !== 'closed' && (
                             <button
                               onClick={async () => {
-                                if (!confirm('Mark this enquiry as closed? This cannot be undone.')) return
+                                if (!confirm('Mark this lead as closed? This cannot be undone.')) return
                                 try {
                                   await markEnquiryClosed(enquiry.id, currentUserId)
                                   onBoardSync({ ...enquiry, status: 'closed' } as Enquiry, enquiry.status)
-                                  toast.success('Enquiry closed')
+                                  toast.success('Lead closed')
                                 } catch (err) {
                                   console.error('Failed to close enquiry:', err)
-                                  toast.error('Failed to close enquiry')
+                                  toast.error('Failed to close lead')
                                 }
                               }}
                               className="btn-secondary text-xs px-3 py-1.5 w-full border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"

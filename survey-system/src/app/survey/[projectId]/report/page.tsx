@@ -137,6 +137,7 @@ export default function ReportEditorPage() {
   const [sendConfirm, setSendConfirm] = useState(false)
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [customerEmail, setCustomerEmail] = useState<string | null>(null)
+  const [projectNumber, setProjectNumber] = useState<string | null>(null)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -156,7 +157,7 @@ export default function ReportEditorPage() {
 
       const { data: survey } = await supabase
         .from('surveys')
-        .select('customer_id, customers ( email )')
+        .select('customer_id, project_number, customers ( email )')
         .eq('id', projectId)
         .single()
 
@@ -164,6 +165,7 @@ export default function ReportEditorPage() {
         const c = survey.customers as unknown as { email: string | null }
         setCustomerEmail(c?.email || null)
       }
+      setProjectNumber(survey?.project_number ?? null)
     }
     loadCustomerEmail()
   }, [projectId])
@@ -509,7 +511,7 @@ export default function ReportEditorPage() {
             {/* Title */}
             <div className="text-center">
               <h1 className="text-xl font-semibold text-white">Survey Report</h1>
-              <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
+              <p className="text-sm text-white/60">{projectNumber ?? `Project #${projectId.slice(0, 8)}`}</p>
             </div>
 
             {/* Actions */}

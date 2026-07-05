@@ -42,8 +42,11 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { signOut, isAdmin, isOffice } = useAuth()
+  const { signOut, isAdmin, isOffice, profile, role } = useAuth()
   const companyProfile = useCompanyProfile()
+
+  const roleLabel = role === 'admin' ? 'Admin' : role === 'office' ? 'Office' : role === 'surveyor' ? 'Surveyor' : ''
+  const cardName = profile?.display_name || companyProfile.trading_name || companyProfile.name
 
   const handleSignOut = async () => {
     await signOut()
@@ -114,11 +117,11 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
-              {(companyProfile.trading_name || companyProfile.name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+              {cardName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{companyProfile.trading_name || companyProfile.name}</p>
-              <p className="text-xs text-white/50">Admin</p>
+              <p className="text-sm font-medium text-white truncate">{cardName}</p>
+              {roleLabel && <p className="text-xs text-white/50">{roleLabel}</p>}
             </div>
             <button
               onClick={handleSignOut}

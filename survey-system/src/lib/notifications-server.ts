@@ -300,8 +300,8 @@ export async function notifyEnquiryCreated(
   const rows: NotificationCreateData[] = recipientIds.map((userId) => ({
     user_id: userId,
     type: 'enquiry_created',
-    title: 'New Enquiry Received',
-    message: `${who} submitted a new enquiry.`,
+    title: 'New Lead Received',
+    message: `New lead from ${who}.`,
     enquiry_id: enquiry.id,
     link_url: '/enquiries',
   }))

@@ -327,7 +327,7 @@ function KanbanColumn({
         {enquiries.length === 0 && !isOver ? (
           <div className="flex items-center justify-center h-full min-h-[80px]">
             <div className="border border-dashed border-white/10 rounded-lg p-4 w-full text-center">
-              <p className="text-xs text-white/25">No enquiries</p>
+              <p className="text-xs text-white/25">No leads</p>
             </div>
           </div>
         ) : (
@@ -953,7 +953,7 @@ function MobileStatusSection({
       {isExpanded && (
         <div className="p-2 space-y-2 bg-white/[0.01]">
           {enquiries.length === 0 ? (
-            <p className="text-xs text-white/25 text-center py-4">No enquiries</p>
+            <p className="text-xs text-white/25 text-center py-4">No leads</p>
           ) : (
             enquiries.map((enq) => (
               <MobileEnquiryCard
@@ -1011,7 +1011,7 @@ function OnHoldModal({
         }}
       >
         <div>
-          <h2 className="text-lg font-bold text-white">Place Enquiry On Hold</h2>
+          <h2 className="text-lg font-bold text-white">Place Lead On Hold</h2>
           {hasEmail ? (
             <p className="text-sm text-white/50 mt-1">
               The customer will be automatically notified with the reason you select.
@@ -1120,9 +1120,9 @@ function LostModal({
         }}
       >
         <div>
-          <h2 className="text-lg font-bold text-white">Mark Enquiry as Lost</h2>
+          <h2 className="text-lg font-bold text-white">Mark Lead as Lost</h2>
           <p className="text-sm text-white/50 mt-1">
-            This will remove the enquiry from the active pipeline.
+            This will remove the lead from the active pipeline.
           </p>
         </div>
 
@@ -1169,8 +1169,8 @@ function LostModal({
 
 const MOVE_CONSEQUENCE: Partial<Record<EnquiryStatus, string>> = {
   won: 'This records the job as won and stamps the won date used in reporting.',
-  closed: 'This closes the enquiry — the end of the pipeline for a completed job.',
-  new: 'This sends the enquiry back to the start of the pipeline.',
+  closed: 'This closes the lead — the end of the pipeline for a completed job.',
+  new: 'This sends the lead back to the start of the pipeline.',
 }
 
 function MoveConfirmModal({
@@ -1199,9 +1199,9 @@ function MoveConfirmModal({
         }}
       >
         <div>
-          <h2 className="text-lg font-bold text-white">Move enquiry?</h2>
+          <h2 className="text-lg font-bold text-white">Move lead?</h2>
           <p className="text-sm text-white/60 mt-2">
-            Move <span className="text-white font-medium">&ldquo;{enquiry.client_name || 'Unnamed enquiry'}&rdquo;</span>{' '}
+            Move <span className="text-white font-medium">&ldquo;{enquiry.client_name || 'Unnamed lead'}&rdquo;</span>{' '}
             from <span className="text-white/90">{fromLabel}</span> to{' '}
             <span className="font-semibold" style={{ color: toCol?.color ?? '#fff' }}>{toLabel}</span>?
           </p>
@@ -1644,10 +1644,10 @@ export default function EnquiriesPage() {
           {/* Page header */}
           <div className="flex items-center justify-between mb-4 flex-shrink-0">
             <div>
-              <h1 className="text-2xl font-bold text-white">Enquiry Pipeline</h1>
+              <h1 className="text-2xl font-bold text-white">Lead Pipeline</h1>
               {!isLoading && !error && (
                 <p className="text-sm text-white/40 mt-0.5">
-                  {totalEnquiries} enquir{totalEnquiries === 1 ? 'y' : 'ies'}
+                  {totalEnquiries} lead{totalEnquiries === 1 ? '' : 's'}
                 </p>
               )}
             </div>
@@ -1668,7 +1668,7 @@ export default function EnquiriesPage() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                <p className="text-white/70 font-medium mb-1">Failed to load enquiries</p>
+                <p className="text-white/70 font-medium mb-1">Failed to load leads</p>
                 <p className="text-white/40 text-sm mb-4">{error}</p>
                 <button onClick={loadBoard} className="btn-secondary flex items-center gap-2 mx-auto text-sm">
                   <RefreshCw className="w-4 h-4" />

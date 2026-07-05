@@ -56,7 +56,7 @@ export default function GettingStartedPage() {
             <p>Depending on your role, you will use it to:</p>
             <ul>
               <li>
-                <strong>Office staff</strong> — Log new enquiries, manage the pipeline, book surveys,
+                <strong>Office staff</strong> — Log new leads, manage the pipeline, book surveys,
                 send quotations and reports
               </li>
               <li>
@@ -204,7 +204,7 @@ export default function GettingStartedPage() {
                 </ul>
               </li>
               <li>
-                <strong>Enquiry Pipeline summary</strong> — A coloured bar showing how many enquiries
+                <strong>Lead Pipeline summary</strong> — A coloured bar showing how many leads
                 are at each stage (New, Assigned, Surveyed, Quoted, Accepted). Click &quot;View
                 Pipeline&quot; to go to the full pipeline board
               </li>
@@ -227,7 +227,7 @@ export default function GettingStartedPage() {
               </li>
               <li>
                 <strong>Recent Activity</strong> — A feed showing the latest things that have happened
-                across all enquiries
+                across all leads
               </li>
               <li>
                 <strong>Recent Projects</strong> — A list of your most recent surveys with their
@@ -257,7 +257,7 @@ export default function GettingStartedPage() {
               </li>
             </ol>
             <p>
-              Surveyors do <strong>not</strong> see the Enquiry Pipeline summary or the Recent Activity
+              Surveyors do <strong>not</strong> see the Lead Pipeline summary or the Recent Activity
               feed. These are managed by office staff.
             </p>
           </section>
@@ -322,10 +322,10 @@ export default function GettingStartedPage() {
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70">
-                      <strong>Enquiries</strong>
+                      <strong>Leads</strong>
                     </td>
                     <td className="p-2 text-white/70">
-                      The pipeline board for managing enquiries
+                      The pipeline board for managing leads
                     </td>
                     <td className="p-2 text-white/70">Admin and Office only</td>
                   </tr>
@@ -377,7 +377,7 @@ export default function GettingStartedPage() {
               </li>
             </ul>
             <Tip variant="note">
-              <strong>Note for surveyors:</strong> You will not see the &quot;Enquiries&quot; or
+              <strong>Note for surveyors:</strong> You will not see the &quot;Leads&quot; or
               &quot;Workload&quot; items in your sidebar. These are only for office staff and
               administrators. This is normal — the system only shows you what you need.
             </Tip>
@@ -425,7 +425,7 @@ export default function GettingStartedPage() {
 
             <h3>Office</h3>
             <p>
-              Access to enquiry management, customer management, the calendar (all surveyors), and the
+              Access to lead management, customer management, the calendar (all surveyors), and the
               ability to send quotations and reports. Cannot change pricing, manage the team, or access
               system settings.
             </p>
@@ -434,7 +434,7 @@ export default function GettingStartedPage() {
             <p>
               Access to surveys, customers, and your own calendar. You can carry out surveys using the
               wizard, take photos, record voice notes, and review costings. You cannot access the
-              enquiry pipeline or change system settings.
+              lead pipeline or change system settings.
             </p>
             <p>Your role is shown at the bottom of the sidebar, underneath your name.</p>
           </section>

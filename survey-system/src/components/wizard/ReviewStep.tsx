@@ -168,7 +168,7 @@ export default function ReviewStep({ wizardData, rooms, onCommentsChange, onProp
             <div>
               <span className="text-sm text-white/50">Inspection Date</span>
               <p className="text-white font-medium">
-                {new Date(wizardData.site_details.inspection_date).toLocaleDateString()}
+                {new Date(wizardData.site_details.inspection_date).toLocaleDateString('en-GB')}
               </p>
             </div>
             <div>

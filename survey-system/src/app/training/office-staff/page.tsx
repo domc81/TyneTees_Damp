@@ -10,7 +10,7 @@ import { Inbox } from 'lucide-react'
 
 const sections = [
   { id: 'your-dashboard', label: '1. Your Dashboard' },
-  { id: 'the-enquiry-pipeline', label: '2. The Enquiry Pipeline' },
+  { id: 'the-lead-pipeline', label: '2. The Lead Pipeline' },
   { id: 'managing-customers', label: '3. Managing Customers' },
   { id: 'the-survey-list', label: '4. The Survey List' },
   { id: 'the-survey-detail-page', label: '5. The Survey Detail Page' },
@@ -35,7 +35,7 @@ export default function OfficeStaffGuidePage() {
           sections={sections}
         >
           <p>
-            This guide covers everything you need to know to manage the day-to-day running of the business through the survey system. You will learn how to handle enquiries from first contact through to a completed job, manage customers, book surveys, and send quotations and reports.
+            This guide covers everything you need to know to manage the day-to-day running of the business through the survey system. You will learn how to handle leads from first contact through to a completed job, manage customers, book surveys, and send quotations and reports.
           </p>
 
           <Tip variant="note">
@@ -52,12 +52,12 @@ export default function OfficeStaffGuidePage() {
 
             <p>When you log in, your dashboard shows you a snapshot of everything at a glance:</p>
 
-            <h3>Enquiry Pipeline Summary</h3>
+            <h3>Lead Pipeline Summary</h3>
 
-            <p>At the top of the dashboard is the <strong>Enquiry Pipeline</strong> bar. This is a coloured strip that shows how many enquiries are at each stage:</p>
+            <p>At the top of the dashboard is the <strong>Lead Pipeline</strong> bar. This is a coloured strip that shows how many leads are at each stage:</p>
 
             <ul>
-              <li><strong>New</strong> (blue) — Enquiries that have just come in and haven&apos;t been assigned yet</li>
+              <li><strong>New</strong> (blue) — Leads that have just come in and haven&apos;t been assigned yet</li>
               <li><strong>Assigned</strong> (purple) — Assigned to a surveyor but not yet surveyed</li>
               <li><strong>Surveyed</strong> (green) — Survey completed, waiting for a quotation</li>
               <li><strong>Quoted</strong> (orange) — Quotation sent to the customer</li>
@@ -67,13 +67,13 @@ export default function OfficeStaffGuidePage() {
             <p>Below the bar, you&apos;ll see four summary cards:</p>
 
             <ul>
-              <li><strong>Active</strong> — Total active enquiries across all stages</li>
-              <li><strong>Pipeline Value</strong> — Estimated total value of all active enquiries</li>
-              <li><strong>Attention Needed</strong> — Enquiries that are overdue on their SLA (service level agreement)</li>
-              <li><strong>Conversion</strong> — The percentage of enquiries that have converted to accepted jobs</li>
+              <li><strong>Active</strong> — Total active leads across all stages</li>
+              <li><strong>Pipeline Value</strong> — Estimated total value of all active leads</li>
+              <li><strong>Attention Needed</strong> — Leads that are overdue on their SLA (service level agreement)</li>
+              <li><strong>Conversion</strong> — The percentage of leads that have converted to accepted jobs</li>
             </ul>
 
-            <p>Click <strong>&quot;View Pipeline&quot;</strong> to go to the full Enquiry Pipeline board.</p>
+            <p>Click <strong>&quot;View Pipeline&quot;</strong> to go to the full Lead Pipeline board.</p>
 
             <h3>Key Statistics</h3>
 
@@ -88,7 +88,7 @@ export default function OfficeStaffGuidePage() {
 
             <h3>Recent Activity</h3>
 
-            <p>Shows the latest actions across all enquiries — new enquiries created, status changes, notes added, and so on. This helps you keep track of what&apos;s been happening, especially if you&apos;ve been away.</p>
+            <p>Shows the latest actions across all leads — new leads created, status changes, notes added, and so on. This helps you keep track of what&apos;s been happening, especially if you&apos;ve been away.</p>
 
             <h3>Recent Projects</h3>
 
@@ -97,21 +97,21 @@ export default function OfficeStaffGuidePage() {
 
           <hr />
 
-          {/* ── Section 2: The Enquiry Pipeline ── */}
-          <section id="the-enquiry-pipeline">
-            <h2>2. The Enquiry Pipeline</h2>
+          {/* ── Section 2: The Lead Pipeline ── */}
+          <section id="the-lead-pipeline">
+            <h2>2. The Lead Pipeline</h2>
 
-            <p>The Enquiry Pipeline is the heart of the office workflow. It&apos;s where you track every potential job from the moment a customer calls through to completion.</p>
+            <p>The Lead Pipeline is the heart of the office workflow. It&apos;s where you track every potential job from the moment a customer calls through to completion.</p>
 
             <h3>Opening the Pipeline</h3>
 
-            <p>Click <strong>Enquiries</strong> in the sidebar to open the pipeline.</p>
+            <p>Click <strong>Pipeline</strong> in the sidebar to open the pipeline.</p>
 
-            <TrainingImage src="/images/training/03-enquiry-pipeline.png" alt="Enquiry Pipeline" caption="Enquiry Pipeline" />
+            <TrainingImage src="/images/training/03-enquiry-pipeline.png" alt="Lead Pipeline" caption="Lead Pipeline" />
 
             <h3>Understanding the Board</h3>
 
-            <p>The pipeline is a <strong>Kanban board</strong> — a board with columns, where each column represents a stage in the process. Enquiry cards sit in the column that matches their current stage.</p>
+            <p>The pipeline is a <strong>Kanban board</strong> — a board with columns, where each column represents a stage in the process. Lead cards sit in the column that matches their current stage.</p>
 
             <p>The columns are:</p>
 
@@ -126,7 +126,7 @@ export default function OfficeStaffGuidePage() {
                 <tbody>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70"><strong>New</strong></td>
-                    <td className="p-2 text-white/70">A new enquiry has come in — needs to be reviewed and assigned</td>
+                    <td className="p-2 text-white/70">A new lead has come in — needs to be reviewed and assigned</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70"><strong>Assigned</strong></td>
@@ -154,9 +154,9 @@ export default function OfficeStaffGuidePage() {
 
             <p>There are also <strong>Declined</strong> and <strong>On Hold</strong> statuses, but these are hidden by default. Use the <strong>&quot;Show declined &amp; on hold&quot;</strong> toggle at the top to reveal them.</p>
 
-            <p>Each column shows a count badge (e.g. &quot;2&quot;) telling you how many enquiries are in that stage.</p>
+            <p>Each column shows a count badge (e.g. &quot;2&quot;) telling you how many leads are in that stage.</p>
 
-            <h3>Reading an Enquiry Card</h3>
+            <h3>Reading an Lead Card</h3>
 
             <p>Each card on the board shows:</p>
 
@@ -166,20 +166,20 @@ export default function OfficeStaffGuidePage() {
               <li><strong>Address</strong> — The property address</li>
               <li><strong>Survey type badge</strong> — Colour-coded: Damp, Condensation, Timber, or Woodworm</li>
               <li><strong>Priority indicator</strong> — A coloured dot (red = urgent, amber = medium, green = low)</li>
-              <li><strong>SLA indicator</strong> — Shows if the enquiry is within or overdue on its target response time</li>
+              <li><strong>SLA indicator</strong> — Shows if the lead is within or overdue on its target response time</li>
               <li><strong>Quick action icons</strong> — Small icons at the bottom for phone, email, and other quick actions</li>
             </ul>
 
-            <h3>Creating a New Enquiry</h3>
+            <h3>Creating a New Lead</h3>
 
             <p>When a customer calls or emails to enquire about a survey:</p>
 
             <ol>
-              <li>Click the <strong>&quot;+ New Enquiry&quot;</strong> button in the top-right corner</li>
-              <li>The New Enquiry form opens with three steps:</li>
+              <li>Click the <strong>&quot;+ New Lead&quot;</strong> button in the top-right corner</li>
+              <li>The New Lead form opens with three steps:</li>
             </ol>
 
-            <TrainingImage src="/images/training/05-new-enquiry-form.png" alt="New Enquiry Form" caption="New Enquiry Form" />
+            <TrainingImage src="/images/training/05-new-enquiry-form.png" alt="New Lead Form" caption="New Lead Form" />
 
             <p><strong>Step 1 — Client:</strong></p>
 
@@ -195,7 +195,7 @@ export default function OfficeStaffGuidePage() {
             <ul>
               <li>Enter the <strong>property address</strong> where the survey will take place</li>
               <li>Select the <strong>survey type</strong> (Damp, Condensation, Timber, or Woodworm)</li>
-              <li>Add any <strong>notes</strong> about the enquiry</li>
+              <li>Add any <strong>notes</strong> about the lead</li>
               <li>Click <strong>Continue</strong></li>
             </ul>
 
@@ -204,58 +204,58 @@ export default function OfficeStaffGuidePage() {
             <ul>
               <li>Optionally assign a <strong>surveyor</strong> and pick a <strong>date/time</strong></li>
               <li>Or leave this blank and assign later</li>
-              <li>Click <strong>Create Enquiry</strong> to save</li>
+              <li>Click <strong>Create Lead</strong> to save</li>
             </ul>
 
-            <p>The new enquiry will appear in the <strong>New</strong> column on the pipeline board.</p>
+            <p>The new lead will appear in the <strong>New</strong> column on the pipeline board.</p>
 
-            <h3>Moving Enquiries Between Columns</h3>
+            <h3>Moving Leads Between Columns</h3>
 
-            <p>You can drag and drop enquiry cards between columns:</p>
+            <p>You can drag and drop lead cards between columns:</p>
 
             <ol>
-              <li>Click and hold on an enquiry card</li>
+              <li>Click and hold on an lead card</li>
               <li>Drag it to the appropriate column</li>
               <li>Release to drop it</li>
             </ol>
 
-            <p>The system will update the enquiry&apos;s status automatically. Some moves will trigger additional actions — for example, moving an enquiry to &quot;Assigned&quot; will ask you to select a surveyor.</p>
+            <p>The system will update the lead&apos;s status automatically. Some moves will trigger additional actions — for example, moving an lead to &quot;Assigned&quot; will ask you to select a surveyor.</p>
 
             <Tip variant="tip">
-              The system also moves cards automatically when certain things happen. For example, when a survey is completed, the enquiry will move to &quot;Surveyed&quot; on its own.
+              The system also moves cards automatically when certain things happen. For example, when a survey is completed, the lead will move to &quot;Surveyed&quot; on its own.
             </Tip>
 
-            <h3>Opening an Enquiry Detail</h3>
+            <h3>Opening an Lead Detail</h3>
 
-            <p>Click on any enquiry card to open the <strong>detail drawer</strong> — a panel that slides in from the right side of the screen. The drawer has tabs:</p>
+            <p>Click on any lead card to open the <strong>detail drawer</strong> — a panel that slides in from the right side of the screen. The drawer has tabs:</p>
 
             <ul>
-              <li><strong>Details</strong> — All the enquiry information (customer, address, type, priority, assigned surveyor, dates)</li>
-              <li><strong>Activity</strong> — A timeline of everything that&apos;s happened with this enquiry</li>
+              <li><strong>Details</strong> — All the lead information (customer, address, type, priority, assigned surveyor, dates)</li>
+              <li><strong>Activity</strong> — A timeline of everything that&apos;s happened with this lead</li>
               <li><strong>Notes</strong> — Internal notes (only visible to staff, not the customer)</li>
             </ul>
 
             <p>You can edit most fields directly from the drawer — click on a field value to change it.</p>
 
-            <h3>Putting an Enquiry On Hold</h3>
+            <h3>Putting an Lead On Hold</h3>
 
             <p>If a customer asks to delay or you&apos;re waiting for information:</p>
 
             <ol>
-              <li>Open the enquiry</li>
+              <li>Open the lead</li>
               <li>Change the status to <strong>On Hold</strong></li>
               <li>Select a reason from the template list (or write a custom reason)</li>
               <li>Optionally send the customer an email explaining the hold</li>
             </ol>
 
-            <p>On-hold enquiries are hidden from the main board by default. Toggle &quot;Show declined &amp; on hold&quot; to see them.</p>
+            <p>On-hold leads are hidden from the main board by default. Toggle &quot;Show declined &amp; on hold&quot; to see them.</p>
 
             <h3>Convert and Book</h3>
 
-            <p>When you&apos;re ready to convert an enquiry into a proper survey booking:</p>
+            <p>When you&apos;re ready to convert an lead into a proper survey booking:</p>
 
             <ol>
-              <li>Open the enquiry</li>
+              <li>Open the lead</li>
               <li>Click <strong>Convert &amp; Book</strong></li>
               <li>
                 The system will:
@@ -277,7 +277,7 @@ export default function OfficeStaffGuidePage() {
 
             <ul>
               <li><strong>Search box</strong> — Search by name, address, or reference number</li>
-              <li><strong>Assignee filter</strong> — Show only enquiries assigned to a specific surveyor</li>
+              <li><strong>Assignee filter</strong> — Show only leads assigned to a specific surveyor</li>
               <li><strong>Type filter</strong> — Show only a specific survey type (Damp, Condensation, etc.)</li>
             </ul>
           </section>
@@ -355,7 +355,7 @@ export default function OfficeStaffGuidePage() {
             </ol>
 
             <Tip variant="tip">
-              You don&apos;t always need to create customers manually. When you use Convert &amp; Book on an enquiry, a customer record is created automatically from the enquiry details.
+              You don&apos;t always need to create customers manually. When you use Convert &amp; Book on an lead, a customer record is created automatically from the lead details.
             </Tip>
 
             <h3>Customer Detail Page</h3>
@@ -545,8 +545,8 @@ export default function OfficeStaffGuidePage() {
             <p>From the booking modal, you can:</p>
 
             <ul>
-              <li><strong>Confirm</strong> a provisional booking — changes status to Scheduled</li>
-              <li><strong>Mark as Paid</strong> — confirms the survey fee payment and moves to Scheduled</li>
+              <li><strong>Confirm</strong> a provisional booking — changes status to Booked</li>
+              <li><strong>Mark as Paid</strong> — confirms the survey fee payment and moves to Booked</li>
               <li><strong>Reschedule</strong> — Opens the slot picker to choose a new date/time</li>
               <li><strong>Cancel</strong> — Cancels the booking (with confirmation dialog)</li>
               <li><strong>Mark as Completed</strong> — Records the survey as done</li>
@@ -554,7 +554,7 @@ export default function OfficeStaffGuidePage() {
             </ul>
 
             <Tip variant="important">
-              Bookings follow a set path. A provisional booking can become scheduled or cancelled. A scheduled booking can become completed, no show, or cancelled. Completed, cancelled, and no show are final — they can&apos;t be changed.
+              Bookings follow a set path. A provisional booking can become booked or cancelled. A booked appointment can become completed, no show, or cancelled. Completed, cancelled, and no show are final — they can&apos;t be changed.
             </Tip>
 
             <h3>Managing Availability</h3>
@@ -612,7 +612,7 @@ export default function OfficeStaffGuidePage() {
             <ul>
               <li>They provide an electronic signature</li>
               <li>A <strong>deposit payment</strong> record is automatically created</li>
-              <li>The enquiry moves towards the &quot;Accepted&quot; stage</li>
+              <li>The lead moves towards the &quot;Accepted&quot; stage</li>
             </ul>
 
             <h3>Copying the Customer Link</h3>
@@ -687,7 +687,7 @@ export default function OfficeStaffGuidePage() {
             <h3>Survey Fee</h3>
 
             <ul>
-              <li>Created when you use <strong>Convert &amp; Book</strong> on an enquiry</li>
+              <li>Created when you use <strong>Convert &amp; Book</strong> on an lead</li>
               <li>The customer receives a payment link by email</li>
               <li>They pay online via the <strong>Pay</strong> page</li>
               <li>Once paid, the provisional booking automatically confirms to &quot;Scheduled&quot;</li>
@@ -700,12 +700,12 @@ export default function OfficeStaffGuidePage() {
               <li>Created automatically when a customer <strong>accepts a quotation</strong></li>
               <li>The deposit amount is calculated as a percentage of the job total (set in pricing configuration)</li>
               <li>Office staff <strong>mark the deposit as paid</strong> manually once received</li>
-              <li>When the deposit is marked as paid, the enquiry status updates to &quot;Won&quot; and moves to the Completed column</li>
+              <li>When the deposit is marked as paid, the lead status updates to &quot;Won&quot; and moves to the Completed column</li>
             </ul>
 
             <h3>Sending a Payment Link</h3>
 
-            <p>From the survey detail page or the enquiry, click <strong>&quot;Send Payment Link&quot;</strong> to email the customer their survey fee payment link.</p>
+            <p>From the survey detail page or the lead, click <strong>&quot;Send Payment Link&quot;</strong> to email the customer their survey fee payment link.</p>
 
             <h3>Marking a Payment as Paid</h3>
 
@@ -728,7 +728,7 @@ export default function OfficeStaffGuidePage() {
 
             <ol>
               <li><strong>Check the Dashboard</strong> — Look at the pipeline summary and recent activity</li>
-              <li><strong>Review the Pipeline</strong> — Check for new enquiries that need assigning</li>
+              <li><strong>Review the Pipeline</strong> — Check for new leads that need assigning</li>
               <li><strong>Check the Calendar</strong> — See today&apos;s and tomorrow&apos;s bookings</li>
               <li><strong>Follow up</strong> — Check for overdue SLAs (red indicators on the pipeline)</li>
               <li><strong>Process completed surveys</strong> — Generate quotations and send to customers</li>
@@ -746,20 +746,20 @@ export default function OfficeStaffGuidePage() {
                 </thead>
                 <tbody>
                   <tr className="border-b border-white/5">
-                    <td className="p-2 text-white/70">Log a new enquiry</td>
-                    <td className="p-2 text-white/70">Enquiries &rarr; + New Enquiry</td>
+                    <td className="p-2 text-white/70">Log a new lead</td>
+                    <td className="p-2 text-white/70">Leads &rarr; + New Lead</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70">Add a new customer</td>
                     <td className="p-2 text-white/70">Customers &rarr; + Add Customer</td>
                   </tr>
                   <tr className="border-b border-white/5">
-                    <td className="p-2 text-white/70">Assign a surveyor to an enquiry</td>
-                    <td className="p-2 text-white/70">Enquiry card &rarr; Detail drawer &rarr; Assign</td>
+                    <td className="p-2 text-white/70">Assign a surveyor to an lead</td>
+                    <td className="p-2 text-white/70">Lead card &rarr; Detail drawer &rarr; Assign</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70">Book a survey</td>
-                    <td className="p-2 text-white/70">Enquiry &rarr; Convert &amp; Book</td>
+                    <td className="p-2 text-white/70">Lead &rarr; Convert &amp; Book</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70">See today&apos;s bookings</td>
@@ -806,7 +806,7 @@ export default function OfficeStaffGuidePage() {
                 <tbody>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70"><strong>New</strong></td>
-                    <td className="p-2 text-white/70">Enquiry just received, nobody assigned</td>
+                    <td className="p-2 text-white/70">Lead just received, nobody assigned</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70"><strong>Assigned</strong></td>
@@ -856,8 +856,8 @@ export default function OfficeStaffGuidePage() {
                     <td className="p-2 text-white/70">Booked but waiting for survey fee payment</td>
                   </tr>
                   <tr className="border-b border-white/5">
-                    <td className="p-2 text-white/70"><strong>Scheduled</strong></td>
-                    <td className="p-2 text-white/70">Confirmed — survey fee paid, appointment set</td>
+                    <td className="p-2 text-white/70"><strong>Booked</strong></td>
+                    <td className="p-2 text-white/70">Survey fee paid, appointment set</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="p-2 text-white/70"><strong>Completed</strong></td>

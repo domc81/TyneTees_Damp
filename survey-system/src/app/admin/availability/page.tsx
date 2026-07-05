@@ -280,7 +280,7 @@ function AvailabilityPageInner() {
                   <WeeklyHoursSection
                     surveyorId={selectedSurveyorId}
                     surveyorName={selectedSurveyor.display_name}
-                    canEdit={isAdmin}
+                    canEdit={isAdmin || isOffice}
                     allSurveyors={surveyors}
                   />
 
@@ -406,7 +406,7 @@ function WeeklyHoursSection({
           <div>
             <h3 className="text-lg font-semibold text-white">Standard Weekly Hours</h3>
             <p className="text-sm text-white/50">
-              {canEdit ? 'Set the regular working schedule' : 'View-only — admin access required to edit'}
+              {canEdit ? 'Set the regular working schedule' : 'View-only — admin or office access required to edit'}
             </p>
           </div>
         </div>

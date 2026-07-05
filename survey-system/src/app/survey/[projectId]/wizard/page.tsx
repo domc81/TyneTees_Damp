@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Save, Clock, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { useSmartBack } from '@/hooks/useSmartBack'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -47,9 +48,12 @@ export default function SurveyWizardPage() {
   const router = useRouter()
   const projectId = params.projectId as string
   const goBack = useSmartBack(`/surveys/${projectId}`)
+  const { role } = useAuth()
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0)
+  const [projectNumber, setProjectNumber] = useState<string | null>(null)
+  const [completed, setCompleted] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -97,6 +101,17 @@ export default function SurveyWizardPage() {
         // Load photos
         const loadedPhotos = await loadSurveyPhotos(projectId)
         setPhotos(loadedPhotos)
+
+        // Load the survey reference for the header (falls back to UUID fragment)
+        const supabase = getSupabase()
+        if (supabase) {
+          const { data: surveyRow } = await supabase
+            .from('surveys')
+            .select('project_number')
+            .eq('id', projectId)
+            .single()
+          setProjectNumber(surveyRow?.project_number ?? null)
+        }
       } catch (err) {
         console.error('Failed to load wizard data:', err)
         setError('Failed to load survey data. Please refresh the page.')
@@ -261,8 +276,14 @@ export default function SurveyWizardPage() {
         body: JSON.stringify({ event_type: 'survey_completed', survey_id: projectId }),
       }).catch(err => console.error('Notification trigger failed:', err))
 
-      // Redirect to costing review page
-      router.push(`/survey/${projectId}/costing`)
+      // Surveyors get a confirmation screen — costing is office work, not
+      // the on-site next step. Office/admin go straight to costing as before.
+      if (role === 'surveyor') {
+        setCompleted(true)
+        setIsSaving(false)
+      } else {
+        router.push(`/survey/${projectId}/costing`)
+      }
     } catch (err) {
       console.error('Failed to complete survey:', err)
       setError('Failed to save survey. Please try again.')
@@ -410,6 +431,39 @@ export default function SurveyWizardPage() {
     )
   }
 
+  // Post-submit confirmation (surveyor role)
+  if (completed) {
+    return (
+      <ProtectedRoute>
+        <Layout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="max-w-md w-full text-center space-y-5">
+              <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto" />
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Survey Submitted</h2>
+                <p className="text-sm text-white/60">
+                  {projectNumber ? `Survey ${projectNumber} is complete. ` : 'Your survey is complete. '}
+                  The office team has been notified and will prepare the costing, report and quotation.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Link href="/surveys" className="btn-primary w-full py-2.5 text-sm text-center">
+                  Back to My Surveys
+                </Link>
+                <Link
+                  href={`/survey/${projectId}/costing`}
+                  className="btn-secondary w-full py-2.5 text-sm text-center"
+                >
+                  View Costing
+                </Link>
+              </div>
+            </div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -426,7 +480,7 @@ export default function SurveyWizardPage() {
                 Back
               </button>
               <h2 className="text-2xl font-bold text-white mt-2">Survey Wizard</h2>
-              <p className="text-sm text-white/60">Project #{projectId.slice(0, 8)}</p>
+              <p className="text-sm text-white/60">{projectNumber ?? `Project #${projectId.slice(0, 8)}`}</p>
             </div>
             <div className="flex items-center gap-3">
               {lastSaved && !error && (

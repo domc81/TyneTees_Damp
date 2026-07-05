@@ -67,7 +67,7 @@ const EVENT_GROUPS: { label: string; events: string[] }[] = [
     events: ['report_generated', 'report_published'],
   },
   {
-    label: 'Enquiries & System',
+    label: 'Leads & System',
     events: ['enquiry_created', 'system_alert'],
   },
 ]
