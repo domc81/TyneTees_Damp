@@ -114,7 +114,7 @@ function HandoverContent() {
   const params = useParams()
   const projectId = params.projectId as string
   const { goBack } = useSmartBack()
-  const { user } = useAuth()
+  const { profile } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -343,7 +343,7 @@ function HandoverContent() {
 
     setConfirmingHandover(true)
     try {
-      await markEnquiryClosed(handoverData.enquiry.id, user?.id || null)
+      await markEnquiryClosed(handoverData.enquiry.id, profile?.id || null)
       setHandedOver(true)
       toast.success('Handover complete — lead closed')
     } catch {
