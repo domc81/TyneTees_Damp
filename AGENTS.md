@@ -55,6 +55,7 @@ All commands run from `survey-system/` directory:
 
 ## Gotchas
 
+- **Two different user UUIDs exist — always use `profile.id`, never `user.id`.** `useAuth()` exposes `user.id` (Supabase Auth UUID from `auth.users`) and `profile.id` (`user_profiles` UUID). All FK columns (`enquiry_activity.user_id`, `enquiries.assigned_to`, `payments.recorded_by`, `survey_bookings.created_by`, `notifications.user_id`) reference `user_profiles.id`. Passing `user.id` causes FK violations.
 - `typescript.ignoreBuildErrors: true` in next.config.mjs — type errors do not fail the build. Run `npm run lint` to catch issues before push.
 - TTDP Postgres is not host-mapped. Access only via Kong API gateway or `docker exec -it supabase-db-y04kk0wwoswogw0oowcs04gw psql -U supabase_admin -d postgres`.
 - Edge functions in `supabase/functions/` are legacy dead code — all LLM/email operations use Next.js API routes under `src/app/api/`.

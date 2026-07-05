@@ -431,6 +431,7 @@ Kanban board with drag-and-drop columns: New → Awaiting Payment → Booked →
 - **Travel overhead** (`src/lib/travel-overhead.ts`) runs after the pricing engine
 - **TypeScript build errors are ignored** (`ignoreBuildErrors: true` in next.config.mjs) — use `npm run lint` for checks
 - Toast notifications use `sonner` — never use `alert()` calls
+- **User ID convention: always use `user_profiles.id`, never `auth.users.id`.** The auth context exposes both `user.id` (Supabase Auth UUID) and `profile.id` (user_profiles UUID) — they are different values. All FK columns in the app (`enquiry_activity.user_id`, `enquiries.assigned_to`, `payments.recorded_by`, `survey_bookings.created_by`, `notifications.user_id`) reference `user_profiles.id`. Passing the auth UUID causes silent FK violations. When passing a user identifier to any data function, always use `profile?.id` from `useAuth()`, not `user?.id`.
 - **Enquiry source values** are stored in Title Case
 - **Server actions** body size limit is 10MB (for photo uploads)
 - **Edge functions** in `supabase/functions/` are legacy — all LLM/email operations use Next.js API routes
