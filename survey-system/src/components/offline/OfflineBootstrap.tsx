@@ -29,6 +29,14 @@ export default function OfflineBootstrap() {
     // Register op executors BEFORE the engine may try to flush them.
     registerPhotoExecutors()
 
+    // Register the PWA service worker (offline shell). skipWaiting +
+    // clientsClaim mean each deploy activates on next load.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .catch((err) => console.warn('[offline] SW registration failed:', err))
+    }
+
     const stopConnectivity = startConnectivityMonitor()
     const stopSync = startSyncEngine()
 

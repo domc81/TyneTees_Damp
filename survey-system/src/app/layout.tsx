@@ -32,6 +32,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${name} Survey System`,
     description: `Professional survey and costing system for ${profile?.name || 'damp proofing, timber, and condensation surveys'}`,
+    // PWA — iOS home-screen install (Android uses the web manifest).
+    appleWebApp: { capable: true, title: 'TTDP', statusBarStyle: 'black-translucent' },
+    icons: {
+      icon: '/icons/icon-192.png',
+      apple: '/icons/apple-touch-icon.png',
+    },
   }
 }
 

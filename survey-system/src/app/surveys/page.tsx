@@ -23,6 +23,7 @@ import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import { useAuth } from '@/context/AuthContext'
 import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
 import { OfflineReadyBadge } from '@/components/offline/OfflineReadyBadge'
+import { InstallHint } from '@/components/offline/InstallHint'
 import Layout from '@/components/layout'
 
 const surveyTypeConfig: Record<string, { icon: typeof Droplets; color: string; label: string; gradient: string }> = {
@@ -94,6 +95,7 @@ export default function ProjectsPage() {
                 <p className="text-white/60">{filteredSurveys.length} projects</p>
               </div>
               <div className="flex items-center gap-3">
+                {isSurveyor && <InstallHint />}
                 {isSurveyor && <SyncStatusPill />}
                 {(isAdmin || isOffice) && (
                   <Link

@@ -1,0 +1,6 @@
+
+# Serwist / PWA service worker (generated at build time)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/swe-worker-*.js.map
