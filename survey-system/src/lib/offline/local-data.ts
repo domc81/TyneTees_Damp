@@ -17,6 +17,7 @@ import { loadSurveyPhotos } from '@/lib/survey-photo-service'
 import { deriveSurveyTags } from '@/lib/survey-tags'
 import type { SurveyWizardData, SurveyRoomRow } from '@/types/survey-wizard.types'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
+import type { Survey } from '@/lib/supabase-data'
 
 /** Thrown when a survey has no local mirror AND the device is offline. */
 export class NotAvailableOfflineError extends Error {
@@ -225,6 +226,33 @@ export async function prefetchMirror(surveyId: string): Promise<{ photos: Survey
   const fresh = await fetchFromServer(surveyId)
   await upsertMirrorFromServer(surveyId, fresh)
   return { photos: fresh.photos }
+}
+
+// ─── /surveys list cache ─────────────────────────────────────────────────────
+// getSurveys() swallows network errors and returns [] — offline, the surveys
+// list page would silently render empty. Cache the last successful load in kv
+// (written by the page on load and by prefetch each cycle) so the list stays
+// browsable offline. List-only: the mirror above remains the wizard's source.
+
+const SURVEYS_LIST_KV_KEY = 'surveysListCache'
+
+export async function cacheSurveysList(surveys: Survey[]): Promise<void> {
+  if (!isOfflineDbAvailable() || surveys.length === 0) return
+  try {
+    await getDB().kv.put({ key: SURVEYS_LIST_KV_KEY, value: surveys })
+  } catch {
+    // best-effort — storage pressure etc.
+  }
+}
+
+export async function readCachedSurveysList(): Promise<Survey[] | null> {
+  if (!isOfflineDbAvailable()) return null
+  try {
+    const row = await getDB().kv.get(SURVEYS_LIST_KV_KEY)
+    return (row?.value as Survey[]) ?? null
+  } catch {
+    return null
+  }
 }
 
 /**

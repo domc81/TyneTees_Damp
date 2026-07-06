@@ -10,8 +10,9 @@
 
 import { format, addDays } from 'date-fns'
 import { getBookingsForSurveyor } from '@/lib/calendar-data'
+import { getSurveys } from '@/lib/supabase-data'
 import { getPhotoUrl } from '@/lib/survey-photo-service'
-import { prefetchMirror } from './local-data'
+import { cacheSurveysList, prefetchMirror } from './local-data'
 import { getDB, isOfflineDbAvailable } from './db'
 import { isOnline } from './connectivity'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
@@ -72,6 +73,15 @@ export async function prefetchSurveyorSurveys(profileId: string | null | undefin
       } catch (err) {
         console.warn('[prefetch] mirror failed for', sid, err)
       }
+    }
+
+    // Keep the /surveys list browsable offline — cache the last known list so
+    // a cold offline launch shows projects even if /surveys was never opened
+    // online in this browser (the page also write-through caches on load).
+    try {
+      await cacheSurveysList(await getSurveys())
+    } catch (err) {
+      console.warn('[prefetch] surveys list cache failed:', err)
     }
 
     // Seed the shell (start_url + login + surveys list) and each wizard page so

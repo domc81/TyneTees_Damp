@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { getSurveys } from '@/lib/supabase-data'
+import { cacheSurveysList, readCachedSurveysList } from '@/lib/offline/local-data'
 import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
@@ -49,14 +50,32 @@ export default function ProjectsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [isLoading, setIsLoading] = useState(true)
+  const [isFromCache, setIsFromCache] = useState(false)
 
   useEffect(() => {
     async function loadSurveys() {
       try {
         const data = await getSurveys()
-        setSurveys(data)
+        if (data.length > 0) {
+          setSurveys(data)
+          void cacheSurveysList(data)
+        } else {
+          // getSurveys() swallows network errors and returns [] — offline this
+          // is indistinguishable from an empty DB, so fall back to the last
+          // successfully downloaded list if one exists.
+          const cached = await readCachedSurveysList()
+          if (cached && cached.length > 0) {
+            setSurveys(cached)
+            setIsFromCache(true)
+          }
+        }
       } catch (err) {
         console.error('Error loading surveys:', err)
+        const cached = await readCachedSurveysList()
+        if (cached && cached.length > 0) {
+          setSurveys(cached)
+          setIsFromCache(true)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -93,6 +112,11 @@ export default function ProjectsPage() {
               <div>
                 <h1 className="text-2xl lg:text-3xl font-bold text-white">Projects</h1>
                 <p className="text-white/60">{filteredSurveys.length} projects</p>
+                {isFromCache && (
+                  <p className="text-amber-400/90 text-sm mt-1">
+                    No connection — showing the last downloaded list
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {isSurveyor && <InstallHint />}
