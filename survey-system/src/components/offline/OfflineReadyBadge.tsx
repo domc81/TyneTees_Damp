@@ -67,12 +67,15 @@ export function OfflineReadyBadge({
     }
   }
 
+  // Same pill language as SyncStatusPill — these need to be legible at a
+  // glance in the field ("green pill = safe to lose signal").
+  const pill =
+    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border'
+
   if (downloading) {
     return (
-      <span
-        className={`inline-flex items-center gap-1 text-[11px] font-medium text-brand-300 ${className}`}
-      >
-        <Loader2 className="w-3 h-3 animate-spin" />
+      <span className={`${pill} bg-brand-500/15 border-brand-400/40 text-brand-200 ${className}`}>
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
         Downloading…
       </span>
     )
@@ -84,10 +87,10 @@ export function OfflineReadyBadge({
       <button
         type="button"
         onClick={handleDownload}
-        className={`inline-flex items-center gap-1 text-[11px] font-medium text-white/60 hover:text-brand-300 border border-white/20 hover:border-brand-400/40 rounded-full px-2 py-0.5 transition-colors ${className}`}
+        className={`${pill} bg-brand-500/20 border-brand-400/50 text-brand-200 hover:bg-brand-500/35 hover:border-brand-300/60 transition-colors ${className}`}
         title="Download this survey to work on it without signal"
       >
-        <Download className="w-3 h-3" />
+        <Download className="w-3.5 h-3.5" />
         Download
       </button>
     )
@@ -96,10 +99,10 @@ export function OfflineReadyBadge({
   if (info.state === 'unsynced') {
     return (
       <span
-        className={`inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 ${className}`}
+        className={`${pill} bg-amber-500/15 border-amber-400/40 text-amber-300 ${className}`}
         title="Changes saved on this device are waiting to sync"
       >
-        <CloudOff className="w-3 h-3" />
+        <CloudOff className="w-3.5 h-3.5" />
         Unsynced changes
       </span>
     )
@@ -110,10 +113,10 @@ export function OfflineReadyBadge({
     : ''
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 ${className}`}
+      className={`${pill} bg-emerald-500/15 border-emerald-400/40 text-emerald-300 ${className}`}
       title="Downloaded for offline use"
     >
-      <CheckCircle2 className="w-3 h-3" />
+      <CheckCircle2 className="w-3.5 h-3.5" />
       Downloaded{time ? ` ${time}` : ''}
     </span>
   )
