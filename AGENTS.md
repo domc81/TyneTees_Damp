@@ -33,7 +33,7 @@ All commands run from `survey-system/` directory:
 ## Ground truth
 
 - Code of record: `survey-system/src/`
-- Data model: `survey-system/supabase/migrations/` (42 SQL migrations + 1 root-level, applied manually via docker exec)
+- Data model: `survey-system/supabase/migrations/` (applied manually via docker exec; see How to work locally)
 - Pricing logic source of truth: original Excel workbooks at project root (`*.xlsm`, `*.xls`) — all 220 costing line templates must match these
 - Architecture: `docs/ARCHITECTURE.md`
 - Deploy/rollback: `docs/DEPLOYMENT.md`
@@ -52,7 +52,7 @@ All commands run from `survey-system/` directory:
 - Display terminology (frozen 2026-07-05): the pipeline object is a **"Lead"** in all UI text (DB tables/types stay `enquiries`/`Enquiry`); booking status `scheduled` displays as **"Booked"** everywhere. `enquiry_activity` titles store raw status slugs — render via `humanizeActivityTitle()` from `src/lib/status-labels.ts`; never write display labels into activity rows
 - Server actions body size limit is 10MB (photo uploads)
 - Route param `[projectId]` in `/survey/` routes is historical — it refers to survey ID
-- **Surveys are created only through the pipeline** (New Lead → Convert & Book → `createSurveyFromEnquiry()`, the sole creation path since 2026-07-05). Never re-add a direct survey-creation form — surveys without `enquiry_id` are invisible to fees, bookings, and pipeline tracking. Repeat customers (landlords/agents) link via the New Lead existing-customer search (`enquiries.customer_id`); free revisits use Convert & Book's "No survey fee" option (booking created `scheduled`, lead goes straight to `booked`, no payment record)
+- **Surveys are created only through the pipeline** (New Lead → Convert & Book → `createSurveyFromEnquiry()`, the sole creation path since 2026-07-05). Never re-add a direct survey-creation form — surveys without `enquiry_id` are invisible to fees, bookings, and pipeline tracking. Repeat customers (landlords/agents) link via the New Lead existing-customer search (`enquiries.customer_id`); free revisits use Convert & Book's "No survey fee" option (booking created `scheduled`, lead goes straight to `booked`, no payment record). Every survey now has an enquiry: the 22 pre-pipeline orphans were backfilled 2026-07-06 (migration `20260706000001`) — backfilled enquiries carry `source = 'Historical Import'` and `internal_reference` = the survey's project number
 - Survey list lives at `/surveys`; per-survey sub-pages (wizard, costing, report, handover, installer-info) live under `/survey/[projectId]/`
 - `client_name` can be null — always use `(project.client_name || '')`
 
