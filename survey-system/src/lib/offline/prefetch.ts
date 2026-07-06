@@ -24,14 +24,25 @@ function localDate(offsetDays = 0): string {
   return format(addDays(new Date(), offsetDays), 'yyyy-MM-dd')
 }
 
-/** Ask the service worker (once it exists) to cache these page URLs. No-op
- *  until the SW ships (Phase 5) / is controlling the page. */
-function sendSeedUrls(urls: string[]): void {
+/** The pages a survey needs offline: the hub (redirects to the wizard when its
+ *  online-only data load fails) and the wizard itself. */
+function surveyPageUrls(surveyId: string): string[] {
+  return [`/surveys/${surveyId}`, `/survey/${surveyId}/wizard`]
+}
+
+/** Ask the service worker to cache these page URLs. Posts to the registration's
+ *  ACTIVE worker via serviceWorker.ready — `controller` is null for the entire
+ *  first session after install (the page loaded before the SW claimed it),
+ *  which used to silently skip seeding on a freshly installed iOS app. */
+async function sendSeedUrls(urls: string[]): Promise<void> {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) return
-  const controller = navigator.serviceWorker.controller
-  if (!controller) return
   try {
-    controller.postMessage({ type: 'SEED_URLS', urls })
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
+    ])
+    const worker = reg?.active ?? navigator.serviceWorker.controller
+    worker?.postMessage({ type: 'SEED_URLS', urls })
   } catch (err) {
     console.warn('[prefetch] SEED_URLS post failed:', err)
   }
@@ -84,17 +95,38 @@ export async function prefetchSurveyorSurveys(profileId: string | null | undefin
       console.warn('[prefetch] surveys list cache failed:', err)
     }
 
-    // Seed the shell (start_url + login + surveys list) and each wizard page so
-    // a cold offline launch can navigate straight in (even to a wizard never
-    // opened in this browser). The SW also seeds the shell on activate; this
-    // keeps it fresh between deploys.
-    sendSeedUrls(['/', '/login', '/surveys', ...surveyIds.map((sid) => `/survey/${sid}/wizard`)])
+    // Seed the shell (start_url + login + surveys list) and each survey's
+    // hub + wizard pages so a cold offline launch can navigate straight in
+    // (even to a wizard never opened in this browser). The SW also seeds the
+    // shell on activate; this keeps it fresh between deploys.
+    await sendSeedUrls(['/', '/login', '/surveys', ...surveyIds.flatMap(surveyPageUrls)])
 
     await getDB().kv.put({ key: 'lastPrefetchAt', value: Date.now() })
   } catch (err) {
     console.warn('[prefetch] run failed:', err)
   } finally {
     prefetching = false
+  }
+}
+
+/**
+ * Manually download ONE survey for offline use (the Download button on the
+ * /surveys list) — mirror it, warm its photo cache, seed its pages. Booking-
+ * driven prefetch only covers today+tomorrow's bookings; this covers the rest.
+ * Returns false when the download could not complete (offline / fetch failed).
+ */
+export async function downloadSurveyOffline(surveyId: string): Promise<boolean> {
+  if (!isOfflineDbAvailable() || !isOnline()) return false
+  try {
+    // null = skipped because local state is ahead (pending ops) — the survey
+    // is already fully available offline, so still seed pages and succeed.
+    const res = await prefetchMirror(surveyId)
+    if (res?.photos?.length) await warmPhotoCache(res.photos)
+    await sendSeedUrls(surveyPageUrls(surveyId))
+    return true
+  } catch (err) {
+    console.warn('[prefetch] manual download failed for', surveyId, err)
+    return false
   }
 }
 

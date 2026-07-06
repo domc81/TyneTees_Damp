@@ -56,6 +56,16 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ])
 }
 
+/** Does this survey have a local mirror (i.e. is it usable offline)? */
+export async function hasLocalMirror(surveyId: string): Promise<boolean> {
+  if (!isOfflineDbAvailable()) return false
+  try {
+    return !!(await getDB().surveys.get(surveyId))
+  } catch {
+    return false
+  }
+}
+
 export async function hasPendingOps(surveyId: string): Promise<boolean> {
   if (!isOfflineDbAvailable()) return false
   const db = getDB()

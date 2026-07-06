@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ElementType } from 'react'
 import Link from 'next/link'
 import {
   Plus,
@@ -22,6 +22,7 @@ import type { Survey } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import { useAuth } from '@/context/AuthContext'
+import { useConnectivity } from '@/hooks/useConnectivity'
 import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
 import { OfflineReadyBadge } from '@/components/offline/OfflineReadyBadge'
 import { InstallHint } from '@/components/offline/InstallHint'
@@ -44,6 +45,7 @@ const statusConfig: Record<string, { color: string; bg: string; label: string }>
 
 export default function ProjectsPage() {
   const { isAdmin, isOffice, isSurveyor } = useAuth()
+  const connectivity = useConnectivity()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -82,6 +84,14 @@ export default function ProjectsPage() {
     }
     loadSurveys()
   }, [])
+
+  // Offline, the survey hub (/surveys/<id>) is a dead end — its data load
+  // needs the network. Send taps straight to the offline-capable wizard via a
+  // plain <a> (hard navigation → served from the SW page cache; a <Link> soft
+  // navigation would first burn time on a doomed RSC fetch).
+  const isOffline = connectivity === 'offline'
+  const CardLink: ElementType = isOffline ? 'a' : Link
+  const surveyHref = (id: string) => (isOffline ? `/survey/${id}/wizard` : `/surveys/${id}`)
 
   const filteredSurveys = surveys.filter((survey) => {
     const matchesSearch =
@@ -222,9 +232,9 @@ export default function ProjectsPage() {
                   const Icon = config.icon
 
                   return (
-                    <Link
+                    <CardLink
                       key={survey.id}
-                      href={`/surveys/${survey.id}`}
+                      href={surveyHref(survey.id)}
                       className="glass-card card-hover-lift animate-fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
@@ -267,11 +277,11 @@ export default function ProjectsPage() {
                       <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-white/40">{config.label}</span>
-                          {isSurveyor && <OfflineReadyBadge surveyId={survey.id} />}
+                          {isSurveyor && <OfflineReadyBadge surveyId={survey.id} canDownload />}
                         </div>
                         <ChevronRight className="w-5 h-5 text-white/30" />
                       </div>
-                    </Link>
+                    </CardLink>
                   )
                 })}
               </div>
@@ -303,7 +313,7 @@ export default function ProjectsPage() {
                                 <Icon className={`w-4 h-4 ${config.color}`} />
                               </div>
                               <span className="font-mono text-sm text-white/70">{survey.project_number}</span>
-                              {isSurveyor && <OfflineReadyBadge surveyId={survey.id} />}
+                              {isSurveyor && <OfflineReadyBadge surveyId={survey.id} canDownload />}
                             </div>
                           </td>
                           <td className="font-medium text-white">{survey.client_name}</td>

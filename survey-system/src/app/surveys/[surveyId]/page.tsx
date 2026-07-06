@@ -36,6 +36,7 @@ import Layout from '@/components/layout'
 import type { Survey } from '@/types/database.types'
 import { getSurvey as getSupabaseSurvey, updateSurvey } from '@/lib/supabase-data'
 import { getSupabase } from '@/lib/supabase-client'
+import { hasLocalMirror } from '@/lib/offline/local-data'
 import { primarySurveyTypeFromTags } from '@/lib/survey-tags'
 import { getBookingBySurveyId, createBooking } from '@/lib/calendar-data'
 import type { SurveyBooking } from '@/lib/calendar-types'
@@ -162,6 +163,18 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
       try {
         setIsLoading(true)
         const data = await getSupabaseSurvey(params.surveyId)
+
+        // getSurvey() swallows network errors and returns null, so offline this
+        // is indistinguishable from "not found". This hub is online-only; if the
+        // survey has a local mirror, land on the offline-capable wizard instead
+        // of dead-ending. (Read-only existence check — office data stays online.)
+        if (!data && (await hasLocalMirror(params.surveyId))) {
+          // Hard replace, not router.replace — offline, a soft navigation burns
+          // a doomed RSC fetch first; a document navigation hits the SW cache.
+          window.location.replace(`/survey/${params.surveyId}/wizard`)
+          return // keep the spinner up while the redirect happens
+        }
+
         setSurvey(data)
 
         if (data) {
@@ -189,10 +202,14 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
             if (bookingData) setBooking(bookingData)
           }
         }
+        setIsLoading(false)
       } catch (err) {
         console.error('Error loading survey:', err)
+        if (await hasLocalMirror(params.surveyId)) {
+          window.location.replace(`/survey/${params.surveyId}/wizard`)
+          return // keep the spinner up while the redirect happens
+        }
         setError('Failed to load survey')
-      } finally {
         setIsLoading(false)
       }
     }
