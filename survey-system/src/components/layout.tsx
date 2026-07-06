@@ -26,14 +26,17 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import { clearOfflineDB } from '@/lib/offline/db'
 
+// Ordered by frequency of use per role (roles filter rows out, so surveyors
+// get Surveys/Calendar on top while office gets Pipeline first): daily work
+// surfaces first, occasional reference mid, rare admin/onboarding last.
 const navItems: { icon: typeof LayoutDashboard; label: string; href: string; roles?: string[] }[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-  { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
   { icon: Inbox, label: 'Pipeline', href: '/enquiries', roles: ['admin', 'office'] },
-  { icon: Package, label: 'Materials', href: '/materials' },
-  { icon: Users, label: 'Team', href: '/admin/team' },
+  { icon: ClipboardList, label: 'Surveys', href: '/surveys' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },
   { icon: BarChart3, label: 'Workload', href: '/admin/workload', roles: ['admin', 'office'] },
+  { icon: Package, label: 'Materials', href: '/materials' },
+  { icon: Users, label: 'Team', href: '/admin/team' },
   { icon: BookOpen, label: 'Training', href: '/training' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ]
