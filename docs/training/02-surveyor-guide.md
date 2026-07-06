@@ -106,6 +106,8 @@ Install the app to your home screen so it opens like a normal app and works full
 2. Tap the **Share** button (the square with an up arrow).
 3. Scroll down and tap **"Add to Home Screen"**, then **Add**. A **TTDP** icon appears on your home screen.
 
+**Then — still on WiFi — open the TTDP icon once and log in.** The icon app keeps its own offline copy, completely separate from Safari or Chrome, and it downloads that copy the first time you open it. If the very first time you open the icon is out in the field with no signal, you'll get a "not connected to the internet" error instead of the app.
+
 Always launch surveys from the **home-screen icon**, not the browser — the icon version is the one that works offline.
 
 ### Working Offline

@@ -74,9 +74,11 @@ export async function prefetchSurveyorSurveys(profileId: string | null | undefin
       }
     }
 
-    // Seed the surveys list + each wizard page so a cold offline launch can
-    // navigate straight in (even to a wizard never opened in this browser).
-    sendSeedUrls(['/surveys', ...surveyIds.map((sid) => `/survey/${sid}/wizard`)])
+    // Seed the shell (start_url + login + surveys list) and each wizard page so
+    // a cold offline launch can navigate straight in (even to a wizard never
+    // opened in this browser). The SW also seeds the shell on activate; this
+    // keeps it fresh between deploys.
+    sendSeedUrls(['/', '/login', '/surveys', ...surveyIds.map((sid) => `/survey/${sid}/wizard`)])
 
     await getDB().kv.put({ key: 'lastPrefetchAt', value: Date.now() })
   } catch (err) {

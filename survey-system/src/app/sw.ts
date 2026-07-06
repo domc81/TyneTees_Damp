@@ -68,6 +68,18 @@ const serwist = new Serwist({
   runtimeCaching,
 })
 
+// Shell seeding — the start_url ('/') and login/surveys pages must be cached
+// for a cold offline launch, but the first navigation of a session happens
+// BEFORE this SW controls the page, and App Router soft navigations never hit
+// the navigate handler. Seed them on activate (every deploy re-activates via
+// skipWaiting, so these stay fresh). Without this, an installed app's first
+// online session never caches start_url and the next cold offline launch 404s.
+const SHELL_URLS = ['/', '/login', '/surveys']
+
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(seedUrls(SHELL_URLS))
+})
+
 // Page seeding — prefetch posts { type: 'SEED_URLS', urls } so a cold offline
 // launch can reach a wizard never visited in this browser.
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
