@@ -1,0 +1,248 @@
+{
+  "id": "full-coverage-damp",
+  "title": "FULL COVERAGE \u2014 every priced input row of Copy of Damp Costing v48 CF - 220126.xlsm",
+  "source": "Zero-gaps instrument: every input row non-zero on the oracle side with row-distinct values (incl. all minimum-charge triggers); wizard side sets every currently-capturable field with matching values. Failing rows = the capture-gap register. This scenario passing = the workbook is fully mapped.",
+  "workbook": "damp_v48",
+  "oracle": {
+    "lines": {
+      "remove_radiators_cap_valves_r21": 6,
+      "remove_socket_fronts_and_isolate_r22": 7,
+      "skirting_board_removal_set_aside_r23": 8,
+      "strip_wall_paper_r24": 9.6,
+      "antinox_hd_floor_protection_boards_2_4m_r25": 2,
+      "remove_plaster_render_walls_r29": 6,
+      "removal_of_stud_walls_etc_bag_cart_away_r30": 7,
+      "plaster_stud_removal_ceilings_r31": 8,
+      "strip_out_existing_timber_floor_gf_r32": 1,
+      "scrape_back_clear_sub_floors_r33": 2,
+      "dpc_installation_traditional_r40": {
+        "d": 12,
+        "e": 0.215
+      },
+      "dpc_installation_digital_r42": {
+        "d": "Brick",
+        "e": 8
+      },
+      "wall_membrane_cm3_1mtr_r44": {
+        "d": 10,
+        "e": 1
+      },
+      "wall_membrane_cm3_1_2mtr_r45": {
+        "d": 8,
+        "e": 1.2
+      },
+      "wall_membrane_cm3_2mtr_1_r46": {
+        "d": 6,
+        "e": 2
+      },
+      "wall_membrane_cm3_2mtr_2_r47": {
+        "d": 0,
+        "e": 2
+      },
+      "wall_membrane_cm3_2mtr_3_r48": {
+        "d": 0,
+        "e": 2
+      },
+      "wall_floor_fillet_joint_r53": 6,
+      "overtape_lm_r55": {
+        "d": 6,
+        "e": 0.5
+      },
+      "difficulty_hours_additional_hours_if_req_r57": 2,
+      "dubbing_out_coat_sand_cement_sbr_r61": 6,
+      "2_coat_tanking_slurry_r62": 7,
+      "renovating_plaster_r63": 8,
+      "wall_floor_fillet_joint_r64": 1,
+      "difficulty_hours_additional_hours_if_req_r65": 2,
+      "ep40_2_pack_resin_primer_r69": 6,
+      "ep40_2_pack_resin_top_coat_r70": 7,
+      "wall_floor_fillet_joint_r71": 8,
+      "grip_grit_r72": 1,
+      "difficulty_hours_additional_hours_if_req_r73": 2,
+      "construct_stud_wall_to_perimeter_r77": 6,
+      "plaster_boarding_inc_dab_screws_r78": 7,
+      "warmline_internal_wall_insulation_r79": 5,
+      "skimming_walls_multi_finish_plaster_r80": 25,
+      "plastering_stop_bead_3m_length_r81": 2,
+      "plastering_thin_coat_angle_corner_bead_2_r82": 3,
+      "plastering_thin_coat_angle_corner_bead_3_r83": 4,
+      "difficulty_hours_fireplace_corners_etc_r84": 5,
+      "joists_100_x_50_r89": {
+        "d": 3,
+        "e": 2.4
+      },
+      "joists_125_x_50_r90": {
+        "d": 2,
+        "e": 3
+      },
+      "joists_150_x_50_r91": {
+        "d": 4,
+        "e": 3.6
+      },
+      "joists_175_x_50_r92": {
+        "d": 1,
+        "e": 4.2
+      },
+      "joists_200_x_50_r93": {
+        "d": 2,
+        "e": 4.8
+      },
+      "joists_225_x_50_r94": {
+        "d": 1,
+        "e": 2.4
+      },
+      "treat_and_endwrap_joist_r95": {
+        "d": 6,
+        "e": 2.5
+      },
+      "wall_plate_100x25_r96": {
+        "d": 4,
+        "e": 2
+      },
+      "bower_beams_pair_r97": {
+        "d": 1,
+        "e": 1
+      },
+      "flitch_plates_pair_r98": {
+        "d": 1,
+        "e": 1
+      },
+      "difficulty_hours_additional_hours_if_req_r99": 4,
+      "install_weyrock_flooring_18mm_m2_r101": 6,
+      "install_weyrock_flooring_22mm_m2_r102": 7,
+      "install_std_t_g_floorboards_m2_r103": 8,
+      "install_victorian_t_g_floorboards_m2_r104": 1,
+      "install_engineered_flooring_sheet_m2_r105": 2,
+      "install_structural_engineered_flooring_s_r106": 3,
+      "provide_insulation_to_suspended_flooring_r107": 4,
+      "difficulty_hours_additional_hours_if_req_r108": 5,
+      "clean_out_airbrick_fit_new_face_r112": 1,
+      "lift_upgrade_existing_airbrick_fit_new_f_r113": 2,
+      "install_additional_airbrick_r114": 3,
+      "fog_sub_floor_void_with_anti_fungal_trea_r118": 7,
+      "difficulty_hours_additional_hours_if_req_r119": 8,
+      "aco_drain_per_linear_meter_r123": 4,
+      "french_drain_per_linear_meter_r124": 5,
+      "aquaban_water_repellent_system_r128": 30,
+      "asbestos_testing_r132": 5,
+      "rubbish_removal_skips_r136": 1
+    },
+    "travel": {
+      "distance_miles": 10,
+      "men": 2
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 10,
+      "num_men_travelling": 2,
+      "antinox_board_count": 2,
+      "stop_bead_count": 2,
+      "corner_bead_24_count": 3,
+      "corner_bead_30_count": 4,
+      "difficulty_hours_plastering": 5,
+      "airbrick_clean_count": 1,
+      "airbrick_upgrade_count": 2,
+      "airbrick_new_count": 3,
+      "asbestos_test_count": 5,
+      "skip_count": 1,
+      "aco_drain_length": 4,
+      "french_drain_length": 5,
+      "aquaban_area": 30
+    },
+    "rooms": [
+      {
+        "name": "Lounge (membrane 1m + DPC + prep)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "walls": [
+            {
+              "name": "W1",
+              "length": 4,
+              "height": 2.4,
+              "radiator_count": 6,
+              "socket_count": 7,
+              "skirting_length": 8,
+              "has_wallpaper": true,
+              "moisture_readings": []
+            }
+          ],
+          "dpc_required": true,
+          "dpc_type": "traditional",
+          "dpc_wall_length": 12,
+          "dpc_wall_thickness_m": 0.215,
+          "wall_treatment": "membrane",
+          "membrane_height": "1m",
+          "membrane_wall_lengths": [
+            10
+          ],
+          "fillet_joint_length": 6,
+          "overtape_length": 6,
+          "overtape_height": 0.5,
+          "strip_out_plaster_area": 6,
+          "strip_out_stud_walls_area": 7,
+          "strip_out_ceilings_area": 8,
+          "floor_treatment": "resin_membrane",
+          "resin_topcoat_area": 7,
+          "resin_primer_area": 6,
+          "resin_grip_grit_area": 1,
+          "floor_resin_fillet_length": 8,
+          "strip_existing_floor": true,
+          "strip_floor_area": 1,
+          "sub_floor_area": 2,
+          "stud_wall_area": 6,
+          "plasterboard_area": 7,
+          "warmline_insulation_area": 5,
+          "skim_area": 25,
+          "difficulty_hours": 2
+        }
+      },
+      {
+        "name": "Kitchen (membrane 1.2m)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "membrane",
+          "membrane_height": "1.2m",
+          "membrane_wall_lengths": [
+            8
+          ],
+          "dpc_required": false
+        }
+      },
+      {
+        "name": "Hall (membrane 2m)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "membrane",
+          "membrane_height": "2m",
+          "membrane_wall_lengths": [
+            6
+          ],
+          "dpc_required": false
+        }
+      },
+      {
+        "name": "Cellar (tanking)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "tanking",
+          "tanking_area": 7,
+          "fillet_joint_length": 1,
+          "dpc_required": false
+        }
+      }
+    ]
+  },
+  "notes": "GENERATED by parity/scenarios/build_full_coverage.py \u2014 edit the builder, not this file."
+}

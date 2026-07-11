@@ -1,0 +1,164 @@
+{
+  "id": "full-coverage-condensation",
+  "title": "FULL COVERAGE \u2014 every priced input row of Copy of Condensation PIV Costing v37 CF - 131125.xlsm",
+  "source": "Zero-gaps instrument: every input row non-zero on the oracle side with row-distinct values (incl. all minimum-charge triggers); wizard side sets every currently-capturable field with matching values. Failing rows = the capture-gap register. This scenario passing = the workbook is fully mapped.",
+  "workbook": "condensation_v37",
+  "oracle": {
+    "lines": {
+      "va_pozidry_loft_unit_heated_r21": 6,
+      "va_pozidry_loft_unit_unheated_r22": 7,
+      "electrical_pack_fused_spur_cable_jb_r23": 8,
+      "sarkvents_r24": 1,
+      "va_pozidry_compact_wall_mounted_unit_r28": 5,
+      "electrical_pack_fused_spur_cable_jb_r29": 6,
+      "ducting_1m_length_r30": 7,
+      "ducting_round_elbow_r31": 8,
+      "ducting_round_straight_conn_r32": 1,
+      "ducting_round_1m_r33": 2,
+      "ducting_flat_to_round_adaptor_r34": 3,
+      "ducting_flat_straight_connector_r35": 4,
+      "ducting_flat_horizontal_bend_r36": 5,
+      "ducting_flat_vertical_bend_r37": 6,
+      "ducting_flat_1m_r38": 7,
+      "ducting_insulated_flexi_3m_length_r39": 8,
+      "grille_r40": 1,
+      "diamond_core_107mm_hole_r41": 2,
+      "trickle_and_boost_humidistat_fan_greenwo_r45": 6,
+      "electrical_pack_fused_spur_cable_jb_r46": 7,
+      "grille_r47": 8,
+      "diamond_core_107mm_hole_r48": 1,
+      "dryaire_cpass_plasmo_insulated_pullcord_r52": 5,
+      "diamond_core_107mm_hole_r53": 6,
+      "dryaire_cvent_r57": 2,
+      "diamond_core_107mm_hole_r58": 3,
+      "joinery_to_box_in_ducting_per_metre_min_r62": 1.2,
+      "new_loft_hatch_with_sturdy_fold_down_lad_r66": 1,
+      "existing_loft_hatch_enlarge_loft_hatch_r70": 1,
+      "mould_treatment_r74": 7,
+      "asbestos_testing_r78": 7,
+      "clean_out_airbrick_fit_new_face_r82": 3,
+      "lift_upgrade_existing_airbrick_fit_new_f_r83": 4,
+      "install_additional_airbrick_r84": 5,
+      "rubbish_removal_skips_r88": 1
+    },
+    "travel": {
+      "distance_miles": 8,
+      "men": 1
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "condensation"
+    ],
+    "additional_works": {
+      "distance_from_office": 8,
+      "num_men_travelling": 1,
+      "skip_count": 1,
+      "airbrick_clean_count": 3,
+      "airbrick_upgrade_count": 4,
+      "airbrick_new_count": 5,
+      "asbestos_test_count": 7,
+      "loft_hatch_new_required": true,
+      "loft_hatch_enlarge_required": false,
+      "condensation_piv": {
+        "piv_recommended": true,
+        "piv_type": "loft_heated",
+        "piv_unit_count": 6,
+        "core_hole_count": 0,
+        "electrical_pack_count": 8,
+        "sarkvent_count": 1,
+        "ducting_components_as_exists": false,
+        "joinery_ducting_boxwork_lm": 1.2
+      },
+      "ducting_components": [
+        {
+          "type": "rigid_duct",
+          "count": 7
+        },
+        {
+          "type": "duct_elbow",
+          "count": 8
+        },
+        {
+          "type": "duct_connector",
+          "count": 1
+        },
+        {
+          "type": "round_1m",
+          "count": 2
+        },
+        {
+          "type": "flat_to_round_adaptor",
+          "count": 3
+        },
+        {
+          "type": "flat_straight_connector",
+          "count": 4
+        },
+        {
+          "type": "flat_horizontal_bend",
+          "count": 5
+        },
+        {
+          "type": "flat_vertical_bend",
+          "count": 6
+        },
+        {
+          "type": "flat_1m",
+          "count": 7
+        },
+        {
+          "type": "flexible_duct",
+          "count": 8
+        },
+        {
+          "type": "grille",
+          "count": 1
+        }
+      ]
+    },
+    "rooms": [
+      {
+        "name": "Bathroom (active)",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": true,
+          "mould_severity": "moderate",
+          "condensation_on_windows": true,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "active",
+          "trickle_boost_fan_count": 6,
+          "electrical_pack_count": 7,
+          "fan_grille_count": 8,
+          "core_hole_count_active": 1,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      },
+      {
+        "name": "Utility (passive)",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": false,
+          "condensation_on_windows": false,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "passive",
+          "cpass_passive_vent_count": 5,
+          "core_hole_required": true,
+          "core_hole_count": 6,
+          "dryaire_cvent_count": 2,
+          "cvent_core_hole_count": 3,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      }
+    ]
+  },
+  "notes": "GENERATED by parity/scenarios/build_full_coverage.py \u2014 edit the builder, not this file."
+}

@@ -5,10 +5,10 @@
   "workbook": "damp_v48",
   "oracle": {
     "lines": {
-      "resin_primer": 20,
-      "resin_topcoat": 20,
-      "resin_grip_grit": 20,
-      "resin_fillet_joint": 10
+      "ep40_2_pack_resin_primer_r69": 20,
+      "ep40_2_pack_resin_top_coat_r70": 20,
+      "grip_grit_r72": 20,
+      "wall_floor_fillet_joint_r71": 10
     },
     "travel": {
       "distance_miles": 0,

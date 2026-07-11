@@ -255,7 +255,9 @@ function mapDampSurvey(
         totalMembraneArea += wallLength * height
       }
       totalFilletJointLength += dampData.fillet_joint_length || 0
-      totalOvertapeLength += dampData.overtape_length || 0
+      // Overtape total = length + 2 x height (workbook R55: F55 = D55+(E55*2));
+      // legacy surveys have only overtape_length (height 0 -> unchanged totals)
+      totalOvertapeLength += (dampData.overtape_length || 0) + 2 * (dampData.overtape_height || 0)
     } else if (dampData.wall_treatment === 'tanking') {
       totalTankingArea += dampData.tanking_area || 0
       totalFilletJointLength += dampData.fillet_joint_length || 0
@@ -376,9 +378,14 @@ function mapDampSurvey(
     const overtapeInput = createLineInput(lookup, 'wall_membrane', 'overtape', totalOvertapeLength)
     if (overtapeInput) inputs.push(overtapeInput)
 
-    // Technoseal mirrors the overtape length (workbook R52: F52 = F55)
+    // Technoseal mirrors the overtape total (workbook R52: F52 = F55)
     const technosealInput = createLineInput(lookup, 'wall_membrane', 'technoseal', totalOvertapeLength)
     if (technosealInput) inputs.push(technosealInput)
+
+    // Fixing rope auto-derives as 20% of membrane area (workbook R56:
+    // F56 = SUM(F44:F48) * 0.2) — was previously never emitted
+    const fixingRopeInput = createLineInput(lookup, 'wall_membrane', 'fixing_rope', totalMembraneArea * 0.2)
+    if (fixingRopeInput) inputs.push(fixingRopeInput)
 
     // Fillet joint
     const filletInput = createLineInput(lookup, 'wall_membrane', 'wall_floor_fillet_joint', totalFilletJointLength)

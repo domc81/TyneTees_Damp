@@ -254,13 +254,15 @@
     },
     "overtape_lm_r53": {
       "row": 53,
-      "input": "none",
+      "input": "de",
       "label": "Overtape Lm",
       "line_keys": [
         "overtape_lm"
       ],
       "section": "fixing_rope_lm_r55",
-      "derived": "=D53+(E53*2)"
+      "derived": "=D53+(E53*2)",
+      "d_label": "d",
+      "e_label": "e"
     },
     "fixing_rope_lm_r54": {
       "row": 54,

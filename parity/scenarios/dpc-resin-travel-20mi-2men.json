@@ -5,11 +5,11 @@
   "workbook": "damp_v48",
   "oracle": {
     "lines": {
-      "dpc_traditional": {
+      "dpc_installation_traditional_r40": {
         "d": 18,
         "e": 0.33
       },
-      "resin_topcoat": 40
+      "ep40_2_pack_resin_top_coat_r70": 40
     },
     "travel": {
       "distance_miles": 20,

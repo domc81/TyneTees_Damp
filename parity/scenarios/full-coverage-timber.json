@@ -1,0 +1,211 @@
+{
+  "id": "full-coverage-timber",
+  "title": "FULL COVERAGE \u2014 every priced input row of Copy of Timber Costing v33 - CF - 131125.xlsm",
+  "source": "Zero-gaps instrument: every input row non-zero on the oracle side with row-distinct values (incl. all minimum-charge triggers); wizard side sets every currently-capturable field with matching values. Failing rows = the capture-gap register. This scenario passing = the workbook is fully mapped.",
+  "workbook": "timber_v33",
+  "oracle": {
+    "lines": {
+      "remove_radiators_cap_valves_r21": 6,
+      "remove_socket_fronts_and_isolate_r22": 7,
+      "skirting_board_removal_set_aside_r23": 8,
+      "strip_wall_paper_r24": 1,
+      "antinox_hd_floor_protection_boards_2_4m_r25": 2,
+      "remove_carpet_tiles_overlays_r29": 6,
+      "remove_plaster_render_walls_r30": 7,
+      "removal_of_stud_walls_etc_bag_cart_away_r31": 8,
+      "plaster_stud_removal_ceilings_r32": 1,
+      "strip_out_existing_timber_floor_gf_r33": 2,
+      "scrape_back_clear_sub_floors_r34": 3,
+      "grind_back_mortar_courses_on_brickwork_r35": 4,
+      "wire_scrub_brickwork_faces_r36": 5,
+      "apply_2_x_brunosol_1_x_wykabor_20_1_r42": 3,
+      "wall_membrane_cm3_1mtr_r43": {
+        "d": 9,
+        "e": 1
+      },
+      "wall_membrane_cm3_1_2mtr_r44": {
+        "d": 7,
+        "e": 1.2
+      },
+      "wall_membrane_cm3_2mtr_1_r45": {
+        "d": 5,
+        "e": 2
+      },
+      "wall_membrane_cm3_2mtr_2_r46": {
+        "d": 0,
+        "e": 2
+      },
+      "wall_membrane_cm3_2mtr_3_r47": {
+        "d": 0,
+        "e": 2
+      },
+      "overtape_lm_r53": {
+        "d": 5,
+        "e": 0.4
+      },
+      "dubbing_out_coat_sand_cement_sbr_r58": 3,
+      "2_coat_tanking_slurry_r59": 4,
+      "renovating_plaster_r60": 5,
+      "wall_floor_fillet_joint_r61": 6,
+      "ep40_2_pack_resin_primer_r65": 2,
+      "ep40_2_pack_resin_top_coat_r66": 3,
+      "grip_grit_r67": 4,
+      "construct_stud_wall_to_perimiter_r71": 8,
+      "plasterboarding_inc_dab_screws_r72": 1,
+      "warmline_internal_wall_insulation_r73": 5,
+      "skimming_walls_multi_finish_plaster_r74": 25,
+      "plastering_stop_bead_3m_length_r75": 4,
+      "plastering_thin_coat_angle_corner_bead_2_r76": 5,
+      "plastering_thin_coat_angle_corner_bead_3_r77": 6,
+      "difficulty_hours_fireplace_corners_etc_r78": 7,
+      "joists_100_x_50_r83": {
+        "d": 3,
+        "e": 2.4
+      },
+      "joists_125_x_50_r84": {
+        "d": 2,
+        "e": 3
+      },
+      "joists_150_x_50_r85": {
+        "d": 4,
+        "e": 3.6
+      },
+      "joists_175_x_50_r86": {
+        "d": 1,
+        "e": 4.2
+      },
+      "joists_200_x_50_r87": {
+        "d": 2,
+        "e": 4.8
+      },
+      "joists_225_x_50_r88": {
+        "d": 1,
+        "e": 2.4
+      },
+      "treat_and_endwrap_joist_r89": {
+        "d": 6,
+        "e": 2.5
+      },
+      "wall_plate_100x25_r90": {
+        "d": 4,
+        "e": 2
+      },
+      "bower_beams_pair_r91": {
+        "d": 1,
+        "e": 1
+      },
+      "flitch_plates_pair_r92": {
+        "d": 1,
+        "e": 1
+      },
+      "install_weyrock_flooring_18mm_m2_r94": 7,
+      "install_weyrock_flooring_22mm_m2_r95": 8,
+      "install_std_t_g_floorboards_m2_r96": 1,
+      "install_victorian_t_g_floorboards_m2_r97": 2,
+      "install_engineered_flooring_sheet_m2_r98": 3,
+      "provide_insulation_to_suspended_flooring_r99": 4,
+      "difficulty_hours_additional_hours_if_req_r100": 5,
+      "clear_debris_from_sub_floor_r104": 1,
+      "masonry_sterilant_wyakbor_20_brush_appli_r105": 2,
+      "protective_treatment_following_new_timbe_r106": 3,
+      "40_1_gel_injection_100mm_centres_plug_wi_r107": 4,
+      "fog_subfloor_void_m2_r108": 5,
+      "fogging_staircase_open_rear_treads_per_s_r109": 6,
+      "fogging_staircase_rear_closed_drill_and_r110": 7,
+      "clean_out_airbrick_fit_new_face_r114": 3,
+      "lift_upgrade_existing_airbrick_fit_new_f_r115": 4,
+      "install_additional_airbrick_r116": 5,
+      "rubbish_removal_skips_r120": 1
+    },
+    "travel": {
+      "distance_miles": 14,
+      "men": 2
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "timber"
+    ],
+    "additional_works": {
+      "distance_from_office": 14,
+      "num_men_travelling": 2,
+      "antinox_board_count": 2,
+      "skip_count": 1,
+      "stop_bead_count": 4,
+      "corner_bead_24_count": 5,
+      "corner_bead_30_count": 6,
+      "difficulty_hours_plastering": 7,
+      "airbrick_clean_count": 3,
+      "airbrick_upgrade_count": 4,
+      "airbrick_new_count": 5,
+      "asbestos_test_count": 0
+    },
+    "rooms": [
+      {
+        "name": "Cellar",
+        "issues": [
+          "timber_decay"
+        ],
+        "timber_decay": {
+          "floor_type": "suspended_timber",
+          "floor_condition": "poor",
+          "floor_access": "good",
+          "sub_floor_inspected": true,
+          "timber_replacement_needed": true,
+          "fungal_findings": [],
+          "ceiling_affected": true,
+          "ceiling_area": 1,
+          "flooring_type": "weyrock_18mm",
+          "flooring_area": 7,
+          "joist_entries": [
+            {
+              "size": "4x2",
+              "quantity": 3,
+              "length": 2.4
+            },
+            {
+              "size": "5x2",
+              "quantity": 2,
+              "length": 3
+            },
+            {
+              "size": "6x2",
+              "quantity": 4,
+              "length": 3.6
+            },
+            {
+              "size": "7x2",
+              "quantity": 1,
+              "length": 4.2
+            },
+            {
+              "size": "8x2",
+              "quantity": 2,
+              "length": 4.8
+            },
+            {
+              "size": "9x2",
+              "quantity": 1,
+              "length": 2.4
+            }
+          ],
+          "endwrap_joists_lm": 15,
+          "wall_plate_lm": 8,
+          "bower_beams_count": 1,
+          "flitch_plates_count": 1,
+          "warmline_insulation_area": 4,
+          "fungal_treatment_area": 5,
+          "clear_sub_floor_debris_area": 1,
+          "grind_back_mortar_area": 4,
+          "wire_scrub_area": 5,
+          "masonry_sterilant_area": 2,
+          "protective_treatment_area": 3,
+          "staircase_open_rear_steps": 6,
+          "staircase_closed_rear_steps": 7,
+          "difficulty_hours": 5
+        }
+      }
+    ]
+  },
+  "notes": "GENERATED by parity/scenarios/build_full_coverage.py \u2014 edit the builder, not this file."
+}

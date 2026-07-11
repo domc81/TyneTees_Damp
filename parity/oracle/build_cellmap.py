@@ -91,6 +91,10 @@ def build(survey_type):
         }
         if ln["input"] == "derived":
             entry["derived"] = ln["derived_formula"]
+            # derived-from-own-row D/E (e.g. overtape F=D55+(E55*2)): D/E are the inputs
+            if re.search(rf"[DE]{ln['row']}\b", ln["derived_formula"] or ""):
+                entry["input"] = "de"
+                entry["d_label"], entry["e_label"] = "d", "e"
         if ln["input"] == "de":
             entry["d_label"], entry["e_label"] = "d", "e"
         if ra.is_zero_feeder(ln):

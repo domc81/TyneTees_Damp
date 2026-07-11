@@ -5,25 +5,28 @@
   "workbook": "damp_v48",
   "oracle": {
     "lines": {
-      "prep_remove_radiators": 2,
-      "prep_remove_sockets": 3,
-      "prep_skirting_removal": 15,
-      "prep_antinox_boards": 6,
-      "strip_remove_plaster_walls": 17.7,
-      "dpc_traditional": {
+      "remove_radiators_cap_valves_r21": 2,
+      "remove_socket_fronts_and_isolate_r22": 3,
+      "skirting_board_removal_set_aside_r23": 15,
+      "antinox_hd_floor_protection_boards_2_4m_r25": 6,
+      "remove_plaster_render_walls_r29": 17.7,
+      "dpc_installation_traditional_r40": {
         "d": 18,
         "e": 0.33
       },
-      "membrane_1_2m": {
+      "wall_membrane_cm3_1_2mtr_r45": {
         "d": 16.4,
         "e": 1.2
       },
-      "membrane_fillet_joint": 15.4,
-      "membrane_overtape": 16.4,
-      "resin_topcoat": 40,
-      "plaster_boarding": 17.7,
-      "plaster_skimming": 25,
-      "plaster_corner_bead_24": 4
+      "wall_floor_fillet_joint_r53": 15.4,
+      "overtape_lm_r55": {
+        "d": 16.4,
+        "e": 0
+      },
+      "ep40_2_pack_resin_top_coat_r70": 40,
+      "plaster_boarding_inc_dab_screws_r78": 17.7,
+      "skimming_walls_multi_finish_plaster_r80": 25,
+      "plastering_thin_coat_angle_corner_bead_2_r82": 4
     },
     "travel": {
       "distance_miles": 22.6,

@@ -210,7 +210,8 @@ export interface DampRoomData {
   membrane_wall_lengths?: number[] // Array of wall lengths needing membrane
   tanking_area?: number // m² for tanking treatment
   fillet_joint_length?: number // Linear metres
-  overtape_length?: number // Linear metres of overtape for sealing membrane joints
+  overtape_length?: number // Overtape LENGTH component (workbook D55)
+  overtape_height?: number // Overtape HEIGHT component (workbook E55) — total = length + 2 x height
 
   // Floor Treatment
   floor_treatment?: FloorTreatment
