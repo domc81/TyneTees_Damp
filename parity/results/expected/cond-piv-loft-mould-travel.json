@@ -19,10 +19,10 @@
     "va_pozidry_loft_unit_heated_r21": {
       "quantity": 1.0,
       "unit_material_cost": 324.13,
-      "materials": 453.782,
+      "materials": 431.0929,
       "hours": 2.5,
-      "labour": 382.875,
-      "total": 836.657,
+      "labour": 363.73125,
+      "total": 794.82415,
       "contractor_materials": 356.543,
       "contractor_pay": 70.0,
       "line_keys": [
@@ -47,10 +47,10 @@
     "electrical_pack_fused_spur_cable_jb_r23": {
       "quantity": 1.0,
       "unit_material_cost": 12.46,
-      "materials": 16.198,
+      "materials": 15.3881,
       "hours": 1.5,
-      "labour": 91.89,
-      "total": 108.088,
+      "labour": 87.2955,
+      "total": 102.6836,
       "contractor_materials": 13.706,
       "contractor_pay": 42.0,
       "line_keys": [
@@ -61,10 +61,10 @@
     "sarkvents_r24": {
       "quantity": 2.0,
       "unit_material_cost": 3.0,
-      "materials": 7.8,
+      "materials": 7.41,
       "hours": 0.16,
-      "labour": 9.8016,
-      "total": 17.6016,
+      "labour": 9.31152,
+      "total": 16.72152,
       "contractor_materials": 6.6,
       "contractor_pay": 4.48,
       "line_keys": [
@@ -439,10 +439,10 @@
   },
   "sections": {
     "sarkvents_r25": {
-      "materials": 477.78,
+      "materials": 453.891,
       "hours": 4.16,
-      "labour": 484.5666,
-      "total": 962.3466,
+      "labour": 460.33827,
+      "total": 914.22927,
       "contractor_materials": 376.849,
       "contractor_pay": 116.48
     },
@@ -464,15 +464,15 @@
     }
   },
   "totals": {
-    "materials_subtotal": 949.68,
-    "labour_subtotal": 821.4966,
+    "materials_subtotal": 925.791,
+    "labour_subtotal": 797.26827,
     "labour_hours_subtotal": 9.66,
     "travel_price": 61.008,
     "travel_hours": 1.6,
-    "subtotal_ex_vat": 1832.1846,
+    "subtotal_ex_vat": 1784.06727,
     "total_hours": 11.26,
-    "vat": 366.43692,
-    "total_inc_vat": 2198.62152,
+    "vat": 356.813454,
+    "total_inc_vat": 2140.880724,
     "days": 1.0,
     "contractor_materials_total": 776.149,
     "contractor_pay_total": 270.48,

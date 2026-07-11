@@ -659,6 +659,67 @@ export function calcBagAndCart(
  * - Labour = 0 (no labour for skip hire)
  * - Apply material markup only
  */
+/**
+ * 9. WHOLE PACK FORMULA
+ *
+ * Timber workbook rows R65-67 (resin) and R105-107 (sterilant/protective/gel):
+ * materials price by WHOLE PACKS, not per-unit spread —
+ *   K = ROUNDUP(quantity / pack_size) × pack_cost_adjusted × (1 + markup)
+ * (unlike ceiling_coverage, the rounded pack count multiplies the FULL pack
+ * price; the workbook's H holds the pack cost, any ×1.1 already inside it).
+ * Labour = quantity × labour_rate_per_unit (O = F × N).
+ *
+ * formula_params: { pack_size, pack_cost }
+ */
+export function calcWholePack(
+  input: LineInput,
+  template: LineTemplate,
+  config: PricingConfig,
+  materials: MaterialLookup
+): LineResult {
+  const quantity = input.inputQuantity
+  const params = template.formula_params ?? {}
+  const packSize = params.pack_size ?? template.coverage_rate ?? 1
+  const packCost = input.overrides?.unit_cost
+    ?? params.pack_cost
+    ?? (params.product_key ? materials[params.product_key] : undefined)
+    ?? template.base_unit_cost
+    ?? 0
+
+  const wastageFactor = input.overrides?.wastage_factor
+    ?? template.wastage_factor
+    ?? config['default_wastage_factor']
+    ?? 1.10
+  const materialMarkup = input.overrides?.material_markup
+    ?? template.material_markup
+    ?? config['default_material_markup']
+    ?? 0.30
+
+  const packsNeeded = quantity > 0 ? Math.ceil(quantity / packSize) : 0
+  const materialUnitCost = packSize > 0 ? packCost / packSize : 0
+  const materialAdjustedCost = packsNeeded * packCost * wastageFactor
+  const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
+
+  const labourRate = input.overrides?.labour_rate
+    ?? config['hourly_labour_rate']
+    ?? 30.63
+  const labourMarkup = input.overrides?.labour_markup
+    ?? template.labour_markup
+    ?? config['default_labour_markup']
+    ?? 1.00
+  const labourHours = quantity * (template.labour_rate_per_unit ?? 0)
+  const labourTotal = applyMarkup(labourHours * labourRate, labourMarkup)
+
+  return {
+    materialUnitCost,
+    materialAdjustedCost,
+    materialTotal,
+    labourHours,
+    labourTotal,
+    lineTotal: materialTotal + labourTotal
+  }
+}
+
 export function calcSkipHire(
   input: LineInput,
   template: LineTemplate,
@@ -741,6 +802,9 @@ export function calculateLine(
 
     case 'skip_hire':
       return calcSkipHire(input, template, config, materials)
+
+    case 'whole_pack':
+      return calcWholePack(input, template, config, materials)
 
     default:
       throw new Error(`Unknown formula type: ${template.cost_formula}`)

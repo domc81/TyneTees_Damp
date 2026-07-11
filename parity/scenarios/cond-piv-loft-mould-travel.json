@@ -14,9 +14,6 @@
     "travel": {
       "distance_miles": 12,
       "men": 2
-    },
-    "section_adjustments": {
-      "sarkvents_r25": 0
     }
   },
   "wizard": {
@@ -56,5 +53,5 @@
       }
     ]
   },
-  "notes": "New-schema PIV path (additional_works.condensation_piv). Mould severity->area bands are a platform derivation over the workbook's free m2 cell \u2014 flag to Steve. IMPORTANT: the condensation MASTER workbook ships with a saved -5 in the PIV-loft Section Price Adjustment cell (F25) \u2014 the only non-zero adjustment dial in all four workbooks. The scenario neutralises it to 0 (the dial is per-job surveyor state, and the platform's section-adjustment feature has no defaults). QUESTION FOR STEVE: is -5% intended standing pricing for PIV loft units, or residue from the last job saved into the master?"
+  "notes": "New-schema PIV path (additional_works.condensation_piv). Mould severity->area bands are a platform derivation over the workbook's free m2 cell \u2014 flag to Steve. The condensation master's saved -5% on the PIV-loft dial (F25) is now IMPLEMENTED platform-side as costing_sections.default_adjustment_pct \u2014 the dial starts at -5 exactly like the sheet, surveyor-editable. Oracle keeps the workbook as-is."
 }

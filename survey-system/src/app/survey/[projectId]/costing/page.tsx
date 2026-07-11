@@ -14,6 +14,7 @@ import {
   loadSectionAdjustments,
   loadSectionInclusions,
   loadSectionOptionalFlags,
+  loadSectionDefaultAdjustments,
   saveSectionAdjustment,
   saveSectionInclusion,
   type CalculationResult,
@@ -339,13 +340,16 @@ export default function CostingReviewPage() {
 
         // Load saved adjustments, inclusions, and optional flags in parallel
         const allSurveyTypes = Object.keys(results)
-        const [savedAdjustments, savedInclusions, optionalFlags] = await Promise.all([
+        const [savedAdjustments, savedInclusions, optionalFlags, defaultAdjustments] = await Promise.all([
           loadSectionAdjustments(projectId),
           loadSectionInclusions(projectId),
           loadSectionOptionalFlags(allSurveyTypes),
+          loadSectionDefaultAdjustments(allSurveyTypes),
         ])
 
-        setSectionAdjustments(savedAdjustments)
+        // Workbook-master defaults seed the dials (e.g. PIV loft -5%);
+        // surveyor-saved values win
+        setSectionAdjustments({ ...defaultAdjustments, ...savedAdjustments })
         setSectionInclusions(savedInclusions)
         setSectionOptionalFlags(optionalFlags)
 

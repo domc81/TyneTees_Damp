@@ -12,7 +12,7 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 
 | Class | Count |
 |---|---:|
-| WRONG_RATE | 6 |
+| WRONG_RATE | 0 |
 | MODEL_MISMATCH | 0 |
 | MISSING_WASTAGE | 0 |
 | EXTRA_WASTAGE | 0 |
@@ -23,17 +23,6 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 | SPECIAL | 18 |
 | UNMATCHED workbook lines | 0 |
 | UNMATCHED platform templates | 3 |
-
-## WRONG_RATE (6)
-
-| Workbook line | Template | Field | Workbook | Platform | Note |
-|---|---|---|---|---|---|
-| R65 EP40 2 Pack resin Primer | timber/floor_resin/ep40_2_pack_resin_primer | material_unit_cost | 62.37000000000001 | 1.8900000000000001 | catalog[ep40_primer]=56.7/30 |
-| R66 EP40 2 Pack resin top coat | timber/floor_resin/ep40_2_pack_resin_top_coat | material_unit_cost | 70.07000000000001 | 2.1233333333333335 | catalog[ep40_topcoat]=63.7/30 |
-| R67 Grip grit | timber/floor_resin/grip_grit | material_unit_cost | 2.6 | 0.10400000000000001 | catalog[grip_grit_timber]=2.6/25 |
-| R105 Masonry sterilant (Wyakbor 20) - brush appli | timber/timber_treatments/masonry_sterilant_wyakbor_20_brush_applied | material_unit_cost | 35.0 | 3.5 | catalog[masonry_sterilant_wyakbor20]=35.0/10 |
-| R106 Protective treatment following new timbers i | timber/timber_treatments/protective_treatment_following_new_timbers_installation_dp_o | material_unit_cost | 22.0 | 0.88 | catalog[protective_timber_treatment]=22.0/25 |
-| R107 40.1 Gel injection @100mm centres, plug with | timber/timber_treatments/401_gel_injection_100mm_centres_plug_with_dowel | material_unit_cost | 2.22 | 0.555 | catalog[gel_injection_401]=2.22/4 |
 
 ## QUIRK (6)
 

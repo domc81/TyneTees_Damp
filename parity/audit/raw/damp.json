@@ -17,6 +17,7 @@
    "h": 7.0,
    "n_model": "per_unit",
    "n": 0.3333333333333333,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -30,6 +31,7 @@
    "h": 2.0,
    "n_model": "per_unit",
    "n": 0.2,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -43,6 +45,7 @@
    "h": 0.1,
    "n_model": "per_unit",
    "n": 0.07,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -56,6 +59,7 @@
    "h": 0.5,
    "n_model": "per_unit",
    "n": 0.5,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -69,6 +73,7 @@
    "h": 4.5760000000000005,
    "n_model": "per_unit",
    "n": 0.03333333333333333,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -82,6 +87,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -95,6 +101,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -108,6 +115,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.8,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -121,6 +129,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.5,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -134,6 +143,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.25,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -147,6 +157,7 @@
    "h": 1.0,
    "n_model": "per_unit",
    "n": 0.01,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -163,6 +174,7 @@
     "o_formula": "0",
     "n_value": 0.0
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -179,6 +191,7 @@
     "o_formula": "=D40*N40",
     "n_value": 0.35
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -192,6 +205,7 @@
    "h": 650.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.154,
    "labour_markup": 1.0
   },
@@ -211,6 +225,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -230,6 +245,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -243,6 +259,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -256,6 +273,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -269,6 +287,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -288,6 +307,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -307,6 +327,7 @@
    },
    "n_model": "per_unit",
    "n": 0.25,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -326,6 +347,7 @@
    },
    "n_model": "per_unit",
    "n": 0.1,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -339,6 +361,7 @@
    "h": 1.0,
    "n_model": "per_unit",
    "n": 0.016666666666666666,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -358,6 +381,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -377,6 +401,7 @@
    },
    "n_model": "per_unit",
    "n": 0.1,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -396,6 +421,7 @@
    },
    "n_model": "per_unit",
    "n": 0.1,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -409,6 +435,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -422,6 +449,7 @@
    "h": "=IF(F61=0,0,CEILING.MATH(F61,2)*(((1*16.66/8)+(4*2.79/4)+(1*7.69/4))*1.1)/F61)",
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -441,6 +469,7 @@
    },
    "n_model": "per_unit",
    "n": 0.35,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -460,6 +489,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -479,6 +509,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -492,6 +523,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -511,6 +543,7 @@
    },
    "n_model": "per_unit",
    "n": 0.04,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -530,6 +563,7 @@
    },
    "n_model": "per_unit",
    "n": 0.04,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -549,6 +583,7 @@
    },
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -568,6 +603,7 @@
    },
    "n_model": "per_unit",
    "n": 0.01,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -581,6 +617,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -594,6 +631,7 @@
    "h": 14.0,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -607,6 +645,7 @@
    "h": 9.75591985428051,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -622,6 +661,7 @@
    "n": {
     "n_formula": "=IF(OR(F79=\"\",F79=0),0,IF(F79<7,2.5/F79,(20/60)))"
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -644,6 +684,7 @@
     "block_size": 15.0,
     "hours_per_block": 4.0
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -657,6 +698,7 @@
    "h": 1.1,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -670,6 +712,7 @@
    "h": 1.826,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -683,6 +726,7 @@
    "h": 2.75,
    "n_model": "per_unit",
    "n": 0.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -696,6 +740,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -709,6 +754,7 @@
    "h": 5.46,
    "n_model": "per_unit",
    "n": 0.25,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -722,6 +768,7 @@
    "h": 6.5,
    "n_model": "per_unit",
    "n": 0.25,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -735,6 +782,7 @@
    "h": 7.7,
    "n_model": "per_unit",
    "n": 0.25,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -748,6 +796,7 @@
    "h": 8.0,
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -761,6 +810,7 @@
    "h": 8.9,
    "n_model": "per_unit",
    "n": 0.3,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -774,6 +824,7 @@
    "h": 9.5,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -787,6 +838,7 @@
    "h": 3.0,
    "n_model": "per_unit",
    "n": 0.15,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -800,6 +852,7 @@
    "h": 4.84,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -813,6 +866,7 @@
    "h": 36.0,
    "n_model": "per_unit",
    "n": 1.5,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -826,6 +880,7 @@
    "h": 42.0,
    "n_model": "per_unit",
    "n": 1.5,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -839,6 +894,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -852,6 +908,7 @@
    "h": 18.0,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -865,6 +922,7 @@
    "h": 22.0,
    "n_model": "per_unit",
    "n": 0.425,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -878,6 +936,7 @@
    "h": 46.3,
    "n_model": "per_unit",
    "n": 0.6,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -891,6 +950,7 @@
    "h": 52.8,
    "n_model": "per_unit",
    "n": 0.6,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -904,6 +964,7 @@
    "h": 49.99,
    "n_model": "per_unit",
    "n": 0.4,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -917,6 +978,7 @@
    "h": 52.8,
    "n_model": "per_unit",
    "n": 0.9,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -930,6 +992,7 @@
    "h": 6.8,
    "n_model": "per_unit",
    "n": 0.2,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -943,6 +1006,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -956,6 +1020,7 @@
    "h": 16.0,
    "n_model": "per_unit",
    "n": 0.5,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -969,6 +1034,7 @@
    "h": 16.0,
    "n_model": "per_unit",
    "n": 0.8,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -982,6 +1048,7 @@
    "h": 16.0,
    "n_model": "per_unit",
    "n": 2.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1001,6 +1068,7 @@
    },
    "n_model": "per_unit",
    "n": 0.2,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1014,6 +1082,7 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.0,
    "labour_markup": 1.0
   },
@@ -1027,6 +1096,7 @@
    "h": 8.0,
    "n_model": "per_unit",
    "n": 1.0,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1040,6 +1110,7 @@
    "h": 2.41,
    "n_model": "per_unit",
    "n": 0.6666666666666666,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1062,6 +1133,7 @@
     "o_formula": "=IF(F128=0,0,IF(F128=0,0,IF(F128<54,(N128*54),(N128*F128))))",
     "n_value": 0.05
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1075,6 +1147,7 @@
    "h": 30.0,
    "n_model": "per_unit",
    "n": 0.64,
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },
@@ -1091,6 +1164,7 @@
     "o_formula": "0",
     "n_value": 0.0
    },
+   "k_pack_size": null,
    "material_markup": 0.3,
    "labour_markup": 1.0
   }

@@ -337,6 +337,28 @@ export async function loadSectionTemplates(
  * @param surveyId - The survey to load adjustments for
  * @returns Map of section_key → adjustment_pct (empty object if none exist)
  */
+/**
+ * Default section price adjustments shipped in the workbook MASTERS
+ * (costing_sections.default_adjustment_pct — e.g. the condensation master
+ * carries -5 on the PIV-loft section, cell F25). Saved per-survey
+ * adjustments override these; the dial starts where the workbook starts.
+ */
+export async function loadSectionDefaultAdjustments(
+  surveyTypes: string[]
+): Promise<Record<string, number>> {
+  const supabase = getSupabase()
+  if (!supabase) return {}
+  const { data, error } = await supabase
+    .from('costing_sections')
+    .select('section_key, default_adjustment_pct')
+    .in('survey_type', surveyTypes)
+    .neq('default_adjustment_pct', 0)
+  if (error || !data) return {}
+  const out: Record<string, number> = {}
+  for (const row of data) out[row.section_key] = Number(row.default_adjustment_pct)
+  return out
+}
+
 export async function loadSectionAdjustments(
   surveyId: string
 ): Promise<Record<string, number>> {

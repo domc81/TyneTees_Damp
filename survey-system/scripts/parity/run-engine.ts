@@ -92,14 +92,18 @@ function buildRooms(s: Scenario): any[] {
   }))
 }
 
-async function loadOptionalFlags(client: any): Promise<Record<string, boolean>> {
+interface SectionMeta { optional: boolean; pct: number }
+
+async function loadSectionMeta(client: any): Promise<Record<string, SectionMeta>> {
   const { data, error } = await client
     .from('costing_sections')
-    .select('section_key, is_optional')
+    .select('section_key, is_optional, default_adjustment_pct')
   if (error) throw new Error(`costing_sections load failed: ${error.message}`)
-  const flags: Record<string, boolean> = {}
-  for (const row of data ?? []) flags[row.section_key] = !!row.is_optional
-  return flags
+  const meta: Record<string, SectionMeta> = {}
+  for (const row of data ?? []) {
+    meta[row.section_key] = { optional: !!row.is_optional, pct: Number(row.default_adjustment_pct ?? 0) }
+  }
+  return meta
 }
 
 function loadTemplateKeyMap(): Record<string, string> {
@@ -111,7 +115,7 @@ function loadTemplateKeyMap(): Record<string, string> {
   return map
 }
 
-async function runScenario(scenario: Scenario, config: Record<string, number>, optionalFlags: Record<string, boolean>) {
+async function runScenario(scenario: Scenario, config: Record<string, number>, sectionMeta: Record<string, SectionMeta>) {
   const wizardData = buildWizardData(scenario)
   const rooms = buildRooms(scenario)
   const templateKey = loadTemplateKeyMap()
@@ -122,6 +126,36 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, o
     rooms
   )
   const missingTemplates = consumeMissingTemplateWarnings()
+
+  // Workbook-master default section adjustments (costing_sections.
+  // default_adjustment_pct, e.g. PIV loft -5%). The workbook applies the
+  // factor per line (adjusted cost column I), so scale line money here —
+  // hours are unaffected (the rate is adjusted, not the time). Section and
+  // summary sums below then aggregate the adjusted lines, exactly like the
+  // sheet. The costing page applies the same defaults via its dials.
+  for (const result of Object.values(results)) {
+    for (const line of result.lines) {
+      const pct = sectionMeta[line.sectionKey]?.pct ?? 0
+      if (pct !== 0) {
+        const f = 1 + pct / 100
+        line.result.materialTotal *= f
+        line.result.labourTotal *= f
+        line.result.lineTotal = line.result.materialTotal + line.result.labourTotal
+      }
+    }
+    for (const [sectionKey, totals] of Object.entries(result.sectionTotals)) {
+      const pct = sectionMeta[sectionKey]?.pct ?? 0
+      if (pct !== 0) {
+        const f = 1 + pct / 100
+        totals.materialTotal *= f
+        totals.labourTotal *= f
+        totals.sectionTotal = totals.materialTotal + totals.labourTotal
+      }
+    }
+    result.grandTotal.materialTotal = result.lines.reduce((s, l) => s + l.result.materialTotal, 0)
+    result.grandTotal.labourTotal = result.lines.reduce((s, l) => s + l.result.labourTotal, 0)
+    result.grandTotal.total = result.grandTotal.materialTotal + result.grandTotal.labourTotal
+  }
 
   // ---- Replicated page wiring: costing/page.tsx ~356-372 ----
   let totalLabourHours = 0
@@ -143,7 +177,7 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, o
   const sectionsOut: Record<string, any> = {}
   for (const [surveyType, result] of Object.entries(results)) {
     for (const [sectionKey, totals] of Object.entries(result.sectionTotals)) {
-      const isOptional = optionalFlags[sectionKey] ?? false
+      const isOptional = sectionMeta[sectionKey]?.optional ?? false
       // Page default: optional sections start included
       if (isOptional) optionalIncludedTotal += totals.sectionTotal
       else mandatoryWorksTotal += totals.sectionTotal
@@ -244,7 +278,7 @@ async function main() {
   setSupabaseOverride(client as any)
 
   const config = await loadPricingConfig()
-  const optionalFlags = await loadOptionalFlags(client)
+  const sectionMeta = await loadSectionMeta(client)
 
   const outDir = path.join(PARITY, 'results', 'actual')
   fs.mkdirSync(outDir, { recursive: true })
@@ -252,7 +286,7 @@ async function main() {
   for (const file of files) {
     const scenario: Scenario = JSON.parse(fs.readFileSync(path.join(scenariosDir, file), 'utf8'))
     console.log(`engine: ${scenario.id}`)
-    const result = await runScenario(scenario, config, optionalFlags)
+    const result = await runScenario(scenario, config, sectionMeta)
     const outPath = path.join(outDir, `${scenario.id}.json`)
     fs.writeFileSync(outPath, JSON.stringify(result, null, 2))
     const t = result.totals

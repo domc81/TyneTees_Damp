@@ -124,9 +124,10 @@ def extract_workbook(path):
         k = norm_formula(grid.get((r, COL["K"])))
         std_sig = re.match(rf"^=F{r}\*I{r}\*\(1\+J{r}\)$", k)
         # Timber resin rows use whole-pack pricing: =((ROUNDUP(F/30,0))*I)*(1+J59)
-        pack_sig = re.match(rf"^=\(\(ROUNDUP\(F{r}/[0-9.]+,0\)\)\*I{r}\)\*\(1\+J\d+\)$", k)
+        pack_sig = re.match(rf"^=\(\(ROUNDUP\(F{r}/([0-9.]+),0\)\)\*I{r}\)\*\(1\+J\d+\)$", k)
         if not (std_sig or pack_sig):
             continue
+        k_pack_size = float(pack_sig.group(1)) if pack_sig else None
         f_raw = grid.get((r, COL["F"]))
         f_norm = norm_formula(f_raw) if isinstance(f_raw, str) else ""
         input_kind = ("de" if f_norm == f"=D{r}*E{r}"
@@ -146,6 +147,7 @@ def extract_workbook(path):
             "derived_formula": f_norm if input_kind == "derived" else None,
             "h_model": h_model, "h": h,
             "n_model": n_model, "n": n,
+            "k_pack_size": k_pack_size,
             "material_markup": safe_eval(grid.get((r, COL["J"]))) if grid.get((r, COL["J"])) is not None else None,
             "labour_markup": safe_eval(grid.get((r, COL["R"]))) if grid.get((r, COL["R"])) is not None else None,
         })
@@ -226,6 +228,10 @@ def engine_effective_material(t, materials, config):
     """Mirror calcStandard/calcCeilingCoverage value precedence."""
     params = t.get("formula_params") or {}
     wastage = t["wastage_factor"] if t["wastage_factor"] is not None else config.get("default_wastage_factor", 1.1)
+    if t["cost_formula"] == "whole_pack":
+        size = params.get("pack_size") or t["coverage_rate"] or 1
+        cost = params.get("pack_cost") or t["base_unit_cost"] or 0
+        return cost / size * wastage, {"source": "whole_pack", "pack_size": size, "pack_cost": cost, "wastage": wastage}
     if t["cost_formula"] == "ceiling_coverage":
         coverage = params.get("coverage_rate", t["coverage_rate"])
         pk = params.get("product_key")
@@ -296,7 +302,13 @@ def diff_line(ln, t, materials, config, findings):
 
     # --- materials
     eff, meta = engine_effective_material(t, materials, config)
-    if ln["h_model"] == "const":
+    if t["cost_formula"] == "whole_pack" and ln["h_model"] == "const":
+        params2 = t.get("formula_params") or {}
+        if abs((params2.get("pack_cost") or 0) - ln["h"]) > TOL:
+            add("WRONG_RATE", "pack_cost", ln["h"], params2.get("pack_cost"), "whole_pack")
+        if ln.get("k_pack_size") is not None and abs((params2.get("pack_size") or 0) - ln["k_pack_size"]) > TOL:
+            add("WRONG_RATE", "pack_size", ln["k_pack_size"], params2.get("pack_size"), "whole_pack")
+    elif ln["h_model"] == "const":
         delta = eff - ln["h"]
         if abs(delta) > TOL:
             ratio = eff / ln["h"] if ln["h"] else None
@@ -373,6 +385,8 @@ def generate_corrections(pairs, materials):
         comments.setdefault(tid, label)
 
     for survey_type, ln, t in pairs:
+        if t["cost_formula"] == "whole_pack":
+            continue
         tid = t["id"]
         label = f"{survey_type} R{ln['row']} {ln['label'][:50]}"
         params = t.get("formula_params") or {}
