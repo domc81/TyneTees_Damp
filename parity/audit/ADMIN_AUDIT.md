@@ -18,6 +18,8 @@
 
 **Recommended follow-up (not done — needs its own harness-gated batch):** wire these lines properly so admin price edits flow: template `product_key` → catalog supplier price, template `base_unit_cost` NULL, `wastage_factor` carrying the workbook's ×1.1 where applicable (verified clean for antinox/stop-bead/angle-beads; plasterboard's `(8.24/1.098)×1.3` shape and technoseal's 80-per-80m roll need modelling decisions).
 
+**Decision 2026-07-11 (superseding the above, post pricing-control map):** re-link **on client demand only, and only the 4 clean rows** — the lines are already fully price-editable at /admin/costing, so a re-link changes where you edit, not whether you can. Full rationale (incl. why plasterboard/Technoseal/plastic-airbrick can't be linked honestly, and the `standard`-formula `base_unit_cost` shadowing guard any batch needs): `docs/workbook-analysis/PRICING_CONTROL_MAP.md` §3.
+
 ### 4. Catalog rows that DO drive live pricing — 25 of 34
 These are the engine's first-precedence price source (catalog ÷ coverage). All were made workbook-exact in batches 1–4 (including the pack-price representations: `cm3_membrane_1_2m` 22.225, `isotherm_tiwi` 98.335 = half-roll). **Admin edits to these change live quotes immediately** — the parity suite is the guard: any rate change should be followed by `oracle → engine → compare` before being trusted, and will FAIL against the workbook until the workbook itself is updated to match. That is the correct behaviour for a golden-master regime: the workbooks and the platform move together.
 
