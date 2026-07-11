@@ -72,7 +72,7 @@ TyneTees_Damp/
 - **Notifications** — in-app realtime notifications (Supabase Realtime) with per-event preference management
 - **Settings** — company profile, logo upload, notification preferences, test email delivery
 - **Training** — in-app training hub at `/training` with role-aware recommendations, 4 styled guides, 35 screenshots, sticky ToC, lightbox
-- **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management, workload dashboard
+- **Admin** — materials catalogue (CRUD), costing line templates (formula params, pricing), pricing rates, surveyor availability, team management, workload dashboard. All three pricing pages share the hardening components (`components/admin/`): validated `NumberField` inputs, old→new `PricingSaveConfirm` diff modal on every save, `PricingSmokeCheck` reference-job delta panel (auto-runs post-save), `PricingChangeLog` audit-trail viewer
 
 ### Backend (Next.js API routes + Supabase)
 
@@ -116,7 +116,7 @@ TyneTees_Damp/
 - **Report components (21):** `CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 - **Lib (35 files):**
   - Supabase: `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer)
-  - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine)
+  - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine), `costing-summary.ts` (shared summary math — section adj/travel/VAT/deposit; imported by the parity runner, so golden-master-gated), `pricing-smoke.ts` (reference-job smoke check vs `pricing_smoke_baselines`; scenarios in `lib/smoke/scenarios/`), `pricing-audit.ts` (change-log reads)
   - Survey: `survey-wizard-data.ts` (persistence/auto-save), `survey-photo-service.ts`, `survey-tags.ts`
   - Reports: `report-generator.ts` (boilerplate + LLM narrative + methodology + woodworm images), `report-data.ts`, `report-publish.ts`, `report-validation.ts`
   - PDF: `quotation-pdf-renderer.tsx` · Email: `email-service.ts`, `email-templates.ts`, `email-config.ts`
@@ -127,6 +127,7 @@ TyneTees_Damp/
   - Concurrency: `write-queue.ts` (per-survey serialized writes) · Proposals: `proposal-items.ts`
   - Utilities: `cron-auth.ts`, `terms-hash.ts`, `status-labels.ts` (activity-title humanizer) · Tests: `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
 - **UI primitives (`components/ui/`):** `button`, `card`, `input` (auto password toggle), `confirm-dialog` (styled `window.confirm` replacement — required for all confirmations)
+- **Admin shared (`components/admin/`):** `NumberField` (validated numeric input — mandatory for pricing fields), `PricingSaveConfirm`, `PricingSmokeCheck`, `PricingChangeLog`
 
 ### Database (Supabase / PostgreSQL)
 
@@ -136,7 +137,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
 - **Surveys:** `surveys` (central table, `survey_data` JSONB, `tags` TEXT[]), `survey_rooms` (`issues_identified` TEXT[] + `room_data` JSONB), `survey_images`, `photos`, `survey_installer_info`
 - **Survey-type extensions (provisioned but UNUSED — wizard stores everything in JSONB):** `survey_damp_report`, `survey_damp_wall_readings`, `survey_condensation_report`, `survey_condensation_rooms`, `survey_timber_report`, `survey_timber_rooms`, `survey_woodworm_report`
-- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (18 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
+- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (18 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`, `pricing_change_log` (trigger-written audit of the 4 pricing tables), `pricing_smoke_baselines` (accepted reference-job totals)
 - **Payments:** `payments` — `survey_fee` or `deposit` type, token-based public access, linked to enquiry/survey/quotation
 - **Quotations:** `quotations` (draft → sent → viewed → accepted/declined), `quotation_sections`, `quotation_acceptances` (immutable e-signature audit), `quotation_views`
 - **Reports:** `report_templates` (4, one per survey type), `survey_reports` (draft → generated → reviewed → finalised → published), `report_views`
@@ -206,7 +207,9 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - `bag_and_cart` — per-bag hours + per-bag material
 - `skip_hire` — reads `skip_hire_8yd_cost` from pricing_config
 
-Section-level defaults: `costing_sections.default_adjustment_pct` seeds the costing-page adjustment dials from the workbook masters (condensation `piv_loft` = −5%); editable per section at `/admin/costing`. VAT reads `pricing_config.vat_rate`. Deactivating a template (`is_active` toggle) silently drops its line from new costings via the mapping lookup.
+Section-level defaults: `costing_sections.default_adjustment_pct` seeds the costing-page adjustment dials from the workbook masters (condensation `piv_loft` = −5%); editable per section at `/admin/costing`. VAT reads `pricing_config.vat_rate`. Deactivating a template (`is_active` toggle) silently drops its line from new costings via the mapping lookup — the smoke panel's line-count column is the guard for accidental deactivation.
+
+Pricing hardening (migration `20260711000007`): writes to `pricing_config`/`materials_catalog`/`costing_line_templates`/`costing_sections` require an active admin profile (RLS via SECURITY DEFINER `is_pricing_admin()`); every change is trigger-audited into `pricing_change_log` (actor, changed fields, full old/new rows); the smoke check recomputes 5 reference scenarios through the live pipeline after each admin save and diffs against `pricing_smoke_baselines` (seed/refresh: `scripts/smoke/seed-baselines.ts`, `--check` for read-only).
 
 **Pricing control coverage:** every workbook pricing input → platform home → admin surface is mapped in `docs/workbook-analysis/PRICING_CONTROL_MAP.md` (incl. material-price precedence per formula type). The client edits all prices through `/admin/rates`, `/admin/materials`, `/admin/costing` — no code changes.
 
