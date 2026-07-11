@@ -1,0 +1,31 @@
+{
+  "id": "dpc-resin-travel-20mi-2men",
+  "title": "Combined: DPC 18LM@330mm + top coat 40m², travel 20 miles one-way, 2 men",
+  "source": "Constructed scenario exercising the interconnected chain: labour hours -> days (6.5h/day/man, rounded up) -> travel hours (30mph round trips) -> travel price + vehicle cost. Workbook rows R141/R146/R155.",
+  "workbook": "damp_v48",
+  "oracle": {
+    "lines": {
+      "dpc_traditional": { "d": 18, "e": 0.33 },
+      "resin_topcoat": 40
+    },
+    "travel": { "distance_miles": 20, "men": 2 }
+  },
+  "wizard": {
+    "survey_types": ["damp"],
+    "additional_works": { "distance_from_office": 20, "num_men_travelling": 2 },
+    "rooms": [
+      {
+        "name": "Lounge",
+        "issues": ["damp"],
+        "damp": {
+          "dpc_required": true,
+          "dpc_wall_length": 18,
+          "dpc_wall_depth": 1.5,
+          "floor_treatment": "resin_membrane",
+          "floor_area": 40
+        }
+      }
+    ]
+  },
+  "notes": "Workbook expectation (hand-derived, verify via oracle): 7.9 labour hours -> 1 day for 2 men -> travel 2.667h = £81.68 labour + £20 vehicle = £101.68. Any inflation of line labour hours on the platform compounds into extra days and therefore inflated travel/PSO — the suspected driver of the review's overheads variance (+£213.84 on Brad Brown)."
+}

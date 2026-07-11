@@ -1,0 +1,27 @@
+{
+  "id": "floor-resin-topcoat-40m2",
+  "title": "Review benchmark: floor resin, 40 m² TOP COAT ONLY (no primer, no grip grit)",
+  "source": "Technical review point 14A (Brad Brown / Completed Damp Costing v47). Review-quoted expectations: materials £182.18, labour £98.02, section total £280.20.",
+  "workbook": "damp_v48",
+  "oracle": {
+    "lines": {
+      "resin_topcoat": 40
+    },
+    "travel": { "distance_miles": 0, "men": 1 }
+  },
+  "wizard": {
+    "survey_types": ["damp"],
+    "additional_works": { "distance_from_office": 0, "num_men_travelling": 1 },
+    "rooms": [
+      {
+        "name": "Kitchen",
+        "issues": ["damp"],
+        "damp": {
+          "floor_treatment": "resin_membrane",
+          "floor_area": 40
+        }
+      }
+    ]
+  },
+  "notes": "The approved sheet prices ONLY the components the surveyor fills in — here top coat 40, primer 0, grip grit 0. The platform currently auto-applies all three components from the single floor_area entry (review point 14A); this scenario exists to expose exactly that variance."
+}
