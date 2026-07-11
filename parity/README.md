@@ -21,7 +21,7 @@ parity/scenarios/<id>.json          one job, described once, in two dialects:
         │
         ├──► survey-system/scripts/parity/run-engine.ts   (npx tsx, from survey-system/)
         │      runs the app's REAL pipeline: generateCostingFromSurvey →
-        │      calculateTravelOverhead → replicated page summary math,
+        │      costing-summary.ts (shared lib: section adj → travel → VAT → deposit),
         │      against the live TTDP Supabase templates/config
         │      → results/actual/<id>.json          ← what the platform says
         │
@@ -92,7 +92,9 @@ translation to engine code/templates.
    can rule on it.
 2. Engine-side fixes live in `survey-system/src/lib/` and must re-run the FULL
    suite (`--all`), not just the failing scenario.
-3. The engine runner replicates the costing page's summary block
-   (`costing/page.tsx` ~606-660) because that math is trapped in the React
-   component. If you touch the page summary, update the runner (or extract a
-   shared lib — preferred).
+3. Summary math (section adjustments, travel, VAT, deposit) lives in
+   `survey-system/src/lib/costing-summary.ts` and the runner imports it — so
+   this suite gates the same code the admin pricing smoke check runs
+   (`src/lib/pricing-smoke.ts`, baselines in `pricing_smoke_baselines`). The
+   costing page (`costing/page.tsx` ~606-660) still carries its own copy of
+   that math: if you touch the page summary, change the lib too.
