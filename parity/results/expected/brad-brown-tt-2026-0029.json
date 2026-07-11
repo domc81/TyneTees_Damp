@@ -1,0 +1,694 @@
+{
+  "scenario": "brad-brown-tt-2026-0029",
+  "workbook": "damp_v48",
+  "workbook_file": "workbook_extraction/workbooks/Copy of Damp Costing v48 CF - 220126.xlsm",
+  "oracle_inputs": {
+    "lines": {
+      "prep_remove_radiators": 2,
+      "prep_remove_sockets": 3,
+      "prep_skirting_removal": 15,
+      "prep_antinox_boards": 6,
+      "strip_remove_plaster_walls": 17.7,
+      "dpc_traditional": {
+        "d": 18,
+        "e": 0.33
+      },
+      "membrane_1_2m": {
+        "d": 16.4,
+        "e": 1.2
+      },
+      "membrane_fillet_joint": 15.4,
+      "membrane_overtape": 16.4,
+      "resin_topcoat": 40,
+      "plaster_boarding": 17.7,
+      "plaster_skimming": 25,
+      "plaster_corner_bead_24": 4
+    },
+    "travel": {
+      "distance_miles": 22.6,
+      "men": 2
+    }
+  },
+  "lines": {
+    "prep_remove_radiators": {
+      "quantity": 2.0,
+      "unit_material_cost": 7.0,
+      "materials": 18.2,
+      "hours": 0.666667,
+      "labour": 40.84,
+      "total": 59.04,
+      "contractor_materials": 15.4,
+      "contractor_pay": 18.666667,
+      "line_keys": [
+        "remove_radiators_valves"
+      ],
+      "label": "Remove radiators & cap valves"
+    },
+    "prep_remove_sockets": {
+      "quantity": 3.0,
+      "unit_material_cost": 2.0,
+      "materials": 7.8,
+      "hours": 0.6,
+      "labour": 36.756,
+      "total": 44.556,
+      "contractor_materials": 6.6,
+      "contractor_pay": 16.8,
+      "line_keys": [
+        "remove_socket_fronts"
+      ],
+      "label": "Remove socket fronts and isolate"
+    },
+    "prep_skirting_removal": {
+      "quantity": 15.0,
+      "unit_material_cost": 0.1,
+      "materials": 1.95,
+      "hours": 1.05,
+      "labour": 64.323,
+      "total": 66.273,
+      "contractor_materials": 1.65,
+      "contractor_pay": 29.4,
+      "line_keys": [
+        "skirting_board_removal"
+      ],
+      "label": "Skirting board removal & set aside"
+    },
+    "prep_strip_wallpaper": {
+      "quantity": 0.0,
+      "unit_material_cost": 0.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "strip_wallpaper"
+      ],
+      "label": "Strip Wall Paper"
+    },
+    "prep_antinox_boards": {
+      "quantity": 6.0,
+      "unit_material_cost": 4.576,
+      "materials": 35.6928,
+      "hours": 0.2,
+      "labour": 12.252,
+      "total": 47.9448,
+      "contractor_materials": 30.2016,
+      "contractor_pay": 5.6,
+      "line_keys": [
+        "floor_protection_boards"
+      ],
+      "label": "Antinox HD Floor Protection Boards"
+    },
+    "strip_remove_plaster_walls": {
+      "quantity": 17.7,
+      "unit_material_cost": 0.0,
+      "materials": 0.0,
+      "hours": 5.31,
+      "labour": 325.2906,
+      "total": 325.2906,
+      "contractor_materials": 0.0,
+      "contractor_pay": 148.68,
+      "line_keys": [
+        "remove_plaster_walls"
+      ],
+      "label": "Remove plaster/render (Walls)"
+    },
+    "strip_bag_debris": {
+      "quantity": 35.4,
+      "unit_material_cost": 1.0,
+      "materials": 46.02,
+      "hours": 0.354,
+      "labour": 21.68604,
+      "total": 67.70604,
+      "contractor_materials": 38.94,
+      "contractor_pay": 9.912,
+      "line_keys": [
+        "bag_cart_debris"
+      ],
+      "label": "Bag up debris & cart outside"
+    },
+    "strip_disposal": {
+      "quantity": 35.4,
+      "unit_material_cost": 2.0,
+      "materials": 92.04,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 92.04,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "licensed_disposal"
+      ],
+      "label": "Disposal via licensed transfer agent"
+    },
+    "dpc_traditional": {
+      "quantity": 5.94,
+      "unit_material_cost": 13.543043,
+      "materials": 104.579382,
+      "hours": 6.3,
+      "labour": 385.938,
+      "total": 490.517382,
+      "contractor_materials": 88.490246,
+      "contractor_pay": 176.4,
+      "line_keys": [
+        "dpc_injection_traditional"
+      ],
+      "label": "DPC Installation - Traditional"
+    },
+    "membrane_1_2m": {
+      "quantity": 19.68,
+      "unit_material_cost": 4.969004,
+      "materials": 127.127,
+      "hours": 5.904,
+      "labour": 361.67904,
+      "total": 488.80604,
+      "contractor_materials": 107.569,
+      "contractor_pay": 165.312,
+      "line_keys": [
+        "wall_membrane_1_2m"
+      ],
+      "label": "Wall membrane CM3 - 1.2mtr"
+    },
+    "membrane_plugs": {
+      "quantity": 19.68,
+      "unit_material_cost": 1.042988,
+      "materials": 26.6838,
+      "hours": 4.92,
+      "labour": 301.3992,
+      "total": 328.083,
+      "contractor_materials": 22.5786,
+      "contractor_pay": 137.76,
+      "line_keys": [
+        "membrane_plugs"
+      ],
+      "label": "Membrane plugs for m2 listed"
+    },
+    "membrane_sealing_tape": {
+      "quantity": 7.872,
+      "unit_material_cost": 2.677337,
+      "materials": 27.3988,
+      "hours": 0.7872,
+      "labour": 48.223872,
+      "total": 75.622672,
+      "contractor_materials": 23.1836,
+      "contractor_pay": 22.0416,
+      "line_keys": [
+        "sealing_tape"
+      ],
+      "label": "Sealing Tape Lm"
+    },
+    "membrane_technoseal": {
+      "quantity": 16.4,
+      "unit_material_cost": 1.0,
+      "materials": 21.32,
+      "hours": 0.273333,
+      "labour": 16.7444,
+      "total": 38.0644,
+      "contractor_materials": 18.04,
+      "contractor_pay": 7.653333,
+      "line_keys": null,
+      "label": "Technoseal Lm"
+    },
+    "membrane_fillet_joint": {
+      "quantity": 15.4,
+      "unit_material_cost": 3.501429,
+      "materials": 70.0986,
+      "hours": 4.62,
+      "labour": 283.0212,
+      "total": 353.1198,
+      "contractor_materials": 59.3142,
+      "contractor_pay": 129.36,
+      "line_keys": [
+        "wall_floor_fillet_joint"
+      ],
+      "label": "Wall/floor fillet joint"
+    },
+    "membrane_overtape": {
+      "quantity": 16.4,
+      "unit_material_cost": 2.90561,
+      "materials": 61.9476,
+      "hours": 1.64,
+      "labour": 100.4664,
+      "total": 162.414,
+      "contractor_materials": 52.4172,
+      "contractor_pay": 45.92,
+      "line_keys": [
+        "overtape"
+      ],
+      "label": "Overtape Lm"
+    },
+    "resin_topcoat": {
+      "quantity": 40.0,
+      "unit_material_cost": 3.5035,
+      "materials": 182.182,
+      "hours": 1.6,
+      "labour": 98.016,
+      "total": 280.198,
+      "contractor_materials": 7.7077,
+      "contractor_pay": 44.8,
+      "line_keys": [
+        "resin_topcoat_ep40"
+      ],
+      "label": "EP40 2 Pack resin top coat"
+    },
+    "plaster_stud_wall": {
+      "quantity": 0.0,
+      "unit_material_cost": 14.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "construct_stud_wall"
+      ],
+      "label": "Construct stud wall to perimeter"
+    },
+    "plaster_boarding": {
+      "quantity": 17.7,
+      "unit_material_cost": 9.75592,
+      "materials": 224.483716,
+      "hours": 7.08,
+      "labour": 433.7208,
+      "total": 658.204516,
+      "contractor_materials": 189.94776,
+      "contractor_pay": 198.24,
+      "line_keys": [
+        "plaster_boarding"
+      ],
+      "label": "Plaster boarding (inc dab/screws)"
+    },
+    "plaster_skimming": {
+      "quantity": 25.0,
+      "unit_material_cost": 1.59456,
+      "materials": 51.8232,
+      "hours": 8.0,
+      "labour": 490.08,
+      "total": 541.9032,
+      "contractor_materials": 43.8504,
+      "contractor_pay": 224.0,
+      "line_keys": [
+        "skimming_walls"
+      ],
+      "label": "Skimming walls (multi finish plaster)"
+    },
+    "plaster_stop_bead": {
+      "quantity": 0.0,
+      "unit_material_cost": 1.1,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "plastering_stop_bead",
+        "plastering_stop_bead_3m_length"
+      ],
+      "label": "Plastering Stop Bead - 3m"
+    },
+    "plaster_corner_bead_24": {
+      "quantity": 4.0,
+      "unit_material_cost": 1.826,
+      "materials": 9.4952,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 9.4952,
+      "contractor_materials": 8.0344,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "plastering_thin_coat_anglecorner_bead_24m_length"
+      ],
+      "label": "Corner Bead - 2.4m"
+    },
+    "plaster_corner_bead_3": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.75,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "plastering_thin_coat_anglecorner_bead_3m_length"
+      ],
+      "label": "Corner Bead - 3m"
+    },
+    "joists_100x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 5.46,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 100 x 50"
+    },
+    "joists_125x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 6.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 125 x 50"
+    },
+    "joists_150x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 7.7,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 150 x 50"
+    },
+    "joists_175x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 8.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 175 x 50"
+    },
+    "joists_200x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 8.9,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 200 x 50"
+    },
+    "joists_225x50": {
+      "quantity": 0.0,
+      "unit_material_cost": 9.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Joists, 225 x 50"
+    },
+    "joists_treat_endwrap": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Treat and endwrap joist"
+    },
+    "joists_wall_plate": {
+      "quantity": 0.0,
+      "unit_material_cost": 4.84,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Wall plate 100x25"
+    },
+    "joists_bower_beams": {
+      "quantity": 0.0,
+      "unit_material_cost": 36.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Bower beams (pair)"
+    },
+    "joists_flitch_plates": {
+      "quantity": 0.0,
+      "unit_material_cost": 42.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Flitch plates (pair)"
+    },
+    "floor_weyrock_18": {
+      "quantity": 0.0,
+      "unit_material_cost": 18.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install Weyrock flooring 18mm (M2)"
+    },
+    "floor_weyrock_22": {
+      "quantity": 0.0,
+      "unit_material_cost": 22.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install Weyrock flooring 22mm (M2)"
+    },
+    "floor_std_tg": {
+      "quantity": 0.0,
+      "unit_material_cost": 46.3,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install std T&G Floorboards (M2)"
+    },
+    "floor_victorian_tg": {
+      "quantity": 0.0,
+      "unit_material_cost": 52.8,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install Victorian T&G Floorboards (M2)"
+    },
+    "floor_engineered": {
+      "quantity": 0.0,
+      "unit_material_cost": 49.99,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install Engineered Flooring sheet (M2)"
+    },
+    "floor_structural_engineered": {
+      "quantity": 0.0,
+      "unit_material_cost": 52.8,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install Structural Engineered Flooring (M2)"
+    },
+    "floor_insulation": {
+      "quantity": 0.0,
+      "unit_material_cost": 6.8,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Provide insulation to suspended flooring"
+    },
+    "airbrick_clean": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Clean out airbrick/fit new face"
+    },
+    "airbrick_lift_upgrade": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Lift / upgrade existing airbrick"
+    },
+    "airbrick_additional": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Install additional airbrick"
+    },
+    "drain_aco": {
+      "quantity": 0.0,
+      "unit_material_cost": 8.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Aco Drain per linear meter"
+    },
+    "drain_french": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.41,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "French Drain per linear meter"
+    },
+    "asbestos_testing": {
+      "quantity": 0.0,
+      "unit_material_cost": 30.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": null,
+      "label": "Asbestos Testing"
+    },
+    "skips": {
+      "quantity": 0.0,
+      "unit_material_cost": 270.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "skip_hire"
+      ],
+      "label": "Rubbish removal skips"
+    }
+  },
+  "sections": {
+    "preparatory_work": {
+      "materials": 63.6428,
+      "hours": 2.516667,
+      "labour": 154.171,
+      "total": 217.8138,
+      "contractor_materials": 53.8516,
+      "contractor_pay": 70.466667
+    },
+    "strip_out": {
+      "materials": 138.06,
+      "hours": 5.664,
+      "labour": 346.97664,
+      "total": 485.03664,
+      "contractor_materials": 38.94,
+      "contractor_pay": 158.592
+    },
+    "damp_treatment": {
+      "materials": 439.155182,
+      "hours": 24.444533,
+      "labour": 1497.472112,
+      "total": 1936.627294,
+      "contractor_materials": 371.592846,
+      "contractor_pay": 684.446933
+    },
+    "floor_resin": {
+      "materials": 182.182,
+      "hours": 1.6,
+      "labour": 98.016,
+      "total": 280.198,
+      "contractor_materials": 7.7077,
+      "contractor_pay": 44.8
+    },
+    "plastering": {
+      "materials": 285.802116,
+      "hours": 15.08,
+      "labour": 923.8008,
+      "total": 1209.602916,
+      "contractor_materials": 241.83256,
+      "contractor_pay": 422.24
+    }
+  },
+  "totals": {
+    "materials_subtotal": 1108.842098,
+    "labour_subtotal": 3020.436552,
+    "labour_hours_subtotal": 49.3052,
+    "travel_price": 459.5936,
+    "travel_hours": 12.053333,
+    "subtotal_ex_vat": 4588.87225,
+    "total_hours": 61.358533,
+    "vat": 917.77445,
+    "total_inc_vat": 5506.6467,
+    "days": 4.0,
+    "contractor_materials_total": 713.924706,
+    "contractor_pay_total": 1380.5456,
+    "contractor_travel": 81.36,
+    "contractor_total": 2175.830306
+  },
+  "rates": {
+    "labour_rate": 30.63,
+    "contractor_rate": 28.0,
+    "vehicle_cost_per_mile": 0.5
+  }
+}

@@ -65,6 +65,15 @@ def compare_scenario(sid: str):
     expected = json.loads((EXPECTED / f"{sid}.json").read_text())
     actual = json.loads((ACTUAL / f"{sid}.json").read_text())
 
+    # Join keys come from the CURRENT cellmap, not the frozen golden — a
+    # cellmap line_keys correction must not require an oracle re-run.
+    cellmap_path = PARITY / "oracle" / "cellmaps" / f"{expected['workbook']}.json"
+    if cellmap_path.exists():
+        cm_lines = json.loads(cellmap_path.read_text())["lines"]
+        for name, entry in expected["lines"].items():
+            if name in cm_lines:
+                entry["line_keys"] = cm_lines[name].get("line_keys")
+
     rows = []
     fails = 0
 
