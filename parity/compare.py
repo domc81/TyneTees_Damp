@@ -74,6 +74,30 @@ def compare_scenario(sid: str):
             if name in cm_lines:
                 entry["line_keys"] = cm_lines[name].get("line_keys")
 
+    # Known WORKBOOK SUMMATION DEFECTS (deliberate platform deviations): the
+    # damp/condensation sheets price asbestos testing but omit its section
+    # from their own Materials/Labour subtotals (K139/O140 skip K133) — the
+    # customer would never be billed for priced work. The platform includes
+    # it; scenarios declare the affected line so expected totals are lifted
+    # to the CORRECT sum. Reported to Steve, not silently reproduced.
+    scenario_path = PARITY / "scenarios" / f"{sid}.json"
+    if scenario_path.exists():
+        scenario = json.loads(scenario_path.read_text())
+        for dev in scenario.get("workbook_summation_defects", []):
+            line = expected["lines"].get(dev["line"])
+            if not line:
+                continue
+            fields = dev.get("fields")  # None = all money+hours
+            t = expected["totals"]
+            if fields is None or "hours" in fields:
+                t["labour_hours_subtotal"] = fnum(t.get("labour_hours_subtotal")) + fnum(line.get("hours"))
+            if fields is None:
+                t["materials_subtotal"] = fnum(t.get("materials_subtotal")) + fnum(line.get("materials"))
+                t["labour_subtotal"] = fnum(t.get("labour_subtotal")) + fnum(line.get("labour"))
+                t["subtotal_ex_vat"] = fnum(t.get("subtotal_ex_vat")) + fnum(line.get("total"))
+                t["vat"] = fnum(t.get("vat")) + fnum(line.get("total")) * 0.2
+                t["total_inc_vat"] = fnum(t.get("total_inc_vat")) + fnum(line.get("total")) * 1.2
+
     rows = []
     fails = 0
 

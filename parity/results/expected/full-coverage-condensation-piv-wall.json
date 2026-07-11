@@ -1,0 +1,506 @@
+{
+  "scenario": "full-coverage-condensation-piv-wall",
+  "workbook": "condensation_v37",
+  "workbook_file": "workbook_extraction/workbooks/Copy of Condensation PIV Costing v37 CF - 131125.xlsm",
+  "oracle_inputs": {
+    "lines": {
+      "va_pozidry_compact_wall_mounted_unit_r28": 5,
+      "electrical_pack_fused_spur_cable_jb_r29": 6,
+      "diamond_core_107mm_hole_r41": 2,
+      "joinery_to_box_in_ducting_per_metre_min_r62": 1.2
+    },
+    "travel": {
+      "distance_miles": 0,
+      "men": 1
+    }
+  },
+  "lines": {
+    "va_pozidry_loft_unit_heated_r21": {
+      "quantity": 0.0,
+      "unit_material_cost": 324.13,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "va_pozidry_loft_unit_heated"
+      ],
+      "label": "VA Pozidry loft unit - heated"
+    },
+    "va_pozidry_loft_unit_unheated_r22": {
+      "quantity": 0.0,
+      "unit_material_cost": 309.96,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "va_pozidry_loft_unit_unheated"
+      ],
+      "label": "VA Pozidry loft unit - unheated"
+    },
+    "electrical_pack_fused_spur_cable_jb_r23": {
+      "quantity": 0.0,
+      "unit_material_cost": 12.46,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "electrical_pack_fused_spur_cable_jb"
+      ],
+      "label": "Electrical Pack - fused spur, cable, JB"
+    },
+    "sarkvents_r24": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "sarkvents"
+      ],
+      "label": "Sarkvents"
+    },
+    "va_pozidry_compact_wall_mounted_unit_r28": {
+      "quantity": 5.0,
+      "unit_material_cost": 273.74,
+      "materials": 1916.18,
+      "hours": 20.0,
+      "labour": 2450.4,
+      "total": 4366.58,
+      "contractor_materials": 1505.57,
+      "contractor_pay": 560.0,
+      "line_keys": [
+        "va_pozidry_compact_wall_mounted_unit"
+      ],
+      "label": "VA Pozidry Compact wall mounted unit"
+    },
+    "electrical_pack_fused_spur_cable_jb_r29": {
+      "quantity": 6.0,
+      "unit_material_cost": 12.46,
+      "materials": 97.188,
+      "hours": 9.0,
+      "labour": 551.34,
+      "total": 648.528,
+      "contractor_materials": 82.236,
+      "contractor_pay": 252.0,
+      "line_keys": [
+        "electrical_pack_fused_spur_cable_jb_piv_wall"
+      ],
+      "label": "Electrical Pack - fused spur, cable, JB"
+    },
+    "ducting_1m_length_r30": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.85,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_1m_length"
+      ],
+      "label": "Ducting - 1m length"
+    },
+    "ducting_round_elbow_r31": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.78,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_round_elbow"
+      ],
+      "label": "Ducting - round elbow"
+    },
+    "ducting_round_straight_conn_r32": {
+      "quantity": 0.0,
+      "unit_material_cost": 0.52,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_round_straight_conn"
+      ],
+      "label": "Ducting - round - straight conn"
+    },
+    "ducting_round_1m_r33": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.85,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_round_1m"
+      ],
+      "label": "Ducting - round 1m"
+    },
+    "ducting_flat_to_round_adaptor_r34": {
+      "quantity": 0.0,
+      "unit_material_cost": 1.63,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_flat_to_round_adaptor"
+      ],
+      "label": "Ducting - flat to round adaptor"
+    },
+    "ducting_flat_straight_connector_r35": {
+      "quantity": 0.0,
+      "unit_material_cost": 1.14,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_flat_straight_connector"
+      ],
+      "label": "Ducting - flat straight connector"
+    },
+    "ducting_flat_horizontal_bend_r36": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.01,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_flat_horizontal_bend"
+      ],
+      "label": "Ducting - flat horizontal bend"
+    },
+    "ducting_flat_vertical_bend_r37": {
+      "quantity": 0.0,
+      "unit_material_cost": 3.01,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_flat_vertical_bend"
+      ],
+      "label": "Ducting - flat vertical bend"
+    },
+    "ducting_flat_1m_r38": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.87,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_flat_1m"
+      ],
+      "label": "Ducting - flat - 1m"
+    },
+    "ducting_insulated_flexi_3m_length_r39": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "ducting_insulated_flexi_3m_length"
+      ],
+      "label": "Ducting - insulated flexi (3m Length)"
+    },
+    "grille_r40": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.42,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "grille"
+      ],
+      "label": "Grille"
+    },
+    "diamond_core_107mm_hole_r41": {
+      "quantity": 2.0,
+      "unit_material_cost": 0.0,
+      "materials": 0.0,
+      "hours": 4.0,
+      "labour": 245.04,
+      "total": 245.04,
+      "contractor_materials": 0.0,
+      "contractor_pay": 112.0,
+      "line_keys": [
+        "diamond_core_107mm_hole"
+      ],
+      "label": "Diamond core 107mm hole"
+    },
+    "trickle_and_boost_humidistat_fan_greenwo_r45": {
+      "quantity": 0.0,
+      "unit_material_cost": 70.2,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "trickle_and_boost_humidistat_fan_greenwood"
+      ],
+      "label": "Trickle and boost humidistat fan (greenwood)"
+    },
+    "electrical_pack_fused_spur_cable_jb_r46": {
+      "quantity": 0.0,
+      "unit_material_cost": 12.46,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "electrical_pack_fused_spur_cable_jb_humidistat_fan"
+      ],
+      "label": "Electrical Pack - fused spur, cable, JB"
+    },
+    "grille_r47": {
+      "quantity": 0.0,
+      "unit_material_cost": 2.42,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "grille_humidistat_fan"
+      ],
+      "label": "Grille"
+    },
+    "dryaire_cpass_plasmo_insulated_pullcord_r52": {
+      "quantity": 0.0,
+      "unit_material_cost": 36.18,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "dryaire_cpass_plasmo_insulated_pullcord_passive_vent"
+      ],
+      "label": "Dryaire Cpass (plasmo) insulated pullcord passive vent"
+    },
+    "dryaire_cvent_r57": {
+      "quantity": 0.0,
+      "unit_material_cost": 12.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "dryaire_cvent"
+      ],
+      "label": "Dryaire Cvent"
+    },
+    "joinery_to_box_in_ducting_per_metre_min_r62": {
+      "quantity": 1.2,
+      "unit_material_cost": 30.0,
+      "materials": 46.8,
+      "hours": 1.2,
+      "labour": 73.512,
+      "total": 120.312,
+      "contractor_materials": 39.6,
+      "contractor_pay": 33.6,
+      "line_keys": [
+        "joinery_to_box_in_ducting_per_metre_min_charge_24_metres"
+      ],
+      "label": "Joinery to box in ducting (per metre) Min charge 2.4 metres"
+    },
+    "new_loft_hatch_with_sturdy_fold_down_lad_r66": {
+      "quantity": 0.0,
+      "unit_material_cost": 360.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "new_loft_hatch_with_sturdy_fold_down_ladder_with_handrail_an"
+      ],
+      "label": "New loft hatch - with sturdy fold down ladder with handrail and switched lamp"
+    },
+    "existing_loft_hatch_enlarge_loft_hatch_r70": {
+      "quantity": 0.0,
+      "unit_material_cost": 45.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "existing_loft_hatch_enlarge_loft_hatch"
+      ],
+      "label": "Existing loft hatch - enlarge loft hatch"
+    },
+    "mould_treatment_r74": {
+      "quantity": 0.0,
+      "unit_material_cost": 0.5,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "mould_treatment"
+      ],
+      "label": "Mould treatment"
+    },
+    "asbestos_testing_r78": {
+      "quantity": 0.0,
+      "unit_material_cost": 30.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "asbestos_testing"
+      ],
+      "label": "Asbestos Testing"
+    },
+    "clean_out_airbrick_fit_new_face_r82": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "clean_out_airbrickfit_new_face"
+      ],
+      "label": "Clean out airbrick/fit new face"
+    },
+    "lift_upgrade_existing_airbrick_fit_new_f_r83": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "liftupgrade_existing_airbrickfit_new_face"
+      ],
+      "label": "Lift/upgrade existing airbrick/fit new face"
+    },
+    "install_additional_airbrick_r84": {
+      "quantity": 0.0,
+      "unit_material_cost": 16.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "install_additional_airbrick"
+      ],
+      "label": "Install additional  airbrick"
+    },
+    "rubbish_removal_skips_r88": {
+      "quantity": 0.0,
+      "unit_material_cost": 270.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
+      "line_keys": [
+        "skip_hire"
+      ],
+      "label": "Rubbish removal skips"
+    }
+  },
+  "sections": {
+    "diamond_core_107mm_hole_r42": {
+      "materials": 2013.368,
+      "hours": 33.0,
+      "labour": 3246.78,
+      "total": 5260.148,
+      "contractor_materials": 1587.806,
+      "contractor_pay": 924.0
+    },
+    "joinery_to_box_in_ducting_per_r63": {
+      "materials": 46.8,
+      "hours": 1.2,
+      "labour": 73.512,
+      "total": 120.312,
+      "contractor_materials": 39.6,
+      "contractor_pay": 33.6
+    }
+  },
+  "totals": {
+    "materials_subtotal": 2060.168,
+    "labour_subtotal": 3320.292,
+    "labour_hours_subtotal": 34.2,
+    "travel_price": 0.0,
+    "travel_hours": 0.0,
+    "subtotal_ex_vat": 5380.46,
+    "total_hours": 34.2,
+    "vat": 1076.092,
+    "total_inc_vat": 6456.552,
+    "days": 6.0,
+    "contractor_materials_total": 1627.406,
+    "contractor_pay_total": 957.6,
+    "contractor_travel": 0.0,
+    "contractor_total": 2585.006
+  },
+  "rates": {
+    "labour_rate": 30.63,
+    "contractor_rate": 28.0,
+    "vehicle_cost_per_mile": 0.5
+  }
+}

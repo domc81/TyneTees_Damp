@@ -195,10 +195,27 @@ function mapDampSurvey(
   let totalStripOutCeilingsArea = 0
   let totalDpcLength = 0
   let dpcWallThickness: number | undefined
-  let totalMembraneArea = 0
+  let hasDigitalDpc = false
+  // Workbook rows 44/45/49: one membrane line PER HEIGHT (multi-room surveys
+  // can mix heights); the kit lines derive from the TOTAL area (SUM F44:F48)
+  const membraneAreaByHeight: Record<'1m' | '1.2m' | '2m', number> = { '1m': 0, '1.2m': 0, '2m': 0 }
   let totalTankingArea = 0
+  let totalDubbingArea = 0
+  let totalRenovatingArea = 0
+  let totalTankingFilletLength = 0
+  let totalTankingDifficultyHours = 0
   let totalFilletJointLength = 0
   let totalOvertapeLength = 0
+  let totalResinDifficultyHours = 0
+  const joistLengthBySize: Record<string, number> = {}
+  let totalEndwrapLm = 0
+  let totalWallPlateLm = 0
+  let totalBowerBeams = 0
+  let totalFlitchPlates = 0
+  const flooringByType: Record<string, number> = {}
+  let totalSuspendedInsulation = 0
+  let totalJoistsDifficultyHours = 0
+  let totalDeckingDifficultyHours = 0
   let totalResinTopcoatArea = 0
   let totalResinPrimerArea = 0
   let totalResinGripGritArea = 0
@@ -238,30 +255,71 @@ function mapDampSurvey(
     // stored "brick courses"; fall back to courses × 0.215m (one-brick wall)
     // until the surveyor re-enters the measured thickness.
     if (dampData.dpc_required) {
-      totalDpcLength += dampData.dpc_wall_length || 0
-      const thickness = dampData.dpc_wall_thickness_m
-        ?? (dampData.dpc_wall_depth ? dampData.dpc_wall_depth * 0.215 : undefined)
-      if (thickness && !dpcWallThickness) {
-        dpcWallThickness = thickness
+      if (dampData.dpc_type === 'digital') {
+        // Workbook R42: flat one-unit digital DPC line (radius/construction
+        // captured for the record; price does not scale)
+        hasDigitalDpc = true
+      } else {
+        totalDpcLength += dampData.dpc_wall_length || 0
+        const thickness = dampData.dpc_wall_thickness_m
+          ?? (dampData.dpc_wall_depth ? dampData.dpc_wall_depth * 0.215 : undefined)
+        if (thickness && !dpcWallThickness) {
+          dpcWallThickness = thickness
+        }
       }
     }
 
     // Wall treatment (membrane or tanking)
     if (dampData.wall_treatment === 'membrane') {
-      // Membrane area from wall lengths and height
+      // Membrane area bucketed PER HEIGHT (workbook rows 44/45/49)
+      const heightKey = (dampData.membrane_height === '1.2m' ? '1.2m'
+        : dampData.membrane_height === '2m' ? '2m' : '1m') as '1m' | '1.2m' | '2m'
+      const heightM = heightKey === '1m' ? 1 : heightKey === '1.2m' ? 1.2 : 2
       for (const wallLength of dampData.membrane_wall_lengths || []) {
-        const height = dampData.membrane_height === '1m' ? 1 :
-                       dampData.membrane_height === '1.2m' ? 1.2 : 2
-        totalMembraneArea += wallLength * height
+        membraneAreaByHeight[heightKey] += wallLength * heightM
       }
       totalFilletJointLength += dampData.fillet_joint_length || 0
       // Overtape total = length + 2 x height (workbook R55: F55 = D55+(E55*2));
       // legacy surveys have only overtape_length (height 0 -> unchanged totals)
       totalOvertapeLength += (dampData.overtape_length || 0) + 2 * (dampData.overtape_height || 0)
     } else if (dampData.wall_treatment === 'tanking') {
+      // Workbook rows 61-65: independent quantities. Legacy surveys (only
+      // tanking_area set) keep the historical three-coat bundle.
+      const hasComponentFields = dampData.dubbing_out_area !== undefined
+        || dampData.renovating_plaster_area !== undefined
       totalTankingArea += dampData.tanking_area || 0
-      totalFilletJointLength += dampData.fillet_joint_length || 0
+      if (hasComponentFields) {
+        totalDubbingArea += dampData.dubbing_out_area || 0
+        totalRenovatingArea += dampData.renovating_plaster_area || 0
+      } else {
+        totalDubbingArea += dampData.tanking_area || 0
+        totalRenovatingArea += dampData.tanking_area || 0
+      }
+      // Tanking fillet is its own workbook row (R64) — never share the
+      // membrane fillet accumulator (R53)
+      totalTankingFilletLength += dampData.fillet_joint_length || 0
+      totalTankingDifficultyHours += dampData.tanking_difficulty_hours || 0
     }
+
+    // Joists & decking (workbook rows 89-108) — usually with the
+    // 'new_joists' floor treatment, but aggregated whenever entered
+    for (const entry of dampData.joist_entries || []) {
+      const totalLength = (entry.quantity || 0) * (entry.length || 0)
+      if (totalLength > 0) {
+        joistLengthBySize[entry.size] = (joistLengthBySize[entry.size] || 0) + totalLength
+      }
+    }
+    totalEndwrapLm += dampData.endwrap_joists_lm || 0
+    totalWallPlateLm += dampData.wall_plate_lm || 0
+    totalBowerBeams += dampData.bower_beams_count || 0
+    totalFlitchPlates += dampData.flitch_plates_count || 0
+    if (dampData.flooring_type && dampData.flooring_area) {
+      flooringByType[dampData.flooring_type] = (flooringByType[dampData.flooring_type] || 0) + dampData.flooring_area
+    }
+    totalSuspendedInsulation += dampData.suspended_floor_insulation_area || 0
+    totalJoistsDifficultyHours += dampData.joists_difficulty_hours || 0
+    totalDeckingDifficultyHours += dampData.decking_difficulty_hours || 0
+    totalResinDifficultyHours += dampData.resin_difficulty_hours || 0
 
     // Floor treatment — resin components mirror workbook rows 69-72: each an
     // independent quantity, priced only when > 0 (review 14A). Legacy surveys
@@ -354,17 +412,26 @@ function mapDampSurvey(
     if (dpcInput) inputs.push(dpcInput)
   }
 
+  // Digital DPC (workbook R42) — flat one-unit line when selected
+  if (hasDigitalDpc) {
+    const digitalInput = createLineInput(lookup, 'dpc_digital', 'dpc_installation_digital', 1)
+    if (digitalInput) inputs.push(digitalInput)
+  }
+
   // === WALL MEMBRANE ===
 
+  const totalMembraneArea = membraneAreaByHeight['1m'] + membraneAreaByHeight['1.2m'] + membraneAreaByHeight['2m']
   if (totalMembraneArea > 0) {
-    // Determine membrane height variant
-    const membraneHeight = dampRooms[0]?.room_data?.damp?.membrane_height || '1m'
-    let membraneLineKey = 'wall_membrane_1m'
-    if (membraneHeight === '1.2m') membraneLineKey = 'wall_membrane_1_2m'
-    else if (membraneHeight === '2m') membraneLineKey = 'wall_membrane_2m'
-
-    const membraneInput = createLineInput(lookup, 'wall_membrane', membraneLineKey, totalMembraneArea)
-    if (membraneInput) inputs.push(membraneInput)
+    // One line PER HEIGHT (workbook rows 44/45/49) — a survey can mix heights
+    const heightKeys: Array<['1m' | '1.2m' | '2m', string]> = [
+      ['1m', 'wall_membrane_1m'], ['1.2m', 'wall_membrane_1_2m'], ['2m', 'wall_membrane_2m'],
+    ]
+    for (const [h, lineKey] of heightKeys) {
+      if (membraneAreaByHeight[h] > 0) {
+        const membraneInput = createLineInput(lookup, 'wall_membrane', lineKey, membraneAreaByHeight[h])
+        if (membraneInput) inputs.push(membraneInput)
+      }
+    }
 
     // Auto-cascading: Membrane plugs = membrane area × rate (handled by ceiling_coverage formula)
     const plugsInput = createLineInput(lookup, 'wall_membrane', 'membrane_plugs', totalMembraneArea)
@@ -399,23 +466,28 @@ function mapDampSurvey(
   }
 
   // === CEMENTITIOUS TANKING ===
+  // Workbook rows 61-65: independent quantities (legacy bundle handled in
+  // the room loop); fillet is the tanking row R64, never the membrane one
 
-  if (totalTankingArea > 0) {
-    // Dubbing coat
-    const dubbingInput = createLineInput(lookup, 'cementitious_tanking', 'dubbing_out_coat', totalTankingArea)
+  if (totalDubbingArea > 0) {
+    const dubbingInput = createLineInput(lookup, 'cementitious_tanking', 'dubbing_out_coat', totalDubbingArea)
     if (dubbingInput) inputs.push(dubbingInput)
-
-    // Tanking slurry
+  }
+  if (totalTankingArea > 0) {
     const tankingInput = createLineInput(lookup, 'cementitious_tanking', 'tankingslurry_2coat', totalTankingArea)
     if (tankingInput) inputs.push(tankingInput)
-
-    // Renovating plaster
-    const renovatingInput = createLineInput(lookup, 'cementitious_tanking', 'renovating_plaster', totalTankingArea)
+  }
+  if (totalRenovatingArea > 0) {
+    const renovatingInput = createLineInput(lookup, 'cementitious_tanking', 'renovating_plaster', totalRenovatingArea)
     if (renovatingInput) inputs.push(renovatingInput)
-
-    // Fillet joint
-    const filletTankingInput = createLineInput(lookup, 'cementitious_tanking', 'wall_floor_fillet_tanking', totalFilletJointLength)
+  }
+  if (totalTankingFilletLength > 0) {
+    const filletTankingInput = createLineInput(lookup, 'cementitious_tanking', 'wall_floor_fillet_tanking', totalTankingFilletLength)
     if (filletTankingInput) inputs.push(filletTankingInput)
+  }
+  if (totalTankingDifficultyHours > 0) {
+    const tankingDifficultyInput = createLineInput(lookup, 'cementitious_tanking', 'difficulty_hours_tanking', totalTankingDifficultyHours)
+    if (tankingDifficultyInput) inputs.push(tankingDifficultyInput)
   }
 
   // === FLOOR RESIN ===
@@ -438,6 +510,66 @@ function mapDampSurvey(
   if (totalFloorResinFilletLength > 0) {
     const resinFilletInput = createLineInput(lookup, 'floor_resin', 'wall_floor_fillet_resin', totalFloorResinFilletLength)
     if (resinFilletInput) inputs.push(resinFilletInput)
+  }
+  if (totalResinDifficultyHours > 0) {
+    const resinDifficultyInput = createLineInput(lookup, 'floor_resin', 'difficulty_hours_resin', totalResinDifficultyHours)
+    if (resinDifficultyInput) inputs.push(resinDifficultyInput)
+  }
+
+  // === FLOOR JOISTS & DECKING (workbook rows 89-108) ===
+
+  const dampJoistSizeToKey: Record<string, string> = {
+    '4x2': 'joists_100x50', '5x2': 'joists_125x50', '6x2': 'joists_150x50',
+    '7x2': 'joists_175x50', '8x2': 'joists_200x50', '9x2': 'joists_225x50',
+  }
+  for (const [size, lengthLm] of Object.entries(joistLengthBySize)) {
+    const key = dampJoistSizeToKey[size]
+    if (key && lengthLm > 0) {
+      const joistInput = createLineInput(lookup, 'floor_joists_decking', key, lengthLm)
+      if (joistInput) inputs.push(joistInput)
+    }
+  }
+  if (totalEndwrapLm > 0) {
+    const endwrapInput = createLineInput(lookup, 'floor_joists_decking', 'treat_endwrap_joist', totalEndwrapLm)
+    if (endwrapInput) inputs.push(endwrapInput)
+  }
+  if (totalWallPlateLm > 0) {
+    const wallPlateInput = createLineInput(lookup, 'floor_joists_decking', 'wall_plate_100x25', totalWallPlateLm)
+    if (wallPlateInput) inputs.push(wallPlateInput)
+  }
+  if (totalBowerBeams > 0) {
+    const bowerInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams', totalBowerBeams)
+    if (bowerInput) inputs.push(bowerInput)
+  }
+  if (totalFlitchPlates > 0) {
+    const flitchInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates', totalFlitchPlates)
+    if (flitchInput) inputs.push(flitchInput)
+  }
+  const dampFlooringTypeToKey: Record<string, string> = {
+    weyrock_18mm: 'weyrock_flooring_18mm', weyrock_22mm: 'weyrock_flooring_22mm',
+    std_tg_floorboards: 'std_tongue_groove_floorboards',
+    victorian_tg_floorboards: 'victorian_tongue_groove_floorboards',
+    engineered_flooring_sheet: 'engineered_flooring_sheet',
+    structural_engineered_flooring_sheet: 'structural_engineered_flooring_sheet',
+  }
+  for (const [ftype, area] of Object.entries(flooringByType)) {
+    const key = dampFlooringTypeToKey[ftype]
+    if (key && area > 0) {
+      const flooringInput = createLineInput(lookup, 'floor_joists_decking', key, area)
+      if (flooringInput) inputs.push(flooringInput)
+    }
+  }
+  if (totalSuspendedInsulation > 0) {
+    const insulationInput = createLineInput(lookup, 'floor_joists_decking', 'insulation_suspended_flooring', totalSuspendedInsulation)
+    if (insulationInput) inputs.push(insulationInput)
+  }
+  if (totalJoistsDifficultyHours > 0) {
+    const joistDiffInput = createLineInput(lookup, 'floor_joists_decking', 'difficulty_hours_joists', totalJoistsDifficultyHours)
+    if (joistDiffInput) inputs.push(joistDiffInput)
+  }
+  if (totalDeckingDifficultyHours > 0) {
+    const deckingDiffInput = createLineInput(lookup, 'floor_joists_decking', 'difficulty_hours_decking', totalDeckingDifficultyHours)
+    if (deckingDiffInput) inputs.push(deckingDiffInput)
   }
 
   // === PLASTERING ===
@@ -516,14 +648,15 @@ function mapCondensationSurvey(
     const condData = room.room_data?.condensation as CondensationRoomData | undefined
     if (!condData) continue
 
-    // Mould severity → estimated area
-    if (condData.black_mould_present && condData.mould_severity) {
-      const areaBySeverity = {
-        light: 3,
-        moderate: 6,
-        severe: 12
+    // Mould treatment area — the workbook (R74) takes free m². The explicit
+    // field wins; legacy surveys fall back to the severity bands.
+    if (condData.black_mould_present) {
+      if (condData.mould_treatment_area !== undefined) {
+        totalMouldArea += condData.mould_treatment_area || 0
+      } else if (condData.mould_severity) {
+        const areaBySeverity = { light: 3, moderate: 6, severe: 12 }
+        totalMouldArea += areaBySeverity[condData.mould_severity] || 6
       }
-      totalMouldArea += areaBySeverity[condData.mould_severity] || 6
     }
 
     // New extraction structure (extraction_needed field present)
@@ -589,7 +722,9 @@ function mapCondensationSurvey(
         if (additionalWorks.loft_hatch_new_required) {
           const loftHatchNewInput = createLineInput(lookup, 'loft_hatch_new', 'new_loft_hatch_with_sturdy_fold_down_ladder_with_handrail_an', 1)
           if (loftHatchNewInput) inputs.push(loftHatchNewInput)
-        } else if (additionalWorks.loft_hatch_enlarge_required) {
+        }
+      // Workbook rows 66 & 70 are independent — a property can need both
+      if (additionalWorks.loft_hatch_enlarge_required) {
           const loftHatchEnlargeInput = createLineInput(lookup, 'loft_hatch_enlarge', 'existing_loft_hatch_enlarge_loft_hatch', 1)
           if (loftHatchEnlargeInput) inputs.push(loftHatchEnlargeInput)
         }
@@ -862,6 +997,31 @@ function mapTimberSurvey(
   let totalWarmlineInsulationArea = 0
   const joistEntries: { size: string; totalLength: number }[] = []
   const flooringByType: Record<string, number> = {}
+  // Full workbook coverage (timber v33 rows 21-24 / 29-34 / 42-54 / 58-67 / 71-74 / 107)
+  let totalRadiators = 0
+  let totalSockets = 0
+  let totalSkirtingLm = 0
+  let totalWallpaperArea = 0
+  let totalTimberFloorStripArea = 0
+  let totalCarpetTilesArea = 0
+  let totalWallPlasterRemovalArea = 0
+  let totalStudWallsRemovalArea = 0
+  let totalScrapeSubfloorArea = 0
+  let totalBrunosolArea = 0
+  const membraneAreaByHeight: Record<'1m' | '1.2m' | '2m', number> = { '1m': 0, '1.2m': 0, '2m': 0 }
+  let totalOvertapeLength = 0
+  let totalTankingSlurryArea = 0
+  let totalDubbingArea = 0
+  let totalRenovatingArea = 0
+  let totalTankingFilletLength = 0
+  let totalResinTopcoatArea = 0
+  let totalResinPrimerArea = 0
+  let totalResinGripGritArea = 0
+  let totalStudWallBuildArea = 0
+  let totalPlasterboardArea = 0
+  let totalSkimArea = 0
+  let totalWarmlineWallArea = 0
+  let totalPasteTreatmentArea = 0
 
   for (const room of timberRooms) {
     const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
@@ -870,8 +1030,10 @@ function mapTimberSurvey(
     // Fungal treatment area
     totalFungalTreatmentArea += timberData.fungal_treatment_area || 0
 
-    // Flooring area
+    // Flooring area (install rows). The STRIP row R33 is its own workbook
+    // input — explicit field wins, legacy rooms fall back to flooring_area
     totalFlooringArea += timberData.flooring_area || 0
+    totalTimberFloorStripArea += timberData.timber_floor_strip_area ?? (timberData.flooring_area || 0)
 
     // Flooring installation — aggregate area by type
     if (timberData.flooring_type && timberData.flooring_area && timberData.flooring_area > 0) {
@@ -915,7 +1077,71 @@ function mapTimberSurvey(
 
     // Difficulty hours
     totalDifficultyHours += timberData.difficulty_hours || 0
+
+    // Preparatory work (workbook rows 21-24)
+    totalRadiators += timberData.radiator_count || 0
+    totalSockets += timberData.socket_count || 0
+    totalSkirtingLm += timberData.skirting_length || 0
+    totalWallpaperArea += timberData.wallpaper_area || 0
+
+    // Strip-out extras (rows 29-31, 34)
+    totalCarpetTilesArea += timberData.carpet_tiles_area || 0
+    totalWallPlasterRemovalArea += timberData.wall_plaster_removal_area || 0
+    totalStudWallsRemovalArea += timberData.stud_walls_removal_area || 0
+    totalScrapeSubfloorArea += timberData.scrape_subfloor_area || 0
+
+    // Brunosol/Wykabor application (row 42)
+    totalBrunosolArea += timberData.brunosol_area || 0
+
+    // Wall membrane (rows 43-54) — bucketed per height like damp
+    if (timberData.wall_treatment === 'membrane') {
+      const heightKey = (timberData.membrane_height === '1.2m' ? '1.2m'
+        : timberData.membrane_height === '2m' ? '2m' : '1m') as '1m' | '1.2m' | '2m'
+      const heightM = heightKey === '1m' ? 1 : heightKey === '1.2m' ? 1.2 : 2
+      for (const wallLength of timberData.membrane_wall_lengths || []) {
+        membraneAreaByHeight[heightKey] += wallLength * heightM
+      }
+      totalOvertapeLength += (timberData.overtape_length || 0) + 2 * (timberData.overtape_height || 0)
+    } else if (timberData.wall_treatment === 'tanking') {
+      // Rows 58-61 — independent quantities; legacy bundle if only tanking_area
+      const hasComponents = timberData.dubbing_out_area !== undefined
+        || timberData.renovating_plaster_area !== undefined
+      totalTankingSlurryArea += timberData.tanking_area || 0
+      if (hasComponents) {
+        totalDubbingArea += timberData.dubbing_out_area || 0
+        totalRenovatingArea += timberData.renovating_plaster_area || 0
+      } else {
+        totalDubbingArea += timberData.tanking_area || 0
+        totalRenovatingArea += timberData.tanking_area || 0
+      }
+      totalTankingFilletLength += timberData.fillet_joint_length || 0
+    }
+
+    // Floor resin (rows 65-67, whole-pack pricing)
+    totalResinTopcoatArea += timberData.resin_topcoat_area || 0
+    totalResinPrimerArea += timberData.resin_primer_area || 0
+    totalResinGripGritArea += timberData.resin_grip_grit_area || 0
+
+    // Plastering (rows 71-74)
+    totalStudWallBuildArea += timberData.stud_wall_area || 0
+    totalPlasterboardArea += timberData.plasterboard_area || 0
+    totalSkimArea += timberData.skim_area || 0
+    totalWarmlineWallArea += timberData.warmline_wall_area || 0
+
+    // Gel injection (row 107)
+    totalPasteTreatmentArea += timberData.paste_treatment_area || 0
   }
+
+  // === PREPARATORY WORK (workbook rows 21-24) ===
+
+  const radiatorInput = createLineInput(lookup, 'preparatory_work', 'remove_radiators_cap_valves', totalRadiators)
+  if (radiatorInput) inputs.push(radiatorInput)
+  const socketInput = createLineInput(lookup, 'preparatory_work', 'remove_socket_fronts_and_isolate', totalSockets)
+  if (socketInput) inputs.push(socketInput)
+  const skirtingInput = createLineInput(lookup, 'preparatory_work', 'skirting_board_removal_set_aside', totalSkirtingLm)
+  if (skirtingInput) inputs.push(skirtingInput)
+  const wallpaperInput = createLineInput(lookup, 'preparatory_work', 'strip_wall_paper', totalWallpaperArea)
+  if (wallpaperInput) inputs.push(wallpaperInput)
 
   // === STRIP OUT ===
 
@@ -927,15 +1153,106 @@ function mapTimberSurvey(
   const wireScrubInput = createLineInput(lookup, 'strip_out', 'wire_scrub_brickwork_faces', totalWireScrubArea)
   if (wireScrubInput) inputs.push(wireScrubInput)
 
-  // Ceiling strip-out goes to the CEILINGS row (workbook R32 'Plaster & stud
-  // Removal (Ceilings)') — it was previously misrouted to the walls row.
-  // The walls row (R30) has no capture field yet: platform gap, see
-  // parity/audit/CAPTURE_GAPS.md.
+  // Carpet/tiles/overlays (row 29)
+  const carpetInput = createLineInput(lookup, 'strip_out', 'remove_carpettilesoverlays', totalCarpetTilesArea)
+  if (carpetInput) inputs.push(carpetInput)
+
+  // Wall plaster removal (row 30) — real field now
+  const wallPlasterInput = createLineInput(lookup, 'strip_out', 'remove_plasterrender_walls', totalWallPlasterRemovalArea)
+  if (wallPlasterInput) inputs.push(wallPlasterInput)
+
+  // Stud wall removal (row 31)
+  const studRemovalInput = createLineInput(lookup, 'strip_out', 'removal_of_stud_walls_etc_bag_cart_away', totalStudWallsRemovalArea)
+  if (studRemovalInput) inputs.push(studRemovalInput)
+
+  // Ceiling strip-out (row 32)
   const ceilingRemovalInput = createLineInput(lookup, 'strip_out', 'plaster_stud_removal_ceilings', totalCeilingArea)
   if (ceilingRemovalInput) inputs.push(ceilingRemovalInput)
 
-  // Strip floor
-  const stripFloorInput = createLineInput(lookup, 'strip_out', 'strip_out_existing_timber_floor_gf', totalFlooringArea)
+  // Scrape/clear sub floors (row 34)
+  const scrapeInput = createLineInput(lookup, 'strip_out', 'scrape_backclear_sub_floors', totalScrapeSubfloorArea)
+  if (scrapeInput) inputs.push(scrapeInput)
+
+  // === WALL MEMBRANE (workbook rows 42-54) ===
+
+  const brunosolInput = createLineInput(lookup, 'wall_membrane', 'apply_2_x_brunosol_1_x_wykabor_201', totalBrunosolArea)
+  if (brunosolInput) inputs.push(brunosolInput)
+
+  const timberMembraneArea = membraneAreaByHeight['1m'] + membraneAreaByHeight['1.2m'] + membraneAreaByHeight['2m']
+  if (timberMembraneArea > 0) {
+    const timberHeightKeys: Array<['1m' | '1.2m' | '2m', string]> = [
+      ['1m', 'wall_membrane_cm3_1mtr'], ['1.2m', 'wall_membrane_cm3_12mtr'],
+      ['2m', 'wall_membrane_cm3_subtotals_for_above_3_lines'],
+    ]
+    for (const [h, lineKey] of timberHeightKeys) {
+      if (membraneAreaByHeight[h] > 0) {
+        const mInput = createLineInput(lookup, 'wall_membrane', lineKey, membraneAreaByHeight[h])
+        if (mInput) inputs.push(mInput)
+      }
+    }
+    const plugsInput = createLineInput(lookup, 'wall_membrane', 'membrane_plugs_for_m2_listed', timberMembraneArea)
+    if (plugsInput) inputs.push(plugsInput)
+    const tapeInput = createLineInput(lookup, 'wall_membrane', 'sealing_tape_lm', timberMembraneArea / 2.5)
+    if (tapeInput) inputs.push(tapeInput)
+    const technoInput = createLineInput(lookup, 'wall_membrane', 'technoseal_lm', totalOvertapeLength)
+    if (technoInput) inputs.push(technoInput)
+    const overtapeInput = createLineInput(lookup, 'wall_membrane', 'overtape_lm', totalOvertapeLength)
+    if (overtapeInput) inputs.push(overtapeInput)
+    const ropeInput = createLineInput(lookup, 'wall_membrane', 'fixing_rope_lm', timberMembraneArea * 0.2)
+    if (ropeInput) inputs.push(ropeInput)
+  }
+
+  // === CEMENTITIOUS TANKING (workbook rows 58-61) ===
+
+  if (totalDubbingArea > 0) {
+    const dubInput = createLineInput(lookup, 'cementitious_tanking', 'dubbing_out_coat_sandcementsbr', totalDubbingArea)
+    if (dubInput) inputs.push(dubInput)
+  }
+  if (totalTankingSlurryArea > 0) {
+    const slurryInput = createLineInput(lookup, 'cementitious_tanking', '2_coat_tanking_slurry', totalTankingSlurryArea)
+    if (slurryInput) inputs.push(slurryInput)
+  }
+  if (totalRenovatingArea > 0) {
+    const renovInput = createLineInput(lookup, 'cementitious_tanking', 'renovating_plaster', totalRenovatingArea)
+    if (renovInput) inputs.push(renovInput)
+  }
+  if (totalTankingFilletLength > 0) {
+    const tFilletInput = createLineInput(lookup, 'cementitious_tanking', 'wallfloor_fillet_joint', totalTankingFilletLength)
+    if (tFilletInput) inputs.push(tFilletInput)
+  }
+
+  // === FLOOR RESIN (workbook rows 65-67, whole-pack pricing) ===
+
+  if (totalResinPrimerArea > 0) {
+    const rp = createLineInput(lookup, 'floor_resin', 'ep40_2_pack_resin_primer', totalResinPrimerArea)
+    if (rp) inputs.push(rp)
+  }
+  if (totalResinTopcoatArea > 0) {
+    const rt = createLineInput(lookup, 'floor_resin', 'ep40_2_pack_resin_top_coat', totalResinTopcoatArea)
+    if (rt) inputs.push(rt)
+  }
+  if (totalResinGripGritArea > 0) {
+    const rg = createLineInput(lookup, 'floor_resin', 'grip_grit', totalResinGripGritArea)
+    if (rg) inputs.push(rg)
+  }
+
+  // === PLASTERING (workbook rows 71-74) ===
+
+  const studBuildInput = createLineInput(lookup, 'plastering', 'construct_stud_wall_to_perimiter', totalStudWallBuildArea)
+  if (studBuildInput) inputs.push(studBuildInput)
+  const boardInput = createLineInput(lookup, 'plastering', 'plasterboarding_inc_dabscrews', totalPlasterboardArea)
+  if (boardInput) inputs.push(boardInput)
+  const skimInput = createLineInput(lookup, 'plastering', 'skimming_walls_multi_finish_plaster', totalSkimArea)
+  if (skimInput) inputs.push(skimInput)
+  if (totalWarmlineWallArea > 0) {
+    const wlRoll = createLineInput(lookup, 'plastering', 'warmline_internal_wall_insulation', totalWarmlineWallArea)
+    if (wlRoll) inputs.push(wlRoll)
+    const wlAdhesive = createLineInput(lookup, 'plastering', 'warmline_iwi_adhesive', totalWarmlineWallArea)
+    if (wlAdhesive) inputs.push(wlAdhesive)
+  }
+
+  // Strip floor (row 33 — independent input, not the install area)
+  const stripFloorInput = createLineInput(lookup, 'strip_out', 'strip_out_existing_timber_floor_gf', totalTimberFloorStripArea)
   if (stripFloorInput) inputs.push(stripFloorInput)
 
   // NOTE: bag_up_debris and disposal moved to mapSitePreparation (job-level)
@@ -1012,6 +1329,10 @@ function mapTimberSurvey(
   const masonrySterilantInput = createLineInput(lookup, 'timber_treatments', 'masonry_sterilant_wyakbor_20_brush_applied', totalMasonrySterilantArea)
   if (masonrySterilantInput) inputs.push(masonrySterilantInput)
 
+  // Gel injection (workbook row 107, whole-pack pricing)
+  const gelInput = createLineInput(lookup, 'timber_treatments', '401_gel_injection_100mm_centres_plug_with_dowel', totalPasteTreatmentArea)
+  if (gelInput) inputs.push(gelInput)
+
   // Clear debris from sub-floor
   const clearDebrisInput = createLineInput(lookup, 'timber_treatments', 'clear_debris_from_sub_floor', totalClearSubFloorDebrisArea)
   if (clearDebrisInput) inputs.push(clearDebrisInput)
@@ -1069,6 +1390,28 @@ function mapWoodwormSurvey(
   let totalLoftInsulationArea = 0
   let totalLiftingArea = 0
   let totalRelayingArea = 0
+  // Full workbook coverage (woodworm v26 rows 21-24 / 29-33 / 39-41 / 50-67 / 72-73)
+  let totalRadiators = 0
+  let totalSockets = 0
+  let totalSkirtingLm = 0
+  let totalWallpaperArea = 0
+  let totalWallPlasterRemovalArea = 0
+  let totalStudWallsRemovalArea = 0
+  let totalLathCeilingsArea = 0
+  let totalTimberFloorStripArea = 0
+  let totalScrapeSubfloorArea = 0
+  let totalStudWallBuildArea = 0
+  let totalPlasterboardArea = 0
+  let totalSkimArea = 0
+  const joistLengthBySize: Record<string, number> = {}
+  let totalEndwrapLm = 0
+  let totalWallPlateLm = 0
+  let totalBowerBeams = 0
+  let totalFlitchPlates = 0
+  const flooringByType: Record<string, number> = {}
+  let totalSuspendedInsulation = 0
+  let totalClearDebrisArea = 0
+  let totalProtectiveTreatmentArea = 0
 
   for (const room of woodwormRooms) {
     const woodwormData = room.room_data?.woodworm as WoodwormRoomData | undefined
@@ -1081,13 +1424,138 @@ function mapWoodwormSurvey(
     totalWWStaircaseOpenRearSteps += woodwormData.staircase_open_rear_steps || 0
     totalWWStaircaseClosedRearSteps += woodwormData.staircase_closed_rear_steps || 0
     totalLoftInsulationArea += woodwormData.loft_insulation_area || 0
-    if (woodwormData.include_lifting_loft_insulation) {
-      totalLiftingArea += woodwormData.loft_insulation_area || 0
+    // Lift/relay are their OWN workbook quantities (R79/R81); explicit
+    // fields win, legacy toggles fall back to the fogged loft area
+    totalLiftingArea += woodwormData.lifting_area
+      ?? (woodwormData.include_lifting_loft_insulation ? (woodwormData.loft_insulation_area || 0) : 0)
+    totalRelayingArea += woodwormData.relaying_area
+      ?? (woodwormData.include_relaying_loft_insulation ? (woodwormData.loft_insulation_area || 0) : 0)
+
+    // Preparatory work (rows 21-24)
+    totalRadiators += woodwormData.radiator_count || 0
+    totalSockets += woodwormData.socket_count || 0
+    totalSkirtingLm += woodwormData.skirting_length || 0
+    totalWallpaperArea += woodwormData.wallpaper_area || 0
+
+    // Strip-out (rows 29-33)
+    totalWallPlasterRemovalArea += woodwormData.wall_plaster_removal_area || 0
+    totalStudWallsRemovalArea += woodwormData.stud_walls_removal_area || 0
+    totalLathCeilingsArea += woodwormData.lath_ceilings_area || 0
+    totalTimberFloorStripArea += woodwormData.timber_floor_strip_area || 0
+    totalScrapeSubfloorArea += woodwormData.scrape_subfloor_area || 0
+
+    // Plastering (rows 39-41)
+    totalStudWallBuildArea += woodwormData.stud_wall_area || 0
+    totalPlasterboardArea += woodwormData.plasterboard_area || 0
+    totalSkimArea += woodwormData.skim_area || 0
+
+    // Joists/timbers (rows 50-59)
+    for (const entry of woodwormData.joist_entries || []) {
+      const totalLength = (entry.quantity || 0) * (entry.length || 0)
+      if (totalLength > 0) {
+        joistLengthBySize[entry.size] = (joistLengthBySize[entry.size] || 0) + totalLength
+      }
     }
-    if (woodwormData.include_relaying_loft_insulation) {
-      totalRelayingArea += woodwormData.loft_insulation_area || 0
+    totalEndwrapLm += woodwormData.endwrap_joists_lm || 0
+    totalWallPlateLm += woodwormData.wall_plate_lm || 0
+    totalBowerBeams += woodwormData.bower_beams_count || 0
+    totalFlitchPlates += woodwormData.flitch_plates_count || 0
+
+    // Flooring/decking (rows 61-67)
+    if (woodwormData.flooring_type && woodwormData.flooring_area) {
+      flooringByType[woodwormData.flooring_type] = (flooringByType[woodwormData.flooring_type] || 0) + woodwormData.flooring_area
+    }
+    totalSuspendedInsulation += woodwormData.suspended_floor_insulation_area || 0
+
+    // Treatments extras (rows 72-73)
+    totalClearDebrisArea += woodwormData.clear_sub_floor_debris_area || 0
+    totalProtectiveTreatmentArea += woodwormData.protective_treatment_area || 0
+  }
+
+  // === PREPARATORY WORK (rows 21-24) ===
+  const wwRadiatorInput = createLineInput(lookup, 'preparatory_work', 'remove_radiators_cap_valves', totalRadiators)
+  if (wwRadiatorInput) inputs.push(wwRadiatorInput)
+  const wwSocketInput = createLineInput(lookup, 'preparatory_work', 'remove_socket_fronts_and_isolate', totalSockets)
+  if (wwSocketInput) inputs.push(wwSocketInput)
+  const wwSkirtingInput = createLineInput(lookup, 'preparatory_work', 'skirting_board_removal_set_aside', totalSkirtingLm)
+  if (wwSkirtingInput) inputs.push(wwSkirtingInput)
+  const wwWallpaperInput = createLineInput(lookup, 'preparatory_work', 'strip_wall_paper', totalWallpaperArea)
+  if (wwWallpaperInput) inputs.push(wwWallpaperInput)
+
+  // === STRIP OUT (rows 29-33) ===
+  const wwWallPlasterInput = createLineInput(lookup, 'strip_out', 'remove_plasterrender_walls', totalWallPlasterRemovalArea)
+  if (wwWallPlasterInput) inputs.push(wwWallPlasterInput)
+  const wwStudRemovalInput = createLineInput(lookup, 'strip_out', 'removal_of_stud_walls_etc_bag_cart_away', totalStudWallsRemovalArea)
+  if (wwStudRemovalInput) inputs.push(wwStudRemovalInput)
+  const wwLathInput = createLineInput(lookup, 'strip_out', 'plaster_lath_removal_denail_ceilings', totalLathCeilingsArea)
+  if (wwLathInput) inputs.push(wwLathInput)
+  const wwFloorStripInput = createLineInput(lookup, 'strip_out', 'strip_out_existing_timber_floor_gf', totalTimberFloorStripArea)
+  if (wwFloorStripInput) inputs.push(wwFloorStripInput)
+  const wwScrapeInput = createLineInput(lookup, 'strip_out', 'scrape_backclear_sub_floors', totalScrapeSubfloorArea)
+  if (wwScrapeInput) inputs.push(wwScrapeInput)
+
+  // === PLASTERING (rows 39-41) ===
+  const wwStudBuildInput = createLineInput(lookup, 'plastering', 'construct_stud_wall_to_perimiter', totalStudWallBuildArea)
+  if (wwStudBuildInput) inputs.push(wwStudBuildInput)
+  const wwBoardInput = createLineInput(lookup, 'plastering', 'plasterboarding_inc_dabscrews', totalPlasterboardArea)
+  if (wwBoardInput) inputs.push(wwBoardInput)
+  const wwSkimInput = createLineInput(lookup, 'plastering', 'skimming_walls_multi_finish_plaster', totalSkimArea)
+  if (wwSkimInput) inputs.push(wwSkimInput)
+
+  // === JOISTS/TIMBERS (rows 50-59) ===
+  const wwJoistSizeToKey: Record<string, string> = {
+    '4x2': 'joiststimbers_100_x_50', '5x2': 'joiststimbers_125_x_50', '6x2': 'joiststimbers_150_x_50',
+    '7x2': 'joiststimbers_175_x_50', '8x2': 'joiststimbers_200_x_50', '9x2': 'joiststimbers_225_x_50',
+  }
+  for (const [size, lengthLm] of Object.entries(joistLengthBySize)) {
+    const key = wwJoistSizeToKey[size]
+    if (key && lengthLm > 0) {
+      const jInput = createLineInput(lookup, 'floor_joists_decking', key, lengthLm)
+      if (jInput) inputs.push(jInput)
     }
   }
+  if (totalEndwrapLm > 0) {
+    const ewInput = createLineInput(lookup, 'floor_joists_decking', 'treat_and_endwrap_joist', totalEndwrapLm)
+    if (ewInput) inputs.push(ewInput)
+  }
+  if (totalWallPlateLm > 0) {
+    const wpInput = createLineInput(lookup, 'floor_joists_decking', 'wall_plate_100x25', totalWallPlateLm)
+    if (wpInput) inputs.push(wpInput)
+  }
+  if (totalBowerBeams > 0) {
+    const bbInput = createLineInput(lookup, 'floor_joists_decking', 'bower_beams_pair', totalBowerBeams)
+    if (bbInput) inputs.push(bbInput)
+  }
+  if (totalFlitchPlates > 0) {
+    const fpInput = createLineInput(lookup, 'floor_joists_decking', 'flitch_plates_pair', totalFlitchPlates)
+    if (fpInput) inputs.push(fpInput)
+  }
+
+  // === FLOORING/DECKING (rows 61-67) ===
+  const wwFlooringTypeToKey: Record<string, string> = {
+    weyrock_18mm: 'install_weyrock_flooring_18mm_m2', weyrock_22mm: 'install_weyrock_flooring_22mm_m2',
+    std_tg_floorboards: 'install_std_tg_floorboards_m2',
+    victorian_tg_floorboards: 'install_victorian_tg_floorboards_m2',
+    engineered_flooring_sheet: 'install_engineered_flooring_sheet_m2',
+    structural_engineered_flooring_sheet: 'install_structural_engineered_flooring_sheet_m2_onto_joists',
+  }
+  for (const [ftype, area] of Object.entries(flooringByType)) {
+    const key = wwFlooringTypeToKey[ftype]
+    if (key && area > 0) {
+      const fInput = createLineInput(lookup, 'floor_joists_decking', key, area)
+      if (fInput) inputs.push(fInput)
+    }
+  }
+  if (totalSuspendedInsulation > 0) {
+    const insInput = createLineInput(lookup, 'floor_joists_decking', 'provide_insulation_to_suspended_flooring', totalSuspendedInsulation)
+    if (insInput) inputs.push(insInput)
+  }
+
+  // === TREATMENT EXTRAS (rows 72-73) ===
+  const wwClearInput = createLineInput(lookup, 'timber_treatments', 'clear_debris_from_sub_floor', totalClearDebrisArea)
+  if (wwClearInput) inputs.push(wwClearInput)
+  const wwProtectiveInput = createLineInput(lookup, 'timber_treatments', 'protective_treatment_to_new_timbers_installation', totalProtectiveTreatmentArea)
+  if (wwProtectiveInput) inputs.push(wwProtectiveInput)
 
   // === TIMBER TREATMENTS ===
 
@@ -1175,7 +1643,15 @@ function mapTypeSpecificAdditionalWorks(
     if (aquabanInput) inputs.push(aquabanInput)
   }
 
-  // === SPRAY TREATMENTS (timber, woodworm) ===
+  // === SPRAY TREATMENTS (damp, timber, woodworm) ===
+
+  if (surveyType === 'damp') {
+    // Damp workbook R118/R119 — fog sub floor void + spray difficulty
+    const dampSprayInput = createLineInput(lookup, 'spray_treatments', 'fog_subfloor_antifungal', additionalWorks.spray_treatment_area || 0)
+    if (dampSprayInput) inputs.push(dampSprayInput)
+    const dampSprayDiffInput = createLineInput(lookup, 'spray_treatments', 'difficulty_hours_spray', additionalWorks.spray_difficulty_hours || 0)
+    if (dampSprayDiffInput) inputs.push(dampSprayDiffInput)
+  }
 
   if (surveyType === 'timber') {
     const sprayAreaInput = createLineInput(lookup, 'timber_treatments', 'fog_subfloor_void_m2', additionalWorks.spray_treatment_area || 0)
@@ -1321,17 +1797,35 @@ function calcTimberDebrisBags(rooms: SurveyRoomRow[]): number {
     const timberData = room.room_data?.timber_decay as TimberRoomData | undefined
     if (!timberData) continue
 
-    totalFlooringArea += timberData.flooring_area || 0
+    totalFlooringArea += timberData.timber_floor_strip_area ?? (timberData.flooring_area || 0)
     if (timberData.ceiling_affected) {
       totalFlooringArea += timberData.ceiling_area || 0
     }
+    totalFlooringArea += timberData.carpet_tiles_area || 0
+    totalFlooringArea += timberData.wall_plaster_removal_area || 0
+    totalFlooringArea += timberData.stud_walls_removal_area || 0
+    totalFlooringArea += timberData.scrape_subfloor_area || 0
   }
 
   // 2 bags per m² of strip-out — Timber workbook R37: F37 = SUM(F29:F34)*2,
-  // NO rounding. The platform can currently drive rows 32 (ceilings) and 33
-  // (timber floor) of that range; carpet/stud/scrape rows have no capture
-  // fields yet (see CAPTURE_GAPS.md).
+  // NO rounding: carpet + wall plaster + stud + ceilings + floor + scrape.
   return totalFlooringArea > 0 ? totalFlooringArea * 2 : 0
+}
+
+/**
+ * Woodworm debris bags — workbook v26 R34: F34 = SUM(F29:F33) * 2, no rounding
+ * (plaster walls + stud + lath ceilings + timber floor + scrape).
+ */
+function calcWoodwormDebrisBags(rooms: SurveyRoomRow[]): number {
+  const woodwormRooms = rooms.filter(r => r.issues_identified?.includes('woodworm'))
+  let totalStrip = 0
+  for (const room of woodwormRooms) {
+    const d = room.room_data?.woodworm as WoodwormRoomData | undefined
+    if (!d) continue
+    totalStrip += (d.wall_plaster_removal_area || 0) + (d.stud_walls_removal_area || 0)
+      + (d.lath_ceilings_area || 0) + (d.timber_floor_strip_area || 0) + (d.scrape_subfloor_area || 0)
+  }
+  return totalStrip > 0 ? totalStrip * 2 : 0
 }
 
 // =============================================================================
@@ -1377,11 +1871,18 @@ function mapSitePreparation(
     totalBags += calcTimberDebrisBags(rooms)
   }
 
+  if (surveyTypesPresent.has('woodworm')) {
+    totalBags += calcWoodwormDebrisBags(rooms)
+  }
+
   const bagCartInput = createLineInput(lookup, 'strip_out_disposal', 'bag_cart_debris', totalBags)
   if (bagCartInput) inputs.push(bagCartInput)
 
-  // === LICENSED DISPOSAL (only if no skip hired — mutually exclusive) ===
-  if (skipCount === 0 && totalBags > 0) {
+  // === LICENSED DISPOSAL ===
+  // Workbook R35: F35 = F34 unconditionally — disposal always accompanies the
+  // bags, whether or not a skip is also hired (the old skip-exclusivity rule
+  // was platform-invented)
+  if (totalBags > 0) {
     const disposalInput = createLineInput(lookup, 'strip_out_disposal', 'licensed_disposal', totalBags)
     if (disposalInput) inputs.push(disposalInput)
   }

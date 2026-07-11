@@ -5,11 +5,8 @@
   "oracle_inputs": {
     "lines": {
       "va_pozidry_loft_unit_heated_r21": 6,
-      "va_pozidry_loft_unit_unheated_r22": 7,
       "electrical_pack_fused_spur_cable_jb_r23": 8,
       "sarkvents_r24": 1,
-      "va_pozidry_compact_wall_mounted_unit_r28": 5,
-      "electrical_pack_fused_spur_cable_jb_r29": 6,
       "ducting_1m_length_r30": 7,
       "ducting_round_elbow_r31": 8,
       "ducting_round_straight_conn_r32": 1,
@@ -21,7 +18,6 @@
       "ducting_flat_1m_r38": 7,
       "ducting_insulated_flexi_3m_length_r39": 8,
       "grille_r40": 1,
-      "diamond_core_107mm_hole_r41": 2,
       "trickle_and_boost_humidistat_fan_greenwo_r45": 6,
       "electrical_pack_fused_spur_cable_jb_r46": 7,
       "grille_r47": 8,
@@ -30,7 +26,6 @@
       "diamond_core_107mm_hole_r53": 6,
       "dryaire_cvent_r57": 2,
       "diamond_core_107mm_hole_r58": 3,
-      "joinery_to_box_in_ducting_per_metre_min_r62": 1.2,
       "new_loft_hatch_with_sturdy_fold_down_lad_r66": 1,
       "existing_loft_hatch_enlarge_loft_hatch_r70": 1,
       "mould_treatment_r74": 7,
@@ -61,14 +56,14 @@
       "label": "VA Pozidry loft unit - heated"
     },
     "va_pozidry_loft_unit_unheated_r22": {
-      "quantity": 7.0,
+      "quantity": 0.0,
       "unit_material_cost": 309.96,
-      "materials": 2885.7276,
-      "hours": 17.5,
-      "labour": 2546.11875,
-      "total": 5431.84635,
-      "contractor_materials": 2386.692,
-      "contractor_pay": 490.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
       "line_keys": [
         "va_pozidry_loft_unit_unheated"
       ],
@@ -103,28 +98,28 @@
       "label": "Sarkvents"
     },
     "va_pozidry_compact_wall_mounted_unit_r28": {
-      "quantity": 5.0,
+      "quantity": 0.0,
       "unit_material_cost": 273.74,
-      "materials": 1916.18,
-      "hours": 20.0,
-      "labour": 2450.4,
-      "total": 4366.58,
-      "contractor_materials": 1505.57,
-      "contractor_pay": 560.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
       "line_keys": [
         "va_pozidry_compact_wall_mounted_unit"
       ],
       "label": "VA Pozidry Compact wall mounted unit"
     },
     "electrical_pack_fused_spur_cable_jb_r29": {
-      "quantity": 6.0,
+      "quantity": 0.0,
       "unit_material_cost": 12.46,
-      "materials": 97.188,
-      "hours": 9.0,
-      "labour": 551.34,
-      "total": 648.528,
-      "contractor_materials": 82.236,
-      "contractor_pay": 252.0,
+      "materials": 0.0,
+      "hours": 0.0,
+      "labour": 0.0,
+      "total": 0.0,
+      "contractor_materials": 0.0,
+      "contractor_pay": 0.0,
       "line_keys": [
         "electrical_pack_fused_spur_cable_jb_piv_wall"
       ],
@@ -284,20 +279,6 @@
       ],
       "label": "Grille"
     },
-    "diamond_core_107mm_hole_r41": {
-      "quantity": 2.0,
-      "unit_material_cost": 0.0,
-      "materials": 0.0,
-      "hours": 4.0,
-      "labour": 245.04,
-      "total": 245.04,
-      "contractor_materials": 0.0,
-      "contractor_pay": 112.0,
-      "line_keys": [
-        "diamond_core_107mm_hole"
-      ],
-      "label": "Diamond core 107mm hole"
-    },
     "trickle_and_boost_humidistat_fan_greenwo_r45": {
       "quantity": 6.0,
       "unit_material_cost": 70.2,
@@ -409,20 +390,6 @@
         "diamond_core_107mm_hole_dryaire_cvent"
       ],
       "label": "Diamond core 107mm hole"
-    },
-    "joinery_to_box_in_ducting_per_metre_min_r62": {
-      "quantity": 1.2,
-      "unit_material_cost": 30.0,
-      "materials": 46.8,
-      "hours": 1.2,
-      "labour": 73.512,
-      "total": 120.312,
-      "contractor_materials": 39.6,
-      "contractor_pay": 33.6,
-      "line_keys": [
-        "joinery_to_box_in_ducting_per_metre_min_charge_24_metres"
-      ],
-      "label": "Joinery to box in ducting (per metre) Min charge 2.4 metres"
     },
     "new_loft_hatch_with_sturdy_fold_down_lad_r66": {
       "quantity": 1.0,
@@ -539,20 +506,20 @@
   },
   "sections": {
     "sarkvents_r25": {
-      "materials": 5599.0948,
-      "hours": 44.58,
-      "labour": 5431.52601,
-      "total": 11030.62081,
-      "contractor_materials": 4638.898,
-      "contractor_pay": 1248.24
+      "materials": 2713.3672,
+      "hours": 27.08,
+      "labour": 2885.40726,
+      "total": 5598.77446,
+      "contractor_materials": 2252.206,
+      "contractor_pay": 758.24
     },
     "diamond_core_107mm_hole_r42": {
-      "materials": 2198.592,
-      "hours": 38.2,
-      "labour": 3565.332,
-      "total": 5763.924,
-      "contractor_materials": 1744.534,
-      "contractor_pay": 1069.6
+      "materials": 185.224,
+      "hours": 5.2,
+      "labour": 318.552,
+      "total": 503.776,
+      "contractor_materials": 156.728,
+      "contractor_pay": 145.6
     },
     "diamond_core_107mm_hole_r49": {
       "materials": 686.114,
@@ -577,14 +544,6 @@
       "total": 583.84,
       "contractor_materials": 27.5,
       "contractor_pay": 252.0
-    },
-    "joinery_to_box_in_ducting_per_r63": {
-      "materials": 46.8,
-      "hours": 1.2,
-      "labour": 73.512,
-      "total": 120.312,
-      "contractor_materials": 39.6,
-      "contractor_pay": 33.6
     },
     "new_loft_hatch_with_sturdy_fol_r67": {
       "materials": 468.0,
@@ -628,20 +587,20 @@
     }
   },
   "totals": {
-    "materials_subtotal": 10202.9208,
-    "labour_subtotal": 13954.62981,
-    "labour_hours_subtotal": 163.71,
-    "travel_price": 632.736,
-    "travel_hours": 13.866667,
-    "subtotal_ex_vat": 24790.28661,
-    "total_hours": 177.576667,
-    "vat": 4958.057322,
-    "total_inc_vat": 29748.343932,
-    "days": 26.0,
-    "contractor_materials_total": 8121.63,
-    "contractor_pay_total": 4583.88,
-    "contractor_travel": 187.2,
-    "contractor_total": 12892.71
+    "materials_subtotal": 5257.0252,
+    "labour_subtotal": 8088.21906,
+    "labour_hours_subtotal": 112.01,
+    "travel_price": 438.048,
+    "travel_hours": 9.6,
+    "subtotal_ex_vat": 13783.29226,
+    "total_hours": 121.61,
+    "vat": 2756.658452,
+    "total_inc_vat": 16539.950712,
+    "days": 18.0,
+    "contractor_materials_total": 4107.532,
+    "contractor_pay_total": 3136.28,
+    "contractor_travel": 129.6,
+    "contractor_total": 7373.412
   },
   "rates": {
     "labour_rate": 30.63,

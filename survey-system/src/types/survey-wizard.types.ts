@@ -208,7 +208,12 @@ export interface DampRoomData {
   wall_treatment?: WallTreatment
   membrane_height?: MembraneHeight // Only for membrane treatment
   membrane_wall_lengths?: number[] // Array of wall lengths needing membrane
-  tanking_area?: number // m² for tanking treatment
+  // Tanking components — workbook rows 61-65, independent quantities.
+  // Legacy surveys with only tanking_area keep the three-coat bundle.
+  tanking_area?: number // m² of 2-coat tanking slurry (workbook R62)
+  dubbing_out_area?: number // m² dubbing out coat (workbook R61)
+  renovating_plaster_area?: number // m² renovating plaster (workbook R63)
+  tanking_difficulty_hours?: number // workbook R65
   fillet_joint_length?: number // Linear metres
   overtape_length?: number // Overtape LENGTH component (workbook D55)
   overtape_height?: number // Overtape HEIGHT component (workbook E55) — total = length + 2 x height
@@ -223,6 +228,19 @@ export interface DampRoomData {
   resin_primer_area?: number // m² (workbook F69)
   resin_grip_grit_area?: number // m² (workbook F72)
   floor_resin_fillet_length?: number // Linear metres of fillet joint for floor resin
+  resin_difficulty_hours?: number // workbook R73
+
+  // Floor joists & decking — damp workbook rows 89-108 (mirrors timber)
+  joist_entries?: JoistEntry[]
+  endwrap_joists_lm?: number // workbook R95
+  wall_plate_lm?: number // workbook R96
+  bower_beams_count?: number // pairs, workbook R97
+  flitch_plates_count?: number // pairs, workbook R98
+  flooring_type?: FlooringType
+  flooring_area?: number // m²
+  suspended_floor_insulation_area?: number // workbook R107
+  joists_difficulty_hours?: number // workbook R99
+  decking_difficulty_hours?: number // workbook R108
   strip_existing_floor?: boolean
   strip_floor_area?: number // m²
   sub_floor_area?: number // m² requiring membrane
@@ -286,6 +304,7 @@ export interface CondensationRoomData {
   condensation_on_windows: boolean
   black_mould_present: boolean
   mould_severity?: MouldSeverity
+  mould_treatment_area?: number // m² — workbook R74 free entry; severity bands only prefill/fallback
   ventilation_adequate: boolean
   humidity_reading?: number // % RH
 
@@ -363,6 +382,41 @@ export interface TimberRoomData {
   ceiling_affected: boolean
   ceiling_area?: number // m²
 
+  // Full timber-workbook coverage (v33) — preparatory work (rows 21-24)
+  radiator_count?: number
+  socket_count?: number
+  skirting_length?: number // LM
+  wallpaper_area?: number // m²
+  // Strip-out extras (rows 29-31, 33, 34)
+  timber_floor_strip_area?: number // m² strip existing timber floor (R33) — independent of the INSTALL areas; legacy rooms fall back to flooring_area
+  carpet_tiles_area?: number // m² carpet/tiles/overlays (R29)
+  wall_plaster_removal_area?: number // m² (R30)
+  stud_walls_removal_area?: number // m² (R31)
+  scrape_subfloor_area?: number // m² (R34)
+  // Brunosol/Wykabor 20:1 application (R42)
+  brunosol_area?: number // m²
+  // Wall membrane (rows 43-54) / tanking (rows 58-61)
+  wall_treatment?: WallTreatment
+  membrane_height?: MembraneHeight
+  membrane_wall_lengths?: number[]
+  fillet_joint_length?: number // tanking fillet R61
+  overtape_length?: number // R53 D
+  overtape_height?: number // R53 E — total = length + 2 x height
+  tanking_area?: number // m² 2-coat slurry (R59)
+  dubbing_out_area?: number // m² (R58)
+  renovating_plaster_area?: number // m² (R60)
+  // Floor resin (rows 65-67 — WHOLE-PACK pricing)
+  resin_topcoat_area?: number
+  resin_primer_area?: number
+  resin_grip_grit_area?: number
+  // Plastering (rows 71-74)
+  stud_wall_area?: number
+  plasterboard_area?: number
+  skim_area?: number
+  warmline_wall_area?: number // wall IWI pair (R73) — distinct from warmline_insulation_area (floor insulation R99... suspended flooring)
+  // Gel injection (R107, whole-pack)
+  paste_treatment_area?: number
+
   // Sub-Floor Preparation
   clear_sub_floor_debris_area?: number // m² of sub-floor debris clearance
 
@@ -378,6 +432,37 @@ export interface TimberRoomData {
 
   // Difficulty Adjustment
   difficulty_hours?: number
+
+  // Lift/relay explicit quantities (workbook R79/R81) — override the toggles
+  lifting_area?: number
+  relaying_area?: number
+  // Full woodworm-workbook coverage (v26) — prep (rows 21-24)
+  radiator_count?: number
+  socket_count?: number
+  skirting_length?: number
+  wallpaper_area?: number
+  // Strip-out (rows 29-33)
+  wall_plaster_removal_area?: number
+  stud_walls_removal_area?: number
+  lath_ceilings_area?: number // plaster & lath removal + de-nail (R31)
+  timber_floor_strip_area?: number
+  scrape_subfloor_area?: number
+  // Plastering (rows 39-41)
+  stud_wall_area?: number
+  plasterboard_area?: number
+  skim_area?: number
+  // Joists/timbers + flooring (rows 50-67)
+  joist_entries?: JoistEntry[]
+  endwrap_joists_lm?: number
+  wall_plate_lm?: number
+  bower_beams_count?: number
+  flitch_plates_count?: number
+  flooring_type?: FlooringType
+  flooring_area?: number
+  suspended_floor_insulation_area?: number
+  // Treatment extras (rows 72-73)
+  clear_sub_floor_debris_area?: number
+  protective_treatment_area?: number
 }
 
 export interface JoistEntry {
@@ -429,6 +514,7 @@ export type FlooringType =
   | 'std_tg_floorboards'
   | 'victorian_tg_floorboards'
   | 'engineered_flooring_sheet'
+  | 'structural_engineered_flooring_sheet' // onto joists — damp R106 / woodworm R66 (not in the timber workbook)
 
 // =============================================================================
 // Woodworm Room Data (Infestation Assessment + Treatment Areas)
@@ -459,6 +545,37 @@ export interface WoodwormRoomData {
 
   // Difficulty Adjustment
   difficulty_hours?: number
+
+  // Lift/relay explicit quantities (workbook R79/R81) — override the toggles
+  lifting_area?: number
+  relaying_area?: number
+  // Full woodworm-workbook coverage (v26) — prep (rows 21-24)
+  radiator_count?: number
+  socket_count?: number
+  skirting_length?: number
+  wallpaper_area?: number
+  // Strip-out (rows 29-33)
+  wall_plaster_removal_area?: number
+  stud_walls_removal_area?: number
+  lath_ceilings_area?: number // plaster & lath removal + de-nail (R31)
+  timber_floor_strip_area?: number
+  scrape_subfloor_area?: number
+  // Plastering (rows 39-41)
+  stud_wall_area?: number
+  plasterboard_area?: number
+  skim_area?: number
+  // Joists/timbers + flooring (rows 50-67)
+  joist_entries?: JoistEntry[]
+  endwrap_joists_lm?: number
+  wall_plate_lm?: number
+  bower_beams_count?: number
+  flitch_plates_count?: number
+  flooring_type?: FlooringType
+  flooring_area?: number
+  suspended_floor_insulation_area?: number
+  // Treatment extras (rows 72-73)
+  clear_sub_floor_debris_area?: number
+  protective_treatment_area?: number
 }
 
 export type WoodwormSpecies =
@@ -560,7 +677,7 @@ export interface AdditionalWorks {
 
   // Spray Treatment (whole-property total)
   spray_treatment_area?: number // m² total across property
-  spray_difficulty_hours?: number
+  spray_difficulty_hours?: number // damp workbook R119
 
   // Optional Items
   aco_drain_length?: number // Linear metres

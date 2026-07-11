@@ -6,11 +6,8 @@
   "oracle": {
     "lines": {
       "va_pozidry_loft_unit_heated_r21": 6,
-      "va_pozidry_loft_unit_unheated_r22": 7,
       "electrical_pack_fused_spur_cable_jb_r23": 8,
       "sarkvents_r24": 1,
-      "va_pozidry_compact_wall_mounted_unit_r28": 5,
-      "electrical_pack_fused_spur_cable_jb_r29": 6,
       "ducting_1m_length_r30": 7,
       "ducting_round_elbow_r31": 8,
       "ducting_round_straight_conn_r32": 1,
@@ -22,7 +19,6 @@
       "ducting_flat_1m_r38": 7,
       "ducting_insulated_flexi_3m_length_r39": 8,
       "grille_r40": 1,
-      "diamond_core_107mm_hole_r41": 2,
       "trickle_and_boost_humidistat_fan_greenwo_r45": 6,
       "electrical_pack_fused_spur_cable_jb_r46": 7,
       "grille_r47": 8,
@@ -31,7 +27,6 @@
       "diamond_core_107mm_hole_r53": 6,
       "dryaire_cvent_r57": 2,
       "diamond_core_107mm_hole_r58": 3,
-      "joinery_to_box_in_ducting_per_metre_min_r62": 1.2,
       "new_loft_hatch_with_sturdy_fold_down_lad_r66": 1,
       "existing_loft_hatch_enlarge_loft_hatch_r70": 1,
       "mould_treatment_r74": 7,
@@ -59,7 +54,7 @@
       "airbrick_new_count": 5,
       "asbestos_test_count": 7,
       "loft_hatch_new_required": true,
-      "loft_hatch_enlarge_required": false,
+      "loft_hatch_enlarge_required": true,
       "condensation_piv": {
         "piv_recommended": true,
         "piv_type": "loft_heated",
@@ -68,7 +63,7 @@
         "electrical_pack_count": 8,
         "sarkvent_count": 1,
         "ducting_components_as_exists": false,
-        "joinery_ducting_boxwork_lm": 1.2
+        "joinery_ducting_boxwork_lm": 0
       },
       "ducting_components": [
         {
@@ -126,6 +121,7 @@
         "condensation": {
           "black_mould_present": true,
           "mould_severity": "moderate",
+          "mould_treatment_area": 7,
           "condensation_on_windows": true,
           "ventilation_adequate": false,
           "extraction_needed": true,
