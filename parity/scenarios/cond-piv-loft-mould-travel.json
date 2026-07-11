@@ -1,0 +1,60 @@
+{
+  "id": "cond-piv-loft-mould-travel",
+  "title": "Condensation: heated loft PIV + electrical pack + 2 sarkvents + new loft hatch + moderate mould, 12 miles / 2 men",
+  "source": "PIV loft section rows R21/R23/R24, loft hatch R66, mould treatment R74 (mould severity 'moderate' maps to 6 m2 \u2014 platform derivation bands light=3/moderate=6/severe=12, documented for Steve). Travel chain R94-103 region.",
+  "workbook": "condensation_v37",
+  "oracle": {
+    "lines": {
+      "va_pozidry_loft_unit_heated_r21": 1,
+      "electrical_pack_fused_spur_cable_jb_r23": 1,
+      "sarkvents_r24": 2,
+      "new_loft_hatch_with_sturdy_fold_down_lad_r66": 1,
+      "mould_treatment_r74": 6
+    },
+    "travel": {
+      "distance_miles": 12,
+      "men": 2
+    },
+    "section_adjustments": {
+      "sarkvents_r25": 0
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "condensation"
+    ],
+    "additional_works": {
+      "distance_from_office": 12,
+      "num_men_travelling": 2,
+      "loft_hatch_new_required": true,
+      "condensation_piv": {
+        "piv_recommended": true,
+        "piv_type": "loft_heated",
+        "piv_unit_count": 1,
+        "core_hole_count": 0,
+        "electrical_pack_count": 1,
+        "sarkvent_count": 2,
+        "ducting_components_as_exists": true,
+        "joinery_ducting_boxwork_lm": 0
+      }
+    },
+    "rooms": [
+      {
+        "name": "Bedroom",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": true,
+          "mould_severity": "moderate",
+          "condensation_on_windows": true,
+          "ventilation_adequate": false,
+          "extraction_needed": false,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      }
+    ]
+  },
+  "notes": "New-schema PIV path (additional_works.condensation_piv). Mould severity->area bands are a platform derivation over the workbook's free m2 cell \u2014 flag to Steve. IMPORTANT: the condensation MASTER workbook ships with a saved -5 in the PIV-loft Section Price Adjustment cell (F25) \u2014 the only non-zero adjustment dial in all four workbooks. The scenario neutralises it to 0 (the dial is per-job surveyor state, and the platform's section-adjustment feature has no defaults). QUESTION FOR STEVE: is -5% intended standing pricing for PIV loft units, or residue from the last job saved into the master?"
+}

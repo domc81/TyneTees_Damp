@@ -295,6 +295,7 @@ export interface CondensationRoomData {
   // Passive extraction fields (all independent, default 0)
   cpass_passive_vent_count?: number
   dryaire_cvent_count?: number
+  cvent_core_hole_count?: number // Explicit entry (workbook R58 free input) — 0 when reusing an existing opening; never auto-derived from CVent count (review point 11)
   core_hole_required?: boolean
   core_hole_count?: number // only if core_hole_required
 

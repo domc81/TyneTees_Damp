@@ -122,7 +122,10 @@ def extract_workbook(path):
     max_row = max((r for r, _ in grid), default=0)
     for r in range(1, max_row + 1):
         k = norm_formula(grid.get((r, COL["K"])))
-        if not re.match(rf"^=F{r}\*I{r}\*\(1\+J{r}\)$", k):
+        std_sig = re.match(rf"^=F{r}\*I{r}\*\(1\+J{r}\)$", k)
+        # Timber resin rows use whole-pack pricing: =((ROUNDUP(F/30,0))*I)*(1+J59)
+        pack_sig = re.match(rf"^=\(\(ROUNDUP\(F{r}/[0-9.]+,0\)\)\*I{r}\)\*\(1\+J\d+\)$", k)
+        if not (std_sig or pack_sig):
             continue
         f_raw = grid.get((r, COL["F"]))
         f_norm = norm_formula(f_raw) if isinstance(f_raw, str) else ""
@@ -185,6 +188,16 @@ MANUAL_MAP = {
     ("damp", 108): ["difficulty_hours_decking"],
     ("damp", 119): ["difficulty_hours_spray"],
     ("timber", 73): ["warmline_internal_wall_insulation", "warmline_iwi_adhesive"],
+    # Condensation: four identical "Diamond core 107mm hole" labels and three
+    # identical electrical-pack labels — pin each row to its section's template
+    # (matcher otherwise assigns them in encounter order).
+    ("condensation", 23): ["electrical_pack_fused_spur_cable_jb"],
+    ("condensation", 29): ["electrical_pack_fused_spur_cable_jb_piv_wall"],
+    ("condensation", 46): ["electrical_pack_fused_spur_cable_jb_humidistat_fan"],
+    ("condensation", 41): ["diamond_core_107mm_hole"],
+    ("condensation", 48): ["diamond_core_107mm_hole_humidistat_fan"],
+    ("condensation", 53): ["diamond_core_107mm_hole_passive_vent"],
+    ("condensation", 58): ["diamond_core_107mm_hole_dryaire_cvent"],
 }
 
 

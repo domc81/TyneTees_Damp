@@ -308,6 +308,33 @@
       ],
       "section": "cementitious_tanking_system_r62"
     },
+    "ep40_2_pack_resin_primer_r65": {
+      "row": 65,
+      "input": "f",
+      "label": "EP40 2 Pack resin Primer",
+      "line_keys": [
+        "ep40_2_pack_resin_primer"
+      ],
+      "section": "floor_liquid_resin_floor_membr_r68"
+    },
+    "ep40_2_pack_resin_top_coat_r66": {
+      "row": 66,
+      "input": "f",
+      "label": "EP40 2 Pack resin top coat",
+      "line_keys": [
+        "ep40_2_pack_resin_top_coat"
+      ],
+      "section": "floor_liquid_resin_floor_membr_r68"
+    },
+    "grip_grit_r67": {
+      "row": 67,
+      "input": "f",
+      "label": "Grip grit",
+      "line_keys": [
+        "grip_grit"
+      ],
+      "section": "floor_liquid_resin_floor_membr_r68"
+    },
     "construct_stud_wall_to_perimiter_r71": {
       "row": 71,
       "input": "f",
@@ -560,6 +587,33 @@
       "label": "Clear debris from sub floor",
       "line_keys": [
         "clear_debris_from_sub_floor"
+      ],
+      "section": "timber_treatments_r111"
+    },
+    "masonry_sterilant_wyakbor_20_brush_appli_r105": {
+      "row": 105,
+      "input": "f",
+      "label": "Masonry sterilant (Wyakbor 20) - brush applied",
+      "line_keys": [
+        "masonry_sterilant_wyakbor_20_brush_applied"
+      ],
+      "section": "timber_treatments_r111"
+    },
+    "protective_treatment_following_new_timbe_r106": {
+      "row": 106,
+      "input": "f",
+      "label": "Protective treatment following new timbers installation (DP or bug)",
+      "line_keys": [
+        "protective_treatment_following_new_timbers_installation_dp_o"
+      ],
+      "section": "timber_treatments_r111"
+    },
+    "40_1_gel_injection_100mm_centres_plug_wi_r107": {
+      "row": 107,
+      "input": "f",
+      "label": "40.1 Gel injection @100mm centres, plug with dowel",
+      "line_keys": [
+        "401_gel_injection_100mm_centres_plug_with_dowel"
       ],
       "section": "timber_treatments_r111"
     },

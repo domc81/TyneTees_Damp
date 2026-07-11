@@ -37,7 +37,7 @@
       "input": "f",
       "label": "Electrical Pack - fused spur, cable, JB",
       "line_keys": [
-        "electrical_pack_fused_spur_cable_jb_humidistat_fan"
+        "electrical_pack_fused_spur_cable_jb"
       ],
       "section": "sarkvents_r25"
     },
@@ -172,7 +172,7 @@
       "input": "f",
       "label": "Diamond core 107mm hole",
       "line_keys": [
-        "diamond_core_107mm_hole_passive_vent"
+        "diamond_core_107mm_hole"
       ],
       "section": "diamond_core_107mm_hole_r42"
     },
@@ -190,7 +190,7 @@
       "input": "f",
       "label": "Electrical Pack - fused spur, cable, JB",
       "line_keys": [
-        "electrical_pack_fused_spur_cable_jb"
+        "electrical_pack_fused_spur_cable_jb_humidistat_fan"
       ],
       "section": "diamond_core_107mm_hole_r49"
     },
@@ -208,7 +208,7 @@
       "input": "f",
       "label": "Diamond core 107mm hole",
       "line_keys": [
-        "diamond_core_107mm_hole"
+        "diamond_core_107mm_hole_humidistat_fan"
       ],
       "section": "diamond_core_107mm_hole_r49"
     },
@@ -226,7 +226,7 @@
       "input": "f",
       "label": "Diamond core 107mm hole",
       "line_keys": [
-        "diamond_core_107mm_hole_humidistat_fan"
+        "diamond_core_107mm_hole_passive_vent"
       ],
       "section": "diamond_core_107mm_hole_r54"
     },

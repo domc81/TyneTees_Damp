@@ -456,6 +456,48 @@
    "labour_markup": 1.0
   },
   {
+   "row": 65,
+   "label": "EP40 2 Pack resin Primer",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 62.37000000000001,
+   "n_model": "per_unit",
+   "n": 0.04,
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
+   "row": 66,
+   "label": "EP40 2 Pack resin top coat",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 70.07000000000001,
+   "n_model": "per_unit",
+   "n": 0.04,
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
+   "row": 67,
+   "label": "Grip grit",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 2.6,
+   "n_model": "special_o",
+   "n": {
+    "o_formula": "=F67*0.01",
+    "n_value": null
+   },
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
    "row": 71,
    "label": "Construct stud wall to perimiter",
    "uom": "M2",
@@ -801,6 +843,45 @@
    "h": 0.0,
    "n_model": "per_unit",
    "n": 0.15,
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
+   "row": 105,
+   "label": "Masonry sterilant (Wyakbor 20) - brush applied",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 35.0,
+   "n_model": "per_unit",
+   "n": 0.05,
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
+   "row": 106,
+   "label": "Protective treatment following new timbers installation (DP or bug)",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 22.0,
+   "n_model": "per_unit",
+   "n": 0.02,
+   "material_markup": 0.3,
+   "labour_markup": 1.0
+  },
+  {
+   "row": 107,
+   "label": "40.1 Gel injection @100mm centres, plug with dowel",
+   "uom": "M2",
+   "input": "f",
+   "derived_formula": null,
+   "h_model": "const",
+   "h": 2.22,
+   "n_model": "per_unit",
+   "n": 0.25,
    "material_markup": 0.3,
    "labour_markup": 1.0
   },

@@ -1,0 +1,87 @@
+{
+  "id": "cond-mixed-fans-core-holes",
+  "title": "Condensation POINT-11 ACCEPTANCE: replacement fan (0 holes) + new fan (1 hole) + new CVent (1 hole) in one survey",
+  "source": "Review point 11 acceptance tests 12-14: a replacement fan prices with zero core holes; a new fan adds one core hole; two different installation types coexist. Workbook rows R45-48 (trickle & boost section) + R57-58 (Cvent section) \u2014 all independent free inputs.",
+  "workbook": "condensation_v37",
+  "oracle": {
+    "lines": {
+      "trickle_and_boost_humidistat_fan_greenwo_r45": 2,
+      "electrical_pack_fused_spur_cable_jb_r46": 2,
+      "grille_r47": 2,
+      "diamond_core_107mm_hole_r48": 1,
+      "dryaire_cvent_r57": 1,
+      "diamond_core_107mm_hole_r58": 1
+    },
+    "travel": {
+      "distance_miles": 0,
+      "men": 1
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "condensation"
+    ],
+    "additional_works": {
+      "distance_from_office": 0,
+      "num_men_travelling": 1
+    },
+    "rooms": [
+      {
+        "name": "Kitchen",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": false,
+          "condensation_on_windows": true,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "active",
+          "trickle_boost_fan_count": 1,
+          "electrical_pack_count": 1,
+          "fan_grille_count": 1,
+          "core_hole_count_active": 0,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      },
+      {
+        "name": "Bathroom",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": false,
+          "condensation_on_windows": true,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "active",
+          "trickle_boost_fan_count": 1,
+          "electrical_pack_count": 1,
+          "fan_grille_count": 1,
+          "core_hole_count_active": 1,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      },
+      {
+        "name": "Utility",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": false,
+          "condensation_on_windows": false,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "passive",
+          "dryaire_cvent_count": 1,
+          "cvent_core_hole_count": 1,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      }
+    ]
+  },
+  "notes": "Kitchen = replacement fan in existing opening (0 core holes); Bathroom = new installation (1 core hole); Utility = new CVent (1 explicit core hole via the new cvent_core_hole_count field \u2014 the 1:1 auto-add was removed: workbook R58 is a free input row)."
+}

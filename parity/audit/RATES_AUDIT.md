@@ -7,12 +7,12 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 |---|---:|---:|---:|---:|---:|
 | damp | 74 | 71 | 30.63 | 28.0 | 0.5 |
 | condensation | 35 | 35 | 30.63 | 28.0 | 0.5 |
-| timber | 64 | 61 | 30.63 | 28.0 | 0.5 |
+| timber | 70 | 67 | 30.63 | 28.0 | 0.5 |
 | woodworm | 51 | 51 | 30.63 | 28.0 | 0.5 |
 
 | Class | Count |
 |---|---:|
-| WRONG_RATE | 0 |
+| WRONG_RATE | 6 |
 | MODEL_MISMATCH | 0 |
 | MISSING_WASTAGE | 0 |
 | EXTRA_WASTAGE | 0 |
@@ -20,9 +20,20 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 | MARKUP | 0 |
 | TRUNCATED | 0 |
 | QUIRK | 6 |
-| SPECIAL | 17 |
+| SPECIAL | 18 |
 | UNMATCHED workbook lines | 0 |
-| UNMATCHED platform templates | 9 |
+| UNMATCHED platform templates | 3 |
+
+## WRONG_RATE (6)
+
+| Workbook line | Template | Field | Workbook | Platform | Note |
+|---|---|---|---|---|---|
+| R65 EP40 2 Pack resin Primer | timber/floor_resin/ep40_2_pack_resin_primer | material_unit_cost | 62.37000000000001 | 1.8900000000000001 | catalog[ep40_primer]=56.7/30 |
+| R66 EP40 2 Pack resin top coat | timber/floor_resin/ep40_2_pack_resin_top_coat | material_unit_cost | 70.07000000000001 | 2.1233333333333335 | catalog[ep40_topcoat]=63.7/30 |
+| R67 Grip grit | timber/floor_resin/grip_grit | material_unit_cost | 2.6 | 0.10400000000000001 | catalog[grip_grit_timber]=2.6/25 |
+| R105 Masonry sterilant (Wyakbor 20) - brush appli | timber/timber_treatments/masonry_sterilant_wyakbor_20_brush_applied | material_unit_cost | 35.0 | 3.5 | catalog[masonry_sterilant_wyakbor20]=35.0/10 |
+| R106 Protective treatment following new timbers i | timber/timber_treatments/protective_treatment_following_new_timbers_installation_dp_o | material_unit_cost | 22.0 | 0.88 | catalog[protective_timber_treatment]=22.0/25 |
+| R107 40.1 Gel injection @100mm centres, plug with | timber/timber_treatments/401_gel_injection_100mm_centres_plug_with_dowel | material_unit_cost | 2.22 | 0.555 | catalog[gel_injection_401]=2.22/4 |
 
 ## QUIRK (6)
 
@@ -35,7 +46,7 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 | R48 Wall membrane CM3 - Subtotals for above 3 li | timber/wall_membrane/wall_membrane_cm3_subtotals_for_above_3_lines | pack_div_vs_step | 5.0 | 10.0 | workbook CEILING step differs from price divisor — verify representation |
 | R49 Membrane plugs for m2 listed | timber/wall_membrane/membrane_plugs_for_m2_listed | pack_div_vs_step | 2.0 | 10.0 | workbook CEILING step differs from price divisor — verify representation |
 
-## SPECIAL (17)
+## SPECIAL (18)
 
 | Workbook line | Template | Field | Workbook | Platform | Note |
 |---|---|---|---|---|---|
@@ -52,21 +63,16 @@ engine's own precedence (catalog → params → base, × wastage_factor).
 | R88 Rubbish removal skips | site_preparation/skip_hire/skip_hire | labour_formula | {'o_formula': '0', 'n_value': 0.0} | 0.0 | bespoke workbook labour — needs manual/code-track verification |
 | R38 Disposal via licensed transfer agent | site_preparation/strip_out_disposal/licensed_disposal | material_formula | =IF(F38=0,0,IF(F38<=20,40/F38,2)) | tiered_disposal | bespoke workbook formula — needs manual/code-track verification |
 | R38 Disposal via licensed transfer agent | site_preparation/strip_out_disposal/licensed_disposal | labour_formula | {'o_formula': '0', 'n_value': 0.0} | 0.0 | bespoke workbook labour — needs manual/code-track verification |
+| R67 Grip grit | timber/floor_resin/grip_grit | labour_formula | {'o_formula': '=F67*0.01', 'n_value': None} | 0.01 | bespoke workbook labour — needs manual/code-track verification |
 | R73 Warmline Internal Wall Insulation | timber/*/warmline_internal_wall_insulation+warmline_iwi_adhesive | multi_template_formula | =IF(F73=0,0,((CEILING.MATH(F73,3.5625)*((196.67/7.125)*1.1))/F73)+((CEILING.MATH | warmline_internal_wall_insulation+warmline_iwi_adhesive | bespoke formula split across templates — verify via parity scenario |
 | R120 Rubbish removal skips | site_preparation/skip_hire/skip_hire | labour_formula | {'o_formula': '0', 'n_value': 0.0} | 0.0 | bespoke workbook labour — needs manual/code-track verification |
 | R35 Disposal via licensed transfer agent | site_preparation/strip_out_disposal/licensed_disposal | material_formula | =IF(F35=0,0,IF(F35<=20,40/F35,2)) | tiered_disposal | bespoke workbook formula — needs manual/code-track verification |
 | R35 Disposal via licensed transfer agent | site_preparation/strip_out_disposal/licensed_disposal | labour_formula | {'o_formula': '0', 'n_value': 0.0} | 0.0 | bespoke workbook labour — needs manual/code-track verification |
 
-## Unmatched platform templates (9) — no workbook line matched
+## Unmatched platform templates (3) — no workbook line matched
 
 | Template | Description | Formula |
 |---|---|---|
-| timber/floor_resin/grip_grit | Grip grit | ceiling_coverage |
-| timber/floor_resin/ep40_2_pack_resin_top_coat | EP40 2 Pack resin top coat | ceiling_coverage |
-| timber/timber_treatments/401_gel_injection_100mm_centres_plug_with_dowel | 40.1 Gel injection @100mm centres, plug with dowel | ceiling_coverage |
 | timber/wall_membrane/wall_membrane_cm3_2mtr_1 | Wall membrane CM3  - 2mtr #1 | standard |
-| timber/floor_resin/ep40_2_pack_resin_primer | EP40 2 Pack resin Primer | ceiling_coverage |
 | timber/wall_membrane/wall_membrane_cm3_2mtr_3 | Wall membrane CM3  - 2mtr #3 | standard |
-| timber/timber_treatments/masonry_sterilant_wyakbor_20_brush_applied | Masonry sterilant (Wyakbor 20) - brush applied | ceiling_coverage |
-| timber/timber_treatments/protective_treatment_following_new_timbers_installation_dp_o | Protective treatment following new timbers installation (DP  | ceiling_coverage |
 | timber/wall_membrane/wall_membrane_cm3_2mtr_2 | Wall membrane CM3  - 2mtr #2 | standard |

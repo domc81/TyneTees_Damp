@@ -495,6 +495,7 @@ function mapCondensationSurvey(
   let totalPassiveVents = 0
   let totalPassiveCoreHoles = 0
   let totalCVents = 0
+  let totalCVentCoreHoles = 0
   let totalFans = 0
   let totalFanElecPacks = 0
   let totalFanCoreHoles = 0
@@ -525,6 +526,7 @@ function mapCondensationSurvey(
         if (condData.extraction_type === 'passive') {
           totalPassiveVents += condData.cpass_passive_vent_count || 0
           totalCVents += condData.dryaire_cvent_count || 0
+          totalCVentCoreHoles += condData.cvent_core_hole_count || 0
           if (condData.core_hole_required) {
             totalPassiveCoreHoles += condData.core_hole_count || 0
           }
@@ -773,9 +775,13 @@ function mapCondensationSurvey(
       const cventInput = createLineInput(lookup, 'dryaire_cvent', 'dryaire_cvent', totalCVents)
       if (cventInput) inputs.push(cventInput)
 
-      // Each CVent needs a core hole
-      const cventCoreInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', totalCVents)
-      if (cventCoreInput) inputs.push(cventCoreInput)
+      // Core holes are an EXPLICIT surveyor entry (workbook R58 is a free
+      // input row; a replacement CVent in an existing opening needs none —
+      // review point 11: never bundle core drilling by default)
+      if (totalCVentCoreHoles > 0) {
+        const cventCoreInput = createLineInput(lookup, 'dryaire_cvent', 'diamond_core_107mm_hole_dryaire_cvent', totalCVentCoreHoles)
+        if (cventCoreInput) inputs.push(cventCoreInput)
+      }
     }
   } else {
     // Legacy: passive vents from additional_works
@@ -914,10 +920,12 @@ function mapTimberSurvey(
   const wireScrubInput = createLineInput(lookup, 'strip_out', 'wire_scrub_brickwork_faces', totalWireScrubArea)
   if (wireScrubInput) inputs.push(wireScrubInput)
 
-  // Plaster removal (walls)
-  const plasterRemovalArea = totalCeilingArea // Simplified assumption
-  const plasterRemovalInput = createLineInput(lookup, 'strip_out', 'remove_plasterrender_walls', plasterRemovalArea)
-  if (plasterRemovalInput) inputs.push(plasterRemovalInput)
+  // Ceiling strip-out goes to the CEILINGS row (workbook R32 'Plaster & stud
+  // Removal (Ceilings)') — it was previously misrouted to the walls row.
+  // The walls row (R30) has no capture field yet: platform gap, see
+  // parity/audit/CAPTURE_GAPS.md.
+  const ceilingRemovalInput = createLineInput(lookup, 'strip_out', 'plaster_stud_removal_ceilings', totalCeilingArea)
+  if (ceilingRemovalInput) inputs.push(ceilingRemovalInput)
 
   // Strip floor
   const stripFloorInput = createLineInput(lookup, 'strip_out', 'strip_out_existing_timber_floor_gf', totalFlooringArea)
@@ -1307,10 +1315,15 @@ function calcTimberDebrisBags(rooms: SurveyRoomRow[]): number {
     if (!timberData) continue
 
     totalFlooringArea += timberData.flooring_area || 0
+    if (timberData.ceiling_affected) {
+      totalFlooringArea += timberData.ceiling_area || 0
+    }
   }
 
-  // 2 bags per m² — Timber workbook R37: F37 = SUM(F29:F34)*2, NO rounding
-  // (matches damp/woodworm; the workbooks price fractional bags)
+  // 2 bags per m² of strip-out — Timber workbook R37: F37 = SUM(F29:F34)*2,
+  // NO rounding. The platform can currently drive rows 32 (ceilings) and 33
+  // (timber floor) of that range; carpet/stud/scrape rows have no capture
+  // fields yet (see CAPTURE_GAPS.md).
   return totalFlooringArea > 0 ? totalFlooringArea * 2 : 0
 }
 

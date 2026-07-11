@@ -1,0 +1,62 @@
+{
+  "id": "woodworm-treatment-loft",
+  "title": "Woodworm: floor fog 30m2 + boarded 12m2 + gel 5m2 + staircases + loft lift/fog/relay 18m2 + airbricks + skip, 15 miles / 2 men",
+  "source": "Woodworm workbook v26: fogging R75/R76, gel injection R74, staircases R77/R78, loft trio R79/R80/R81, difficulty R68, airbricks R85/R87, skips R91.",
+  "workbook": "woodworm_v26",
+  "oracle": {
+    "lines": {
+      "fogging_floor_area_r75": 30,
+      "fogging_boarded_area_r76": 12,
+      "40_1_gel_injection_100mm_centres_plug_wi_r74": 5,
+      "fogging_staircase_open_rear_treads_per_s_r77": 8,
+      "fogging_staircase_rear_closed_drill_and_r78": 4,
+      "lifting_loft_insulation_r79": 18,
+      "fogging_loft_area_calculated_from_floor_r80": 18,
+      "relaying_loft_insulation_r81": 18,
+      "difficulty_hours_additional_hours_if_req_r68": 1.5,
+      "clean_out_airbrick_fit_new_face_r85": 2,
+      "install_additional_airbrick_r87": 1,
+      "rubbish_removal_skips_r91": 1
+    },
+    "travel": {
+      "distance_miles": 15,
+      "men": 2
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "woodworm"
+    ],
+    "additional_works": {
+      "distance_from_office": 15,
+      "num_men_travelling": 2,
+      "airbrick_clean_count": 2,
+      "airbrick_new_count": 1,
+      "skip_count": 1
+    },
+    "rooms": [
+      {
+        "name": "Rear bedroom",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "active",
+          "severity": "moderate",
+          "structural_damage": false,
+          "spray_floor_area": 30,
+          "spray_timber_area": 12,
+          "paste_treatment_area": 5,
+          "staircase_open_rear_steps": 8,
+          "staircase_closed_rear_steps": 4,
+          "loft_insulation_area": 18,
+          "include_lifting_loft_insulation": true,
+          "include_relaying_loft_insulation": true,
+          "difficulty_hours": 1.5
+        }
+      }
+    ]
+  },
+  "notes": "Loft trio: one loft_insulation_area drives fog + lift + relay, each gated by its own toggle (workbook has three independent rows R79-81 \u2014 the toggles make selection explicit)."
+}

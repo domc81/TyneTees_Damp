@@ -1,0 +1,91 @@
+{
+  "id": "timber-joists-flooring-treatments",
+  "title": "Timber: joist replacement (6x2 + 8x2) + weyrock 22mm + ceiling strip + fungal fog + masonry prep + staircase, 18 miles / 2 men",
+  "source": "Timber workbook v33: joists R85/R87 (D=qty, E=length), endwrap R89, wall plate R90, weyrock22 R95, insulation R99, difficulty R100, strip-out R32 (ceilings) R33 (floor) R35 (grind) R36 (wire), fog R108, clear debris R104, staircase R109; bags R37 = SUM(F29:F34)*2.",
+  "workbook": "timber_v33",
+  "oracle": {
+    "lines": {
+      "joists_150_x_50_r85": {
+        "d": 4,
+        "e": 3
+      },
+      "joists_200_x_50_r87": {
+        "d": 2,
+        "e": 4.2
+      },
+      "treat_and_endwrap_joist_r89": {
+        "d": 20,
+        "e": 1
+      },
+      "wall_plate_100x25_r90": {
+        "d": 8,
+        "e": 1
+      },
+      "install_weyrock_flooring_22mm_m2_r95": 15,
+      "provide_insulation_to_suspended_flooring_r99": 15,
+      "difficulty_hours_additional_hours_if_req_r100": 2,
+      "plaster_stud_removal_ceilings_r32": 15,
+      "strip_out_existing_timber_floor_gf_r33": 15,
+      "grind_back_mortar_courses_on_brickwork_r35": 5,
+      "wire_scrub_brickwork_faces_r36": 5,
+      "fog_subfloor_void_m2_r108": 20,
+      "clear_debris_from_sub_floor_r104": 8,
+      "fogging_staircase_open_rear_treads_per_s_r109": 6
+    },
+    "travel": {
+      "distance_miles": 18,
+      "men": 2
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "timber"
+    ],
+    "additional_works": {
+      "distance_from_office": 18,
+      "num_men_travelling": 2
+    },
+    "rooms": [
+      {
+        "name": "Cellar",
+        "issues": [
+          "timber_decay"
+        ],
+        "timber_decay": {
+          "floor_type": "suspended_timber",
+          "floor_condition": "poor",
+          "floor_access": "good",
+          "sub_floor_inspected": true,
+          "timber_replacement_needed": true,
+          "fungal_findings": [],
+          "ceiling_affected": true,
+          "ceiling_area": 15,
+          "joist_entries": [
+            {
+              "size": "6x2",
+              "quantity": 4,
+              "length": 3
+            },
+            {
+              "size": "8x2",
+              "quantity": 2,
+              "length": 4.2
+            }
+          ],
+          "endwrap_joists_lm": 20,
+          "wall_plate_lm": 8,
+          "flooring_type": "weyrock_22mm",
+          "flooring_area": 15,
+          "warmline_insulation_area": 15,
+          "fungal_treatment_area": 20,
+          "clear_sub_floor_debris_area": 8,
+          "grind_back_mortar_area": 5,
+          "wire_scrub_area": 5,
+          "staircase_open_rear_steps": 6,
+          "difficulty_hours": 2
+        }
+      }
+    ]
+  },
+  "notes": "Endwrap/wall-plate are LM totals on the platform; oracle enters d=LM, e=1 (workbook F=D*E, all downstream formulas use F). Ceiling strip now routes to the CEILINGS row R32 (was misrouted to walls R30 \u2014 'simplified assumption' removed). Bags derive 2x(flooring+ceiling)=60. Deliberately excluded: masonry_sterilant_area & protective_treatment_area (platform templates exist but the TIMBER workbook has no such rows \u2014 platform-only, housekeeping list) and brunosol/wykabor row R42 (workbook row with no capture field \u2014 CAPTURE_GAPS)."
+}

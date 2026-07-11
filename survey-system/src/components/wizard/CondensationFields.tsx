@@ -286,6 +286,24 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   />
                 </div>
 
+                {(data.dryaire_cvent_count ?? 0) > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      CVent Core Holes (new openings only)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.cvent_core_hole_count ?? 0}
+                      onChange={(e) => handleChange('cvent_core_hole_count', parseInt(e.target.value) || 0)}
+                      className="input-field"
+                      min="0"
+                    />
+                    <p className="text-xs text-white/40 mt-1">
+                      0 when replacing a vent in an existing suitable opening.
+                    </p>
+                  </div>
+                )}
+
                 {/* Core Hole Required gate */}
                 <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                   <label className="text-sm font-medium text-white">Core Hole Required</label>
