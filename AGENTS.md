@@ -28,6 +28,7 @@ All commands run from `survey-system/` directory:
 - Dev: `npm run dev` — **DO NOT USE**. Commit and push; Coolify handles deployment.
 - Type-check: not a separate script; `ignoreBuildErrors: true` in next.config.mjs means the build does not fail on type errors
 - DB types: `npm run db:generate` (generates `types/database.types.ts` from Supabase)
+- Parity suite (MANDATORY before any costing push): `python3 parity/oracle/run_oracle.py --all` → `cd survey-system && npx tsx scripts/parity/run-engine.ts --all` → `python3 parity/compare.py --all` (15/15 must PASS)
 - DB migrations: applied manually via `docker exec -i supabase-db-y04kk0wwoswogw0oowcs04gw psql -U supabase_admin -d postgres < supabase/migrations/<filename>.sql`
 
 ## Ground truth

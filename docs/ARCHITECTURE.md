@@ -5,7 +5,7 @@
 ```
 Customer ──→ Enquiry Pipeline ──→ Survey Wizard ──→ Costing Engine ──→ Quotation ──→ Report
                   │                     │                │                  │            │
-              Kanban board       Room-by-room        11 formula        PDF + email   LLM narrative
+              Kanban board       Room-by-room        9 formula         PDF + email   LLM narrative
               (drag-drop)        inspection          types             public page   public page
                   │                     │                │
               Calendar/          Voice recording     Mapping engine
@@ -116,7 +116,7 @@ TyneTees_Damp/
 - **Report components (21):** `CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
 - **Lib (35 files):**
   - Supabase: `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer)
-  - Pricing: `pricing-engine.ts` (11 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine)
+  - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine)
   - Survey: `survey-wizard-data.ts` (persistence/auto-save), `survey-photo-service.ts`, `survey-tags.ts`
   - Reports: `report-generator.ts` (boilerplate + LLM narrative + methodology + woodworm images), `report-data.ts`, `report-publish.ts`, `report-validation.ts`
   - PDF: `quotation-pdf-renderer.tsx` · Email: `email-service.ts`, `email-templates.ts`, `email-config.ts`
@@ -136,7 +136,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
 - **Surveys:** `surveys` (central table, `survey_data` JSONB, `tags` TEXT[]), `survey_rooms` (`issues_identified` TEXT[] + `room_data` JSONB), `survey_images`, `photos`, `survey_installer_info`
 - **Survey-type extensions (provisioned but UNUSED — wizard stores everything in JSONB):** `survey_damp_report`, `survey_damp_wall_readings`, `survey_condensation_report`, `survey_condensation_rooms`, `survey_timber_report`, `survey_timber_rooms`, `survey_woodworm_report`
-- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (16 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
+- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (14 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
 - **Payments:** `payments` — `survey_fee` or `deposit` type, token-based public access, linked to enquiry/survey/quotation
 - **Quotations:** `quotations` (draft → sent → viewed → accepted/declined), `quotation_sections`, `quotation_acceptances` (immutable e-signature audit), `quotation_views`
 - **Reports:** `report_templates` (4, one per survey type), `survey_reports` (draft → generated → reviewed → finalised → published), `report_views`
@@ -151,15 +151,13 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 | Key | Value | Description |
 |-----|-------|-------------|
 | hourly_labour_rate | 30.63 | Base hourly labour rate (£) |
-| contractor_hourly_rate | 28.00 | Rate paid to contractor per hour (£) |
+| contractor_hourly_rate | 28.00 | RESERVED — subcontractor pay (workbook E155) for operative outputs; not in customer pricing |
 | default_material_markup | 0.30 (30%) | Default material markup |
 | default_labour_markup | 1.00 (100%) | Default labour markup |
 | default_wastage_factor | 1.10 (10%) | Default wastage factor |
 | vat_rate | 0.20 (20%) | VAT rate |
 | vehicle_cost_per_mile | 0.50 | Vehicle running cost per mile (£) |
 | skip_hire_8yd_cost | 270.00 | Skip hire 8 yard base cost (£) |
-| digital_dpc_base_cost | 650.00 | Mursec Eco digital DPC unit base cost (£) |
-| asbestos_testing_cost | 30.00 | Asbestos testing per sample cost (£) |
 | damp_deposit_pct | 0.30 (30%) | Damp survey deposit percentage |
 | condensation_deposit_pct | 0.50 (50%) | Condensation survey deposit percentage |
 | timber_deposit_pct | 0.30 (30%) | Timber survey deposit percentage |
@@ -185,26 +183,30 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 1. Office creates enquiry (Kanban board), converts to customer + survey + booking
 2. Surveyor completes 5-step wizard — data stored in `surveys.survey_data` JSONB (property-level) and `survey_rooms.room_data` JSONB (per-room)
 3. Mapping engine (`survey-mapping.ts`) aggregates all rooms into `LineInput[]` per costing section
-4. Pricing engine (`pricing-engine.ts`) calculates material + labour costs using 11 formula types against `costing_line_templates` and `pricing_config`
+4. Pricing engine (`pricing-engine.ts`) calculates material + labour costs using 9 formula types against `costing_line_templates` and `pricing_config`
 5. Travel overhead (`travel-overhead.ts`) adds vehicle costs post-engine
 6. Results written to `survey_costing_lines`, displayed in costing review page
 7. Generate quotation → snapshots costing into `quotation_sections`, creates PDF
 8. Send to customer → email with public link → customer accepts/declines with e-signature
 9. Generate report → LLM writes narrative sections from survey data → publish as branded web page
 
-### Pricing formula types (11)
+### Pricing formula types (9)
 
-- `standard` — material = unit_cost × quantity, labour = rate × quantity
-- `ceiling_coverage` — CEIL(quantity / coverage) × (unit_cost / coverage × wastage)
-- `dpc_injection` — cream cost + drill plug cost based on wall depth
-- `digital_dpc` — digital DPC unit cost (reads base cost from pricing_config)
-- `compound_material` — multi-material mix (e.g. dubbing coat = SBR + sand + cement)
-- `fixed_price` — flat rate item (e.g. PIV units)
-- `per_room_fixed` — fixed cost applied per room
-- `ancillary_refit` — ancillary refit items
-- `tiered_disposal` — conditional rate based on quantity threshold
-- `bag_and_cart` — per-bag debris removal
-- `skip_hire` — reads cost from pricing_config
+- `standard` — material = base × wastage × quantity, labour = rate/unit × quantity (supports minimum_quantity)
+- `ceiling_coverage` — CEIL(quantity / coverage) × pack price spread per unit × wastage (block/minimum labour options)
+- `dpc_injection` — workbook R40 exact: cream 13.93/1.15 + (6/LENGTH)×4.29 per unit; qty = length × thickness (m); labour = length × 0.35 flat
+- `compound_material` — multi-material mix per pack (e.g. damp dubbing coat = SBR + sand + cement per 2 m²)
+- `whole_pack` — ROUNDUP(quantity / pack_size) × full pack cost (timber resin/sterilant/protective/gel rows)
+- `fixed_price` — flat rate item, ignores quantity (PIV units, hatches)
+- `tiered_disposal` — min-charge/per-bag threshold rates (licensed disposal)
+- `bag_and_cart` — per-bag hours + per-bag material
+- `skip_hire` — reads `skip_hire_8yd_cost` from pricing_config
+
+Section-level defaults: `costing_sections.default_adjustment_pct` seeds the costing-page adjustment dials from the workbook masters (condensation `piv_loft` = −5%). VAT reads `pricing_config.vat_rate`.
+
+### Golden-master parity harness (`parity/`)
+
+The Excel workbooks are the costing golden master; the harness is the release gate (see `parity/README.md`). Oracle (`run_oracle.py`) evaluates the real .xlsm per scenario; runner (`survey-system/scripts/parity/run-engine.ts`) runs the real pipeline against live Supabase; `compare.py` diffs to ±£0.005. 15 scenarios incl. 6 generated full-coverage scenarios (`build_full_coverage.py`) exercising **every priced workbook row**. Audits and closure records in `parity/audit/` (RATES_AUDIT, ADMIN_AUDIT, CAPTURE_GAPS, batch before/afters).
 
 ## Offline layer — survey wizard PWA (`src/lib/offline/`)
 

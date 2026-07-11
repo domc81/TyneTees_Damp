@@ -39,7 +39,7 @@ All read from `/home/dominic/.credentials/` at runtime — **never hardcode or c
 Full detail, data flow, and design rationale: `docs/ARCHITECTURE.md`.
 
 - **Room-first survey wizard** — 5 steps: Site Details → External Inspection → Room-by-Room (repeats) → Additional Works → Review. Rooms multi-select issues (damp / condensation / timber / woodworm); only relevant fields appear. Data: `surveys.survey_data` JSONB (property-level) + `survey_rooms.room_data` JSONB (per room).
-- **Costing flow** — mapping engine aggregates rooms → `LineInput[]` → pricing engine (11 formula types against `costing_line_templates` + `pricing_config`) → travel overhead post-engine.
+- **Costing flow** — mapping engine aggregates rooms → `LineInput[]` → pricing engine (9 formula types against `costing_line_templates` + `pricing_config`) → travel overhead post-engine. Workbooks are the golden master; the `parity/` harness is the release gate for any costing change.
 - **Enquiry pipeline** — Kanban with stages New → Awaiting Payment → Booked → Survey Complete → Sent → Won → Closed (side lanes: On Hold, Lost); auto-transitions; detail drawer with integrated customer management.
 - **Quotations & reports** — quotation PDF + public accept/decline with e-signature (deposit auto-created on acceptance); report LLM narrative (OpenRouter `anthropic/claude-sonnet-5`) → section editor → published branded public page.
 

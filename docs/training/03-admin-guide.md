@@ -230,7 +230,7 @@ Toggle the **Active** switch on any line to include or exclude it from costings.
 
 ### Formula Types
 
-The system uses 11 different formula types to calculate costs. Most are "Standard" (simple quantity x cost), but some are specialised:
+The system uses 9 different formula types to calculate costs. Most are "Standard" (simple quantity x cost), but some are specialised:
 
 | Formula | Used For |
 |---------|---------|
