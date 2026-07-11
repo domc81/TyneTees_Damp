@@ -169,6 +169,8 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
     numMenTravelling: Number(aw.num_men_travelling ?? 1),
     hourlyLabourRate: config['hourly_labour_rate'] ?? 30.63,
     vehicleCostPerMile: config['vehicle_cost_per_mile'] ?? 0.5,
+    productiveHoursPerDay: config['productive_hours_per_day'] ?? 6.5,
+    travelSpeedMph: config['travel_speed_mph'] ?? 30,
   })
 
   // ---- Replicated page summary math: costing/page.tsx ~606-660 ----

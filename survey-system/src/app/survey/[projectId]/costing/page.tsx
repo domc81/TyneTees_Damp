@@ -373,6 +373,8 @@ export default function CostingReviewPage() {
           numMenTravelling,
           hourlyLabourRate: loadedConfig['hourly_labour_rate'] ?? 30.63,
           vehicleCostPerMile: loadedConfig['vehicle_cost_per_mile'] ?? 0.50,
+          productiveHoursPerDay: loadedConfig['productive_hours_per_day'] ?? 6.5,
+          travelSpeedMph: loadedConfig['travel_speed_mph'] ?? 30,
         })
         setTravelOverhead(overhead)
 
@@ -547,7 +549,8 @@ export default function CostingReviewPage() {
         travelOverhead,
         sectionAdjustments,
         surveyTypes,
-        projectId
+        projectId,
+        pricingConfig['hourly_labour_rate'] ?? 30.63
       )
       // Prepend UTF-8 BOM so Excel auto-detects encoding (prevents garbled £ signs)
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })

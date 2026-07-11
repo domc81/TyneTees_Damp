@@ -1605,9 +1605,21 @@ export async function isProductKeyUnique(
 }
 
 /**
- * Find costing templates that reference a material by product_key
- * (via formula_params @> {"product_key": "..."}). Used to show impact
- * before editing or deleting a material.
+ * Materials the pricing engine looks up by hardcoded product_key
+ * (dpc_injection cream + drill-plug pack — see pricing-engine.ts).
+ * These count as referenced even though no template names them in params.
+ */
+const ENGINE_HARDCODED_MATERIAL_KEYS: Record<string, string> = {
+  wykamol_ultracure_dpc_cream: 'dpc_injection',
+  drill_plugs_12mm: 'dpc_injection',
+}
+
+/**
+ * Find costing templates that reference a material by product_key —
+ * directly (formula_params.product_key), as a compound-material component
+ * (formula_params.components[].product_key), or via an engine-hardcoded
+ * lookup (DPC cream/drill plugs). Used to show impact before editing a
+ * material, and to soft-delete instead of hard-delete referenced ones.
  */
 export async function getTemplatesReferencingMaterial(
   productKey: string
@@ -1615,20 +1627,48 @@ export async function getTemplatesReferencingMaterial(
   const supabase = getSupabase()
   if (!supabase) return []
 
-  const { data, error } = await supabase
-    .from('costing_line_templates')
-    .select('description, costing_sections(survey_type)')
-    .contains('formula_params', { product_key: productKey })
+  const select = 'id, description, costing_sections(survey_type)'
+  const queries = [
+    supabase
+      .from('costing_line_templates')
+      .select(select)
+      .contains('formula_params', { product_key: productKey }),
+    supabase
+      .from('costing_line_templates')
+      .select(select)
+      .contains('formula_params', { components: [{ product_key: productKey }] }),
+  ]
 
-  if (error) {
-    console.error('Error finding referencing templates:', error)
-    return []
+  const engineFormula = ENGINE_HARDCODED_MATERIAL_KEYS[productKey]
+  if (engineFormula) {
+    queries.push(
+      supabase
+        .from('costing_line_templates')
+        .select(select)
+        .eq('cost_formula', engineFormula)
+    )
   }
 
-  return (data || []).map((row: any) => ({
-    description: row.description || '',
-    survey_type: (row.costing_sections as any)?.survey_type || '',
-  }))
+  const results = await Promise.all(queries)
+  const seen = new Set<string>()
+  const refs: Array<{ description: string; survey_type: string }> = []
+
+  for (const { data, error } of results) {
+    if (error) {
+      console.error('Error finding referencing templates:', error)
+      continue
+    }
+    for (const row of (data || []) as any[]) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      refs.push({
+        description: row.description || '',
+        survey_type: (row.costing_sections as any)?.survey_type || '',
+      })
+    }
+  }
+
+  return refs
 }
 
 // ============================================================================

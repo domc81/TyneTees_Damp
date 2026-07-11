@@ -136,7 +136,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
 - **Surveys:** `surveys` (central table, `survey_data` JSONB, `tags` TEXT[]), `survey_rooms` (`issues_identified` TEXT[] + `room_data` JSONB), `survey_images`, `photos`, `survey_installer_info`
 - **Survey-type extensions (provisioned but UNUSED — wizard stores everything in JSONB):** `survey_damp_report`, `survey_damp_wall_readings`, `survey_condensation_report`, `survey_condensation_rooms`, `survey_timber_report`, `survey_timber_rooms`, `survey_woodworm_report`
-- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (14 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
+- **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (18 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`
 - **Payments:** `payments` — `survey_fee` or `deposit` type, token-based public access, linked to enquiry/survey/quotation
 - **Quotations:** `quotations` (draft → sent → viewed → accepted/declined), `quotation_sections`, `quotation_acceptances` (immutable e-signature audit), `quotation_views`
 - **Reports:** `report_templates` (4, one per survey type), `survey_reports` (draft → generated → reviewed → finalised → published), `report_views`
@@ -144,7 +144,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **Notifications:** `notifications` (realtime subscriptions)
 - **Company:** `company_profile`
 
-43 migrations total (42 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
+44 migrations total (43 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
 
 ### Pricing config values (`pricing_config`, editable at `/admin/rates`)
 
@@ -164,6 +164,10 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 | woodworm_deposit_pct | 0.30 (30%) | Woodworm survey deposit percentage |
 | survey_fee_amount | (configurable) | Survey fee charged upfront (£) |
 | survey_fee_expiry_days | (configurable) | Days before unpaid provisional booking is auto-released |
+| productive_hours_per_day | 6.5 | Working hours per man per day — drives days-on-site (was hardcoded; workbook magic number) |
+| travel_speed_mph | 30 | Average travel speed converting miles → travel hours (was hardcoded; workbook magic number) |
+| contractor_mileage_rate | 0.45 | RESERVED — subcontractor mileage (workbook ×0.45) for operative outputs |
+| contractor_material_uplift | 1.10 (10%) | RESERVED — subcontractor materials uplift (workbook col U ×1.1) for operative outputs |
 
 ### External services
 
@@ -194,15 +198,17 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 
 - `standard` — material = base × wastage × quantity, labour = rate/unit × quantity (supports minimum_quantity)
 - `ceiling_coverage` — CEIL(quantity / coverage) × pack price spread per unit × wastage (block/minimum labour options)
-- `dpc_injection` — workbook R40 exact: cream 13.93/1.15 + (6/LENGTH)×4.29 per unit; qty = length × thickness (m); labour = length × 0.35 flat
+- `dpc_injection` — workbook R40 exact: cream/1.15 + (6/LENGTH)×drill-plug pack per unit; qty = length × thickness (m); labour = length × 0.35 flat. Cream + drill pack priced catalog-first (`wykamol_ultracure_dpc_cream`, `drill_plugs_12mm` = pack of 100)
 - `compound_material` — multi-material mix per pack (e.g. damp dubbing coat = SBR + sand + cement per 2 m²)
-- `whole_pack` — ROUNDUP(quantity / pack_size) × full pack cost (timber resin/sterilant/protective/gel rows)
+- `whole_pack` — ROUNDUP(quantity / pack_size) × full pack price × wastage (timber resin/sterilant/protective/gel rows). Pack price catalog-first via `product_key` (`params.pack_cost` is a fallback snapshot); EP40 rows carry the workbook's baked ×1.1 in `wastage_factor`
 - `fixed_price` — flat rate item, ignores quantity (PIV units, hatches)
 - `tiered_disposal` — min-charge/per-bag threshold rates (licensed disposal)
 - `bag_and_cart` — per-bag hours + per-bag material
 - `skip_hire` — reads `skip_hire_8yd_cost` from pricing_config
 
-Section-level defaults: `costing_sections.default_adjustment_pct` seeds the costing-page adjustment dials from the workbook masters (condensation `piv_loft` = −5%). VAT reads `pricing_config.vat_rate`.
+Section-level defaults: `costing_sections.default_adjustment_pct` seeds the costing-page adjustment dials from the workbook masters (condensation `piv_loft` = −5%); editable per section at `/admin/costing`. VAT reads `pricing_config.vat_rate`. Deactivating a template (`is_active` toggle) silently drops its line from new costings via the mapping lookup.
+
+**Pricing control coverage:** every workbook pricing input → platform home → admin surface is mapped in `docs/workbook-analysis/PRICING_CONTROL_MAP.md` (incl. material-price precedence per formula type). The client edits all prices through `/admin/rates`, `/admin/materials`, `/admin/costing` — no code changes.
 
 ### Golden-master parity harness (`parity/`)
 

@@ -613,6 +613,8 @@ export interface AdminSection {
   section_name: string
   survey_type: string
   display_order: number
+  /** Workbook-master section adjustment % (e.g. condensation PIV-loft −5) */
+  default_adjustment_pct: number
   templates: AdminTemplate[]
 }
 
@@ -628,7 +630,7 @@ export async function loadAllCostingTemplatesAdmin(): Promise<AdminSection[]> {
   const { data, error } = await supabase
     .from('costing_sections')
     .select(`
-      id, section_key, section_name, survey_type, display_order,
+      id, section_key, section_name, survey_type, display_order, default_adjustment_pct,
       costing_line_templates (
         id, line_key, description, uom, cost_formula,
         base_unit_cost, labour_rate_per_unit, wastage_factor,
@@ -649,6 +651,7 @@ export async function loadAllCostingTemplatesAdmin(): Promise<AdminSection[]> {
     section_name: s.section_name,
     survey_type: s.survey_type,
     display_order: s.display_order,
+    default_adjustment_pct: Number(s.default_adjustment_pct) || 0,
     templates: (s.costing_line_templates || [])
       .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
       .map((t: any) => ({
@@ -694,6 +697,29 @@ export async function updateCostingLineTemplateBatch(
   const failed = results.filter(r => r.error)
   if (failed.length > 0) {
     failed.forEach(r => console.error('Template update error:', r.error))
+    return false
+  }
+  return true
+}
+
+/**
+ * Update a section's default adjustment % (the workbook-master F-cell value,
+ * e.g. condensation PIV-loft −5). Per-survey adjustments still override this.
+ */
+export async function updateSectionDefaultAdjustment(
+  sectionId: string,
+  adjustmentPct: number
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+
+  const { error } = await supabase
+    .from('costing_sections')
+    .update({ default_adjustment_pct: adjustmentPct })
+    .eq('id', sectionId)
+
+  if (error) {
+    console.error('Error updating section default adjustment:', error)
     return false
   }
   return true

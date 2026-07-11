@@ -251,11 +251,14 @@ function HandoverContent() {
         numMenTravelling: aw?.num_men_travelling || 1,
         hourlyLabourRate: pricingConfig.hourly_labour_rate || 30.63,
         vehicleCostPerMile: pricingConfig.vehicle_cost_per_mile || 0.5,
+        productiveHoursPerDay: pricingConfig.productive_hours_per_day || 6.5,
+        travelSpeedMph: pricingConfig.travel_speed_mph || 30,
       })
 
       const { csv, filename } = generateCFCSV(
         costingResults, travelOverhead, sectionAdjustments,
-        surveyTypes.filter(t => t !== 'site_preparation'), projectId
+        surveyTypes.filter(t => t !== 'site_preparation'), projectId,
+        pricingConfig.hourly_labour_rate || 30.63
       )
 
       downloadBlob(csv, filename, 'text/csv')

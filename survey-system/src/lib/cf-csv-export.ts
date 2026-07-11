@@ -34,16 +34,18 @@ import {
 // =============================================================================
 
 /**
- * Standard hourly labour rate — mirrors pricing_config.hourly_labour_rate.
+ * Fallback hourly labour rate — callers should pass the live
+ * pricing_config.hourly_labour_rate into generateCFCSV; this default only
+ * covers legacy call sites/tests.
  *
  * Used to derive the pre-markup labour cost from labourHours:
- *   rawLabour = labourHours × STANDARD_HOURLY_RATE
+ *   rawLabour = labourHours × hourlyRate
  *
  * This is correct even for templates with non-100% labour markup (e.g. PIV units
  * at 300–400%) because all templates use this base rate. The markup varies but
  * the base rate is constant.
  */
-const STANDARD_HOURLY_RATE = 30.63
+const DEFAULT_HOURLY_RATE = 30.63
 
 // =============================================================================
 // Internal types
@@ -57,7 +59,7 @@ interface SectionCosts {
   materialTotal: number
   /** Sum of labourHours (hours don't scale with section adjustment) */
   labourHours: number
-  /** Sum of raw labour cost = labourHours × STANDARD_HOURLY_RATE, section-adj applied */
+  /** Sum of raw labour cost = labourHours × hourlyRate, section-adj applied */
   labourRaw: number
   /** Sum of labourTotal (after markup), section-adj applied */
   labourTotal: number
@@ -99,7 +101,8 @@ function aggregateSectionCosts(
   lines: CalculatedLine[],
   sectionKeys: readonly string[],
   templateFilter: ((desc: string) => boolean) | undefined,
-  sectionAdjustments: Record<string, number>
+  sectionAdjustments: Record<string, number>,
+  hourlyRate: number
 ): SectionCosts {
   const costs = emptySectionCosts()
 
@@ -116,7 +119,7 @@ function aggregateSectionCosts(
 
     // Labour: hours stay the same, costs scale by adjFactor
     costs.labourHours += line.result.labourHours
-    costs.labourRaw += line.result.labourHours * STANDARD_HOURLY_RATE * adjFactor
+    costs.labourRaw += line.result.labourHours * hourlyRate * adjFactor
     costs.labourTotal += line.result.labourTotal * adjFactor
   }
 
@@ -185,7 +188,8 @@ export function generateCFCSV(
   travelOverhead: TravelOverheadResult,
   sectionAdjustments: Record<string, number>,
   surveyTypes: string[],
-  surveyRef: string
+  surveyRef: string,
+  hourlyRate: number = DEFAULT_HOURLY_RATE
 ): { csv: string; filename: string } {
   // ── Step 1: Determine primary survey type ────────────────────────────────
   // Priority: damp > timber > woodworm > condensation
@@ -242,7 +246,8 @@ export function generateCFCSV(
         result.lines,
         sectionDef.sectionKeys,
         sectionDef.templateFilter,
-        sectionAdjustments
+        sectionAdjustments,
+        hourlyRate
       )
       addToCFSection(sectionDef.cfSectionName, sectionDef.isOptional, costs)
     }
@@ -264,7 +269,8 @@ export function generateCFCSV(
         sitePrepResult.lines,
         SITE_PREP_STRIPPING_OUT_KEYS,
         undefined,
-        sectionAdjustments
+        sectionAdjustments,
+        hourlyRate
       )
       addToCFSection(strippingOutDef.cfSectionName, false, strippingCosts)
     }
@@ -369,7 +375,8 @@ export function generateCFCSV(
       sitePrepResult.lines,
       SITE_PREP_PSO_KEYS,
       undefined,
-      sectionAdjustments
+      sectionAdjustments,
+      hourlyRate
     )
     psoMatSkipRaw = skipCosts.materialRaw
     psoMatSkipTotal = skipCosts.materialTotal

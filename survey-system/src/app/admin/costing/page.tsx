@@ -34,6 +34,7 @@ import {
 import {
   loadAllCostingTemplatesAdmin,
   updateCostingLineTemplateBatch,
+  updateSectionDefaultAdjustment,
   loadMaterialNamesMap,
   type AdminSection,
   type AdminTemplate,
@@ -64,16 +65,25 @@ const FORMULA_BADGES: Record<string, { label: string; color: string }> = {
   tiered_disposal: { label: 'Tiered', color: 'bg-red-500/20 text-red-300' },
   bag_and_cart: { label: 'Bag&Cart', color: 'bg-orange-500/20 text-orange-300' },
   skip_hire: { label: 'Skip', color: 'bg-teal-500/20 text-teal-300' },
+  whole_pack: { label: 'Whole Pack', color: 'bg-pink-500/20 text-pink-300' },
 }
 
-/** Editable formula_params keys per formula type with labels */
-const EDITABLE_PARAMS: Record<string, Array<{ key: string; label: string; step: string }>> = {
+/**
+ * Editable formula_params keys per formula type with labels.
+ * `presentOnly` params render only on templates that already carry the key \u2014
+ * they are line-specific workbook rules (minimums, labour blocks), not
+ * something every template of that formula type needs.
+ * DPC cream/drill prices are NOT here: they live in the Materials Catalogue
+ * (catalog-first since 2026-07-11) and show as a material-link row instead.
+ */
+const EDITABLE_PARAMS: Record<
+  string,
+  Array<{ key: string; label: string; step: string; presentOnly?: boolean }>
+> = {
   dpc_injection: [
-    { key: 'base_cream_cost', label: 'DPC Cream Cost (\u00a3)', step: '0.01' },
     { key: 'cream_divisor', label: 'Cream Divisor', step: '0.01' },
     { key: 'holes_per_meter', label: 'Holes Per Meter', step: '1' },
-    { key: 'drill_cost', label: 'Drill Plug Cost (\u00a3)', step: '0.01' },
-    { key: 'labour_hours_per_depth', label: 'Labour Hrs / Depth', step: '0.01' },
+    { key: 'labour_hours_per_depth', label: 'Labour Hrs / LM', step: '0.01' },
   ],
   tiered_disposal: [
     { key: 'threshold', label: 'Bag Threshold', step: '1' },
@@ -83,6 +93,17 @@ const EDITABLE_PARAMS: Record<string, Array<{ key: string; label: string; step: 
   bag_and_cart: [
     { key: 'hours_per_bag', label: 'Hours Per Bag', step: '0.001' },
     { key: 'material_cost_per_bag', label: 'Cost Per Bag (\u00a3)', step: '0.01' },
+  ],
+  whole_pack: [
+    { key: 'pack_size', label: 'Pack Size (units)', step: '0.01' },
+  ],
+  standard: [
+    { key: 'minimum_quantity', label: 'Minimum Quantity', step: '0.1', presentOnly: true },
+  ],
+  ceiling_coverage: [
+    { key: 'labour_block_size', label: 'Labour Block (m\u00b2)', step: '0.1', presentOnly: true },
+    { key: 'labour_hours_per_block', label: 'Hours Per Block', step: '0.1', presentOnly: true },
+    { key: 'minimum_labour_hours', label: 'Min Labour Hours', step: '0.1', presentOnly: true },
   ],
 }
 
@@ -183,16 +204,19 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 const PARAM_TOOLTIPS: Record<string, string> = {
-  base_cream_cost: 'Purchase price of DPC injection cream per unit',
-  cream_divisor: 'Coverage adjustment factor',
+  cream_divisor: 'Coverage adjustment factor (workbook: 10 LM at 115mm wall = 1.15 volume per tube)',
   holes_per_meter: 'Number of drill holes per linear metre',
-  drill_cost: 'Cost per drill plug',
-  labour_hours_per_depth: 'Labour hours per brick course depth',
+  labour_hours_per_depth: 'Labour hours per linear metre of DPC run (flat rate — wall thickness affects material volume only)',
   threshold: 'Number of bags before per-bag surcharge applies',
   min_charge: 'Minimum flat charge for disposal',
   per_bag_over: 'Additional cost per bag over the threshold',
   hours_per_bag: 'Labour hours required per bag of debris',
   material_cost_per_bag: 'Material/disposal cost per bag',
+  pack_size: 'Units of work one pack covers. Quantity is rounded UP to whole packs and each pack is charged at the full catalogue price.',
+  minimum_quantity: 'Minimum chargeable quantity — smaller jobs are charged at this quantity (e.g. ducting boxing-in 2.4m minimum)',
+  labour_block_size: 'Labour is charged in blocks of this many m² (e.g. skimming in 15m² blocks)',
+  labour_hours_per_block: 'Hours charged per labour block',
+  minimum_labour_hours: 'Minimum labour hours charged regardless of area',
 }
 
 // ---------------------------------------------------------------------------
@@ -349,6 +373,21 @@ export default function CostingAdminPage() {
     setTemplates(JSON.parse(JSON.stringify(initialTemplates)))
     setChanges({})
   }
+
+  // Section default adjustment % — saved immediately (not part of the
+  // template batch-save), mirrors the workbook master F-cells
+  const handleSectionDefaultAdj = useCallback(async (sectionId: string, pct: number) => {
+    const ok = await updateSectionDefaultAdjustment(sectionId, pct)
+    if (ok) {
+      setAllSections(prev =>
+        prev.map(s => (s.id === sectionId ? { ...s, default_adjustment_pct: pct } : s))
+      )
+      toast.success('Section default adjustment saved')
+    } else {
+      toast.error('Failed to save section adjustment')
+    }
+    return ok
+  }, [])
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -531,15 +570,15 @@ export default function CostingAdminPage() {
             return (
               <div key={section.id} className="section-card overflow-hidden">
                 {/* Section header */}
-                <button
-                  onClick={() => toggleSection(section.id)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
+                <div className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className="flex items-center gap-3 flex-1 text-left min-w-0"
+                  >
                     {isExpanded ? (
-                      <ChevronDown className="w-5 h-5 text-white/50" />
+                      <ChevronDown className="w-5 h-5 text-white/50 shrink-0" />
                     ) : (
-                      <ChevronRight className="w-5 h-5 text-white/50" />
+                      <ChevronRight className="w-5 h-5 text-white/50 shrink-0" />
                     )}
                     <h3 className="font-semibold text-white">{section.section_name}</h3>
                     <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded">
@@ -550,9 +589,16 @@ export default function CostingAdminPage() {
                         {changedInSection} modified
                       </span>
                     )}
+                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <SectionDefaultAdjInput
+                      sectionId={section.id}
+                      value={section.default_adjustment_pct}
+                      onSave={handleSectionDefaultAdj}
+                    />
+                    <span className="text-xs text-white/30 font-mono">{section.section_key}</span>
                   </div>
-                  <span className="text-xs text-white/30 font-mono">{section.section_key}</span>
-                </button>
+                </div>
 
                 {/* Template table */}
                 {isExpanded && (
@@ -582,6 +628,8 @@ export default function CostingAdminPage() {
                           const mat = productKey ? materialMap[productKey] : null
                           const isCoverage = t.cost_formula === 'ceiling_coverage'
                           const isCompound = t.cost_formula === 'compound_material'
+                          const isWholePack = t.cost_formula === 'whole_pack'
+                          const isDpc = t.cost_formula === 'dpc_injection'
 
                           return (
                             <TemplateRow
@@ -591,7 +639,10 @@ export default function CostingAdminPage() {
                               badge={badge}
                               isCoverage={isCoverage}
                               isCompound={isCompound}
+                              isWholePack={isWholePack}
+                              isDpc={isDpc}
                               mat={mat}
+                              materialMap={materialMap}
                               editableParams={editableParams}
                               updateField={updateField}
                               updateFormulaParam={updateFormulaParam}
@@ -666,6 +717,65 @@ function HowPricingWorks() {
 }
 
 // ---------------------------------------------------------------------------
+// Section default adjustment — inline editor on the section header.
+// Mirrors the workbook master section F-cells (e.g. condensation PIV-loft −5).
+// Saved immediately on blur/Enter; per-survey adjustments override it.
+// ---------------------------------------------------------------------------
+
+function SectionDefaultAdjInput({
+  sectionId,
+  value,
+  onSave,
+}: {
+  sectionId: string
+  value: number
+  onSave: (sectionId: string, pct: number) => Promise<boolean>
+}) {
+  const [text, setText] = useState(String(value))
+  const [saving, setSaving] = useState(false)
+
+  // Re-sync if the parent value changes (e.g. after a successful save elsewhere)
+  useEffect(() => {
+    setText(String(value))
+  }, [value])
+
+  const commit = async () => {
+    const parsed = parseFloat(text)
+    if (isNaN(parsed)) {
+      setText(String(value))
+      return
+    }
+    if (parsed === value) return
+    setSaving(true)
+    const ok = await onSave(sectionId, parsed)
+    if (!ok) setText(String(value))
+    setSaving(false)
+  }
+
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-white/40">
+      <span>
+        Default adj
+        <Tooltip text="Starting price adjustment % for this section on every new costing (the workbook master value). Surveyors can still change it per survey on the costing page." />
+      </span>
+      <input
+        type="number"
+        step="1"
+        value={text}
+        disabled={saving}
+        onChange={e => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+        className="input-field w-16 text-xs py-1 px-2"
+      />
+      <span className="text-white/30">%</span>
+    </label>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Template Row Sub-component
 // ---------------------------------------------------------------------------
 
@@ -675,8 +785,11 @@ interface TemplateRowProps {
   badge: { label: string; color: string }
   isCoverage: boolean
   isCompound: boolean
+  isWholePack: boolean
+  isDpc: boolean
   mat: { name: string; unit_cost: number } | null
-  editableParams: Array<{ key: string; label: string; step: string }> | undefined
+  materialMap: MaterialMap
+  editableParams: Array<{ key: string; label: string; step: string; presentOnly?: boolean }> | undefined
   updateField: (id: string, field: string, value: any) => void
   updateFormulaParam: (id: string, paramKey: string, value: number) => void
 }
@@ -687,7 +800,10 @@ function TemplateRow({
   badge,
   isCoverage,
   isCompound,
+  isWholePack,
+  isDpc,
   mat,
+  materialMap,
   editableParams,
   updateField,
   updateFormulaParam,
@@ -702,6 +818,15 @@ function TemplateRow({
     dynamicCPCU != null &&
     hardcodedCPCU != null &&
     Math.abs(dynamicCPCU - hardcodedCPCU) > 0.01
+
+  // presentOnly params are line-specific rules — only shown where they exist
+  const visibleParams = (editableParams ?? []).filter(
+    p => !p.presentOnly || t.formula_params?.[p.key] != null
+  )
+
+  // DPC prices come from the Materials Catalogue (engine-hardcoded keys)
+  const dpcCream = isDpc ? materialMap['wykamol_ultracure_dpc_cream'] : null
+  const dpcDrill = isDpc ? materialMap['drill_plugs_12mm'] : null
 
   return (
     <>
@@ -856,6 +981,51 @@ function TemplateRow({
         </tr>
       )}
 
+      {/* Whole-pack material reference row */}
+      {isWholePack && mat && (
+        <tr className="bg-transparent">
+          <td colSpan={10} className="px-4 py-1.5 pb-2">
+            <div className="flex items-center gap-2 text-xs ml-2">
+              <Package className="w-3 h-3 text-pink-400/60" />
+              <span className="text-white/40">
+                Material: <span className="text-pink-300/70">{mat.name}</span>
+                {' '}({'£'}{mat.unit_cost.toFixed(2)} per pack of{' '}
+                {t.formula_params?.pack_size ?? t.coverage_rate ?? '?'})
+              </span>
+              <span className="text-xs text-pink-400/50 italic">Price auto-updates from Materials Catalogue</span>
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* DPC injection material reference row (engine-linked catalogue items) */}
+      {isDpc && (dpcCream || dpcDrill) && (
+        <tr className="bg-transparent">
+          <td colSpan={10} className="px-4 py-1.5 pb-2">
+            <div className="flex items-center gap-2 text-xs ml-2">
+              <Package className="w-3 h-3 text-amber-400/60" />
+              <span className="text-white/40">
+                Materials:{' '}
+                {dpcCream && (
+                  <>
+                    <span className="text-amber-300/70">{dpcCream.name}</span>
+                    {' '}({'£'}{dpcCream.unit_cost.toFixed(2)})
+                  </>
+                )}
+                {dpcCream && dpcDrill && ' + '}
+                {dpcDrill && (
+                  <>
+                    <span className="text-amber-300/70">{dpcDrill.name}</span>
+                    {' '}({'£'}{dpcDrill.unit_cost.toFixed(2)})
+                  </>
+                )}
+              </span>
+              <span className="text-xs text-amber-400/50 italic">Prices auto-update from Materials Catalogue</span>
+            </div>
+          </td>
+        </tr>
+      )}
+
       {/* Compound material ingredient list */}
       {isCompound && t.formula_params?.components && (
         <tr className="bg-transparent">
@@ -868,21 +1038,25 @@ function TemplateRow({
                   <span key={i}>
                     {i > 0 && ' + '}
                     <span className="text-purple-300/70">{c.product_key}</span>
-                    {' '}({c.qty_per_coverage})
+                    {' '}({c.qty_per_coverage}
+                    {materialMap[c.product_key]
+                      ? ` × £${materialMap[c.product_key].unit_cost.toFixed(2)}`
+                      : ''})
                   </span>
                 ))}
               </span>
+              <span className="text-xs text-purple-400/50 italic">Prices auto-update from Materials Catalogue</span>
             </div>
           </td>
         </tr>
       )}
 
       {/* Formula params row for formula-driven templates */}
-      {editableParams && editableParams.length > 0 && (
+      {visibleParams.length > 0 && (
         <tr className={isChanged ? 'bg-amber-500/5' : ''}>
           <td colSpan={10} className="px-4 py-2 pb-3">
             <div className="flex flex-wrap gap-4 ml-2">
-              {editableParams.map(param => (
+              {visibleParams.map(param => (
                 <div key={param.key} className="flex flex-col gap-1">
                   <label className="text-xs text-white/40">
                     {param.label}

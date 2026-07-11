@@ -86,7 +86,7 @@ export interface LineResult {
  */
 export interface LineTemplate {
   id: string
-  cost_formula: 'standard' | 'ceiling_coverage' | 'dpc_injection' | 'compound_material' | 'fixed_price' | 'tiered_disposal' | 'bag_and_cart' | 'skip_hire'
+  cost_formula: 'standard' | 'ceiling_coverage' | 'dpc_injection' | 'compound_material' | 'fixed_price' | 'tiered_disposal' | 'bag_and_cart' | 'skip_hire' | 'whole_pack'
   base_unit_cost?: number | null
   labour_rate_per_unit?: number | null
   coverage_rate?: number | null
@@ -312,14 +312,17 @@ export function calcDpcInjection(
   const linearMeters = input.inputQuantity
   const wallThickness = input.inputDimension ?? 0 // metres (workbook E40)
 
-  // DPC injection formula parameters — read from template, then materials catalog, then hardcoded fallbacks
+  // DPC injection prices — materials catalog is the live source (admin edits
+  // at /admin/materials flow through); template params are fallback snapshots
+  // for when a material is deactivated. drill_plugs_12mm is the PACK price
+  // (£4.29 per 100 — workbook Material-List L17 "=4.29/100" per plug).
   const params = template.formula_params ?? {}
-  const CREAM_BASE_COST = params.base_cream_cost
-    ?? materials['wykamol_ultracure_dpc_cream']
+  const CREAM_BASE_COST = materials['wykamol_ultracure_dpc_cream']
+    ?? params.base_cream_cost
     ?? 13.93
   const CREAM_ADJUSTMENT_DIVISOR = params.cream_divisor ?? 1.15
   const DRILL_PLUG_HOLES = params.holes_per_meter ?? 6
-  const DRILL_PLUG_COST = params.drill_cost ?? materials['drill_plugs_12mm'] ?? 4.29
+  const DRILL_PLUG_COST = materials['drill_plugs_12mm'] ?? params.drill_cost ?? 4.29
   const LABOUR_HOURS_PER_LM = params.labour_hours_per_lm ?? params.labour_hours_per_depth ?? 0.35
 
   // Cream cost per quantity unit — workbook H40: the 6×4.29 drill/plug element
@@ -664,12 +667,15 @@ export function calcBagAndCart(
  *
  * Timber workbook rows R65-67 (resin) and R105-107 (sterilant/protective/gel):
  * materials price by WHOLE PACKS, not per-unit spread —
- *   K = ROUNDUP(quantity / pack_size) × pack_cost_adjusted × (1 + markup)
+ *   K = ROUNDUP(quantity / pack_size) × pack_cost × wastage × (1 + markup)
  * (unlike ceiling_coverage, the rounded pack count multiplies the FULL pack
- * price; the workbook's H holds the pack cost, any ×1.1 already inside it).
+ * price). The pack price comes from the materials catalog (product_key) so
+ * admin price edits flow through; params.pack_cost is a fallback snapshot.
+ * Where the workbook baked a ×1.1 into its H cell (EP40 rows), that uplift
+ * lives in the template's wastage_factor, NOT in the price.
  * Labour = quantity × labour_rate_per_unit (O = F × N).
  *
- * formula_params: { pack_size, pack_cost }
+ * formula_params: { pack_size, pack_cost (fallback), product_key }
  */
 export function calcWholePack(
   input: LineInput,
@@ -681,8 +687,8 @@ export function calcWholePack(
   const params = template.formula_params ?? {}
   const packSize = params.pack_size ?? template.coverage_rate ?? 1
   const packCost = input.overrides?.unit_cost
-    ?? params.pack_cost
     ?? (params.product_key ? materials[params.product_key] : undefined)
+    ?? params.pack_cost
     ?? template.base_unit_cost
     ?? 0
 

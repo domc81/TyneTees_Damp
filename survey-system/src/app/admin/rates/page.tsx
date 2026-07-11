@@ -326,6 +326,72 @@ export default function RatesAdminPage() {
                     Used in Project Specific Overheads calculation
                   </p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Productive Hours per Day
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={get('productive_hours_per_day')}
+                    onChange={e => set('productive_hours_per_day', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">
+                    Working hours per man per day — drives days-on-site (workbook 6.5)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Travel Speed (mph)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={get('travel_speed_mph')}
+                    onChange={e => set('travel_speed_mph', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">
+                    Average driving speed converting miles to travel hours (workbook 30)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Contractor Mileage (&pound;/mile)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={get('contractor_mileage_rate')}
+                    onChange={e => set('contractor_mileage_rate', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">
+                    RESERVED — subcontractor mileage (workbook &times;0.45); feeds the operative outputs feature, not customer prices
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Contractor Material Uplift (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={wastageToPercent(get('contractor_material_uplift') || 1)}
+                    onChange={e =>
+                      set('contractor_material_uplift', wastageToFactor(parseInt(e.target.value) || 0))
+                    }
+                    className="input-field"
+                  />
+                  <p className="text-xs text-white/40 mt-1">
+                    RESERVED — subcontractor materials uplift (workbook &times;1.1); feeds the operative outputs feature, not customer prices
+                  </p>
+                </div>
               </div>
             </div>
 

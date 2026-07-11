@@ -14,9 +14,9 @@
 //   vehicle_cost   = labour_days × (distance × 2) × vehicle_cost_per_mile
 //   total_overhead = travel_labour + vehicle_cost
 //
-// Constants:
-//   6.5  = productive hours per man per working day
-//   30   = average travel speed in mph (converts miles → hours)
+// Constants (editable at /admin/rates since 2026-07-11):
+//   productive_hours_per_day (default 6.5) = productive hours per man per day
+//   travel_speed_mph        (default 30)   = average speed, miles → hours
 //   ONE vehicle always, regardless of crew size
 // =============================================================================
 
@@ -32,6 +32,10 @@ export interface TravelOverheadInput {
   hourlyLabourRate: number
   /** Vehicle cost per mile from pricing_config (e.g. 0.50) */
   vehicleCostPerMile: number
+  /** Productive hours per man per day from pricing_config (workbook 6.5) */
+  productiveHoursPerDay?: number
+  /** Average travel speed in mph from pricing_config (workbook 30) */
+  travelSpeedMph?: number
 }
 
 /** Breakdown of travel overhead costs */
@@ -48,8 +52,8 @@ export interface TravelOverheadResult {
   totalOverheadCost: number
 }
 
-const PRODUCTIVE_HOURS_PER_DAY = 6.5
-const AVERAGE_TRAVEL_SPEED_MPH = 30
+const DEFAULT_PRODUCTIVE_HOURS_PER_DAY = 6.5
+const DEFAULT_TRAVEL_SPEED_MPH = 30
 
 /**
  * Calculate travel and vehicle overhead costs for a survey project.
@@ -69,6 +73,15 @@ export function calculateTravelOverhead(
     vehicleCostPerMile,
   } = input
 
+  // Config-driven constants — fall back to the workbook values if the config
+  // keys are missing or nonsensical (zero/negative would divide by zero)
+  const productiveHours = input.productiveHoursPerDay && input.productiveHoursPerDay > 0
+    ? input.productiveHoursPerDay
+    : DEFAULT_PRODUCTIVE_HOURS_PER_DAY
+  const travelSpeed = input.travelSpeedMph && input.travelSpeedMph > 0
+    ? input.travelSpeedMph
+    : DEFAULT_TRAVEL_SPEED_MPH
+
   // Default to at least 1 man — a job with 0 crew still has someone travelling
   const effectiveMen = Math.max(1, numMenTravelling || 1)
 
@@ -76,7 +89,7 @@ export function calculateTravelOverhead(
   // Computed regardless of distance: the workbook derives days from labour
   // hours alone, and days feed time-on-site outputs even when travel is free.
   const labourDays = Math.ceil(
-    totalLabourHours / PRODUCTIVE_HOURS_PER_DAY / effectiveMen
+    totalLabourHours / productiveHours / effectiveMen
   )
 
   // No distance = no travel costs (but days on site still apply)
@@ -95,7 +108,7 @@ export function calculateTravelOverhead(
 
   // Travel hours = days × (round_trip_miles / speed) × num_men
   const travelHours =
-    labourDays * (roundTripMiles / AVERAGE_TRAVEL_SPEED_MPH) * effectiveMen
+    labourDays * (roundTripMiles / travelSpeed) * effectiveMen
 
   // Travel labour cost
   const travelLabourCost = travelHours * hourlyLabourRate

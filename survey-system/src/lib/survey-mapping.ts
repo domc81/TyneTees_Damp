@@ -22,10 +22,13 @@ import { calculateSurveyCosting } from './pricing-data'
 // =============================================================================
 
 /**
- * Map of "section_key:line_key" to template UUID
- * Used to quickly find template IDs for line item generation
+ * Map of "section_key:line_key" to template UUID.
+ * A `null` value means the template exists but is deactivated
+ * (is_active = false via /admin/costing) — its lines are silently
+ * excluded from new costings, unlike a genuinely missing template
+ * which triggers a costing-page warning.
  */
-export type TemplateLookup = Map<string, string>
+export type TemplateLookup = Map<string, string | null>
 
 /**
  * Result of loading template lookups for all survey types
@@ -64,6 +67,7 @@ export async function loadTemplateLookup(surveyType: string): Promise<TemplateLo
     .select(`
       id,
       line_key,
+      is_active,
       costing_sections!inner (
         section_key,
         survey_type
@@ -81,11 +85,13 @@ export async function loadTemplateLookup(surveyType: string): Promise<TemplateLo
   }
 
   // Build lookup map: "section_key:line_key" → template_id
-  const lookup = new Map<string, string>()
+  // Deactivated templates map to null so they drop out of costings
+  // silently instead of raising a "missing template" warning.
+  const lookup: TemplateLookup = new Map()
   for (const row of data) {
     const section = (row.costing_sections as any)
     const lookupKey = `${section.section_key}:${row.line_key}`
-    lookup.set(lookupKey, row.id)
+    lookup.set(lookupKey, row.is_active === false ? null : row.id)
   }
 
   return lookup
@@ -131,6 +137,9 @@ function getTemplateId(
 ): string | null {
   const lookupKey = `${sectionKey}:${lineKey}`
   const templateId = lookup.get(lookupKey)
+
+  // null = template deactivated in /admin/costing — intentional exclusion, no warning
+  if (templateId === null) return null
 
   if (!templateId) {
     const msg = `Missing costing template: ${sectionKey} / ${lineKey} — this line item will be excluded from the quotation`
