@@ -83,7 +83,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           <button
             onClick={() => {
               if (data.black_mould_present) {
-                handleMultiChange({ black_mould_present: false, mould_severity: undefined })
+                handleMultiChange({ black_mould_present: false, mould_severity: undefined, mould_treatment_area: undefined })
               } else {
                 handleChange('black_mould_present', true)
               }
@@ -127,6 +127,25 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   {severity}
                 </button>
               ))}
+            </div>
+
+            {/* Mould Treatment Area — workbook R74 free entry; severity bands only prefill/fallback */}
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Mould Treatment Area (m²)
+              </label>
+              <input
+                type="number"
+                value={data.mould_treatment_area ?? ''}
+                onChange={(e) => handleChange('mould_treatment_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                className="input-field"
+                step="0.1"
+                min="0"
+                placeholder="light ≈ 3, moderate ≈ 6, severe ≈ 12"
+              />
+              <p className="mt-1 text-xs text-white/50">
+                Blank = estimated from severity
+              </p>
             </div>
           </div>
         )}

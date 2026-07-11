@@ -308,7 +308,7 @@ export default function RatesAdminPage() {
                     onChange={e => set('contractor_hourly_rate', parseFloat(e.target.value) || 0)}
                     className="input-field"
                   />
-                  <p className="text-xs text-white/40 mt-1">Rate paid to subcontractors (no markup)</p>
+                  <p className="text-xs text-white/40 mt-1">Rate paid to subcontractors (workbook E155) — feeds the operative outputs, not customer prices</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
@@ -412,34 +412,9 @@ export default function RatesAdminPage() {
                   />
                   <p className="text-xs text-white/40 mt-1">Base cost per skip</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">
-                    Asbestos Testing (&pound;/sample)
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={get('asbestos_testing_cost')}
-                    onChange={e => set('asbestos_testing_cost', parseFloat(e.target.value) || 0)}
-                    className="input-field"
-                  />
-                  <p className="text-xs text-white/40 mt-1">Per sample lab cost</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">
-                    Digital DPC Unit (&pound;)
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={get('digital_dpc_base_cost')}
-                    onChange={e => set('digital_dpc_base_cost', parseFloat(e.target.value) || 0)}
-                    className="input-field"
-                  />
-                  <p className="text-xs text-white/40 mt-1">Mursec Eco digital DPC base cost</p>
-                </div>
+                {/* Asbestos + digital-DPC prices live in their costing
+                    templates (workbook values) — the old config inputs here
+                    were dead controls and were removed (ADMIN_AUDIT.md). */}
               </div>
             </div>
           </div>

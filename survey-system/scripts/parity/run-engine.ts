@@ -193,7 +193,7 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
   const overheadAmount = travel.totalOverheadCost
   const combinedWorksTotal = mandatoryWorksTotal + optionalIncludedTotal
   const jobSubtotal = combinedWorksTotal + overheadAmount
-  const jobVAT = jobSubtotal * 0.2 // page hardcodes 0.20 (page.tsx ~639)
+  const jobVAT = jobSubtotal * (config['vat_rate'] ?? 0.2) // workbook K143 rate (page now reads config too)
   const jobGrandTotal = jobSubtotal + jobVAT
   let depositPct = 0
   for (const surveyType of Object.keys(results)) {

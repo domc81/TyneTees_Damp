@@ -640,7 +640,7 @@ export default function CostingReviewPage() {
 
   const combinedWorksTotal = mandatoryWorksTotal + optionalIncludedTotal
   const jobSubtotal = combinedWorksTotal + overheadAmount
-  const jobVAT = jobSubtotal * 0.20
+  const jobVAT = jobSubtotal * (pricingConfig['vat_rate'] ?? 0.2) // workbook K143 rate, admin-editable
   const jobGrandTotalIncVAT = jobSubtotal + jobVAT
 
   // ─── Deposit calculation ───

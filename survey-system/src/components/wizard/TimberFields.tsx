@@ -11,6 +11,8 @@ import {
   FungalFinding,
   FlooringType,
   JoistEntry,
+  WallTreatment,
+  MembraneHeight,
   FindingUrgency,
 } from '@/types/survey-wizard.types'
 import {
@@ -25,6 +27,11 @@ import {
   Clock,
   CheckSquare,
   Square,
+  Wrench,
+  Package,
+  Droplets,
+  PaintBucket,
+  Syringe,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import UrgencySelector from './UrgencySelector'
@@ -107,6 +114,24 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
     const entries = [...(data.joist_entries || [])]
     entries.splice(index, 1)
     handleChange('joist_entries', entries)
+  }
+
+  // Membrane wall lengths management (wall treatment)
+  const addMembraneLength = () => {
+    const lengths = data.membrane_wall_lengths || []
+    handleChange('membrane_wall_lengths', [...lengths, 0])
+  }
+
+  const updateMembraneLength = (index: number, value: number) => {
+    const lengths = [...(data.membrane_wall_lengths || [])]
+    lengths[index] = value
+    handleChange('membrane_wall_lengths', lengths)
+  }
+
+  const removeMembraneLength = (index: number) => {
+    const lengths = [...(data.membrane_wall_lengths || [])]
+    lengths.splice(index, 1)
+    handleChange('membrane_wall_lengths', lengths)
   }
 
   return (
@@ -665,6 +690,501 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Preparatory Work — timber workbook rows 21-24 */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Wrench className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Preparatory Work</h5>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Radiators
+            </label>
+            <input
+              type="number"
+              value={data.radiator_count || ''}
+              onChange={(e) => handleChange('radiator_count', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Sockets
+            </label>
+            <input
+              type="number"
+              value={data.socket_count || ''}
+              onChange={(e) => handleChange('socket_count', parseInt(e.target.value) || undefined)}
+              className="input-field"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Skirting (LM)
+            </label>
+            <input
+              type="number"
+              value={data.skirting_length || ''}
+              onChange={(e) => handleChange('skirting_length', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Strip Wallpaper (m²)
+            </label>
+            <input
+              type="number"
+              value={data.wallpaper_area || ''}
+              onChange={(e) => handleChange('wallpaper_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Strip-Out — timber workbook rows 29-31, 33, 34 */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Hammer className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Strip-Out</h5>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Remove Carpet/Tiles (m²)
+            </label>
+            <input
+              type="number"
+              value={data.carpet_tiles_area || ''}
+              onChange={(e) => handleChange('carpet_tiles_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Remove Wall Plaster (m²)
+            </label>
+            <input
+              type="number"
+              value={data.wall_plaster_removal_area || ''}
+              onChange={(e) => handleChange('wall_plaster_removal_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Remove Stud Walls (m²)
+            </label>
+            <input
+              type="number"
+              value={data.stud_walls_removal_area || ''}
+              onChange={(e) => handleChange('stud_walls_removal_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Strip Timber Floor (m²)
+            </label>
+            <input
+              type="number"
+              value={data.timber_floor_strip_area ?? ''}
+              onChange={(e) => handleChange('timber_floor_strip_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="blank = flooring area"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Scrape Sub Floors (m²)
+            </label>
+            <input
+              type="number"
+              value={data.scrape_subfloor_area || ''}
+              onChange={(e) => handleChange('scrape_subfloor_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Brunosol/Wykabor Treatment — timber workbook row 42 */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Droplets className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Brunosol/Wykabor Treatment</h5>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            Apply 2× Brunosol + 1× Wykabor (m²)
+          </label>
+          <input
+            type="number"
+            value={data.brunosol_area || ''}
+            onChange={(e) => handleChange('brunosol_area', parseFloat(e.target.value) || undefined)}
+            className="input-field"
+            step="0.1"
+            min="0"
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      {/* Wall Treatment — timber workbook rows 43-54 (membrane) / 58-61 (tanking) */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Package className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Wall Treatment</h5>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            Treatment Type
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(['membrane', 'tanking', 'none'] as WallTreatment[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => handleChange('wall_treatment', type)}
+                className={`
+                  px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize
+                  ${
+                    data.wall_treatment === type
+                      ? 'bg-amber-500/30 border border-amber-400 text-white'
+                      : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                  }
+                `}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Membrane-specific fields */}
+        {data.wall_treatment === 'membrane' && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Membrane Height
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['1m', '1.2m', '2m'] as MembraneHeight[]).map((height) => (
+                  <button
+                    key={height}
+                    onClick={() => handleChange('membrane_height', height)}
+                    className={`
+                      px-4 py-2 rounded-lg text-sm font-medium transition-all
+                      ${
+                        data.membrane_height === height
+                          ? 'bg-amber-500/30 border border-amber-400 text-white'
+                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                      }
+                    `}
+                  >
+                    {height}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Wall Lengths Needing Membrane (LM)
+              </label>
+              {(data.membrane_wall_lengths || []).map((length, index) => (
+                <div key={index} className="flex items-center gap-2 mb-2">
+                  <input
+                    type="number"
+                    value={length || ''}
+                    onChange={(e) => updateMembraneLength(index, parseFloat(e.target.value) || 0)}
+                    className="input-field flex-1"
+                    step="0.1"
+                    min="0"
+                    placeholder="Linear metres"
+                  />
+                  <button
+                    onClick={() => removeMembraneLength(index)}
+                    className="p-2 rounded-lg hover:bg-red-500/20 text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <Button
+                onClick={addMembraneLength}
+                variant="secondary"
+                size="sm"
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Wall Length
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Overtape Length (lm)
+                </label>
+                <input
+                  type="number"
+                  value={data.overtape_length || ''}
+                  onChange={(e) => handleChange('overtape_length', parseFloat(e.target.value) || undefined)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Overtape Height (m)
+                </label>
+                <input
+                  type="number"
+                  value={data.overtape_height || ''}
+                  onChange={(e) => handleChange('overtape_height', parseFloat(e.target.value) || undefined)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                  placeholder="Total = length + 2 × height"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tanking-specific fields */}
+        {data.wall_treatment === 'tanking' && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Tanking Area (m²)
+              </label>
+              <input
+                type="number"
+                value={data.tanking_area || ''}
+                onChange={(e) => handleChange('tanking_area', parseFloat(e.target.value) || undefined)}
+                className="input-field"
+                step="0.1"
+                min="0"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Dubbing Out Coat (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.dubbing_out_area ?? ''}
+                  onChange={(e) => handleChange('dubbing_out_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                  placeholder="blank = same as tanking area"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Renovating Plaster (m²)
+                </label>
+                <input
+                  type="number"
+                  value={data.renovating_plaster_area ?? ''}
+                  onChange={(e) => handleChange('renovating_plaster_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                  className="input-field"
+                  step="0.1"
+                  min="0"
+                  placeholder="blank = same as tanking area"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Fillet Joint (lm)
+              </label>
+              <input
+                type="number"
+                value={data.fillet_joint_length || ''}
+                onChange={(e) => handleChange('fillet_joint_length', parseFloat(e.target.value) || undefined)}
+                className="input-field"
+                step="0.1"
+                min="0"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Floor Resin (whole packs) — timber workbook rows 65-67 */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Layers className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Floor Resin (whole packs)</h5>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Top Coat (m²)
+            </label>
+            <input
+              type="number"
+              value={data.resin_topcoat_area || ''}
+              onChange={(e) => handleChange('resin_topcoat_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Primer (m²)
+            </label>
+            <input
+              type="number"
+              value={data.resin_primer_area || ''}
+              onChange={(e) => handleChange('resin_primer_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Grip Grit (m²)
+            </label>
+            <input
+              type="number"
+              value={data.resin_grip_grit_area || ''}
+              onChange={(e) => handleChange('resin_grip_grit_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Plastering — timber workbook rows 71-74 */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <PaintBucket className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Plastering</h5>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Construct Stud Wall (m²)
+            </label>
+            <input
+              type="number"
+              value={data.stud_wall_area || ''}
+              onChange={(e) => handleChange('stud_wall_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Plasterboarding (m²)
+            </label>
+            <input
+              type="number"
+              value={data.plasterboard_area || ''}
+              onChange={(e) => handleChange('plasterboard_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Skimming (m²)
+            </label>
+            <input
+              type="number"
+              value={data.skim_area || ''}
+              onChange={(e) => handleChange('skim_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Warmline Wall IWI (m²)
+            </label>
+            <input
+              type="number"
+              value={data.warmline_wall_area || ''}
+              onChange={(e) => handleChange('warmline_wall_area', parseFloat(e.target.value) || undefined)}
+              className="input-field"
+              step="0.1"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Gel Injection — timber workbook row 107 (whole-pack) */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Syringe className="w-5 h-5 text-amber-300" />
+          <h5 className="font-semibold text-white">Gel Injection</h5>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            40.1 Gel Injection (m²)
+          </label>
+          <input
+            type="number"
+            value={data.paste_treatment_area || ''}
+            onChange={(e) => handleChange('paste_treatment_area', parseFloat(e.target.value) || undefined)}
+            className="input-field"
+            step="0.1"
+            min="0"
+            placeholder="0"
+          />
+        </div>
       </div>
 
       {/* Masonry Preparation */}

@@ -8,6 +8,8 @@ import {
   WallTreatment,
   MembraneHeight,
   FloorTreatment,
+  FlooringType,
+  JoistEntry,
   FindingUrgency,
 } from '@/types/survey-wizard.types'
 import {
@@ -37,6 +39,15 @@ interface DampFieldsProps {
   photos: SurveyPhoto[]
   onPhotosChange: () => void
 }
+
+const JOIST_SIZES: { key: string; label: string }[] = [
+  { key: '4x2', label: '4x2" (100×50mm)' },
+  { key: '5x2', label: '5x2" (125×50mm)' },
+  { key: '6x2', label: '6x2" (150×50mm)' },
+  { key: '7x2', label: '7x2" (175×50mm)' },
+  { key: '8x2', label: '8x2" (200×50mm)' },
+  { key: '9x2', label: '9x2" (225×50mm)' },
+]
 
 export default function DampFields({ data, onChange, surveyId, roomId, photos, onPhotosChange }: DampFieldsProps) {
   // Collapsible section state
@@ -107,6 +118,29 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
     const lengths = [...(data.membrane_wall_lengths || [])]
     lengths.splice(index, 1)
     handleChange('membrane_wall_lengths', lengths)
+  }
+
+  // Joist entries management ('new_joists' floor treatment)
+  const addJoistEntry = () => {
+    const entries = data.joist_entries || []
+    const newEntry: JoistEntry = {
+      size: '4x2',
+      quantity: 0,
+      length: 0,
+    }
+    handleChange('joist_entries', [...entries, newEntry])
+  }
+
+  const updateJoistEntry = (index: number, updates: Partial<JoistEntry>) => {
+    const entries = [...(data.joist_entries || [])]
+    entries[index] = { ...entries[index], ...updates }
+    handleChange('joist_entries', entries)
+  }
+
+  const removeJoistEntry = (index: number) => {
+    const entries = [...(data.joist_entries || [])]
+    entries.splice(index, 1)
+    handleChange('joist_entries', entries)
   }
 
   return (
@@ -600,18 +634,64 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">
-                    Fillet Joint Length (LM)
-                  </label>
-                  <input
-                    type="number"
-                    value={data.fillet_joint_length || ''}
-                    onChange={(e) => handleChange('fillet_joint_length', parseFloat(e.target.value) || 0)}
-                    className="input-field"
-                    step="0.1"
-                    min="0"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                      Dubbing Out Coat (m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.dubbing_out_area ?? ''}
+                      onChange={(e) => handleChange('dubbing_out_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                      className="input-field"
+                      step="0.1"
+                      min="0"
+                      placeholder="blank = same as tanking area"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                      Renovating Plaster (m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.renovating_plaster_area ?? ''}
+                      onChange={(e) => handleChange('renovating_plaster_area', e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                      className="input-field"
+                      step="0.1"
+                      min="0"
+                      placeholder="blank = same as tanking area"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                      Fillet Joint Length (LM)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.fillet_joint_length || ''}
+                      onChange={(e) => handleChange('fillet_joint_length', parseFloat(e.target.value) || 0)}
+                      className="input-field"
+                      step="0.1"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                      Difficulty Hours
+                    </label>
+                    <input
+                      type="number"
+                      value={data.tanking_difficulty_hours || ''}
+                      onChange={(e) => handleChange('tanking_difficulty_hours', parseFloat(e.target.value) || 0)}
+                      className="input-field"
+                      step="0.5"
+                      min="0"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -790,6 +870,20 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                     placeholder="Perimeter seal at wall/floor junction"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    Difficulty Hours (resin)
+                  </label>
+                  <input
+                    type="number"
+                    value={data.resin_difficulty_hours || ''}
+                    onChange={(e) => handleChange('resin_difficulty_hours', parseFloat(e.target.value) || 0)}
+                    className="input-field"
+                    step="0.5"
+                    min="0"
+                  />
+                </div>
               </div>
             )}
 
@@ -844,6 +938,214 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                     step="0.1"
                     min="0"
                   />
+                </div>
+
+                {/* Joists & Decking — damp workbook rows 89-108 (mirrors timber) */}
+                <div className="pt-3 border-t border-white/10 space-y-3">
+                  <p className="text-sm font-medium text-white/70 mb-1.5">Joists &amp; Decking</p>
+
+                  {(data.joist_entries || []).map((entry, index) => (
+                    <div key={index} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                      <div className="grid grid-cols-3 gap-3 mb-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/60 mb-1">
+                            Size
+                          </label>
+                          <select
+                            value={entry.size}
+                            onChange={(e) => updateJoistEntry(index, { size: e.target.value })}
+                            className="input-field text-sm"
+                          >
+                            {JOIST_SIZES.map(({ key, label }) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-white/60 mb-1">
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.quantity || ''}
+                            onChange={(e) => updateJoistEntry(index, { quantity: parseInt(e.target.value) || 0 })}
+                            className="input-field text-sm"
+                            min="0"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-white/60 mb-1">
+                            Length (m)
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.length || ''}
+                            onChange={(e) => updateJoistEntry(index, { length: parseFloat(e.target.value) || 0 })}
+                            className="input-field text-sm"
+                            step="0.1"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => removeJoistEntry(index)}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  <Button
+                    onClick={addJoistEntry}
+                    variant="secondary"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Joist Entry
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Treat &amp; Endwrap (LM)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.endwrap_joists_lm || ''}
+                        onChange={(e) => handleChange('endwrap_joists_lm', parseFloat(e.target.value) || 0)}
+                        className="input-field"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Wall Plate 100x25 (LM)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.wall_plate_lm || ''}
+                        onChange={(e) => handleChange('wall_plate_lm', parseFloat(e.target.value) || 0)}
+                        className="input-field"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Bower Beams (pairs)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.bower_beams_count || ''}
+                        onChange={(e) => handleChange('bower_beams_count', parseInt(e.target.value) || 0)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Flitch Plates (pairs)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.flitch_plates_count || ''}
+                        onChange={(e) => handleChange('flitch_plates_count', parseInt(e.target.value) || 0)}
+                        className="input-field"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Flooring */}
+                <div className="pt-3 border-t border-white/10 space-y-3">
+                  <p className="text-sm font-medium text-white/70 mb-1.5">Flooring</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Flooring Type
+                      </label>
+                      <select
+                        value={data.flooring_type || ''}
+                        onChange={(e) => handleChange('flooring_type', (e.target.value || undefined) as FlooringType | undefined)}
+                        className="input-field"
+                      >
+                        <option value="">No replacement</option>
+                        <option value="weyrock_18mm">Weyrock 18mm</option>
+                        <option value="weyrock_22mm">Weyrock 22mm</option>
+                        <option value="std_tg_floorboards">Std T&amp;G Floorboards</option>
+                        <option value="victorian_tg_floorboards">Victorian T&amp;G</option>
+                        <option value="engineered_flooring_sheet">Engineered Sheet</option>
+                        <option value="structural_engineered_flooring_sheet">Structural Engineered (onto joists)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Flooring Area (m²)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.flooring_area || ''}
+                        onChange={(e) => handleChange('flooring_area', parseFloat(e.target.value) || 0)}
+                        className="input-field"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                      Suspended Floor Insulation (m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={data.suspended_floor_insulation_area || ''}
+                      onChange={(e) => handleChange('suspended_floor_insulation_area', parseFloat(e.target.value) || 0)}
+                      className="input-field"
+                      step="0.1"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Difficulty Hours (joists)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.joists_difficulty_hours || ''}
+                        onChange={(e) => handleChange('joists_difficulty_hours', parseFloat(e.target.value) || 0)}
+                        className="input-field"
+                        step="0.5"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/70 mb-1.5">
+                        Difficulty Hours (decking)
+                      </label>
+                      <input
+                        type="number"
+                        value={data.decking_difficulty_hours || ''}
+                        onChange={(e) => handleChange('decking_difficulty_hours', parseFloat(e.target.value) || 0)}
+                        className="input-field"
+                        step="0.5"
+                        min="0"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AdditionalWorks, CondensationPIV } from '@/types/survey-wizard.types'
+import { AdditionalWorks, CondensationPIV, DuctingComponent, DuctingType } from '@/types/survey-wizard.types'
 import {
   Package,
   ChevronDown,
@@ -11,10 +11,12 @@ import {
   Wind as Airbrick,
   Droplets as Spray,
   AlertCircle,
+  Plus,
   Trash2,
   Truck,
   Shield,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface AdditionalWorksStepProps {
   data: Partial<AdditionalWorks>
@@ -22,6 +24,20 @@ interface AdditionalWorksStepProps {
   hasCondensation: boolean
   hasDampTimberOrWoodworm: boolean
 }
+
+const DUCTING_TYPE_OPTIONS: { value: DuctingType; label: string }[] = [
+  { value: 'flexible_duct', label: 'Insulated Flexi 3m' },
+  { value: 'rigid_duct', label: 'Ducting 1m Length' },
+  { value: 'duct_elbow', label: 'Round Elbow' },
+  { value: 'duct_connector', label: 'Round Straight Connector' },
+  { value: 'round_1m', label: 'Round 1m' },
+  { value: 'flat_to_round_adaptor', label: 'Flat→Round Adaptor' },
+  { value: 'flat_straight_connector', label: 'Flat Straight Connector' },
+  { value: 'flat_horizontal_bend', label: 'Flat Horizontal Bend' },
+  { value: 'flat_vertical_bend', label: 'Flat Vertical Bend' },
+  { value: 'flat_1m', label: 'Flat 1m' },
+  { value: 'grille', label: 'Grille' },
+]
 
 export default function AdditionalWorksStep({
   data,
@@ -65,6 +81,25 @@ export default function AdditionalWorksStep({
       ...data,
       condensation_piv: { ...piv, [field]: value },
     })
+  }
+
+  // Ducting components management (wall-mounted PIV, when not "as exists")
+  const addDuctingComponent = () => {
+    const components = data.ducting_components || []
+    const newComponent: DuctingComponent = { type: 'flexible_duct', count: 1 }
+    handleChange('ducting_components', [...components, newComponent])
+  }
+
+  const updateDuctingComponent = (index: number, updates: Partial<DuctingComponent>) => {
+    const components = [...(data.ducting_components || [])]
+    components[index] = { ...components[index], ...updates }
+    handleChange('ducting_components', components)
+  }
+
+  const removeDuctingComponent = (index: number) => {
+    const components = [...(data.ducting_components || [])]
+    components.splice(index, 1)
+    handleChange('ducting_components', components)
   }
 
   const isLoftPIV = piv.piv_type === 'loft_heated' || piv.piv_type === 'loft_unheated'
@@ -274,6 +309,52 @@ export default function AdditionalWorksStep({
                           />
                         </button>
                       </div>
+
+                      {/* Ducting components editor — only when NOT reusing the existing layout */}
+                      {!piv.ducting_components_as_exists && (
+                        <div className="pl-4 space-y-2">
+                          <p className="text-sm font-medium text-white/70 mb-1.5">Ducting Components</p>
+                          {(data.ducting_components || []).map((component, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <select
+                                value={component.type}
+                                onChange={(e) => updateDuctingComponent(index, { type: e.target.value as DuctingType })}
+                                className="input-field flex-1 text-sm"
+                              >
+                                {DUCTING_TYPE_OPTIONS.map(({ value, label }) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                value={component.count || ''}
+                                onChange={(e) => updateDuctingComponent(index, { count: parseInt(e.target.value) || 0 })}
+                                className="input-field w-20 text-sm"
+                                min="0"
+                                placeholder="Qty"
+                              />
+                              <button
+                                onClick={() => removeDuctingComponent(index)}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          <Button
+                            onClick={addDuctingComponent}
+                            variant="secondary"
+                            size="sm"
+                            className="w-full flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Component
+                          </Button>
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
                           Joinery Ducting Boxwork (linear metres)
