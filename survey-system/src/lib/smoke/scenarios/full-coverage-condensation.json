@@ -1,0 +1,120 @@
+{
+  "id": "full-coverage-condensation",
+  "title": "FULL COVERAGE — every priced input row of Copy of Condensation PIV Costing v37 CF - 131125.xlsm",
+  "workbook": "condensation_v37",
+  "wizard": {
+    "survey_types": [
+      "condensation"
+    ],
+    "additional_works": {
+      "distance_from_office": 8,
+      "num_men_travelling": 1,
+      "skip_count": 1,
+      "airbrick_clean_count": 3,
+      "airbrick_upgrade_count": 4,
+      "airbrick_new_count": 5,
+      "asbestos_test_count": 7,
+      "loft_hatch_new_required": true,
+      "loft_hatch_enlarge_required": true,
+      "condensation_piv": {
+        "piv_recommended": true,
+        "piv_type": "loft_heated",
+        "piv_unit_count": 6,
+        "core_hole_count": 0,
+        "electrical_pack_count": 8,
+        "sarkvent_count": 1,
+        "ducting_components_as_exists": false,
+        "joinery_ducting_boxwork_lm": 0
+      },
+      "ducting_components": [
+        {
+          "type": "rigid_duct",
+          "count": 7
+        },
+        {
+          "type": "duct_elbow",
+          "count": 8
+        },
+        {
+          "type": "duct_connector",
+          "count": 1
+        },
+        {
+          "type": "round_1m",
+          "count": 2
+        },
+        {
+          "type": "flat_to_round_adaptor",
+          "count": 3
+        },
+        {
+          "type": "flat_straight_connector",
+          "count": 4
+        },
+        {
+          "type": "flat_horizontal_bend",
+          "count": 5
+        },
+        {
+          "type": "flat_vertical_bend",
+          "count": 6
+        },
+        {
+          "type": "flat_1m",
+          "count": 7
+        },
+        {
+          "type": "flexible_duct",
+          "count": 8
+        },
+        {
+          "type": "grille",
+          "count": 1
+        }
+      ]
+    },
+    "rooms": [
+      {
+        "name": "Bathroom (active)",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": true,
+          "mould_severity": "moderate",
+          "mould_treatment_area": 7,
+          "condensation_on_windows": true,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "active",
+          "trickle_boost_fan_count": 6,
+          "electrical_pack_count": 7,
+          "fan_grille_count": 8,
+          "core_hole_count_active": 1,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      },
+      {
+        "name": "Utility (passive)",
+        "issues": [
+          "condensation"
+        ],
+        "condensation": {
+          "black_mould_present": false,
+          "condensation_on_windows": false,
+          "ventilation_adequate": false,
+          "extraction_needed": true,
+          "extraction_type": "passive",
+          "cpass_passive_vent_count": 5,
+          "core_hole_required": true,
+          "core_hole_count": 6,
+          "dryaire_cvent_count": 2,
+          "cvent_core_hole_count": 3,
+          "piv_recommended": false,
+          "fan_recommended": false
+        }
+      }
+    ]
+  }
+}

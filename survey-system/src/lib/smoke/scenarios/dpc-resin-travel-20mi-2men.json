@@ -1,0 +1,30 @@
+{
+  "id": "dpc-resin-travel-20mi-2men",
+  "title": "Combined: DPC 18LM@330mm + top coat 40m², travel 20 miles one-way, 2 men",
+  "workbook": "damp_v48",
+  "wizard": {
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 20,
+      "num_men_travelling": 2
+    },
+    "rooms": [
+      {
+        "name": "Lounge",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": true,
+          "dpc_wall_length": 18,
+          "floor_treatment": "resin_membrane",
+          "floor_area": 40,
+          "dpc_wall_thickness_m": 0.33,
+          "resin_topcoat_area": 40
+        }
+      }
+    ]
+  }
+}

@@ -20,12 +20,42 @@ import { loadPricingConfig, updatePricingConfigBatch } from '@/lib/pricing-data'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
+import { NumberField } from '@/components/admin/NumberField'
+import { PricingSaveConfirm, type DiffRow } from '@/components/admin/PricingSaveConfirm'
+import { PricingSmokeCheck } from '@/components/admin/PricingSmokeCheck'
+import { PricingChangeLog } from '@/components/admin/PricingChangeLog'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 type ConfigMap = Record<string, number>
+
+/**
+ * Display metadata per config key — labels for the save-confirm diff and how
+ * to render the stored value (stored space is what pricing_config holds:
+ * decimals for %, factors for wastage/uplift).
+ */
+const KEY_META: Record<string, { label: string; format: (stored: number) => string }> = {
+  hourly_labour_rate: { label: 'Base Hourly Rate', format: v => `£${v.toFixed(2)}/hr` },
+  default_labour_markup: { label: 'Labour Markup', format: v => `${Math.round(v * 100)}%` },
+  contractor_hourly_rate: { label: 'Contractor Hourly Rate (reserved)', format: v => `£${v.toFixed(2)}/hr` },
+  vehicle_cost_per_mile: { label: 'Vehicle Cost', format: v => `£${v.toFixed(2)}/mile` },
+  productive_hours_per_day: { label: 'Productive Hours per Day', format: v => `${v}h` },
+  travel_speed_mph: { label: 'Travel Speed', format: v => `${v} mph` },
+  contractor_mileage_rate: { label: 'Contractor Mileage (reserved)', format: v => `£${v.toFixed(2)}/mile` },
+  contractor_material_uplift: { label: 'Contractor Material Uplift (reserved)', format: v => `${Math.round((v - 1) * 100)}%` },
+  default_material_markup: { label: 'Material Markup', format: v => `${Math.round(v * 100)}%` },
+  default_wastage_factor: { label: 'Wastage Factor', format: v => `${Math.round((v - 1) * 100)}%` },
+  vat_rate: { label: 'VAT Rate', format: v => `${Math.round(v * 100)}%` },
+  skip_hire_8yd_cost: { label: 'Skip Hire — 8yd', format: v => `£${v.toFixed(2)}` },
+  damp_deposit_pct: { label: 'Damp Deposit', format: v => `${Math.round(v * 100)}%` },
+  condensation_deposit_pct: { label: 'Condensation Deposit', format: v => `${Math.round(v * 100)}%` },
+  timber_deposit_pct: { label: 'Timber Deposit', format: v => `${Math.round(v * 100)}%` },
+  woodworm_deposit_pct: { label: 'Woodworm Deposit', format: v => `${Math.round(v * 100)}%` },
+  survey_fee_amount: { label: 'Survey Fee', format: v => `£${v.toFixed(2)}` },
+  survey_fee_expiry_days: { label: 'Payment Expiry', format: v => `${v} day${v === 1 ? '' : 's'}` },
+}
 
 /** Stored decimal (0.30) → display percent (30) */
 const toPercent = (decimal: number) => Math.round(decimal * 100)
@@ -53,6 +83,8 @@ export default function RatesAdminPage() {
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [smokeToken, setSmokeToken] = useState(0)
 
   // Load all pricing config on mount
   useEffect(() => {
@@ -82,16 +114,37 @@ export default function RatesAdminPage() {
     setMessage(null)
   }
 
+  const changedKeys = Object.keys(config).filter(key => config[key] !== initialConfig[key])
+
+  // Old→new diff rows for the confirmation modal; big moves flagged
+  const diffRows: DiffRow[] = changedKeys.map(key => {
+    const meta = KEY_META[key]
+    const oldStored = initialConfig[key] ?? 0
+    const newStored = config[key]
+    const deltaPct = oldStored !== 0 ? ((newStored - oldStored) / Math.abs(oldStored)) * 100 : null
+    const warn = deltaPct !== null && Math.abs(deltaPct) > 50
+    return {
+      label: meta?.label ?? key,
+      oldValue: meta ? meta.format(oldStored) : String(oldStored),
+      newValue: meta ? meta.format(newStored) : String(newStored),
+      deltaPct,
+      warn,
+      note: warn ? 'Large move — double-check this is intended.' : undefined,
+    }
+  })
+
   const handleSave = async () => {
     setSaving(true)
     setMessage(null)
 
-    const updates = Object.entries(config)
-      .filter(([key, value]) => value !== initialConfig[key])
-      .map(([config_key, config_value]) => ({ config_key, config_value }))
+    const updates = changedKeys.map(config_key => ({
+      config_key,
+      config_value: config[config_key],
+    }))
 
     if (updates.length === 0) {
       setSaving(false)
+      setConfirmOpen(false)
       return
     }
 
@@ -104,11 +157,13 @@ export default function RatesAdminPage() {
         type: 'success',
         text: `${updates.length} setting${updates.length > 1 ? 's' : ''} saved successfully`,
       })
+      setSmokeToken(t => t + 1)
     } else {
       setMessage({ type: 'error', text: 'Failed to save changes. Please try again.' })
     }
 
     setSaving(false)
+    setConfirmOpen(false)
   }
 
   const handleReset = () => {
@@ -186,7 +241,7 @@ export default function RatesAdminPage() {
                 </button>
               )}
               <button
-                onClick={handleSave}
+                onClick={() => setConfirmOpen(true)}
                 disabled={!hasChanges || saving}
                 className="btn-primary flex items-center gap-2"
               >
@@ -195,6 +250,15 @@ export default function RatesAdminPage() {
               </button>
             </div>
           </div>
+
+          <PricingSaveConfirm
+            open={confirmOpen}
+            title="Confirm pricing configuration changes"
+            rows={diffRows}
+            busy={saving}
+            onConfirm={handleSave}
+            onCancel={() => setConfirmOpen(false)}
+          />
 
           {/* Warning */}
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
@@ -247,29 +311,30 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Base Hourly Rate (&pound;)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="0.01"
-                    min="0"
+                    min={5}
+                    max={200}
                     value={get('hourly_labour_rate')}
-                    onChange={e => set('hourly_labour_rate', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('hourly_labour_rate', v)}
+                    aria-label="Base hourly rate"
                   />
-                  <p className="text-xs text-white/40 mt-1">Cost to company per hour</p>
+                  <p className="text-xs text-white/40 mt-1">Cost to company per hour (£5–£200)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Labour Markup (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={500}
+                    integer
                     value={toPercent(get('default_labour_markup'))}
-                    onChange={e => set('default_labour_markup', toDecimal(parseInt(e.target.value) || 0))}
-                    className="input-field"
+                    onCommit={v => set('default_labour_markup', toDecimal(v))}
+                    aria-label="Labour markup percent"
                   />
-                  <p className="text-xs text-white/40 mt-1">Applied to all labour costs</p>
+                  <p className="text-xs text-white/40 mt-1">Applied to all labour costs (0–500%)</p>
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl">
                   <p className="text-sm text-white/70">
@@ -300,13 +365,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Contractor Hourly Rate (&pound;)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="0.01"
-                    min="0"
+                    min={0}
+                    max={200}
                     value={get('contractor_hourly_rate')}
-                    onChange={e => set('contractor_hourly_rate', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('contractor_hourly_rate', v)}
+                    aria-label="Contractor hourly rate"
                   />
                   <p className="text-xs text-white/40 mt-1">Rate paid to subcontractors (workbook E155) — feeds the operative outputs, not customer prices</p>
                 </div>
@@ -314,13 +379,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Vehicle Cost (&pound;/mile)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="0.01"
-                    min="0"
+                    min={0}
+                    max={5}
                     value={get('vehicle_cost_per_mile')}
-                    onChange={e => set('vehicle_cost_per_mile', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('vehicle_cost_per_mile', v)}
+                    aria-label="Vehicle cost per mile"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     Used in Project Specific Overheads calculation
@@ -330,13 +395,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Productive Hours per Day
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="0.5"
-                    min="0"
+                    min={1}
+                    max={24}
                     value={get('productive_hours_per_day')}
-                    onChange={e => set('productive_hours_per_day', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('productive_hours_per_day', v)}
+                    aria-label="Productive hours per day"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     Working hours per man per day — drives days-on-site (workbook 6.5)
@@ -346,13 +411,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Travel Speed (mph)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={5}
+                    max={120}
                     value={get('travel_speed_mph')}
-                    onChange={e => set('travel_speed_mph', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('travel_speed_mph', v)}
+                    aria-label="Travel speed mph"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     Average driving speed converting miles to travel hours (workbook 30)
@@ -362,13 +427,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Contractor Mileage (&pound;/mile)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="0.01"
-                    min="0"
+                    min={0}
+                    max={5}
                     value={get('contractor_mileage_rate')}
-                    onChange={e => set('contractor_mileage_rate', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('contractor_mileage_rate', v)}
+                    aria-label="Contractor mileage rate"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     RESERVED — subcontractor mileage (workbook &times;0.45); feeds the operative outputs feature, not customer prices
@@ -378,15 +443,14 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Contractor Material Uplift (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={100}
+                    integer
                     value={wastageToPercent(get('contractor_material_uplift') || 1)}
-                    onChange={e =>
-                      set('contractor_material_uplift', wastageToFactor(parseInt(e.target.value) || 0))
-                    }
-                    className="input-field"
+                    onCommit={v => set('contractor_material_uplift', wastageToFactor(v))}
+                    aria-label="Contractor material uplift percent"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     RESERVED — subcontractor materials uplift (workbook &times;1.1); feeds the operative outputs feature, not customer prices
@@ -408,15 +472,14 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Material Markup (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={500}
+                    integer
                     value={toPercent(get('default_material_markup'))}
-                    onChange={e =>
-                      set('default_material_markup', toDecimal(parseInt(e.target.value) || 0))
-                    }
-                    className="input-field"
+                    onCommit={v => set('default_material_markup', toDecimal(v))}
+                    aria-label="Material markup percent"
                   />
                   <p className="text-xs text-white/40 mt-1">Applied to supplier material costs</p>
                 </div>
@@ -424,15 +487,14 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Wastage Factor (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={100}
+                    integer
                     value={wastageToPercent(get('default_wastage_factor'))}
-                    onChange={e =>
-                      set('default_wastage_factor', wastageToFactor(parseInt(e.target.value) || 0))
-                    }
-                    className="input-field"
+                    onCommit={v => set('default_wastage_factor', wastageToFactor(v))}
+                    aria-label="Wastage factor percent"
                   />
                   <p className="text-xs text-white/40 mt-1">
                     Extra material ordered to cover waste (e.g. 10%)
@@ -442,13 +504,14 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     VAT Rate (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={100}
+                    integer
                     value={toPercent(get('vat_rate'))}
-                    onChange={e => set('vat_rate', toDecimal(parseInt(e.target.value) || 0))}
-                    className="input-field"
+                    onCommit={v => set('vat_rate', toDecimal(v))}
+                    aria-label="VAT rate percent"
                   />
                   <p className="text-xs text-white/40 mt-1">Standard VAT rate</p>
                 </div>
@@ -468,13 +531,13 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     Skip Hire — 8yd (&pound;)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
+                    min={0}
+                    max={2000}
                     value={get('skip_hire_8yd_cost')}
-                    onChange={e => set('skip_hire_8yd_cost', parseFloat(e.target.value) || 0)}
-                    className="input-field"
+                    onCommit={v => set('skip_hire_8yd_cost', v)}
+                    aria-label="Skip hire cost"
                   />
                   <p className="text-xs text-white/40 mt-1">Base cost per skip</p>
                 </div>
@@ -504,14 +567,14 @@ export default function RatesAdminPage() {
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     {label} (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step="1"
-                    min="0"
-                    max="100"
+                    min={0}
+                    max={100}
+                    integer
                     value={toPercent(get(key))}
-                    onChange={e => set(key, toDecimal(parseInt(e.target.value) || 0))}
-                    className="input-field"
+                    onCommit={v => set(key, toDecimal(v))}
+                    aria-label={`${label} deposit percent`}
                   />
                 </div>
               ))}
@@ -531,13 +594,13 @@ export default function RatesAdminPage() {
                 <label className="block text-sm font-medium text-white/70 mb-1.5">
                   Survey Fee Amount (&pound;)
                 </label>
-                <input
-                  type="number"
+                <NumberField
                   step="1"
-                  min="0"
+                  min={0}
+                  max={1000}
                   value={get('survey_fee_amount')}
-                  onChange={e => set('survey_fee_amount', parseFloat(e.target.value) || 0)}
-                  className="input-field"
+                  onCommit={v => set('survey_fee_amount', v)}
+                  aria-label="Survey fee amount"
                 />
                 <p className="text-xs text-white/40 mt-1">
                   Fee charged to customer before survey booking is confirmed
@@ -547,14 +610,14 @@ export default function RatesAdminPage() {
                 <label className="block text-sm font-medium text-white/70 mb-1.5">
                   Payment Expiry (days)
                 </label>
-                <input
-                  type="number"
+                <NumberField
                   step="1"
-                  min="1"
-                  max="30"
+                  min={1}
+                  max={30}
+                  integer
                   value={get('survey_fee_expiry_days')}
-                  onChange={e => set('survey_fee_expiry_days', parseInt(e.target.value) || 3)}
-                  className="input-field"
+                  onCommit={v => set('survey_fee_expiry_days', v)}
+                  aria-label="Payment expiry days"
                 />
                 <p className="text-xs text-white/40 mt-1">
                   Provisional booking released if unpaid after this many days
@@ -594,6 +657,10 @@ export default function RatesAdminPage() {
               </div>
             </div>
           </div>
+
+          {/* Post-save smoke check + audit trail */}
+          <PricingSmokeCheck runToken={smokeToken} />
+          <PricingChangeLog tables={['pricing_config']} />
         </div>
       </Layout>
     </ProtectedRoute>

@@ -1,0 +1,170 @@
+{
+  "id": "full-coverage-woodworm",
+  "title": "FULL COVERAGE — every priced input row of Copy of Woodworm Costing v26 - CF Version - 220126.xlsm",
+  "workbook": "woodworm_v26",
+  "wizard": {
+    "survey_types": [
+      "woodworm"
+    ],
+    "additional_works": {
+      "distance_from_office": 12,
+      "num_men_travelling": 2,
+      "antinox_board_count": 2,
+      "skip_count": 4,
+      "stop_bead_count": 3,
+      "corner_bead_24_count": 4,
+      "corner_bead_30_count": 5,
+      "difficulty_hours_plastering": 6,
+      "airbrick_clean_count": 6,
+      "airbrick_upgrade_count": 7,
+      "airbrick_new_count": 8,
+      "asbestos_test_count": 0
+    },
+    "rooms": [
+      {
+        "name": "Rear bedroom",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "active",
+          "severity": "moderate",
+          "structural_damage": false,
+          "spray_floor_area": 4,
+          "spray_timber_area": 5,
+          "paste_treatment_area": 3,
+          "staircase_open_rear_steps": 6,
+          "staircase_closed_rear_steps": 7,
+          "loft_insulation_area": 1,
+          "lifting_area": 8,
+          "relaying_area": 2,
+          "difficulty_hours": 5,
+          "radiator_count": 6,
+          "socket_count": 7,
+          "skirting_length": 8,
+          "wallpaper_area": 1,
+          "wall_plaster_removal_area": 6,
+          "stud_walls_removal_area": 7,
+          "lath_ceilings_area": 8,
+          "timber_floor_strip_area": 1,
+          "scrape_subfloor_area": 2,
+          "stud_wall_area": 8,
+          "plasterboard_area": 1,
+          "skim_area": 25,
+          "joist_entries": [
+            {
+              "size": "4x2",
+              "quantity": 3,
+              "length": 2.4
+            },
+            {
+              "size": "5x2",
+              "quantity": 2,
+              "length": 3
+            },
+            {
+              "size": "6x2",
+              "quantity": 4,
+              "length": 3.6
+            },
+            {
+              "size": "7x2",
+              "quantity": 1,
+              "length": 4.2
+            },
+            {
+              "size": "8x2",
+              "quantity": 2,
+              "length": 4.8
+            },
+            {
+              "size": "9x2",
+              "quantity": 1,
+              "length": 2.4
+            }
+          ],
+          "endwrap_joists_lm": 15,
+          "wall_plate_lm": 8,
+          "bower_beams_count": 1,
+          "flitch_plates_count": 1,
+          "flooring_type": "weyrock_18mm",
+          "flooring_area": 6,
+          "suspended_floor_insulation_area": 4,
+          "clear_sub_floor_debris_area": 1,
+          "protective_treatment_area": 2
+        }
+      },
+      {
+        "name": "Box room (weyrock22)",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "historic",
+          "severity": "light",
+          "structural_damage": false,
+          "flooring_type": "weyrock_22mm",
+          "flooring_area": 7
+        }
+      },
+      {
+        "name": "Hall (std T&G)",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "historic",
+          "severity": "light",
+          "structural_damage": false,
+          "flooring_type": "std_tg_floorboards",
+          "flooring_area": 8
+        }
+      },
+      {
+        "name": "Front room (victorian)",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "historic",
+          "severity": "light",
+          "structural_damage": false,
+          "flooring_type": "victorian_tg_floorboards",
+          "flooring_area": 1
+        }
+      },
+      {
+        "name": "Rear room (engineered)",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "historic",
+          "severity": "light",
+          "structural_damage": false,
+          "flooring_type": "engineered_flooring_sheet",
+          "flooring_area": 2
+        }
+      },
+      {
+        "name": "Kitchen (structural engineered)",
+        "issues": [
+          "woodworm"
+        ],
+        "woodworm": {
+          "species_identified": "common_furniture_beetle",
+          "infestation_status": "historic",
+          "severity": "light",
+          "structural_damage": false,
+          "flooring_type": "structural_engineered_flooring_sheet",
+          "flooring_area": 3
+        }
+      }
+    ]
+  }
+}

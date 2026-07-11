@@ -31,6 +31,10 @@ import type { MaterialsCatalogItem } from '@/types/database.types'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
+import { NumberField } from '@/components/admin/NumberField'
+import { PricingSaveConfirm, type DiffRow } from '@/components/admin/PricingSaveConfirm'
+import { PricingSmokeCheck } from '@/components/admin/PricingSmokeCheck'
+import { PricingChangeLog } from '@/components/admin/PricingChangeLog'
 
 // ---------------------------------------------------------------------------
 // Category config — matches actual DB values
@@ -79,6 +83,7 @@ export default function MaterialsAdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<MaterialsCatalogItem | null>(null)
   const [deleteRefs, setDeleteRefs] = useState<Array<{ description: string; survey_type: string }>>([])
   const [deleting, setDeleting] = useState(false)
+  const [smokeToken, setSmokeToken] = useState(0)
 
   const loadData = useCallback(async () => {
     try {
@@ -149,6 +154,7 @@ export default function MaterialsAdminPage() {
       toast.success(`"${created.name}" added to catalogue`)
       setShowAddForm(false)
       await loadData()
+      setSmokeToken(t => t + 1)
     } else {
       toast.error('Failed to create material')
     }
@@ -174,6 +180,7 @@ export default function MaterialsAdminPage() {
       toast.success(`"${formData.name}" updated`)
       setEditingMaterial(null)
       await loadData()
+      setSmokeToken(t => t + 1)
     } else {
       toast.error('Failed to update material')
     }
@@ -203,6 +210,7 @@ export default function MaterialsAdminPage() {
       setDeleteConfirm(null)
       setDeleteRefs([])
       await loadData()
+      setSmokeToken(t => t + 1)
     } else {
       toast.error('Failed to delete material')
     }
@@ -461,6 +469,10 @@ export default function MaterialsAdminPage() {
               )}
             </div>
           )}
+
+          {/* Post-save smoke check + audit trail */}
+          <PricingSmokeCheck runToken={smokeToken} />
+          <PricingChangeLog tables={['materials_catalog']} />
         </div>
       </Layout>
     </ProtectedRoute>
@@ -509,6 +521,7 @@ function MaterialFormModal({ material, onClose, onSave }: MaterialFormModalProps
   const [error, setError] = useState('')
   const [templateRefs, setTemplateRefs] = useState<Array<{ description: string; survey_type: string }>>([])
   const [loadingRefs, setLoadingRefs] = useState(false)
+  const [pendingConfirm, setPendingConfirm] = useState<DiffRow[] | null>(null)
 
   // Load template references when editing
   useEffect(() => {
@@ -523,6 +536,13 @@ function MaterialFormModal({ material, onClose, onSave }: MaterialFormModalProps
   const set = (field: keyof MaterialFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setError('')
+  }
+
+  const doSave = async () => {
+    setSaving(true)
+    await onSave(formData)
+    setSaving(false)
+    setPendingConfirm(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -543,9 +563,50 @@ function MaterialFormModal({ material, onClose, onSave }: MaterialFormModalProps
       }
     }
 
-    setSaving(true)
-    await onSave(formData)
-    setSaving(false)
+    // Edit-mode hazard gate: price moves and catalogue-link changes go
+    // through an explicit old→new confirmation before hitting live pricing.
+    if (material) {
+      const rows: DiffRow[] = []
+      const oldKey = material.product_key || ''
+      const newKey = formData.product_key.trim()
+
+      if (formData.unit_cost !== material.unit_cost) {
+        const deltaPct =
+          material.unit_cost > 0
+            ? ((formData.unit_cost - material.unit_cost) / material.unit_cost) * 100
+            : null
+        const warn = deltaPct !== null && Math.abs(deltaPct) > 50
+        rows.push({
+          label: `${formData.name} — unit cost`,
+          sublabel:
+            templateRefs.length > 0
+              ? `Linked to ${templateRefs.length} costing template${templateRefs.length !== 1 ? 's' : ''} — new price applies to all future costings`
+              : undefined,
+          oldValue: `£${material.unit_cost.toFixed(2)}`,
+          newValue: `£${formData.unit_cost.toFixed(2)}`,
+          deltaPct,
+          warn,
+          note: warn ? 'Large move — double-check the pack size / unit (e.g. pack-of-100 vs per-item).' : undefined,
+        })
+      }
+
+      if (oldKey !== newKey && templateRefs.length > 0) {
+        rows.push({
+          label: `${formData.name} — product key`,
+          oldValue: oldKey || '(none)',
+          newValue: newKey || '(none)',
+          danger: true,
+          note: `This breaks the catalogue link for ${templateRefs.length} template${templateRefs.length !== 1 ? 's' : ''} — they fall back to snapshot prices and stop following this material until re-linked.`,
+        })
+      }
+
+      if (rows.length > 0) {
+        setPendingConfirm(rows)
+        return
+      }
+    }
+
+    await doSave()
   }
 
   return (
@@ -656,14 +717,13 @@ function MaterialFormModal({ material, onClose, onSave }: MaterialFormModalProps
 
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1.5">Unit Cost (&pound;) *</label>
-              <input
-                type="number"
+              <NumberField
                 step="0.01"
-                min="0.01"
+                min={0.01}
+                max={10000}
                 value={formData.unit_cost}
-                onChange={e => set('unit_cost', parseFloat(e.target.value) || 0)}
-                className="input-field"
-                required
+                onCommit={v => set('unit_cost', v)}
+                aria-label="Unit cost"
               />
             </div>
 
@@ -741,6 +801,15 @@ function MaterialFormModal({ material, onClose, onSave }: MaterialFormModalProps
           </div>
         </form>
       </div>
+
+      <PricingSaveConfirm
+        open={pendingConfirm !== null}
+        title="Confirm material change"
+        rows={pendingConfirm ?? []}
+        busy={saving}
+        onConfirm={doSave}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   )
 }

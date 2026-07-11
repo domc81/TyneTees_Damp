@@ -1,0 +1,229 @@
+{
+  "id": "full-coverage-damp",
+  "title": "FULL COVERAGE — every priced input row of Copy of Damp Costing v48 CF - 220126.xlsm",
+  "workbook": "damp_v48",
+  "wizard": {
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 10,
+      "num_men_travelling": 2,
+      "antinox_board_count": 2,
+      "stop_bead_count": 2,
+      "corner_bead_24_count": 3,
+      "corner_bead_30_count": 4,
+      "difficulty_hours_plastering": 5,
+      "airbrick_clean_count": 1,
+      "airbrick_upgrade_count": 2,
+      "airbrick_new_count": 3,
+      "asbestos_test_count": 5,
+      "skip_count": 1,
+      "aco_drain_length": 4,
+      "french_drain_length": 5,
+      "aquaban_area": 30,
+      "spray_treatment_area": 7,
+      "spray_difficulty_hours": 8
+    },
+    "rooms": [
+      {
+        "name": "Lounge (membrane 1m + DPC + prep)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "walls": [
+            {
+              "name": "W1",
+              "length": 4,
+              "height": 2.4,
+              "radiator_count": 6,
+              "socket_count": 7,
+              "skirting_length": 8,
+              "has_wallpaper": true,
+              "moisture_readings": []
+            }
+          ],
+          "dpc_required": true,
+          "dpc_type": "traditional",
+          "dpc_wall_length": 12,
+          "dpc_wall_thickness_m": 0.215,
+          "wall_treatment": "membrane",
+          "membrane_height": "1m",
+          "membrane_wall_lengths": [
+            10
+          ],
+          "fillet_joint_length": 6,
+          "overtape_length": 6,
+          "overtape_height": 0.5,
+          "strip_out_plaster_area": 6,
+          "strip_out_stud_walls_area": 7,
+          "strip_out_ceilings_area": 8,
+          "floor_treatment": "resin_membrane",
+          "resin_topcoat_area": 7,
+          "resin_primer_area": 6,
+          "resin_grip_grit_area": 1,
+          "floor_resin_fillet_length": 8,
+          "strip_existing_floor": true,
+          "strip_floor_area": 1,
+          "sub_floor_area": 2,
+          "stud_wall_area": 6,
+          "plasterboard_area": 7,
+          "warmline_insulation_area": 5,
+          "skim_area": 25,
+          "difficulty_hours": 2,
+          "resin_difficulty_hours": 2,
+          "joist_entries": [
+            {
+              "size": "4x2",
+              "quantity": 3,
+              "length": 2.4
+            },
+            {
+              "size": "5x2",
+              "quantity": 2,
+              "length": 3
+            },
+            {
+              "size": "6x2",
+              "quantity": 4,
+              "length": 3.6
+            },
+            {
+              "size": "7x2",
+              "quantity": 1,
+              "length": 4.2
+            },
+            {
+              "size": "8x2",
+              "quantity": 2,
+              "length": 4.8
+            },
+            {
+              "size": "9x2",
+              "quantity": 1,
+              "length": 2.4
+            }
+          ],
+          "endwrap_joists_lm": 15,
+          "wall_plate_lm": 8,
+          "bower_beams_count": 1,
+          "flitch_plates_count": 1,
+          "flooring_type": "weyrock_18mm",
+          "flooring_area": 6,
+          "suspended_floor_insulation_area": 4,
+          "joists_difficulty_hours": 4,
+          "decking_difficulty_hours": 5
+        }
+      },
+      {
+        "name": "Snug (digital DPC)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": true,
+          "dpc_type": "digital"
+        }
+      },
+      {
+        "name": "Pantry (weyrock22)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": false,
+          "flooring_type": "weyrock_22mm",
+          "flooring_area": 7
+        }
+      },
+      {
+        "name": "Study (std T&G)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": false,
+          "flooring_type": "std_tg_floorboards",
+          "flooring_area": 8
+        }
+      },
+      {
+        "name": "Landing (victorian T&G)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": false,
+          "flooring_type": "victorian_tg_floorboards",
+          "flooring_area": 1
+        }
+      },
+      {
+        "name": "WC (engineered)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": false,
+          "flooring_type": "engineered_flooring_sheet",
+          "flooring_area": 2
+        }
+      },
+      {
+        "name": "Porch (structural engineered)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "dpc_required": false,
+          "flooring_type": "structural_engineered_flooring_sheet",
+          "flooring_area": 3
+        }
+      },
+      {
+        "name": "Kitchen (membrane 1.2m)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "membrane",
+          "membrane_height": "1.2m",
+          "membrane_wall_lengths": [
+            8
+          ],
+          "dpc_required": false
+        }
+      },
+      {
+        "name": "Hall (membrane 2m)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "membrane",
+          "membrane_height": "2m",
+          "membrane_wall_lengths": [
+            6
+          ],
+          "dpc_required": false
+        }
+      },
+      {
+        "name": "Cellar (tanking)",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "wall_treatment": "tanking",
+          "tanking_area": 7,
+          "dubbing_out_area": 6,
+          "renovating_plaster_area": 8,
+          "fillet_joint_length": 1,
+          "tanking_difficulty_hours": 2,
+          "dpc_required": false
+        }
+      }
+    ]
+  }
+}

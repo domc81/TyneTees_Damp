@@ -7,12 +7,11 @@
  * with ZERO reimplementation of calculation logic, and emits actual results
  * JSON for comparison against the workbook oracle's expected results.
  *
- * The ONLY replicated (non-imported) logic is the summary block, which
- * currently lives inside the React costing page and is not importable:
- * see src/app/survey/[projectId]/costing/page.tsx ~606-660. It is copied
- * here VERBATIM in behaviour (including the hardcoded 0.20 VAT and the
- * deposit-off-mandatory-only rule). If the page changes, update this file —
- * or better, extract the page math into a lib both can import (Phase 2).
+ * The summary block (section adjustments, travel, VAT, deposit) is imported
+ * from src/lib/costing-summary.ts — the shared implementation also used by
+ * the admin pricing smoke check, so parity gates it. The costing page
+ * (src/app/survey/[projectId]/costing/page.tsx ~606-660) still carries its
+ * own copy of this math; if the page changes, costing-summary.ts must match.
  *
  * Run from survey-system/:  npx tsx scripts/parity/run-engine.ts --all
  *                           npx tsx scripts/parity/run-engine.ts dpc-18lm-330mm
@@ -26,9 +25,13 @@ import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { setSupabaseOverride } from '../../src/lib/supabase-client'
 import { generateCostingFromSurvey, consumeMissingTemplateWarnings } from '../../src/lib/survey-mapping'
-import { calculateTravelOverhead } from '../../src/lib/travel-overhead'
 import { loadPricingConfig } from '../../src/lib/pricing-data'
 import type { CalculationResult } from '../../src/lib/pricing-data'
+import {
+  applyDefaultSectionAdjustments,
+  summarizeCosting,
+  type SectionMeta,
+} from '../../src/lib/costing-summary'
 
 const REPO_ROOT = path.resolve(__dirname, '../../..')
 const PARITY = path.join(REPO_ROOT, 'parity')
@@ -92,8 +95,6 @@ function buildRooms(s: Scenario): any[] {
   }))
 }
 
-interface SectionMeta { optional: boolean; pct: number }
-
 async function loadSectionMeta(client: any): Promise<Record<string, SectionMeta>> {
   const { data, error } = await client
     .from('costing_sections')
@@ -127,90 +128,26 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
   )
   const missingTemplates = consumeMissingTemplateWarnings()
 
-  // Workbook-master default section adjustments (costing_sections.
-  // default_adjustment_pct, e.g. PIV loft -5%). The workbook applies the
-  // factor per line (adjusted cost column I), so scale line money here —
-  // hours are unaffected (the rate is adjusted, not the time). Section and
-  // summary sums below then aggregate the adjusted lines, exactly like the
-  // sheet. The costing page applies the same defaults via its dials.
-  for (const result of Object.values(results)) {
-    for (const line of result.lines) {
-      const pct = sectionMeta[line.sectionKey]?.pct ?? 0
-      if (pct !== 0) {
-        const f = 1 + pct / 100
-        line.result.materialTotal *= f
-        line.result.labourTotal *= f
-        line.result.lineTotal = line.result.materialTotal + line.result.labourTotal
-      }
-    }
-    for (const [sectionKey, totals] of Object.entries(result.sectionTotals)) {
-      const pct = sectionMeta[sectionKey]?.pct ?? 0
-      if (pct !== 0) {
-        const f = 1 + pct / 100
-        totals.materialTotal *= f
-        totals.labourTotal *= f
-        totals.sectionTotal = totals.materialTotal + totals.labourTotal
-      }
-    }
-    result.grandTotal.materialTotal = result.lines.reduce((s, l) => s + l.result.materialTotal, 0)
-    result.grandTotal.labourTotal = result.lines.reduce((s, l) => s + l.result.labourTotal, 0)
-    result.grandTotal.total = result.grandTotal.materialTotal + result.grandTotal.labourTotal
-  }
-
-  // ---- Replicated page wiring: costing/page.tsx ~356-372 ----
-  let totalLabourHours = 0
-  for (const result of Object.values(results)) {
-    for (const line of result.lines) totalLabourHours += line.result.labourHours
-  }
+  // Shared summary math (parity-gated lib, also used by the admin smoke check)
+  applyDefaultSectionAdjustments(results, sectionMeta)
   const aw: any = wizardData.additional_works ?? {}
-  const travel = calculateTravelOverhead({
-    totalLabourHours,
-    distanceFromOffice: Number(aw.distance_from_office ?? 0),
-    numMenTravelling: Number(aw.num_men_travelling ?? 1),
-    hourlyLabourRate: config['hourly_labour_rate'] ?? 30.63,
-    vehicleCostPerMile: config['vehicle_cost_per_mile'] ?? 0.5,
-    productiveHoursPerDay: config['productive_hours_per_day'] ?? 6.5,
-    travelSpeedMph: config['travel_speed_mph'] ?? 30,
-  })
+  const summary = summarizeCosting(results, sectionMeta, config, aw)
+  const travel = summary.travel
 
-  // ---- Replicated page summary math: costing/page.tsx ~606-660 ----
-  let mandatoryWorksTotal = 0
-  let optionalIncludedTotal = 0
   const sectionsOut: Record<string, any> = {}
-  for (const [surveyType, result] of Object.entries(results)) {
-    for (const [sectionKey, totals] of Object.entries(result.sectionTotals)) {
-      const isOptional = sectionMeta[sectionKey]?.optional ?? false
-      // Page default: optional sections start included
-      if (isOptional) optionalIncludedTotal += totals.sectionTotal
-      else mandatoryWorksTotal += totals.sectionTotal
-      sectionsOut[sectionKey] = {
-        survey_type: surveyType,
-        materials: round2(totals.materialTotal),
-        labour: round2(totals.labourTotal),
-        total: round2(totals.sectionTotal),
-        is_optional: isOptional,
-      }
+  for (const [sectionKey, s] of Object.entries(summary.sections)) {
+    sectionsOut[sectionKey] = {
+      survey_type: s.survey_type,
+      materials: round2(s.materials),
+      labour: round2(s.labour),
+      total: round2(s.total),
+      is_optional: s.is_optional,
     }
   }
-  const overheadAmount = travel.totalOverheadCost
-  const combinedWorksTotal = mandatoryWorksTotal + optionalIncludedTotal
-  const jobSubtotal = combinedWorksTotal + overheadAmount
-  const jobVAT = jobSubtotal * (config['vat_rate'] ?? 0.2) // workbook K143 rate (page now reads config too)
-  const jobGrandTotal = jobSubtotal + jobVAT
-  let depositPct = 0
-  for (const surveyType of Object.keys(results)) {
-    const pct = config[`${surveyType}_deposit_pct`]
-    if (pct !== undefined && pct > depositPct) depositPct = pct
-  }
-  const depositAmount = mandatoryWorksTotal * depositPct
 
   // ---- Per-line output keyed by line_key ----
   const linesOut: Record<string, any> = {}
-  let materialsSubtotal = 0
-  let labourSubtotal = 0
   for (const result of Object.values(results)) {
-    materialsSubtotal += result.grandTotal.materialTotal
-    labourSubtotal += result.grandTotal.labourTotal
     for (const line of result.lines) {
       const key = templateKey[line.templateId] ?? line.templateId
       const prev = linesOut[key] ?? { quantity: 0, materials: 0, hours: 0, labour: 0, total: 0, section: line.sectionKey }
@@ -226,25 +163,26 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
     }
   }
 
+  const t = summary.totals
   return {
     scenario: scenario.id,
-    engine: 'live pipeline: generateCostingFromSurvey + calculateTravelOverhead + replicated page summary',
+    engine: 'live pipeline: generateCostingFromSurvey + costing-summary lib',
     lines: linesOut,
     sections: sectionsOut,
     totals: {
-      materials_subtotal: round6(materialsSubtotal),
-      labour_subtotal: round6(labourSubtotal),
-      labour_hours_subtotal: round6(totalLabourHours),
-      travel_price: round6(travel.totalOverheadCost),
-      travel_hours: round6(travel.travelHours),
-      days: travel.labourDays,
-      mandatory_works: round6(mandatoryWorksTotal),
-      optional_included: round6(optionalIncludedTotal),
-      subtotal_ex_vat: round6(jobSubtotal),
-      vat: round6(jobVAT),
-      total_inc_vat: round6(jobGrandTotal),
-      deposit_percentage: depositPct,
-      deposit_amount: round6(depositAmount),
+      materials_subtotal: round6(t.materials_subtotal),
+      labour_subtotal: round6(t.labour_subtotal),
+      labour_hours_subtotal: round6(t.labour_hours_subtotal),
+      travel_price: round6(t.travel_price),
+      travel_hours: round6(t.travel_hours),
+      days: t.days,
+      mandatory_works: round6(t.mandatory_works),
+      optional_included: round6(t.optional_included),
+      subtotal_ex_vat: round6(t.subtotal_ex_vat),
+      vat: round6(t.vat),
+      total_inc_vat: round6(t.total_inc_vat),
+      deposit_percentage: t.deposit_percentage,
+      deposit_amount: round6(t.deposit_amount),
     },
     diagnostics: {
       missing_templates: missingTemplates,

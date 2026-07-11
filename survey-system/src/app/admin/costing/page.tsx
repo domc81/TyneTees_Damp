@@ -43,6 +43,10 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
+import { NumberField } from '@/components/admin/NumberField'
+import { PricingSaveConfirm, type DiffRow } from '@/components/admin/PricingSaveConfirm'
+import { PricingSmokeCheck } from '@/components/admin/PricingSmokeCheck'
+import { PricingChangeLog } from '@/components/admin/PricingChangeLog'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -105,6 +109,22 @@ const EDITABLE_PARAMS: Record<
     { key: 'labour_hours_per_block', label: 'Hours Per Block', step: '0.1', presentOnly: true },
     { key: 'minimum_labour_hours', label: 'Min Labour Hours', step: '0.1', presentOnly: true },
   ],
+}
+
+/** Flat param-key \u2192 label map for the save-confirm diff */
+const PARAM_LABELS: Record<string, string> = Object.fromEntries(
+  Object.values(EDITABLE_PARAMS).flat().map(p => [p.key, p.label])
+)
+
+/**
+ * Minimum valid value per formula param. coverage-style divisors must never
+ * be 0 (division), hole counts at least 1; everything else non-negative.
+ */
+const PARAM_MINS: Record<string, number> = {
+  cream_divisor: 0.01,
+  holes_per_meter: 1,
+  pack_size: 0.01,
+  labour_block_size: 0.1,
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +259,8 @@ export default function CostingAdminPage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [filterFormula, setFilterFormula] = useState<string>('')
   const [saving, setSaving] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [smokeToken, setSmokeToken] = useState(0)
 
   // Changes tracking: template_id -> { field: newValue }
   const [changes, setChanges] = useState<ChangeMap>({})
@@ -351,6 +373,95 @@ export default function CostingAdminPage() {
   // Save / Reset
   // ---------------------------------------------------------------------------
 
+  // Old→new diff rows for the save confirmation, with hazard flags
+  const diffRows: DiffRow[] = useMemo(() => {
+    const fieldMeta: Record<string, { label: string; fmt: (v: any) => string }> = {
+      base_unit_cost: { label: 'Unit cost', fmt: v => `£${Number(v).toFixed(2)}` },
+      labour_rate_per_unit: { label: 'Labour hrs/unit', fmt: v => Number(v).toFixed(3) },
+      wastage_factor: { label: 'Wastage', fmt: v => `${Math.round((Number(v) - 1) * 100)}%` },
+      material_markup: { label: 'Material markup', fmt: v => `${Math.round(Number(v) * 100)}%` },
+      labour_markup: { label: 'Labour markup', fmt: v => `${Math.round(Number(v) * 100)}%` },
+      coverage_rate: { label: 'Coverage rate', fmt: v => String(v) },
+      is_active: { label: 'Active', fmt: v => (v ? 'yes' : 'no') },
+    }
+
+    const rows: DiffRow[] = []
+    for (const [id, ch] of Object.entries(changes)) {
+      const initial = initialTemplates[id]
+      if (!initial) continue
+      const sublabel = `${initial.section_name} · ${initial.survey_type}`
+
+      for (const [field, newValue] of Object.entries(ch)) {
+        if (field === 'formula_params') {
+          const oldParams = initial.formula_params || {}
+          const newParams = (newValue || {}) as Record<string, any>
+          const keys = new Set([...Object.keys(oldParams), ...Object.keys(newParams)])
+          for (const k of Array.from(keys)) {
+            if (JSON.stringify(oldParams[k]) === JSON.stringify(newParams[k])) continue
+            const oldNum = Number(oldParams[k])
+            const newNum = Number(newParams[k])
+            const deltaPct =
+              Number.isFinite(oldNum) && Number.isFinite(newNum) && oldNum !== 0
+                ? ((newNum - oldNum) / Math.abs(oldNum)) * 100
+                : null
+            rows.push({
+              label: `${initial.description} — ${PARAM_LABELS[k] ?? k}`,
+              sublabel,
+              oldValue: String(oldParams[k] ?? '—'),
+              newValue: String(newParams[k] ?? '—'),
+              deltaPct,
+              warn: deltaPct !== null && Math.abs(deltaPct) > 50,
+            })
+          }
+          continue
+        }
+
+        const meta = fieldMeta[field]
+        if (!meta) continue
+        const oldValue = (initial as any)[field]
+
+        if (field === 'is_active') {
+          rows.push({
+            label: `${initial.description} — Active`,
+            sublabel,
+            oldValue: meta.fmt(oldValue),
+            newValue: meta.fmt(newValue),
+            danger: newValue === false,
+            note:
+              newValue === false
+                ? 'This line will silently drop from ALL future costings — quotes get cheaper with no warning.'
+                : undefined,
+          })
+          continue
+        }
+
+        const oldNum = Number(oldValue)
+        const newNum = Number(newValue)
+        const deltaPct =
+          Number.isFinite(oldNum) && Number.isFinite(newNum) && oldNum !== 0
+            ? ((newNum - oldNum) / Math.abs(oldNum)) * 100
+            : null
+        const zeroed = field === 'base_unit_cost' && oldNum > 0 && newNum === 0
+        const warn = !zeroed && deltaPct !== null && Math.abs(deltaPct) > 50
+        rows.push({
+          label: `${initial.description} — ${meta.label}`,
+          sublabel,
+          oldValue: meta.fmt(oldValue),
+          newValue: meta.fmt(newValue),
+          deltaPct,
+          warn,
+          danger: zeroed,
+          note: zeroed
+            ? 'Material price zeroed — this line will charge £0 for materials on every future costing.'
+            : warn
+              ? 'Large move — double-check this is intended.'
+              : undefined,
+        })
+      }
+    }
+    return rows
+  }, [changes, initialTemplates])
+
   const handleSave = async () => {
     if (changeCount === 0) return
     setSaving(true)
@@ -363,10 +474,12 @@ export default function CostingAdminPage() {
       setInitialTemplates(JSON.parse(JSON.stringify(templates)))
       setChanges({})
       toast.success(`${updates.length} template${updates.length > 1 ? 's' : ''} saved`)
+      setSmokeToken(t => t + 1)
     } else {
       toast.error('Failed to save changes. Please try again.')
     }
     setSaving(false)
+    setConfirmOpen(false)
   }
 
   const handleReset = () => {
@@ -468,7 +581,7 @@ export default function CostingAdminPage() {
                 </button>
               )}
               <button
-                onClick={handleSave}
+                onClick={() => setConfirmOpen(true)}
                 disabled={changeCount === 0 || saving}
                 className="btn-primary flex items-center gap-2"
               >
@@ -481,6 +594,15 @@ export default function CostingAdminPage() {
               </button>
             </div>
           </div>
+
+          <PricingSaveConfirm
+            open={confirmOpen}
+            title="Confirm costing template changes"
+            rows={diffRows}
+            busy={saving}
+            onConfirm={handleSave}
+            onCancel={() => setConfirmOpen(false)}
+          />
 
           {/* Warning banner */}
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
@@ -667,6 +789,10 @@ export default function CostingAdminPage() {
                 <p className="text-white/50">No templates match your search.</p>
               </div>
             )}
+
+          {/* Post-save smoke check + audit trail */}
+          <PricingSmokeCheck runToken={smokeToken} />
+          <PricingChangeLog tables={['costing_line_templates', 'costing_sections']} />
         </div>
       </Layout>
     </ProtectedRoute>
@@ -741,7 +867,9 @@ function SectionDefaultAdjInput({
 
   const commit = async () => {
     const parsed = parseFloat(text)
-    if (isNaN(parsed)) {
+    // Bounded to the workbook picker's spirit (−5…+50) with headroom;
+    // out-of-range input reverts rather than saving.
+    if (isNaN(parsed) || parsed < -50 || parsed > 100) {
       setText(String(value))
       return
     }
@@ -848,42 +976,42 @@ function TemplateRow({
 
         {/* Base Unit Cost */}
         <td className="px-2 py-2">
-          <input
-            type="number"
+          <NumberField
             step="0.01"
-            min="0"
+            min={0}
+            max={10000}
             value={t.base_unit_cost}
-            onChange={e => updateField(t.id, 'base_unit_cost', parseFloat(e.target.value) || 0)}
+            onCommit={v => updateField(t.id, 'base_unit_cost', v)}
             className="input-field w-20 text-xs py-1 px-2"
+            aria-label={`Unit cost — ${t.description}`}
           />
         </td>
 
         {/* Labour rate per unit */}
         <td className="px-2 py-2">
-          <input
-            type="number"
+          <NumberField
             step="0.01"
-            min="0"
+            min={0}
+            max={100}
             value={t.labour_rate_per_unit}
-            onChange={e =>
-              updateField(t.id, 'labour_rate_per_unit', parseFloat(e.target.value) || 0)
-            }
+            onCommit={v => updateField(t.id, 'labour_rate_per_unit', v)}
             className="input-field w-20 text-xs py-1 px-2"
+            aria-label={`Labour hours per unit — ${t.description}`}
           />
         </td>
 
         {/* Wastage (display as %) */}
         <td className="px-2 py-2">
           <div className="flex items-center gap-1">
-            <input
-              type="number"
+            <NumberField
               step="1"
-              min="0"
+              min={0}
+              max={100}
+              integer
               value={wastageToPercent(t.wastage_factor)}
-              onChange={e =>
-                updateField(t.id, 'wastage_factor', wastageToFactor(parseInt(e.target.value) || 0))
-              }
+              onCommit={v => updateField(t.id, 'wastage_factor', wastageToFactor(v))}
               className="input-field w-14 text-xs py-1 px-2"
+              aria-label={`Wastage percent — ${t.description}`}
             />
             <span className="text-white/30 text-xs">%</span>
           </div>
@@ -892,15 +1020,15 @@ function TemplateRow({
         {/* Material markup (display as %) */}
         <td className="px-2 py-2">
           <div className="flex items-center gap-1">
-            <input
-              type="number"
+            <NumberField
               step="1"
-              min="0"
+              min={0}
+              max={500}
+              integer
               value={toPercent(t.material_markup)}
-              onChange={e =>
-                updateField(t.id, 'material_markup', toDecimal(parseInt(e.target.value) || 0))
-              }
+              onCommit={v => updateField(t.id, 'material_markup', toDecimal(v))}
               className="input-field w-14 text-xs py-1 px-2"
+              aria-label={`Material markup percent — ${t.description}`}
             />
             <span className="text-white/30 text-xs">%</span>
           </div>
@@ -909,32 +1037,31 @@ function TemplateRow({
         {/* Labour markup (display as %) */}
         <td className="px-2 py-2">
           <div className="flex items-center gap-1">
-            <input
-              type="number"
+            <NumberField
               step="1"
-              min="0"
+              min={0}
+              max={500}
+              integer
               value={toPercent(t.labour_markup)}
-              onChange={e =>
-                updateField(t.id, 'labour_markup', toDecimal(parseInt(e.target.value) || 0))
-              }
+              onCommit={v => updateField(t.id, 'labour_markup', toDecimal(v))}
               className="input-field w-14 text-xs py-1 px-2"
+              aria-label={`Labour markup percent — ${t.description}`}
             />
             <span className="text-white/30 text-xs">%</span>
           </div>
         </td>
 
-        {/* Coverage rate */}
+        {/* Coverage rate — never 0: it divides the material pack price */}
         <td className="px-2 py-2">
           {isCoverage && t.coverage_rate != null ? (
-            <input
-              type="number"
+            <NumberField
               step="0.01"
-              min="0"
+              min={0.01}
+              max={1000}
               value={t.coverage_rate}
-              onChange={e =>
-                updateField(t.id, 'coverage_rate', parseFloat(e.target.value) || 0)
-              }
+              onCommit={v => updateField(t.id, 'coverage_rate', v)}
               className="input-field w-20 text-xs py-1 px-2"
+              aria-label={`Coverage rate — ${t.description}`}
             />
           ) : (
             <span className="text-white/20 text-xs">&mdash;</span>
@@ -1062,15 +1189,14 @@ function TemplateRow({
                     {param.label}
                     {PARAM_TOOLTIPS[param.key] && <Tooltip text={PARAM_TOOLTIPS[param.key]} />}
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     step={param.step}
-                    min="0"
-                    value={t.formula_params?.[param.key] ?? ''}
-                    onChange={e =>
-                      updateFormulaParam(t.id, param.key, parseFloat(e.target.value) || 0)
-                    }
+                    min={PARAM_MINS[param.key] ?? 0}
+                    max={100000}
+                    value={Number(t.formula_params?.[param.key] ?? 0)}
+                    onCommit={v => updateFormulaParam(t.id, param.key, v)}
                     className="input-field w-28 text-xs py-1 px-2"
+                    aria-label={`${param.label} — ${t.description}`}
                   />
                 </div>
               ))}
