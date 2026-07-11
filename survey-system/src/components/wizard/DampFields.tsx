@@ -406,21 +406,23 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
 
                     <div>
                       <label className="block text-sm font-medium text-white/70 mb-1.5">
-                        Wall Depth (brick courses)
+                        Wall Thickness (m)
                       </label>
-                      <select
-                        value={data.dpc_wall_depth || ''}
-                        onChange={(e) => handleChange('dpc_wall_depth', parseFloat(e.target.value))}
+                      <input
+                        type="number"
+                        value={data.dpc_wall_thickness_m ?? ''}
+                        onChange={(e) => handleChange('dpc_wall_thickness_m', parseFloat(e.target.value) || 0)}
                         className="input-field"
-                      >
-                        <option value="">Select depth...</option>
-                        <option value="0.5">0.5 courses</option>
-                        <option value="1">1 course</option>
-                        <option value="1.5">1.5 courses</option>
-                        <option value="2">2 courses</option>
-                        <option value="2.5">2.5 courses</option>
-                        <option value="3">3 courses</option>
-                      </select>
+                        step="0.005"
+                        min="0"
+                        placeholder="e.g. 0.330 for a 330mm wall"
+                      />
+                      {!data.dpc_wall_thickness_m && data.dpc_wall_depth ? (
+                        <p className="text-xs text-amber-400/80 mt-1">
+                          This survey has a legacy &quot;{data.dpc_wall_depth} course&quot; entry — please
+                          enter the measured wall thickness in metres.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -714,7 +716,8 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
               </div>
             </div>
 
-            {/* Resin Membrane fields */}
+            {/* Resin Membrane fields — mirrors Damp workbook rows 69-72: each
+                component is an independent quantity, priced only when > 0 */}
             {data.floor_treatment === 'resin_membrane' && (
               <div className="space-y-3">
                 <div>
@@ -728,7 +731,34 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                     className="input-field"
                     step="0.1"
                     min="0"
+                    placeholder="Room floor measurement"
                   />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white/70 mb-1.5">Resin Components (m² per component — only filled components are priced)</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      ['resin_topcoat_area', 'Top Coat'],
+                      ['resin_primer_area', 'Primer'],
+                      ['resin_grip_grit_area', 'Grip Grit'],
+                    ] as const).map(([field, label]) => (
+                      <div key={field}>
+                        <label className="block text-xs text-white/60 mb-1">{label}</label>
+                        <input
+                          type="number"
+                          value={data[field] ?? ''}
+                          onChange={(e) => handleChange(field, e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                          className="input-field"
+                          step="0.1"
+                          min="0"
+                          placeholder={data.floor_area ? `= ${data.floor_area}?` : '0'}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">
+                    Tap a field and enter the area treated by that component (often the floor area).
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">

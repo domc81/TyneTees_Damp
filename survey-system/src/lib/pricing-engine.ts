@@ -287,17 +287,21 @@ export function calcCeilingCoverage(
 /**
  * 3. DPC INJECTION FORMULA
  *
- * Specialized for damp proof course injection:
- * - Cream cost per LM = (13.93/1.15) + (6/depth × 4.29)
- * - Labour hours per LM = depth × 0.35
- * - Coverage rate from template (typically holes per meter)
- * - Apply markups
+ * Exact translation of Damp Costing workbook row R40 (golden master):
+ * - Quantity basis F40 = length × thickness            (LM × metres)
+ * - Cream cost/unit H40 = (13.93/1.15) + (6/LENGTH × 4.29)
+ *   (Material-List R16: "10 linear metres at a 115mm brick thickness
+ *    = 1.15 volume per tube" — the fixed drill/plug element amortises
+ *    over the run LENGTH, it does NOT scale with wall thickness)
+ * - Labour hours O40 = LENGTH × 0.35   (flat per LM, thickness-independent;
+ *   thickness affects material volume only)
  *
- * Requires inputDimension = wall depth in half-bricks
+ * Requires inputDimension = wall THICKNESS IN METRES (workbook E40, free
+ * numeric 3dp — e.g. 0.33 for a 330mm solid wall). Review point 6.
  *
- * Example: 10 LM of wall, 2.5 brick depth
- * - Cream cost = (13.93/1.15) + (6/2.5 × 4.29) = 12.11 + 10.30 = 22.41 per LM
- * - Labour = 2.5 × 0.35 = 0.875 hours per LM
+ * Benchmark (review/Brad Brown): 18 LM × 0.33 m
+ * - unit = 13.93/1.15 + (6/18 × 4.29) = 13.543; qty = 5.94
+ * - materials = 5.94 × 13.543 × 1.3 = £104.58; labour 6.3 h → total £490.52
  */
 export function calcDpcInjection(
   input: LineInput,
@@ -306,7 +310,7 @@ export function calcDpcInjection(
   materials: MaterialLookup
 ): LineResult {
   const linearMeters = input.inputQuantity
-  const wallDepth = input.inputDimension ?? 1 // Default to 1 brick if not provided
+  const wallThickness = input.inputDimension ?? 0 // metres (workbook E40)
 
   // DPC injection formula parameters — read from template, then materials catalog, then hardcoded fallbacks
   const params = template.formula_params ?? {}
@@ -314,15 +318,17 @@ export function calcDpcInjection(
     ?? materials['wykamol_ultracure_dpc_cream']
     ?? 13.93
   const CREAM_ADJUSTMENT_DIVISOR = params.cream_divisor ?? 1.15
-  const DRILL_PLUG_HOLES_PER_DEPTH = params.holes_per_meter ?? 6
+  const DRILL_PLUG_HOLES = params.holes_per_meter ?? 6
   const DRILL_PLUG_COST = params.drill_cost ?? materials['drill_plugs_12mm'] ?? 4.29
-  const LABOUR_HOURS_PER_DEPTH = params.labour_hours_per_depth ?? 0.35
+  const LABOUR_HOURS_PER_LM = params.labour_hours_per_lm ?? params.labour_hours_per_depth ?? 0.35
 
-  // Calculate cream cost per linear meter
-  const creamCostPerLM = (CREAM_BASE_COST / CREAM_ADJUSTMENT_DIVISOR) +
-                         ((DRILL_PLUG_HOLES_PER_DEPTH / wallDepth) * DRILL_PLUG_COST)
+  // Cream cost per quantity unit — workbook H40: the 6×4.29 drill/plug element
+  // divides by the run LENGTH (guarded like the workbook's D+E=0 check)
+  const creamCostPerUnit = linearMeters > 0
+    ? (CREAM_BASE_COST / CREAM_ADJUSTMENT_DIVISOR) + ((DRILL_PLUG_HOLES / linearMeters) * DRILL_PLUG_COST)
+    : 0
 
-  // Get wastage factor
+  // Get wastage factor (template carries 1.0 — workbook applies none here)
   const wastageFactor = input.overrides?.wastage_factor
     ?? template.wastage_factor
     ?? config['default_wastage_factor']
@@ -334,12 +340,10 @@ export function calcDpcInjection(
     ?? config['default_material_markup']
     ?? 0.30
 
-  // Calculate material cost
-  // Quantity = depth × linear_metres (each half-brick leaf needs injection)
-  // Material scales with depth twice: once in quantity, once in cream rate formula
-  const effectiveQuantity = wallDepth * linearMeters
-  const materialUnitCost = creamCostPerLM
-  const materialAdjustedCost = creamCostPerLM * wastageFactor * effectiveQuantity
+  // Material cost — workbook K40 = (length × thickness) × H40 × (1 + markup)
+  const effectiveQuantity = linearMeters * wallThickness
+  const materialUnitCost = creamCostPerUnit
+  const materialAdjustedCost = creamCostPerUnit * wastageFactor * effectiveQuantity
   const materialTotal = applyMarkup(materialAdjustedCost, materialMarkup)
 
   // Get labour rate
@@ -353,8 +357,8 @@ export function calcDpcInjection(
     ?? config['default_labour_markup']
     ?? 1.00
 
-  // Calculate labour (depth × 0.35 hours — independent of linear metres)
-  const labourHours = wallDepth * LABOUR_HOURS_PER_DEPTH
+  // Labour — workbook O40 = LENGTH × 0.35 (flat per LM; thickness-independent)
+  const labourHours = linearMeters * LABOUR_HOURS_PER_LM
   const labourBase = labourHours * labourRate
   const labourTotal = applyMarkup(labourBase, labourMarkup)
 

@@ -1,28 +1,41 @@
 {
   "id": "dpc-18lm-330mm",
   "title": "Review benchmark: traditional DPC injection, 18 LM @ 330mm solid wall",
-  "source": "Technical review point 6 (Brad Brown / Completed Damp Costing v47). Review-quoted expectations: quantity basis 5.94, materials £104.58, labour 6.3 hours, line total £490.52.",
+  "source": "Technical review point 6 (Brad Brown / Completed Damp Costing v47). Review-quoted expectations: quantity basis 5.94, materials \u00a3104.58, labour 6.3 hours, line total \u00a3490.52.",
   "workbook": "damp_v48",
   "oracle": {
     "lines": {
-      "dpc_traditional": { "d": 18, "e": 0.33 }
+      "dpc_traditional": {
+        "d": 18,
+        "e": 0.33
+      }
     },
-    "travel": { "distance_miles": 0, "men": 1 }
+    "travel": {
+      "distance_miles": 0,
+      "men": 1
+    }
   },
   "wizard": {
-    "survey_types": ["damp"],
-    "additional_works": { "distance_from_office": 0, "num_men_travelling": 1 },
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 0,
+      "num_men_travelling": 1
+    },
     "rooms": [
       {
         "name": "Lounge",
-        "issues": ["damp"],
+        "issues": [
+          "damp"
+        ],
         "damp": {
           "dpc_required": true,
           "dpc_wall_length": 18,
-          "dpc_wall_depth": 1.5
+          "dpc_wall_thickness_m": 0.33
         }
       }
     ]
   },
-  "notes": "Wizard dpc_wall_depth is entered as 1.5 'brick courses' — the closest current-UI representation of a 330mm (1.5-brick) solid wall. The workbook takes thickness in METRES (0.33). This unit mismatch is itself part of review point 6."
+  "notes": "Wizard uses the new dpc_wall_thickness_m field (metres, workbook E40 semantics \u2014 free numeric). The old brick-courses control is removed; legacy surveys fall back to courses \u00d7 0.215m until re-entered."
 }

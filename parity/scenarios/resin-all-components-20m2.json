@@ -1,0 +1,44 @@
+{
+  "id": "resin-all-components-20m2",
+  "title": "Floor resin: ALL components explicitly selected \u2014 primer 20, top coat 20, grip grit 20, fillet 10",
+  "source": "Coverage scenario for review point 14A acceptance tests 25-26 (primer+topcoat both only when both selected; grip grit independently selectable). Workbook rows F69/F70/F71/F72.",
+  "workbook": "damp_v48",
+  "oracle": {
+    "lines": {
+      "resin_primer": 20,
+      "resin_topcoat": 20,
+      "resin_grip_grit": 20,
+      "resin_fillet_joint": 10
+    },
+    "travel": {
+      "distance_miles": 0,
+      "men": 1
+    }
+  },
+  "wizard": {
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 0,
+      "num_men_travelling": 1
+    },
+    "rooms": [
+      {
+        "name": "Cellar",
+        "issues": [
+          "damp"
+        ],
+        "damp": {
+          "floor_treatment": "resin_membrane",
+          "floor_area": 20,
+          "resin_primer_area": 20,
+          "resin_topcoat_area": 20,
+          "resin_grip_grit_area": 20,
+          "floor_resin_fillet_length": 10
+        }
+      }
+    ]
+  },
+  "notes": "Every component explicitly entered \u2014 each must price independently and exactly (workbook pack rounding: primer/topcoat CEILING 30, grip 25, fillet 12)."
+}

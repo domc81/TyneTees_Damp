@@ -194,12 +194,14 @@ function mapDampSurvey(
   let totalStripOutStudWallsArea = 0
   let totalStripOutCeilingsArea = 0
   let totalDpcLength = 0
-  let dpcWallDepth: number | undefined
+  let dpcWallThickness: number | undefined
   let totalMembraneArea = 0
   let totalTankingArea = 0
   let totalFilletJointLength = 0
   let totalOvertapeLength = 0
-  let totalFloorArea = 0
+  let totalResinTopcoatArea = 0
+  let totalResinPrimerArea = 0
+  let totalResinGripGritArea = 0
   let totalFloorResinFilletLength = 0
   let totalStripFloorArea = 0
   let totalSubFloorArea = 0
@@ -232,11 +234,15 @@ function mapDampSurvey(
     totalStripOutStudWallsArea += dampData.strip_out_stud_walls_area || 0
     totalStripOutCeilingsArea += dampData.strip_out_ceilings_area || 0
 
-    // DPC requirements
+    // DPC requirements — thickness in METRES (workbook E40). Legacy surveys
+    // stored "brick courses"; fall back to courses × 0.215m (one-brick wall)
+    // until the surveyor re-enters the measured thickness.
     if (dampData.dpc_required) {
       totalDpcLength += dampData.dpc_wall_length || 0
-      if (dampData.dpc_wall_depth && !dpcWallDepth) {
-        dpcWallDepth = dampData.dpc_wall_depth
+      const thickness = dampData.dpc_wall_thickness_m
+        ?? (dampData.dpc_wall_depth ? dampData.dpc_wall_depth * 0.215 : undefined)
+      if (thickness && !dpcWallThickness) {
+        dpcWallThickness = thickness
       }
     }
 
@@ -255,10 +261,26 @@ function mapDampSurvey(
       totalFilletJointLength += dampData.fillet_joint_length || 0
     }
 
-    // Floor treatment
-    if (dampData.floor_treatment) {
-      totalFloorArea += dampData.floor_area || 0
+    // Floor treatment — resin components mirror workbook rows 69-72: each an
+    // independent quantity, priced only when > 0 (review 14A). Legacy surveys
+    // (no component fields at all) fall back to TOP-COAT-ONLY at floor_area —
+    // the workbook benchmark's base interpretation of a bare floor area.
+    if (dampData.floor_treatment === 'resin_membrane') {
+      const hasComponentFields = dampData.resin_topcoat_area !== undefined
+        || dampData.resin_primer_area !== undefined
+        || dampData.resin_grip_grit_area !== undefined
+      if (hasComponentFields) {
+        totalResinTopcoatArea += dampData.resin_topcoat_area || 0
+        totalResinPrimerArea += dampData.resin_primer_area || 0
+        totalResinGripGritArea += dampData.resin_grip_grit_area || 0
+      } else {
+        totalResinTopcoatArea += dampData.floor_area || 0
+      }
       totalFloorResinFilletLength += dampData.floor_resin_fillet_length || 0
+    }
+    // Strip-out/sub-floor accompany any floor treatment (incl. new joists);
+    // 'none' must not price anything
+    if (dampData.floor_treatment && dampData.floor_treatment !== 'none') {
       if (dampData.strip_existing_floor) {
         totalStripFloorArea += dampData.strip_floor_area || 0
       }
@@ -319,13 +341,13 @@ function mapDampSurvey(
 
   // === DPC INSTALLATION ===
 
-  if (totalDpcLength > 0 && dpcWallDepth) {
+  if (totalDpcLength > 0 && dpcWallThickness) {
     const dpcInput = createLineInput(
       lookup,
       'dpc_traditional',
       'dpc_injection_traditional',
       totalDpcLength,
-      dpcWallDepth
+      dpcWallThickness // metres — workbook E40
     )
     if (dpcInput) inputs.push(dpcInput)
   }
@@ -391,24 +413,24 @@ function mapDampSurvey(
 
   // === FLOOR RESIN ===
 
-  if (totalFloorArea > 0) {
-    // Primer
-    const primerInput = createLineInput(lookup, 'floor_resin', 'resin_primer_ep40', totalFloorArea)
+  // Workbook rows 69-72: independent components, priced only when quantity > 0
+  // (review 14A — never fan one area out across components)
+  if (totalResinPrimerArea > 0) {
+    const primerInput = createLineInput(lookup, 'floor_resin', 'resin_primer_ep40', totalResinPrimerArea)
     if (primerInput) inputs.push(primerInput)
-
-    // Top coat
-    const topcoatInput = createLineInput(lookup, 'floor_resin', 'resin_topcoat_ep40', totalFloorArea)
+  }
+  if (totalResinTopcoatArea > 0) {
+    const topcoatInput = createLineInput(lookup, 'floor_resin', 'resin_topcoat_ep40', totalResinTopcoatArea)
     if (topcoatInput) inputs.push(topcoatInput)
-
-    // Grip grit
-    const gripInput = createLineInput(lookup, 'floor_resin', 'grip_grit', totalFloorArea)
+  }
+  if (totalResinGripGritArea > 0) {
+    const gripInput = createLineInput(lookup, 'floor_resin', 'grip_grit', totalResinGripGritArea)
     if (gripInput) inputs.push(gripInput)
-
-    // Floor resin fillet joint (separate from wall membrane fillet joint)
-    if (totalFloorResinFilletLength > 0) {
-      const resinFilletInput = createLineInput(lookup, 'floor_resin', 'wall_floor_fillet_resin', totalFloorResinFilletLength)
-      if (resinFilletInput) inputs.push(resinFilletInput)
-    }
+  }
+  // Floor resin fillet joint (separate from wall membrane fillet joint)
+  if (totalFloorResinFilletLength > 0) {
+    const resinFilletInput = createLineInput(lookup, 'floor_resin', 'wall_floor_fillet_resin', totalFloorResinFilletLength)
+    if (resinFilletInput) inputs.push(resinFilletInput)
   }
 
   // === PLASTERING ===

@@ -1,27 +1,38 @@
 {
   "id": "floor-resin-topcoat-40m2",
-  "title": "Review benchmark: floor resin, 40 m² TOP COAT ONLY (no primer, no grip grit)",
-  "source": "Technical review point 14A (Brad Brown / Completed Damp Costing v47). Review-quoted expectations: materials £182.18, labour £98.02, section total £280.20.",
+  "title": "Review benchmark: floor resin, 40 m\u00b2 TOP COAT ONLY (no primer, no grip grit)",
+  "source": "Technical review point 14A (Brad Brown / Completed Damp Costing v47). Review-quoted expectations: materials \u00a3182.18, labour \u00a398.02, section total \u00a3280.20.",
   "workbook": "damp_v48",
   "oracle": {
     "lines": {
       "resin_topcoat": 40
     },
-    "travel": { "distance_miles": 0, "men": 1 }
+    "travel": {
+      "distance_miles": 0,
+      "men": 1
+    }
   },
   "wizard": {
-    "survey_types": ["damp"],
-    "additional_works": { "distance_from_office": 0, "num_men_travelling": 1 },
+    "survey_types": [
+      "damp"
+    ],
+    "additional_works": {
+      "distance_from_office": 0,
+      "num_men_travelling": 1
+    },
     "rooms": [
       {
         "name": "Kitchen",
-        "issues": ["damp"],
+        "issues": [
+          "damp"
+        ],
         "damp": {
           "floor_treatment": "resin_membrane",
-          "floor_area": 40
+          "floor_area": 40,
+          "resin_topcoat_area": 40
         }
       }
     ]
   },
-  "notes": "The approved sheet prices ONLY the components the surveyor fills in — here top coat 40, primer 0, grip grit 0. The platform currently auto-applies all three components from the single floor_area entry (review point 14A); this scenario exists to expose exactly that variance."
+  "notes": "Explicit component path: resin_topcoat_area=40, no primer/grip fields \u2014 mirrors workbook F70-only entry (review 14A benchmark). See brad-brown scenario for the legacy floor_area\u2192topcoat-only fallback."
 }

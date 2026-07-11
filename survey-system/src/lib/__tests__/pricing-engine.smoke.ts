@@ -95,24 +95,24 @@ expect('30 bags — materialTotal', tiered30.materialTotal, 78.00)
 expect('30 bags — labourTotal',   tiered30.labourTotal,   0.00)
 
 // ---------------------------------------------------------------------------
-// CRITICAL-B: dpc_injection (depth=2.5, LM=10)
-// Old (broken) value was ~£320. Fixed value is ~£801 material.
+// CRITICAL-B: dpc_injection — GOLDEN MASTER benchmark (workbook R40; review
+// point 6 / Brad Brown): 18 LM × 0.33 m thickness.
 //
-// Manual calculation:
-//   creamCostPerLM = (13.93/1.15) + (6/2.5 × 4.29) = 12.113 + 10.296 = 22.409/LM
-//   effectiveQty   = 2.5 × 10 = 25
-//   adjCost        = 22.409 × 1.10 × 25 = 616.25
-//   materialTotal  = 616.25 × 1.30      = 801.12
-//   labourHours    = 10 × 2.5 × 0.35   = 8.75
-//   labourTotal    = 8.75 × 30.63 × 2  = 536.03
+// Workbook calculation (Damp Costing v48, hand-validated + oracle-validated):
+//   unitCost      = (13.93/1.15) + (6/18 × 4.29) = 12.113 + 1.43 = 13.543
+//   effectiveQty  = 18 × 0.33 = 5.94
+//   materialTotal = 5.94 × 13.543 × 1.0 wastage × 1.30 = 104.58
+//   labourHours   = 18 × 0.35 = 6.30            (flat per LM)
+//   labourTotal   = 6.30 × 30.63 × 2 = 385.94
+//   lineTotal     = 490.52
 // ---------------------------------------------------------------------------
 
-section('CRITICAL-B — dpc_injection (depth=2.5, LM=10)')
+section('CRITICAL-B — dpc_injection (18 LM × 0.33 m — workbook benchmark £490.52)')
 
 const dpcTemplate: LineTemplate = {
   id: 'test-dpc',
   cost_formula: 'dpc_injection',
-  wastage_factor: 1.10,
+  wastage_factor: 1.0, // workbook applies no wastage on this line
   material_markup: 0.30,
   labour_markup: 1.00,
   formula_params: {
@@ -120,33 +120,25 @@ const dpcTemplate: LineTemplate = {
     cream_divisor: 1.15,
     holes_per_meter: 6,
     drill_cost: 4.29,
-    labour_hours_per_depth: 0.35,
+    labour_hours_per_lm: 0.35,
   },
 }
 
 const dpcResult = calcDpcInjection(
-  { templateId: 'test-dpc', inputQuantity: 10, inputDimension: 2.5 },
+  { templateId: 'test-dpc', inputQuantity: 18, inputDimension: 0.33 },
   dpcTemplate,
   CONFIG,
   MATERIALS,
 )
 
-// Exact expected values (computed analytically above, ±£0.01 tolerance)
-const EXPECTED_DPC_MATERIAL = 801.12
-const EXPECTED_DPC_LABOUR   = 536.03
+// Exact workbook values (review point 6; ±£0.01 tolerance)
+const EXPECTED_DPC_MATERIAL = 104.58
+const EXPECTED_DPC_LABOUR   = 385.94
 
 expect('dpc_injection — materialTotal', dpcResult.materialTotal, EXPECTED_DPC_MATERIAL)
 expect('dpc_injection — labourTotal',   dpcResult.labourTotal,   EXPECTED_DPC_LABOUR)
-expect('dpc_injection — labourHours',   dpcResult.labourHours,   8.75)
-
-// Confirm it is significantly higher than the old broken ~£320
-if (dpcResult.materialTotal > 400) {
-  console.log(`  ✅  Old vs new: £${dpcResult.materialTotal.toFixed(2)} > £400 (old broken value was ~£320)`)
-  passed++
-} else {
-  console.error(`  ❌  DPC material £${dpcResult.materialTotal.toFixed(2)} is not significantly above old ~£320`)
-  failed++
-}
+expect('dpc_injection — labourHours',   dpcResult.labourHours,   6.30)
+expect('dpc_injection — lineTotal',     dpcResult.lineTotal,     490.52)
 
 // ---------------------------------------------------------------------------
 // CRITICAL-D: skip_hire (quantity scaling)

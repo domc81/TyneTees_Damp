@@ -195,7 +195,9 @@ export interface DampRoomData {
   dpc_required: boolean
   dpc_type?: DPCType
   dpc_wall_length?: number // Total linear metres
-  dpc_wall_depth?: number // Brick courses (e.g., 4, 5, 6)
+  dpc_wall_thickness_m?: number // Wall thickness in METRES (workbook Costing E40, free numeric 3dp — e.g. 0.33 for 330mm)
+  /** @deprecated legacy "brick courses" entry from the pre-parity control; mapping falls back to courses × 0.215m. Use dpc_wall_thickness_m. */
+  dpc_wall_depth?: number
 
   // Strip-Out (manual M² inputs — independent of wall measurements)
   strip_out_plaster_area?: number // m² of plaster/render to remove from walls
@@ -212,7 +214,13 @@ export interface DampRoomData {
 
   // Floor Treatment
   floor_treatment?: FloorTreatment
-  floor_area?: number // m²
+  floor_area?: number // m² — room floor measurement
+  // Resin components mirror Damp workbook rows 69-72: independent quantities,
+  // priced only when > 0 (review point 14A). If NONE are set on a legacy
+  // survey, mapping falls back to top-coat-only at floor_area.
+  resin_topcoat_area?: number // m² (workbook F70)
+  resin_primer_area?: number // m² (workbook F69)
+  resin_grip_grit_area?: number // m² (workbook F72)
   floor_resin_fillet_length?: number // Linear metres of fillet joint for floor resin
   strip_existing_floor?: boolean
   strip_floor_area?: number // m²
