@@ -228,7 +228,9 @@
       "row": 52,
       "input": "none",
       "label": "Technoseal Lm",
-      "line_keys": null,
+      "line_keys": [
+        "technoseal"
+      ],
       "section": "damp_treatment",
       "derived": "F52 = F55 (mirrors overtape length)"
     },

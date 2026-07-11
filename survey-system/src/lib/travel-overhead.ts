@@ -69,24 +69,26 @@ export function calculateTravelOverhead(
     vehicleCostPerMile,
   } = input
 
-  // No distance = no travel costs
+  // Default to at least 1 man — a job with 0 crew still has someone travelling
+  const effectiveMen = Math.max(1, numMenTravelling || 1)
+
+  // Working days = ROUNDUP(total_hours / 6.5 / num_men) — workbook R146.
+  // Computed regardless of distance: the workbook derives days from labour
+  // hours alone, and days feed time-on-site outputs even when travel is free.
+  const labourDays = Math.ceil(
+    totalLabourHours / PRODUCTIVE_HOURS_PER_DAY / effectiveMen
+  )
+
+  // No distance = no travel costs (but days on site still apply)
   if (distanceFromOffice <= 0) {
     return {
-      labourDays: 0,
+      labourDays,
       travelHours: 0,
       travelLabourCost: 0,
       vehicleMileageCost: 0,
       totalOverheadCost: 0,
     }
   }
-
-  // Default to at least 1 man — a job with 0 crew still has someone travelling
-  const effectiveMen = Math.max(1, numMenTravelling || 1)
-
-  // Working days = ROUNDUP(total_hours / 6.5 / num_men)
-  const labourDays = Math.ceil(
-    totalLabourHours / PRODUCTIVE_HOURS_PER_DAY / effectiveMen
-  )
 
   // Round trip miles
   const roundTripMiles = distanceFromOffice * 2

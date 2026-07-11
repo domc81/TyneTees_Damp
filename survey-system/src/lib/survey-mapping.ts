@@ -346,13 +346,17 @@ function mapDampSurvey(
     const plugsInput = createLineInput(lookup, 'wall_membrane', 'membrane_plugs', totalMembraneArea)
     if (plugsInput) inputs.push(plugsInput)
 
-    // Sealing tape
-    const sealingTapeInput = createLineInput(lookup, 'wall_membrane', 'sealing_tape', totalMembraneArea)
+    // Sealing tape: LM = membrane area / 2.5 (workbook R51: F51 = SUM(F44:F48)/2.5)
+    const sealingTapeInput = createLineInput(lookup, 'wall_membrane', 'sealing_tape', totalMembraneArea / 2.5)
     if (sealingTapeInput) inputs.push(sealingTapeInput)
 
     // Overtape (joint sealing tape across rooms)
     const overtapeInput = createLineInput(lookup, 'wall_membrane', 'overtape', totalOvertapeLength)
     if (overtapeInput) inputs.push(overtapeInput)
+
+    // Technoseal mirrors the overtape length (workbook R52: F52 = F55)
+    const technosealInput = createLineInput(lookup, 'wall_membrane', 'technoseal', totalOvertapeLength)
+    if (technosealInput) inputs.push(technosealInput)
 
     // Fillet joint
     const filletInput = createLineInput(lookup, 'wall_membrane', 'wall_floor_fillet_joint', totalFilletJointLength)
@@ -1263,8 +1267,9 @@ function calcDampDebrisBags(rooms: SurveyRoomRow[]): number {
     totalStripOutArea += dampData.sub_floor_area || 0
   }
 
-  // 2 bags per m² — from Damp workbook v48, row R34 (bag_and_cart formula)
-  return totalStripOutArea > 0 ? Math.ceil(totalStripOutArea * 2) : 0
+  // 2 bags per m² — Damp workbook R34: F34 = SUM(F29:F33)*2, NO rounding
+  // (the workbook prices fractional bags; ceil() overcharged vs golden master)
+  return totalStripOutArea > 0 ? totalStripOutArea * 2 : 0
 }
 
 /**
@@ -1282,8 +1287,9 @@ function calcTimberDebrisBags(rooms: SurveyRoomRow[]): number {
     totalFlooringArea += timberData.flooring_area || 0
   }
 
-  // 2 bags per m² — from Timber workbook v33 (bag_and_cart formula)
-  return totalFlooringArea > 0 ? Math.ceil(totalFlooringArea * 2) : 0
+  // 2 bags per m² — Timber workbook R37: F37 = SUM(F29:F34)*2, NO rounding
+  // (matches damp/woodworm; the workbooks price fractional bags)
+  return totalFlooringArea > 0 ? totalFlooringArea * 2 : 0
 }
 
 // =============================================================================
