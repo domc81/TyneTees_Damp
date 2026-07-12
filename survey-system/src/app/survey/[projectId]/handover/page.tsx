@@ -113,7 +113,7 @@ function AddToCFCheckbox({ checked, onChange }: { checked: boolean; onChange: (v
 function HandoverContent() {
   const params = useParams()
   const projectId = params.projectId as string
-  const { goBack } = useSmartBack()
+  const goBack = useSmartBack(`/surveys/${projectId}`)
   const { profile } = useAuth()
 
   const [loading, setLoading] = useState(true)
