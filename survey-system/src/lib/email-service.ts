@@ -47,6 +47,9 @@ function createServiceRoleClient() {
   if (!url || !serviceKey) return null
   return createSSRClient(url, serviceKey, {
     cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 

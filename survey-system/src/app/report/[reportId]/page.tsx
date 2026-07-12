@@ -76,6 +76,11 @@ function createServiceClient() {
       set: () => {},
       remove: () => {},
     },
+    // generateMetadata fetches don't inherit force-dynamic's no-store default,
+    // so without this the Data Cache can serve stale report/profile data.
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 

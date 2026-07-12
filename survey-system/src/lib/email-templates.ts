@@ -27,8 +27,11 @@ export interface CompanyBranding {
   appUrl: string
 }
 
-// Module-level cache — per Node process (resets on deploy), fine for branding data
+// Module-level cache — short TTL so profile edits reach outgoing emails within
+// a minute while a batch send still only hits the DB once.
+const BRANDING_CACHE_TTL_MS = 60_000
 let _brandingCache: CompanyBranding | null = null
+let _brandingCachedAt = 0
 
 function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -38,6 +41,11 @@ function createServiceRoleClient() {
   }
   return createSSRClient(url, serviceKey, {
     cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+    // Branding must always be live — never let the Next Data Cache serve
+    // a stale company_profile row (see lib/company-profile.ts).
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 
@@ -47,7 +55,9 @@ function createServiceRoleClient() {
  * Lightweight in-process cache so a batch of emails doesn't hammer the DB.
  */
 export async function getCompanyBranding(): Promise<CompanyBranding> {
-  if (_brandingCache) return _brandingCache
+  if (_brandingCache && Date.now() - _brandingCachedAt < BRANDING_CACHE_TTL_MS) {
+    return _brandingCache
+  }
 
   const supabase = createServiceRoleClient()
   const { data } = await supabase
@@ -69,6 +79,7 @@ export async function getCompanyBranding(): Promise<CompanyBranding> {
     logoUrl: profile?.logo_url ?? null,
     appUrl: (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, ''),
   }
+  _brandingCachedAt = Date.now()
 
   return _brandingCache
 }

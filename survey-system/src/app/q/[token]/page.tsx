@@ -106,6 +106,11 @@ function createServiceClient() {
       set: () => {},
       remove: () => {},
     },
+    // Quotation status + company contact must stay live — never let the Next
+    // Data Cache serve a stale row (see lib/company-profile.ts).
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 

@@ -23,6 +23,11 @@ function createServiceRoleClient() {
   }
   return createSSRClient(url, serviceKey, {
     cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+    // Email config must always be live — never let the Next Data Cache serve
+    // a stale platform_settings/company_profile row (see lib/company-profile.ts).
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 

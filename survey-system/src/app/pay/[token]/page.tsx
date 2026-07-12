@@ -23,7 +23,14 @@ async function getPaymentData(token: string) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
+    {
+      cookies: { getAll: () => [], setAll: () => {} },
+      // Keep payment status + company contact live — never let the Next Data
+      // Cache serve a stale row (see lib/company-profile.ts).
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
+    }
   )
 
   const { data: payment, error } = await supabase

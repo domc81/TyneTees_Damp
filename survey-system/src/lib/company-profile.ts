@@ -19,6 +19,12 @@ function createServiceRoleClient() {
   }
   return createSSRClient(url, serviceKey, {
     cookies: { get: () => undefined, set: () => {}, remove: () => {} },
+    // Company details must always be live: fetches made during generateMetadata
+    // don't inherit the page's force-dynamic no-store default, so without this
+    // the Next Data Cache can serve a stale profile indefinitely.
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   })
 }
 
