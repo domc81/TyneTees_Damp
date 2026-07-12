@@ -1,7 +1,5 @@
 'use client'
 
-import { toast } from 'sonner'
-
 // =============================================================================
 // Public Quotation — Client Components
 //
@@ -49,56 +47,25 @@ export function QuotationViewTracker({ token }: { token: string }) {
 
 export function QuotationActions({
   token,
-  quotationNumber,
   className,
 }: {
   token: string
-  quotationNumber: string
+  /** Unused — the PDF filename comes from the route's Content-Disposition header */
+  quotationNumber?: string
   className?: string
 }) {
-  const [isDownloading, setIsDownloading] = useState(false)
-
-  async function handleDownload() {
-    setIsDownloading(true)
-    try {
-      const res = await fetch(`/api/q/${token}/pdf`)
-      if (!res.ok) throw new Error(`PDF generation failed (${res.status})`)
-
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${quotationNumber}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Could not generate the PDF. Please use the Print option, or contact us directly.')
-    } finally {
-      setIsDownloading(false)
-    }
-  }
-
+  // Download is a plain anchor so it works with JavaScript disabled or a
+  // broken hydration — the /api/q/[token]/pdf route sets Content-Disposition
+  // with the correct filename (review pt 2: PDF must always be reachable).
   return (
     <div className={`flex items-center gap-3 ${className ?? ''}`}>
-      <button
-        onClick={handleDownload}
-        disabled={isDownloading}
-        className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1E3A5F] text-white text-sm font-semibold rounded-lg hover:bg-[#2A4F7F] active:bg-[#163050] transition-colors disabled:opacity-50 disabled:cursor-not-allowed select-none"
+      <a
+        href={`/api/q/${token}/pdf`}
+        className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1E3A5F] text-white text-sm font-semibold rounded-lg hover:bg-[#2A4F7F] active:bg-[#163050] transition-colors select-none"
       >
-        {isDownloading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Generating…</span>
-          </>
-        ) : (
-          <>
-            <Download className="w-4 h-4" />
-            <span>Download PDF</span>
-          </>
-        )}
-      </button>
+        <Download className="w-4 h-4" />
+        <span>Download PDF</span>
+      </a>
 
       <button
         onClick={() => window.print()}

@@ -327,6 +327,20 @@ export default async function PublicQuotationPage({
         </div>
       </header>
 
+      {/* ── No-JS guidance — the document + PDF link work without JavaScript ── */}
+      <noscript>
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 text-sm text-blue-800">
+            Your browser has JavaScript turned off. You can still read this quotation
+            and download it as a PDF. To accept or decline online, please enable
+            JavaScript — or call us on{' '}
+            <a href={`tel:${(company.phone || '').replace(/\s/g, '')}`} className="underline font-medium">
+              {company.phone}
+            </a>.
+          </div>
+        </div>
+      </noscript>
+
       {/* ── Expiry banner ────────────────────────────────────────────────── */}
       {isExpired && (
         <div className="quotation-expiry-banner bg-amber-50 border-b border-amber-200">
