@@ -10,6 +10,7 @@ import {
   logEnquiryActivity,
   createSurveyFromEnquiry,
   createEnquiry,
+  createCustomer,
   getCustomers,
   updateSurvey,
   markEnquiryWon,
@@ -746,7 +747,17 @@ export default function EnquiryDrawer({
     reported_problem: '',
     notes: '',
     priority: 'medium' as EnquiryPriority,
+    // Correspondence address (landlord/agent case, review pt 10) — used only
+    // when corr_same_as_site is false
+    corr_address_1: '',
+    corr_address_2: '',
+    corr_city: '',
+    corr_county: '',
+    corr_postcode: '',
   })
+  // Default on: admin never types an address twice; unticking reveals the
+  // separate correspondence address fields
+  const [corrSameAsSite, setCorrSameAsSite] = useState(true)
   const [createSubmitting, setCreateSubmitting] = useState(false)
   // Existing-customer link (repeat customers — landlords, agents, second surveys)
   const [existingCustomers, setExistingCustomers] = useState<Customer[]>([])
@@ -850,8 +861,29 @@ export default function EnquiryDrawer({
     setCreateError(null)
 
     try {
+      // Landlord/agent case (review pt 10): a different correspondence address
+      // means we create the customer NOW with their own address and link the
+      // enquiry to it — otherwise conversion auto-creates the customer with the
+      // site address copied (addresses identical, nothing typed twice).
+      let correspondenceCustomerId: string | undefined
+      if (!linkedCreateCustomer && !corrSameAsSite && createForm.corr_address_1.trim()) {
+        const nameParts = createForm.client_name.trim().split(/\s+/)
+        const created = await createCustomer({
+          first_name: nameParts[0] || 'Unknown',
+          last_name: nameParts.slice(1).join(' '),
+          email: createForm.client_email.trim() || `no-email-${Date.now().toString(36)}@placeholder.local`,
+          phone: createForm.client_phone.trim() || '',
+          address_line1: createForm.corr_address_1.trim(),
+          address_line2: createForm.corr_address_2.trim() || undefined,
+          city: createForm.corr_city.trim() || '',
+          county: createForm.corr_county.trim() || undefined,
+          postcode: createForm.corr_postcode.trim().toUpperCase() || '',
+        })
+        correspondenceCustomerId = created.id
+      }
+
       const newEnquiry = await createEnquiry({
-        customer_id: linkedCreateCustomer?.id,
+        customer_id: linkedCreateCustomer?.id ?? correspondenceCustomerId,
         client_name: createForm.client_name.trim(),
         client_email: createForm.client_email.trim() || undefined,
         client_phone: createForm.client_phone.trim() || undefined,
@@ -1774,6 +1806,84 @@ export default function EnquiryDrawer({
                     )}
                   </div>
                 </div>
+
+                {/* Correspondence address — landlord/agent case (review pt 10).
+                    Hidden when an existing customer is linked (their record
+                    already carries the correspondence address). */}
+                {!linkedCreateCustomer && (
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={corrSameAsSite}
+                        onChange={e => setCorrSameAsSite(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/30 bg-white/5 accent-brand-500"
+                      />
+                      <span className="text-sm text-white/70">Customer address same as site address</span>
+                    </label>
+
+                    {!corrSameAsSite && (
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                        <p className="text-xs text-white/50">
+                          Correspondence address (landlord / agent) — the survey report and
+                          quotation go to this customer, works happen at the site address.
+                        </p>
+                        <div>
+                          <label className="text-xs text-white/40 block mb-1">Correspondence Address Line 1</label>
+                          <input
+                            type="text"
+                            value={createForm.corr_address_1}
+                            onChange={e => setCreateForm(f => ({ ...f, corr_address_1: e.target.value }))}
+                            className="input-field w-full text-sm"
+                            placeholder="Enter correspondence address"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/40 block mb-1">Address Line 2</label>
+                          <input
+                            type="text"
+                            value={createForm.corr_address_2}
+                            onChange={e => setCreateForm(f => ({ ...f, corr_address_2: e.target.value }))}
+                            className="input-field w-full text-sm"
+                            placeholder="Address line 2"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-xs text-white/40 block mb-1">City</label>
+                            <input
+                              type="text"
+                              value={createForm.corr_city}
+                              onChange={e => setCreateForm(f => ({ ...f, corr_city: e.target.value }))}
+                              className="input-field w-full text-sm"
+                              placeholder="City"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-white/40 block mb-1">County</label>
+                            <input
+                              type="text"
+                              value={createForm.corr_county}
+                              onChange={e => setCreateForm(f => ({ ...f, corr_county: e.target.value }))}
+                              className="input-field w-full text-sm"
+                              placeholder="County"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-white/40 block mb-1">Postcode</label>
+                            <input
+                              type="text"
+                              value={createForm.corr_postcode}
+                              onChange={e => setCreateForm(f => ({ ...f, corr_postcode: e.target.value }))}
+                              className="input-field w-full text-sm"
+                              placeholder="Postcode"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Reported Problem */}
                 <div>

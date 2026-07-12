@@ -7,7 +7,7 @@
 // durable ops that the sync engine flushes to the server when online.
 // =============================================================================
 
-import { getDB, isOfflineDbAvailable, type LocalSurvey, type LocalPhoto } from './db'
+import { getDB, isOfflineDbAvailable, type LocalSurvey, type LocalPhoto, type SurveyContext } from './db'
 import { enqueue } from './outbox'
 import { isOnline, timeoutSignal } from './connectivity'
 import { requestFlush } from './sync-engine'
@@ -33,7 +33,21 @@ export interface WizardLoadResult {
   photos: SurveyPhoto[]
   projectNumber: string | null
   enquiryId: string | null
+  /** Read-only job context for the wizard header (review pt 10) */
+  surveyContext: SurveyContext | null
 }
+
+export type { SurveyContext }
+
+/** Join address parts into a display string; null when nothing present. */
+function formatAddress(
+  parts: Array<string | null | undefined>
+): string | null {
+  const clean = parts.map((p) => (p ?? '').trim()).filter(Boolean)
+  return clean.length ? clean.join('\n') : null
+}
+
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null)
 
 const LOAD_TIMEOUT_MS = 8_000
 
@@ -111,6 +125,7 @@ async function fromMirror(mirror: LocalSurvey): Promise<WizardLoadResult> {
     photos: await readLocalPhotos(mirror.surveyId),
     projectNumber: mirror.projectNumber,
     enquiryId: mirror.enquiryId,
+    surveyContext: mirror.surveyContext ?? null,
   }
 }
 
@@ -123,18 +138,102 @@ async function fetchFromServer(surveyId: string): Promise<{
   projectNumber: string | null
   enquiryId: string | null
   surveyCompleted: boolean
+  surveyContext: SurveyContext | null
 }> {
   const supabase = getSupabase()
   if (!supabase) throw new Error('Supabase client not available')
 
-  // Canary query: confirms reachability + fetches the meta the mirror needs.
+  // Canary query: confirms reachability + fetches the meta the mirror needs,
+  // including the read-only header context (review pt 10). The customer join
+  // supplies the correspondence address for the landlord/agent case.
   const { data: row, error } = await supabase
     .from('surveys')
-    .select('project_number, enquiry_id, survey_completed')
+    .select(
+      'project_number, enquiry_id, survey_completed, client_name, notes, ' +
+      'reported_problem, reported_problem_override, ' +
+      'site_address, site_address_line2, site_city, site_county, site_postcode, ' +
+      'customer:customers(address_line1, address_line2, city, county, postcode)'
+    )
     .eq('id', surveyId)
     .abortSignal(timeoutSignal(LOAD_TIMEOUT_MS))
     .single()
   if (error) throw new Error(`survey meta fetch failed: ${error.message}`)
+
+  const meta = row as unknown as {
+    project_number: string | null
+    enquiry_id: string | null
+    survey_completed: boolean
+    client_name: string | null
+    notes: string | null
+    reported_problem: string | null
+    reported_problem_override: string | null
+    site_address: string | null
+    site_address_line2: string | null
+    site_city: string | null
+    site_county: string | null
+    site_postcode: string | null
+    customer: {
+      address_line1: string | null
+      address_line2: string | null
+      city: string | null
+      county: string | null
+      postcode: string | null
+    } | null
+  }
+
+  // Booking context is best-effort — a failed booking lookup must never block
+  // the wizard load.
+  let booking: {
+    booking_date: string
+    start_time: string
+    end_time: string
+    notes?: string | null
+    surveyor_name?: string
+  } | null = null
+  try {
+    const { getBookingBySurveyId } = await import('@/lib/calendar-data')
+    booking = await getBookingBySurveyId(surveyId)
+  } catch {
+    booking = null
+  }
+
+  const siteAddress = formatAddress([
+    meta.site_address,
+    meta.site_address_line2,
+    meta.site_city,
+    meta.site_county,
+    meta.site_postcode,
+  ])
+  const correspondenceRaw = meta.customer
+    ? formatAddress([
+        meta.customer.address_line1,
+        meta.customer.address_line2,
+        meta.customer.city,
+        meta.customer.county,
+        meta.customer.postcode,
+      ])
+    : null
+  // Only surface the correspondence address when it genuinely differs from the
+  // site address (auto-created customers copy the site address verbatim).
+  const normalise = (a: string | null) =>
+    (a ?? '').toLowerCase().replace(/[\s,]+/g, ' ').trim()
+  const correspondenceAddress =
+    correspondenceRaw && normalise(correspondenceRaw) !== normalise(siteAddress)
+      ? correspondenceRaw
+      : null
+
+  const surveyContext: SurveyContext = {
+    clientName: meta.client_name ?? null,
+    siteAddress,
+    correspondenceAddress,
+    reportedProblem: meta.reported_problem_override || meta.reported_problem || null,
+    bookingDate: booking?.booking_date ?? null,
+    bookingStart: hhmm(booking?.start_time),
+    bookingEnd: hhmm(booking?.end_time),
+    surveyorName: booking?.surveyor_name ?? null,
+    bookingNotes: booking?.notes ?? null,
+    surveyNotes: meta.notes ?? null,
+  }
 
   const { wizardData, rooms } = await loadWizardData(surveyId)
   const photos = await loadSurveyPhotos(surveyId)
@@ -143,9 +242,10 @@ async function fetchFromServer(surveyId: string): Promise<{
     wizardData,
     rooms,
     photos,
-    projectNumber: (row as { project_number: string | null }).project_number ?? null,
-    enquiryId: (row as { enquiry_id: string | null }).enquiry_id ?? null,
-    surveyCompleted: !!(row as { survey_completed: boolean }).survey_completed,
+    projectNumber: meta.project_number ?? null,
+    enquiryId: meta.enquiry_id ?? null,
+    surveyCompleted: !!meta.survey_completed,
+    surveyContext,
   }
 }
 
@@ -162,6 +262,7 @@ async function upsertMirrorFromServer(
       surveyId,
       projectNumber: fresh.projectNumber,
       enquiryId: fresh.enquiryId,
+      surveyContext: fresh.surveyContext,
       wizardData: stripPhotos(fresh.wizardData),
       rooms: fresh.rooms,
       surveyCompleted: fresh.surveyCompleted,
@@ -190,6 +291,7 @@ export async function loadWizardDataLocalFirst(surveyId: string): Promise<Wizard
       photos: fresh.photos,
       projectNumber: fresh.projectNumber,
       enquiryId: fresh.enquiryId,
+      surveyContext: fresh.surveyContext,
     }
   }
 
@@ -211,6 +313,7 @@ export async function loadWizardDataLocalFirst(surveyId: string): Promise<Wizard
         photos: sortPhotos(fresh.photos),
         projectNumber: fresh.projectNumber,
         enquiryId: fresh.enquiryId,
+        surveyContext: fresh.surveyContext,
       }
     } catch (err) {
       if (mirror) return fromMirror(mirror)
@@ -285,6 +388,7 @@ export async function saveWizardLocal(
       surveyId,
       projectNumber: existing?.projectNumber ?? null,
       enquiryId: existing?.enquiryId ?? null,
+      surveyContext: existing?.surveyContext ?? null,
       wizardData: strippedWizard,
       rooms,
       surveyCompleted: !!wizardData.wizard_completed || existing?.surveyCompleted || false,

@@ -30,6 +30,8 @@ import {
 } from '@/lib/offline/local-data'
 import { syncNow, onRemoteIdsMapped } from '@/lib/offline/sync-engine'
 import { onAudioTranscribed, deepReplaceString } from '@/lib/offline/audio-offline'
+import { SurveyContextHeader } from '@/components/wizard/SurveyContextHeader'
+import type { SurveyContext } from '@/lib/offline/local-data'
 import { SyncStatusPill } from '@/components/offline/SyncStatusPill'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import Layout from '@/components/layout'
@@ -55,6 +57,7 @@ export default function SurveyWizardPage() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
+  const [surveyContext, setSurveyContext] = useState<SurveyContext | null>(null)
   const [completed, setCompleted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -100,13 +103,14 @@ export default function SurveyWizardPage() {
       setNotAvailableOffline(false)
 
       try {
-        const { wizardData, rooms, photos, projectNumber, enquiryId } =
+        const { wizardData, rooms, photos, projectNumber, enquiryId, surveyContext } =
           await loadWizardDataLocalFirst(projectId)
 
         setWizardData(wizardData)
         setRooms(rooms)
         setPhotos(photos)
         setProjectNumber(projectNumber)
+        setSurveyContext(surveyContext)
         setCurrentStep(wizardData.wizard_step || 0)
         enquiryIdRef.current = enquiryId
       } catch (err) {
@@ -523,6 +527,14 @@ export default function SurveyWizardPage() {
               </button>
             </div>
           </div>
+
+          {/* Job context — client, addresses, booking, admin notes (review pt 10).
+              Expanded on the first step; slim strip on later steps. */}
+          <SurveyContextHeader
+            projectNumber={projectNumber}
+            context={surveyContext}
+            defaultCollapsed={(wizardData.wizard_step || 0) > 0}
+          />
 
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-500/10 border border-red-400/30">

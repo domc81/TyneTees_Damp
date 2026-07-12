@@ -1177,7 +1177,7 @@ export async function getSurvey(id: string): Promise<Survey | null> {
 
   const { data, error } = await supabase
     .from('surveys')
-    .select('*, customer:customers(id, first_name, last_name, email, phone)')
+    .select('*, customer:customers(id, first_name, last_name, email, phone, address_line1, address_line2, city, county, postcode)')
     .eq('id', id)
     .single()
 

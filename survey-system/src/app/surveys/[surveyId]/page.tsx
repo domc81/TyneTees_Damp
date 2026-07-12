@@ -519,6 +519,21 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                 <InfoRow label="Name" value={survey.client_name || '-'} />
                 <InfoRow label="Email" value={survey.customer?.email || '-'} />
                 <InfoRow label="Phone" value={survey.customer?.phone || '-'} />
+                {(() => {
+                  // Correspondence address — shown only when it differs from
+                  // the site address (landlord/agent case, review pt 10)
+                  const c = survey.customer
+                  if (!c?.address_line1) return null
+                  const corr = [c.address_line1, c.address_line2, c.city, c.county, c.postcode]
+                    .map(p => (p ?? '').trim()).filter(Boolean).join(', ')
+                  const site = [survey.site_address, survey.site_address_line2, survey.site_city, survey.site_county, survey.site_postcode]
+                    .map(p => (p ?? '').trim()).filter(Boolean).join(', ')
+                  const norm = (a: string) => a.toLowerCase().replace(/[\s,]+/g, ' ').trim()
+                  if (norm(corr) === norm(site)) return null
+                  return (
+                    <InfoRow label="Correspondence address" value={corr} />
+                  )
+                })()}
               </div>
             </div>
 
@@ -591,6 +606,12 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                     {survey.notes || 'No notes added.'}
                   </p>
                 </div>
+                {booking?.notes && booking.notes.trim() !== (survey.notes || '').trim() && (
+                  <div>
+                    <p className="text-sm text-white/50 mb-1">Booking Notes (internal)</p>
+                    <p className="text-white/80 whitespace-pre-line">{booking.notes}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

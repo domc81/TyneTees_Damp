@@ -13,11 +13,32 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { SurveyWizardData, SurveyRoomRow } from '@/types/survey-wizard.types'
 import type { SurveyPhoto } from '@/types/survey-photo.types'
 
+/** Read-only job context shown in the wizard header (review pt 10).
+ *  Snapshotted at mirror time, NEVER synced back — lives alongside (not
+ *  inside) wizardData so the survey_data RMW merge is untouched. */
+export interface SurveyContext {
+  clientName: string | null
+  /** Formatted site address (multi-line, \n separated) */
+  siteAddress: string | null
+  /** Formatted correspondence address; null when unknown or identical to site */
+  correspondenceAddress: string | null
+  reportedProblem: string | null
+  bookingDate: string | null // YYYY-MM-DD
+  bookingStart: string | null // HH:MM
+  bookingEnd: string | null // HH:MM
+  surveyorName: string | null
+  /** Admin/booking notes (survey_bookings.notes) — internal, never in reports */
+  bookingNotes: string | null
+  /** surveys.notes — office notes captured at lead/booking time */
+  surveyNotes: string | null
+}
+
 /** Mirror of one survey, locally authoritative while pending ops exist. */
 export interface LocalSurvey {
   surveyId: string // pk — surveys.id
   projectNumber: string | null
   enquiryId: string | null // captured at mirror time; needed for offline completion
+  surveyContext?: SurveyContext | null // read-only header context (review pt 10)
   wizardData: SurveyWizardData // NEVER contains the `photos` key (stripped on write)
   rooms: SurveyRoomRow[] // complete array; temp ids keep `room-` prefix until flushed
   surveyCompleted: boolean
