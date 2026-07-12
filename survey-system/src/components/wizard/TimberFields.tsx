@@ -1150,7 +1150,7 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-white/70 mb-2">
-              Warmline Wall IWI (m²)
+              Warmline DC — Internal Wall Insulation (m²)
             </label>
             <input
               type="number"

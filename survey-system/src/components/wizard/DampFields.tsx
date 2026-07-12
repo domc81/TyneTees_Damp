@@ -510,6 +510,27 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
               </div>
             </div>
 
+            {/* Warmline DC — first-class treatment option (review pt 4). Standalone or
+                alongside membrane/tanking, so an independent area input rather than a
+                fourth mutually-exclusive Treatment Type button. */}
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <label className="block text-sm font-medium text-white mb-1.5">
+                Warmline DC — Internal Wall Insulation (m²)
+              </label>
+              <input
+                type="number"
+                value={data.warmline_insulation_area || ''}
+                onChange={(e) => handleChange('warmline_insulation_area', parseFloat(e.target.value) || 0)}
+                className="input-field"
+                step="0.1"
+                min="0"
+                placeholder="Wall area to insulate"
+              />
+              <p className="mt-1 text-xs text-white/50">
+                Thin internal wall insulation. Can be specified on its own or alongside membrane/tanking.
+              </p>
+            </div>
+
             {/* Membrane-specific fields */}
             {data.wall_treatment === 'membrane' && (
               <div className="space-y-3">
@@ -1216,25 +1237,8 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
               </div>
             </div>
 
-            {(data.wall_treatment === 'membrane' || data.wall_treatment === 'tanking') && (
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">
-                  Warmline Internal Wall Insulation (m²)
-                </label>
-                <input
-                  type="number"
-                  value={data.warmline_insulation_area || ''}
-                  onChange={(e) => handleChange('warmline_insulation_area', parseFloat(e.target.value) || 0)}
-                  className="input-field"
-                  step="0.1"
-                  min="0"
-                  placeholder="Wall area needing Warmline IWI"
-                />
-                <p className="mt-1 text-xs text-white/50">
-                  Applied to treated walls after membrane/tanking installation
-                </p>
-              </div>
-            )}
+            {/* Warmline moved to the Wall Treatment section (review pt 4) — it is a
+                treatment option in its own right, not a plastering finish. */}
           </div>
         )}
       </div>

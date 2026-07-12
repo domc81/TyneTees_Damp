@@ -395,6 +395,22 @@ const METHODOLOGY_TANKING: TreatmentMethodology = {
   ],
 }
 
+// Review pt 4 — Warmline DC must generate report wording like any other wall treatment.
+// Draft wording pending Steven's sign-off; steps mirror the tone of the other methodologies.
+const METHODOLOGY_WARMLINE: TreatmentMethodology = {
+  id: 'warmline_iwi',
+  title: 'Warmline Internal Wall Insulation (Warmline DC)',
+  intro:
+    'Where Warmline internal wall insulation has been specified, the following treatment sequence will be followed:',
+  steps: [
+    'Prepare wall surfaces — remove wall coverings and any loose or friable material to leave a clean, sound substrate',
+    'Apply the manufacturer-approved adhesive to the prepared wall surface',
+    'Bond the Warmline thermal insulation lining to the wall with close-butted joints, installed to the manufacturers recommended specification',
+    'Fill and finish all joints to leave a continuous, even surface ready for the specified plaster finish or decoration',
+    'Remove and dispose of all arising waste materials via licensed carrier',
+  ],
+}
+
 const METHODOLOGY_DPC_INJECTION: TreatmentMethodology = {
   id: 'dpc_injection',
   title: 'Chemical Damp Proof Course Injection',
@@ -655,9 +671,20 @@ function buildTreatmentMethodologyContent(
       (r.room_data as any)?.damp?.dpc_required === true &&
       (r.room_data as any)?.damp?.dpc_type === 'traditional'
   )
+  // Warmline is independent of wall_treatment — it can be the sole treatment
+  // or sit alongside membrane/tanking (review pt 4)
+  const hasWarmline =
+    dampRooms.some(
+      (r) => (((r.room_data as any)?.damp?.warmline_insulation_area as number) || 0) > 0
+    ) ||
+    timberRooms.some(
+      (r) =>
+        (((r.room_data?.timber_decay as TimberRoomData)?.warmline_wall_area as number) || 0) > 0
+    )
 
   if (hasMembraneWalls) methodologies.push(METHODOLOGY_MEMBRANE)
   if (hasTankingWalls) methodologies.push(METHODOLOGY_TANKING)
+  if (hasWarmline) methodologies.push(METHODOLOGY_WARMLINE)
   if (hasDpcInjection) methodologies.push(METHODOLOGY_DPC_INJECTION)
 
   // Timber: check fungal findings
@@ -909,8 +936,17 @@ export async function generateReport(
       urgency: roomUrgency,
     }
 
-    if (dampData && walls.length > 0) {
-      roomData.treatment_type = getTreatmentLabel(dampData.wall_treatment)
+    // Warmline composes with membrane/tanking and can also be the sole treatment (review pt 4)
+    const warmlineSpecified = ((dampData?.warmline_insulation_area as number) || 0) > 0
+    if (dampData && (walls.length > 0 || warmlineSpecified)) {
+      const code = dampData.wall_treatment
+      if (warmlineSpecified && (code === 'membrane' || code === 'tanking')) {
+        roomData.treatment_type = `${getTreatmentLabel(code)} + Warmline internal wall insulation`
+      } else if (warmlineSpecified) {
+        roomData.treatment_type = 'Warmline internal wall insulation'
+      } else {
+        roomData.treatment_type = getTreatmentLabel(code)
+      }
     }
 
     // b. CONDENSATION data
@@ -1037,6 +1073,9 @@ export async function generateReport(
           `- ${w.wall_position}: ${w.treatment_area_length}m × ${w.treatment_area_height}m (${w.treatment_area_m2}m²), Treatment: ${w.treatment_type}`
         )
       }
+    }
+    if (warmlineSpecified) {
+      contextLines.push('Warmline DC internal wall insulation specified for this room')
     }
     // Condensation context
     if (room.issues_identified.includes('condensation')) {
@@ -1766,6 +1805,15 @@ export async function generateReport(
           items.push({ number: scopeItemNumber++, description: `Apply ${getTreatmentLabel(treatmentCode)} to affected walls`, urgency: 'high', area: areaStr })
         }
       }
+      // Warmline DC — independent of wall_treatment; sole treatment or alongside membrane/tanking (review pt 4)
+      if (((dampData?.warmline_insulation_area as number) || 0) > 0) {
+        items.push({
+          number: scopeItemNumber++,
+          description: 'Install Warmline DC internal wall insulation system to the specified walls',
+          urgency: 'high',
+          area: `${(dampData.warmline_insulation_area as number).toFixed(1)}m²`,
+        })
+      }
     }
 
     // --- CONDENSATION WORK ITEMS ---
@@ -1816,6 +1864,11 @@ export async function generateReport(
         if (timberData.ceiling_affected && (timberData.ceiling_area || 0) > 0) {
           const area = `${(timberData.ceiling_area as number).toFixed(1)}m²`
           items.push({ number: scopeItemNumber++, description: 'Renew ceiling to affected area', urgency: 'medium', area })
+        }
+        // Warmline DC wall IWI — timber workbook R73 (review pt 4)
+        if ((timberData.warmline_wall_area || 0) > 0) {
+          const area = `${(timberData.warmline_wall_area as number).toFixed(1)}m²`
+          items.push({ number: scopeItemNumber++, description: 'Install Warmline DC internal wall insulation system to the specified walls', urgency: 'medium', area })
         }
       }
     }
@@ -2189,6 +2242,9 @@ export async function regenerateSection(
           `- ${wall.name || 'Wall'}: ${length}m × ${height}m (${area.toFixed(1)}m²), Treatment: ${getTreatmentLabel(treatmentCode)}`
         )
       }
+    }
+    if (((dampData?.warmline_insulation_area as number) || 0) > 0) {
+      lines.push('Warmline DC internal wall insulation specified for this room')
     }
     if (room.issues_identified.includes('condensation')) {
       const condData = room.room_data?.condensation as CondensationRoomData | undefined

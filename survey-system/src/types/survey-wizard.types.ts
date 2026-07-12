@@ -280,7 +280,7 @@ export interface DampRoomData {
   stud_wall_area?: number // m²
   plasterboard_area?: number // m²
   skim_area?: number // m²
-  warmline_insulation_area?: number // m² of wall needing Warmline IWI (applied after membrane/tanking)
+  warmline_insulation_area?: number // m² Warmline DC internal wall insulation — standalone or alongside membrane/tanking; captured in the Wall Treatment section (review pt 4)
 
   // Difficulty Adjustment
   difficulty_hours?: number // Extra labour hours for access/complexity

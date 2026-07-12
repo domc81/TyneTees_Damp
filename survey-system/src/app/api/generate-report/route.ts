@@ -147,6 +147,7 @@ TREATMENT REFERENCES:
 - When treatment type is "membrane", write: "installation of a cavity drain membrane system"
 - When treatment type is "injection", write: "injection of a chemical damp proof course"
 - When treatment type is "tanking", write: "application of a cementitious tanking system"
+- When Warmline internal wall insulation is specified, write: "installation of the Warmline DC internal wall insulation system"
 - Always state the specific treatment — never suggest the customer "consider" options. The surveyor has already determined what is needed.
 
 ROOM FINDINGS STRUCTURE:
