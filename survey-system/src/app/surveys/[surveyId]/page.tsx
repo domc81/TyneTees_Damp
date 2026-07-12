@@ -146,7 +146,7 @@ function formatSlotDate(dateStr: string): string {
 
 export default function SurveyDetailPage({ params }: { params: { surveyId: string } }) {
   const goBack = useSmartBack('/surveys')
-  const { user, profile } = useAuth()
+  const { user, profile, role } = useAuth()
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -753,6 +753,16 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                       <PackageCheck className="w-5 h-5" />
                       Handover Pack
                     </Link>
+                    {/* Operative outputs — internal costs, admin/office only (review pt 15) */}
+                    {(role === 'admin' || role === 'office') && (
+                      <Link
+                        href={`/survey/${survey.id}/operations`}
+                        className="btn-secondary flex items-center gap-2 px-6 py-3 text-base border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                      >
+                        <HardHat className="w-5 h-5" />
+                        Operations
+                      </Link>
+                    )}
                   </>
                 )}
               </div>

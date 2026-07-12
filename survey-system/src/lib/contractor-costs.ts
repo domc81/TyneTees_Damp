@@ -180,7 +180,7 @@ export function calculateContractorOutputs(
 
   return {
     lines,
-    sections: [...sectionMap.values()],
+    sections: Array.from(sectionMap.values()),
     labourHours,
     materialsTotal,
     payTotal,
