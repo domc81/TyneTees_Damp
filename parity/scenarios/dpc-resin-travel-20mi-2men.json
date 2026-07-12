@@ -41,5 +41,11 @@
       }
     ]
   },
-  "notes": "Workbook expectation (hand-derived, verify via oracle): 7.9 labour hours -> 1 day for 2 men -> travel 2.667h = \u00a381.68 labour + \u00a320 vehicle = \u00a3101.68. Any inflation of line labour hours on the platform compounds into extra days and therefore inflated travel/PSO \u2014 the suspected driver of the review's overheads variance (+\u00a3213.84 on Brad Brown)."
+  "notes": "Workbook expectation (hand-derived, verify via oracle): 7.9 labour hours -> 1 day for 2 men -> travel 2.667h = \u00a381.68 labour + \u00a320 vehicle = \u00a3101.68. Any inflation of line labour hours on the platform compounds into extra days and therefore inflated travel/PSO \u2014 the suspected driver of the review's overheads variance (+\u00a3213.84 on Brad Brown).",
+  "contractor_u_defect_lines": [
+    {
+      "line": "ep40_2_pack_resin_top_coat_r70",
+      "material_markup": 0.3
+    }
+  ]
 }

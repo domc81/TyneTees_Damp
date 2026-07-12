@@ -32,6 +32,11 @@ import {
   summarizeCosting,
   type SectionMeta,
 } from '../../src/lib/costing-summary'
+import {
+  calculateContractorOutputs,
+  contractorLineValues,
+  contractorRatesFromConfig,
+} from '../../src/lib/contractor-costs'
 
 const REPO_ROOT = path.resolve(__dirname, '../../..')
 const PARITY = path.join(REPO_ROOT, 'parity')
@@ -145,18 +150,33 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
     }
   }
 
+  // ---- Contractor outputs (review pt 15) — workbook U/V columns ----
+  const contractorRates = contractorRatesFromConfig(config)
+  const contractor = calculateContractorOutputs(
+    results,
+    travel,
+    Number(aw.distance_from_office ?? 0),
+    config
+  )
+
   // ---- Per-line output keyed by line_key ----
   const linesOut: Record<string, any> = {}
   for (const result of Object.values(results)) {
     for (const line of result.lines) {
       const key = templateKey[line.templateId] ?? line.templateId
-      const prev = linesOut[key] ?? { quantity: 0, materials: 0, hours: 0, labour: 0, total: 0, section: line.sectionKey }
+      const cv = contractorLineValues(line, contractorRates)
+      const prev = linesOut[key] ?? {
+        quantity: 0, materials: 0, hours: 0, labour: 0, total: 0,
+        contractor_materials: 0, contractor_pay: 0, section: line.sectionKey,
+      }
       linesOut[key] = {
         quantity: prev.quantity + line.input.inputQuantity,
         materials: prev.materials + line.result.materialTotal,
         hours: prev.hours + line.result.labourHours,
         labour: prev.labour + line.result.labourTotal,
         total: prev.total + line.result.lineTotal,
+        contractor_materials: prev.contractor_materials + (cv?.materials ?? 0),
+        contractor_pay: prev.contractor_pay + (cv?.pay ?? 0),
         section: line.sectionKey,
         description: line.templateDescription,
       }
@@ -183,6 +203,10 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
       total_inc_vat: round6(t.total_inc_vat),
       deposit_percentage: t.deposit_percentage,
       deposit_amount: round6(t.deposit_amount),
+      contractor_materials_total: round6(contractor.materialsTotal),
+      contractor_pay_total: round6(contractor.payTotal),
+      contractor_travel: round6(contractor.travel),
+      contractor_total: round6(contractor.grandTotal),
     },
     diagnostics: {
       missing_templates: missingTemplates,

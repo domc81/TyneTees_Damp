@@ -40,5 +40,15 @@
       }
     ]
   },
-  "notes": "Every component explicitly entered \u2014 each must price independently and exactly (workbook pack rounding: primer/topcoat CEILING 30, grip 25, fillet 12)."
+  "notes": "Every component explicitly entered \u2014 each must price independently and exactly (workbook pack rounding: primer/topcoat CEILING 30, grip 25, fillet 12).",
+  "contractor_u_defect_lines": [
+    {
+      "line": "ep40_2_pack_resin_primer_r69",
+      "material_markup": 0.3
+    },
+    {
+      "line": "ep40_2_pack_resin_top_coat_r70",
+      "material_markup": 0.3
+    }
+  ]
 }

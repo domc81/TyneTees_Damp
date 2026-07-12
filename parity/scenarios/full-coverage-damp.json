@@ -362,5 +362,15 @@
       "line": "asbestos_testing_r132",
       "reason": "Damp workbook K139/O140 omit the asbestos section (K133/O133) from their own subtotals \u2014 priced work the customer is never billed for. Platform bills it; deviation reported to Steve."
     }
+  ],
+  "contractor_u_defect_lines": [
+    {
+      "line": "ep40_2_pack_resin_primer_r69",
+      "material_markup": 0.3
+    },
+    {
+      "line": "ep40_2_pack_resin_top_coat_r70",
+      "material_markup": 0.3
+    }
   ]
 }

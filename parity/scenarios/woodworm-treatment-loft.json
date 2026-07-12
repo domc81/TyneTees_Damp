@@ -58,5 +58,15 @@
       }
     ]
   },
-  "notes": "Loft trio: one loft_insulation_area drives fog + lift + relay, each gated by its own toggle (workbook has three independent rows R79-81 \u2014 the toggles make selection explicit)."
+  "notes": "Loft trio: one loft_insulation_area drives fog + lift + relay, each gated by its own toggle (workbook has three independent rows R79-81 \u2014 the toggles make selection explicit).",
+  "contractor_third_party_lines": [
+    {
+      "line": "rubbish_removal_skips_r91",
+      "in_workbook_total": false
+    },
+    {
+      "line": "disposal_via_licensed_transfer_agent_r35",
+      "in_workbook_total": false
+    }
+  ]
 }

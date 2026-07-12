@@ -46,6 +46,8 @@ export interface CalculatedLine {
   result: LineResult
   templateDescription: string
   sectionKey: string
+  /** Template cost formula — contractor outputs exclude third-party rows by it */
+  costFormula?: string
 }
 
 /**
@@ -820,7 +822,8 @@ export async function calculateSurveyCosting(
       input,
       result,
       templateDescription: description,
-      sectionKey
+      sectionKey,
+      costFormula: template.cost_formula
     })
 
     // Aggregate section totals

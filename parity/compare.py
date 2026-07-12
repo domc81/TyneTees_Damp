@@ -44,6 +44,11 @@ TOTALS_COMPARED = [
     ("subtotal_ex_vat", "Subtotal ex VAT", TOL),
     ("vat", "VAT", TOL),
     ("total_inc_vat", "Total inc VAT", TOL),
+    # Contractor outputs (review pt 15) — workbook U/V columns
+    ("contractor_materials_total", "Contractor materials", TOL),
+    ("contractor_pay_total", "Contractor pay", TOL),
+    ("contractor_travel", "Contractor travel", TOL),
+    ("contractor_total", "Contractor total", TOL),
 ]
 
 LINE_FIELDS = [
@@ -51,6 +56,8 @@ LINE_FIELDS = [
     ("hours", "hours", HOURS_TOL),
     ("labour", "labour", TOL),
     ("total", "total", TOL),
+    ("contractor_materials", "contractor_materials", TOL),
+    ("contractor_pay", "contractor_pay", TOL),
 ]
 
 
@@ -97,6 +104,54 @@ def compare_scenario(sid: str):
                 t["subtotal_ex_vat"] = fnum(t.get("subtotal_ex_vat")) + fnum(line.get("total"))
                 t["vat"] = fnum(t.get("vat")) + fnum(line.get("total")) * 0.2
                 t["total_inc_vat"] = fnum(t.get("total_inc_vat")) + fnum(line.get("total")) * 1.2
+                # The same sheets omit the section from their contractor (U/V)
+                # totals — asbestos work is crew work, so the platform's
+                # operative outputs include it.
+                u, v = fnum(line.get("contractor_materials")), fnum(line.get("contractor_pay"))
+                t["contractor_materials_total"] = fnum(t.get("contractor_materials_total")) + u
+                t["contractor_pay_total"] = fnum(t.get("contractor_pay_total")) + v
+                t["contractor_total"] = fnum(t.get("contractor_total")) + u + v
+
+        # Known WORKBOOK CONTRACTOR-COLUMN DEFECTS (deliberate platform
+        # deviations, reported to Steve, never silently reproduced):
+        #
+        # 1. contractor_third_party_lines — the woodworm workbook's U column
+        #    pays the operative 110% of third-party invoices (skip hire,
+        #    licensed transfer agent); damp/condensation/timber correctly
+        #    leave U=0 there. Its own U TOTAL row excludes skips but includes
+        #    disposal (in_workbook_total flags which). The platform excludes
+        #    third-party rows from operative outputs everywhere.
+        for dev in scenario.get("contractor_third_party_lines", []):
+            name = dev["line"] if isinstance(dev, dict) else dev
+            line = expected["lines"].get(name)
+            if not line:
+                continue
+            t = expected["totals"]
+            if isinstance(dev, dict) and dev.get("in_workbook_total"):
+                u, v = fnum(line.get("contractor_materials")), fnum(line.get("contractor_pay"))
+                t["contractor_materials_total"] = fnum(t.get("contractor_materials_total")) - u
+                t["contractor_pay_total"] = fnum(t.get("contractor_pay_total")) - v
+                t["contractor_total"] = fnum(t.get("contractor_total")) - u - v
+            line["contractor_materials"] = 0.0
+            line["contractor_pay"] = 0.0
+
+        # 2. contractor_u_defect_lines — the DAMP workbook's resin rows reuse
+        #    the customer's derived per-m² H in U and re-apply ×1.1, squaring
+        #    the pack rounding and double-counting the uplift (pays £7.71 for
+        #    £127 of resin). The timber workbook's resin U is correct. The
+        #    platform applies the uniform rule from every other workbook row:
+        #    U = material basis (customer materials ÷ (1+markup)) × 1.1.
+        for dev in scenario.get("contractor_u_defect_lines", []):
+            line = expected["lines"].get(dev["line"])
+            if not line:
+                continue
+            markup = fnum(dev.get("material_markup", 0.3))
+            correct = fnum(line.get("materials")) / (1.0 + markup) * 1.1
+            delta = correct - fnum(line.get("contractor_materials"))
+            line["contractor_materials"] = correct
+            t = expected["totals"]
+            t["contractor_materials_total"] = fnum(t.get("contractor_materials_total")) + delta
+            t["contractor_total"] = fnum(t.get("contractor_total")) + delta
 
     rows = []
     fails = 0
@@ -107,7 +162,8 @@ def compare_scenario(sid: str):
         keys = exp.get("line_keys")
         if not keys:
             continue
-        act = {"materials": 0.0, "hours": 0.0, "labour": 0.0, "total": 0.0}
+        act = {"materials": 0.0, "hours": 0.0, "labour": 0.0, "total": 0.0,
+               "contractor_materials": 0.0, "contractor_pay": 0.0}
         found = False
         for k in keys:
             a = actual["lines"].get(k)

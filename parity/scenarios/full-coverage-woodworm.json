@@ -271,5 +271,15 @@
       ],
       "reason": "Same O21:O23 subtotal omits antinox O25 hours."
     }
+  ],
+  "contractor_third_party_lines": [
+    {
+      "line": "rubbish_removal_skips_r91",
+      "in_workbook_total": false
+    },
+    {
+      "line": "disposal_via_licensed_transfer_agent_r35",
+      "in_workbook_total": true
+    }
   ]
 }
