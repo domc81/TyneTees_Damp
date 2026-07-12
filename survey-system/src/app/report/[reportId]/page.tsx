@@ -12,6 +12,7 @@ import { createServerClient } from '@supabase/ssr'
 import type { ReportSection } from '@/types/survey-report.types'
 import { isSectionEmpty } from '@/components/report/utils'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
+import { getActiveCompanyLocations } from '@/lib/company-locations'
 import './report.css'
 
 // Report content can be republished/updated — never serve a cached render.
@@ -51,9 +52,20 @@ const getCachedProfile = cache(async () => {
       phone: p.phone_primary || '',
       email: p.email_primary || '',
       website: p.website || '',
+      registrationNumber: p.company_registration_number || '',
     }
   } catch {
-    return { name: 'Survey System', phone: '', email: '', website: '' }
+    return { name: 'Survey System', phone: '', email: '', website: '', registrationNumber: '' }
+  }
+})
+
+// Company locations for the footer — central record (review pt 9); an empty
+// list degrades gracefully (footer falls back to the profile contact only)
+const getCachedLocations = cache(async () => {
+  try {
+    return await getActiveCompanyLocations()
+  } catch {
+    return []
   }
 })
 
@@ -539,8 +551,9 @@ export default async function PublicReportPage({
 
   void surveyorData
 
-  // Load company profile
+  // Load company profile + central locations record
   const company = await getCachedProfile()
+  const locations = await getCachedLocations()
 
   // Resolve photos from survey_data.photos (not the legacy photos table)
   const sections = (report.sections || []) as ReportSection[]
@@ -602,6 +615,7 @@ export default async function PublicReportPage({
         <ReportFooter
           customerName={customerName}
           company={company}
+          locations={locations}
           reportId={report.id}
           projectNumber={survey.project_number ?? null}
           generatedAt={report.generated_at ?? null}

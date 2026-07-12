@@ -118,7 +118,8 @@ export default async function PaymentPage({ params }: { params: { token: string 
   }
 
   const { payment, booking, quotation, company } = data
-  const companyName = company?.company_name || 'Tyne Tees Damp Proofing'
+  // No hardcoded fallback (review pt 9) — the profile is the single source
+  const companyName = company?.company_name || ''
   const isSurveyFee = payment.payment_type === 'survey_fee'
   const isDeposit = payment.payment_type === 'deposit'
   const isPaid = payment.status === 'paid'

@@ -16,6 +16,7 @@ import {
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Layout from '@/components/layout'
 import { useAuth } from '@/context/AuthContext'
+import { CompanyLocationsSection } from '@/components/settings/CompanyLocationsSection'
 import type { CompanyProfile } from '@/types/database.types'
 
 // Fields grouped for the form
@@ -656,6 +657,9 @@ export default function CompanyProfilePage() {
               </Field>
             </div>
           </div>
+
+          {/* Company Locations — central record feeding the report footer (review pt 9) */}
+          <CompanyLocationsSection />
 
           {/* Save Button */}
           <div className="flex items-center justify-between pt-2 pb-8">
