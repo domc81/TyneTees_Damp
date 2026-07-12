@@ -30,6 +30,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getSupabase } from '@/lib/supabase-client'
+import { buildCustomerQuotationView } from '@/lib/quotation-presentation'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -100,13 +101,6 @@ const STATUS_CONFIG: Record<QuotationStatus, {
   declined: { label: 'Declined', bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-400/30', Icon: XCircle },
 }
 
-// Customer-facing work type headings (what the customer reads on the quote)
-const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
-  damp: 'Damp Proofing Works',
-  condensation: 'Condensation Works',
-  timber: 'Timber Treatment Works',
-  woodworm: 'Woodworm Treatment Works',
-}
 
 // Sensible default terms, used when the quotation record has no terms stored yet
 function getDefaultTerms(companyName: string): string {
@@ -379,29 +373,9 @@ export default function QuotationManagementPage() {
   const statusCfg = STATUS_CONFIG[quotation.status] ?? STATUS_CONFIG.draft
   const { Icon: StatusIcon } = statusCfg
 
-  // Site preparation sections — their totals are combined with pso_total for the PSO line
-  const sitePrepSections = sections.filter(s => s.survey_type === 'site_preparation')
-  const sitePrepTotal = sitePrepSections.reduce((sum, s) => sum + s.section_total, 0)
-  const psoDisplayTotal = sitePrepTotal + quotation.pso_total
-
-  // Per-type work sections (everything except site_preparation)
-  const perTypeSections = sections.filter(s => s.survey_type !== 'site_preparation')
-  const mandatorySections = perTypeSections.filter(s => !s.is_optional)
-  const optionalSections = perTypeSections.filter(s => s.is_optional && s.is_included)
-  const hasOptional = optionalSections.length > 0
-
-  // Group mandatory sections by survey type (preserves display order within each group)
-  const mandatoryByType: Record<string, QuotationSection[]> = {}
-  for (const section of mandatorySections) {
-    if (!mandatoryByType[section.survey_type]) mandatoryByType[section.survey_type] = []
-    mandatoryByType[section.survey_type].push(section)
-  }
-
-  // Totals (derived from section data for accurate customer-facing display)
-  const mandatoryWorksTotal = mandatorySections.reduce((sum, s) => sum + s.section_total, 0)
-  const optionalWorksTotal = optionalSections.reduce((sum, s) => sum + s.section_total, 0)
-  const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
-  const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
+  // Shared customer view model — the preview renders EXACTLY what the /q page
+  // and PDF render, so it can never drift from what the customer sees.
+  const view = buildCustomerQuotationView(quotation, sections, quotation.quotation_number)
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -616,75 +590,75 @@ export default function QuotationManagementPage() {
 
                     <div className="rounded-xl border border-white/10 overflow-hidden">
 
-                      {/* Mandatory works — grouped by survey type */}
-                      {Object.entries(mandatoryByType).map(([surveyType, typeSections]) => (
-                        <div key={surveyType}>
+                      {/* Mandatory works — grouped by survey type, each priced */}
+                      {view.groups.map((group) => (
+                        <div key={group.surveyType}>
                           {/* Survey type heading row */}
                           <div className="px-4 py-2 bg-white/5 border-b border-white/10">
                             <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-                              {SURVEY_TYPE_WORK_NAMES[surveyType] ?? surveyType}
+                              {group.heading}
                             </span>
                           </div>
-                          {typeSections.map((section) => (
+                          {group.lines.map((line) => (
                             <div
-                              key={section.id}
+                              key={line.key}
                               className="flex items-center justify-between px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
                             >
-                              <span className="text-sm text-white/80">{section.display_name}</span>
+                              <span className="text-sm text-white/80">{line.label}</span>
                               <span className="text-sm font-medium text-white tabular-nums">
-                                {formatCurrency(section.section_total)}
+                                {formatCurrency(line.amount)}
                               </span>
                             </div>
                           ))}
                         </div>
                       ))}
 
-                      {/* Mandatory subtotal row */}
-                      {mandatorySections.length > 0 && (
+                      {/* Site setup & project management overheads — customer wording */}
+                      {view.overheadLine && (
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                          <span className="text-sm text-white/80">{view.overheadLine.label}</span>
+                          <span className="text-sm font-medium text-white tabular-nums">
+                            {formatCurrency(view.overheadLine.amount)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Works subtotal row */}
+                      {(view.groups.length > 0 || view.overheadLine) && (
                         <div className="flex items-center justify-between px-4 py-3 bg-white/[0.07] border-b border-white/10">
-                          <span className="text-sm font-semibold text-white/70">Mandatory Works Subtotal</span>
+                          <span className="text-sm font-semibold text-white/70">Works subtotal</span>
                           <span className="text-sm font-semibold text-white tabular-nums">
-                            {formatCurrency(mandatoryWorksTotal)}
+                            {formatCurrency(view.worksSubtotal)}
                           </span>
                         </div>
                       )}
 
                       {/* Optional works group */}
-                      {hasOptional && (
+                      {view.hasOptional && (
                         <>
                           <div className="px-4 py-2 bg-amber-500/5 border-b border-white/10">
                             <span className="text-xs font-semibold text-amber-400/70 uppercase tracking-wider">
                               Optional Works
                             </span>
                           </div>
-                          {optionalSections.map((section) => (
+                          {view.optionalLines.map((line) => (
                             <div
-                              key={section.id}
+                              key={line.key}
                               className="flex items-center justify-between px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
                             >
-                              <span className="text-sm text-white/80">{section.display_name}</span>
+                              <span className="text-sm text-white/80">{line.label}</span>
                               <span className="text-sm font-medium text-amber-300 tabular-nums">
-                                {formatCurrency(section.section_total)}
+                                {formatCurrency(line.amount)}
                               </span>
                             </div>
                           ))}
                           <div className="flex items-center justify-between px-4 py-3 bg-amber-500/5 border-b border-white/10">
                             <span className="text-sm font-semibold text-amber-400/70">Optional Works Subtotal</span>
                             <span className="text-sm font-semibold text-amber-300 tabular-nums">
-                              {formatCurrency(optionalWorksTotal)}
+                              {formatCurrency(view.optionalSubtotal)}
                             </span>
                           </div>
                         </>
-                      )}
-
-                      {/* Project Specific Overheads — site_prep sections + travel overhead combined */}
-                      {psoDisplayTotal > 0 && (
-                        <div className="flex items-center justify-between px-4 py-3 bg-sky-500/5 border-b border-white/5">
-                          <span className="text-sm text-white/70">Project Specific Overheads</span>
-                          <span className="text-sm font-medium text-white tabular-nums">
-                            {formatCurrency(psoDisplayTotal)}
-                          </span>
-                        </div>
                       )}
 
                     </div>
@@ -698,28 +672,24 @@ export default function QuotationManagementPage() {
                     <div className="p-6 space-y-3">
 
                       <div className="flex justify-between text-sm">
-                        <span className="text-white/60">Mandatory Works</span>
-                        <span className="text-white tabular-nums">{formatCurrency(mandatoryWorksTotal)}</span>
+                        <span className="text-white/60">Works subtotal</span>
+                        <span className="text-white tabular-nums">{formatCurrency(view.worksSubtotal)}</span>
                       </div>
 
-                      {hasOptional && (
+                      {view.hasOptional && (
                         <div className="flex justify-between text-sm">
                           <span className="text-white/60">Optional Works</span>
-                          <span className="text-amber-300 tabular-nums">{formatCurrency(optionalWorksTotal)}</span>
+                          <span className="text-amber-300 tabular-nums">{formatCurrency(view.optionalSubtotal)}</span>
                         </div>
                       )}
 
-                      {psoDisplayTotal > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white/60">Project Specific Overheads</span>
-                          <span className="text-white tabular-nums">{formatCurrency(psoDisplayTotal)}</span>
+                      {/* With no optional works this row duplicates the works subtotal */}
+                      {view.hasOptional && (
+                        <div className="flex justify-between text-sm pt-3 border-t border-white/10">
+                          <span className="text-white/80 font-medium">Subtotal (exc. VAT)</span>
+                          <span className="text-white font-semibold tabular-nums">{formatCurrency(view.subtotalExVat)}</span>
                         </div>
                       )}
-
-                      <div className="flex justify-between text-sm pt-3 border-t border-white/10">
-                        <span className="text-white/80 font-medium">Subtotal (exc. VAT)</span>
-                        <span className="text-white font-semibold tabular-nums">{formatCurrency(subtotalExVat)}</span>
-                      </div>
 
                       <div className="flex justify-between text-sm">
                         <span className="text-white/60">VAT ({Math.round(quotation.vat_rate * 100)}%)</span>
@@ -746,7 +716,7 @@ export default function QuotationManagementPage() {
                           <div className="flex justify-between text-sm">
                             <span className="text-white/60">Balance due on completion</span>
                             <span className="text-white font-medium tabular-nums">
-                              {formatCurrency(balanceDue)}
+                              {formatCurrency(view.balanceDue)}
                             </span>
                           </div>
                         </>

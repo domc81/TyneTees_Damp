@@ -14,6 +14,7 @@ import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { Phone, Mail, MapPin, User, AlertTriangle, FileText } from 'lucide-react'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
+import { buildCustomerQuotationView } from '@/lib/quotation-presentation'
 import { hashTermsContent } from '@/lib/terms-hash'
 import { QuotationViewTracker, QuotationActions, QuotationResponseSection } from './client'
 import './quotation-public.css'
@@ -80,14 +81,6 @@ const getCachedProfile = cache(async () => {
   }
 })
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
-  damp: 'Damp Proofing Works',
-  condensation: 'Condensation Works',
-  timber: 'Timber Treatment Works',
-  woodworm: 'Woodworm Treatment Works',
-}
 
 // ─── Service-role Supabase client ─────────────────────────────────────────────
 // Bypasses RLS — safe because we always filter by share_token (not by row id).
@@ -260,32 +253,9 @@ export default async function PublicQuotationPage({
   const isExpired = validUntil < today
 
   // ─── Derived section data ─────────────────────────────────────────────────
-  // Mirror exactly the logic used in the surveyor preview page
+  // Shared customer view model — identical across /q, PDF, and internal preview
 
-  const sitePrepSections = sections.filter(s => s.survey_type === 'site_preparation')
-  const sitePrepTotal = sitePrepSections.reduce((sum, s) => sum + s.section_total, 0)
-  const psoDisplayTotal = sitePrepTotal + quotation.pso_total
-
-  const perTypeSections = sections.filter(s => s.survey_type !== 'site_preparation')
-  const mandatorySections = perTypeSections.filter(s => !s.is_optional)
-  const optionalSections = perTypeSections.filter(s => s.is_optional && s.is_included)
-  const hasOptional = optionalSections.length > 0
-
-  // Group mandatory sections by survey type to render type headings
-  const mandatoryByType: Record<string, QuotationSection[]> = {}
-  for (const section of mandatorySections) {
-    if (!mandatoryByType[section.survey_type]) mandatoryByType[section.survey_type] = []
-    mandatoryByType[section.survey_type].push(section)
-  }
-
-  const mandatoryWorksTotal = mandatorySections.reduce((sum, s) => sum + s.section_total, 0)
-  const optionalWorksTotal = optionalSections.reduce((sum, s) => sum + s.section_total, 0)
-  // Customer-facing presentation: overheads are folded into a single works
-  // figure; individual mandatory sections list names only (internal costing
-  // still records everything separately)
-  const worksSubtotal = mandatoryWorksTotal + psoDisplayTotal
-  const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
-  const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
+  const view = buildCustomerQuotationView(quotation, sections, quotation.quotation_number)
 
   const profile = await getCachedProfile()
   const company = {
@@ -458,58 +428,71 @@ export default async function PublicQuotationPage({
 
               <div className="rounded-xl border border-[#E5E7EB] overflow-hidden">
 
-                {/* Mandatory sections grouped by survey type */}
-                {Object.entries(mandatoryByType).map(([surveyType, typeSections]) => (
-                  <div key={surveyType}>
+                {/* Mandatory sections grouped by survey type — each priced */}
+                {view.groups.map((group) => (
+                  <div key={group.surveyType}>
                     <div className="px-5 py-3 bg-[#F3F4F6] border-b border-[#E5E7EB]">
                       <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        {SURVEY_TYPE_WORK_NAMES[surveyType] ?? surveyType}
+                        {group.heading}
                       </span>
                     </div>
-                    {typeSections.map((section) => (
+                    {group.lines.map((line) => (
                       <div
-                        key={section.id}
-                        className="px-5 py-4 border-b border-[#F3F4F6]"
+                        key={line.key}
+                        className="flex items-center justify-between px-5 py-4 border-b border-[#F3F4F6]"
                       >
-                        <span className="text-sm text-[#374151]">{section.display_name}</span>
+                        <span className="text-sm text-[#374151]">{line.label}</span>
+                        <span className="text-sm font-semibold text-[#1F2937] tabular-nums ml-6">
+                          {formatCurrency(line.amount)}
+                        </span>
                       </div>
                     ))}
                   </div>
                 ))}
 
-                {/* Works subtotal — includes project overheads */}
-                {mandatorySections.length > 0 && (
+                {/* Site setup & project management overheads */}
+                {view.overheadLine && (
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-[#F3F4F6]">
+                    <span className="text-sm text-[#374151]">{view.overheadLine.label}</span>
+                    <span className="text-sm font-semibold text-[#1F2937] tabular-nums ml-6">
+                      {formatCurrency(view.overheadLine.amount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Works subtotal */}
+                {(view.groups.length > 0 || view.overheadLine) && (
                   <div className="flex items-center justify-between px-5 py-4 bg-[#F9FAFB] border-t border-[#E5E7EB]">
                     <span className="text-sm font-semibold text-[#374151]">Works subtotal</span>
                     <span className="text-sm font-bold text-[#1F2937] tabular-nums ml-6">
-                      {formatCurrency(worksSubtotal)}
+                      {formatCurrency(view.worksSubtotal)}
                     </span>
                   </div>
                 )}
 
                 {/* Optional sections */}
-                {hasOptional && (
+                {view.hasOptional && (
                   <>
                     <div className="px-5 py-3 bg-amber-50 border-t border-[#E5E7EB]">
                       <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
                         Optional Works
                       </span>
                     </div>
-                    {optionalSections.map((section) => (
+                    {view.optionalLines.map((line) => (
                       <div
-                        key={section.id}
+                        key={line.key}
                         className="flex items-center justify-between px-5 py-4 border-b border-[#F3F4F6]"
                       >
-                        <span className="text-sm text-[#374151]">{section.display_name}</span>
+                        <span className="text-sm text-[#374151]">{line.label}</span>
                         <span className="text-sm font-semibold text-amber-700 tabular-nums ml-6">
-                          {formatCurrency(section.section_total)}
+                          {formatCurrency(line.amount)}
                         </span>
                       </div>
                     ))}
                     <div className="flex items-center justify-between px-5 py-4 bg-amber-50 border-t border-[#E5E7EB]">
                       <span className="text-sm font-semibold text-amber-800">Optional Works Subtotal</span>
                       <span className="text-sm font-bold text-amber-700 tabular-nums ml-6">
-                        {formatCurrency(optionalWorksTotal)}
+                        {formatCurrency(view.optionalSubtotal)}
                       </span>
                     </div>
                   </>
@@ -531,21 +514,21 @@ export default async function PublicQuotationPage({
 
                 <div className="flex justify-between text-sm">
                   <span className="text-[#6B7280]">Works subtotal</span>
-                  <span className="text-[#1F2937] tabular-nums">{formatCurrency(worksSubtotal)}</span>
+                  <span className="text-[#1F2937] tabular-nums">{formatCurrency(view.worksSubtotal)}</span>
                 </div>
 
-                {hasOptional && (
+                {view.hasOptional && (
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6B7280]">Optional Works</span>
-                    <span className="text-amber-700 tabular-nums">{formatCurrency(optionalWorksTotal)}</span>
+                    <span className="text-amber-700 tabular-nums">{formatCurrency(view.optionalSubtotal)}</span>
                   </div>
                 )}
 
                 {/* With no optional works this row duplicates the works subtotal */}
-                {hasOptional && (
+                {view.hasOptional && (
                   <div className="flex justify-between text-sm pt-4 border-t border-[#E5E7EB]">
                     <span className="text-[#374151] font-semibold">Subtotal (exc. VAT)</span>
-                    <span className="text-[#1F2937] font-bold tabular-nums">{formatCurrency(subtotalExVat)}</span>
+                    <span className="text-[#1F2937] font-bold tabular-nums">{formatCurrency(view.subtotalExVat)}</span>
                   </div>
                 )}
 
@@ -574,7 +557,7 @@ export default async function PublicQuotationPage({
                     <div className="flex justify-between text-sm">
                       <span className="text-[#6B7280]">Balance due on completion</span>
                       <span className="text-[#374151] font-medium tabular-nums">
-                        {formatCurrency(balanceDue)}
+                        {formatCurrency(view.balanceDue)}
                       </span>
                     </div>
                   </>

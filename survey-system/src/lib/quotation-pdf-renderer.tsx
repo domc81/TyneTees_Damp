@@ -8,6 +8,7 @@
 
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { buildCustomerQuotationView } from '@/lib/quotation-presentation'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,13 +48,6 @@ export interface QuotationSectionForPDF {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const SURVEY_TYPE_WORK_NAMES: Record<string, string> = {
-  damp: 'Damp Proofing Works',
-  condensation: 'Condensation Works',
-  timber: 'Timber Treatment Works',
-  woodworm: 'Woodworm Treatment Works',
-}
 
 const NAVY = '#1E3A5F'
 const SLATE = '#374151'
@@ -462,29 +456,8 @@ interface Props {
 }
 
 export function QuotationPDFDocument({ quotation, sections }: Props) {
-  // Derived data — mirrors the logic in the public page
-  const sitePrepSections = sections.filter(s => s.survey_type === 'site_preparation')
-  const sitePrepTotal = sitePrepSections.reduce((sum, s) => sum + s.section_total, 0)
-  const psoDisplayTotal = sitePrepTotal + quotation.pso_total
-
-  const perTypeSections = sections.filter(s => s.survey_type !== 'site_preparation')
-  const mandatorySections = perTypeSections.filter(s => !s.is_optional)
-  const optionalSections = perTypeSections.filter(s => s.is_optional && s.is_included)
-  const hasOptional = optionalSections.length > 0
-
-  const mandatoryByType: Record<string, QuotationSectionForPDF[]> = {}
-  for (const section of mandatorySections) {
-    if (!mandatoryByType[section.survey_type]) mandatoryByType[section.survey_type] = []
-    mandatoryByType[section.survey_type].push(section)
-  }
-
-  const mandatoryWorksTotal = mandatorySections.reduce((sum, s) => sum + s.section_total, 0)
-  const optionalWorksTotal = optionalSections.reduce((sum, s) => sum + s.section_total, 0)
-  // Customer-facing presentation: overheads fold into one works figure and
-  // mandatory sections list names only — must mirror the public page
-  const worksSubtotal = mandatoryWorksTotal + psoDisplayTotal
-  const subtotalExVat = quotation.total_incl_vat - quotation.vat_amount
-  const balanceDue = quotation.total_incl_vat - quotation.deposit_amount
+  // Shared customer view model — identical across /q, PDF, and internal preview
+  const view = buildCustomerQuotationView(quotation, sections, quotation.quotation_number)
 
   const company = {
     name: quotation.company_name ?? '',
@@ -546,48 +519,55 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
         <Text style={styles.tableHeading}>Proposed Works</Text>
         <View style={styles.tableContainer}>
 
-          {/* Mandatory sections by survey type */}
-          {Object.entries(mandatoryByType).map(([surveyType, typeSections], typeIdx) => (
-            <View key={surveyType}>
+          {/* Mandatory sections by survey type — each priced */}
+          {view.groups.map((group) => (
+            <View key={group.surveyType}>
               <View style={styles.typeHeaderRow}>
-                <Text style={styles.typeHeaderText}>
-                  {SURVEY_TYPE_WORK_NAMES[surveyType] ?? surveyType}
-                </Text>
+                <Text style={styles.typeHeaderText}>{group.heading}</Text>
               </View>
-              {typeSections.map((section, idx) => (
-                <View key={`${surveyType}-${idx}`} style={styles.tableRow}>
-                  <Text style={styles.tableRowName}>{section.display_name}</Text>
+              {group.lines.map((line) => (
+                <View key={line.key} style={styles.tableRow}>
+                  <Text style={styles.tableRowName}>{line.label}</Text>
+                  <Text style={styles.tableRowAmount}>{formatCurrency(line.amount)}</Text>
                 </View>
               ))}
             </View>
           ))}
 
-          {/* Works subtotal — includes project overheads */}
-          {mandatorySections.length > 0 ? (
+          {/* Site setup & project management overheads */}
+          {view.overheadLine ? (
+            <View style={styles.tableRow}>
+              <Text style={styles.tableRowName}>{view.overheadLine.label}</Text>
+              <Text style={styles.tableRowAmount}>{formatCurrency(view.overheadLine.amount)}</Text>
+            </View>
+          ) : null}
+
+          {/* Works subtotal */}
+          {view.groups.length > 0 || view.overheadLine ? (
             <View style={styles.subtotalRow}>
               <Text style={styles.subtotalLabel}>Works subtotal</Text>
-              <Text style={styles.subtotalAmount}>{formatCurrency(worksSubtotal)}</Text>
+              <Text style={styles.subtotalAmount}>{formatCurrency(view.worksSubtotal)}</Text>
             </View>
           ) : null}
 
           {/* Optional sections */}
-          {hasOptional ? (
+          {view.hasOptional ? (
             <>
               <View style={styles.optionalTypeRow}>
                 <Text style={styles.optionalTypeText}>Optional Works</Text>
               </View>
-              {optionalSections.map((section, idx) => {
-                const isLast = idx === optionalSections.length - 1
+              {view.optionalLines.map((line, idx) => {
+                const isLast = idx === view.optionalLines.length - 1
                 return (
-                  <View key={`opt-${idx}`} style={isLast ? styles.tableRowLast : styles.tableRow}>
-                    <Text style={styles.tableRowName}>{section.display_name}</Text>
-                    <Text style={styles.optionalRowAmount}>{formatCurrency(section.section_total)}</Text>
+                  <View key={line.key} style={isLast ? styles.tableRowLast : styles.tableRow}>
+                    <Text style={styles.tableRowName}>{line.label}</Text>
+                    <Text style={styles.optionalRowAmount}>{formatCurrency(line.amount)}</Text>
                   </View>
                 )
               })}
               <View style={styles.optionalSubtotalRow}>
                 <Text style={styles.optionalSubtotalLabel}>Optional Works Subtotal</Text>
-                <Text style={styles.optionalRowAmount}>{formatCurrency(optionalWorksTotal)}</Text>
+                <Text style={styles.optionalRowAmount}>{formatCurrency(view.optionalSubtotal)}</Text>
               </View>
             </>
           ) : null}
@@ -607,26 +587,26 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
 
             <View style={styles.totalsLine}>
               <Text style={styles.totalsLineLabel}>Works subtotal</Text>
-              <Text style={styles.totalsLineValue}>{formatCurrency(worksSubtotal)}</Text>
+              <Text style={styles.totalsLineValue}>{formatCurrency(view.worksSubtotal)}</Text>
             </View>
 
-            {hasOptional ? (
+            {view.hasOptional ? (
               <View style={styles.totalsLine}>
                 <Text style={styles.totalsLineLabel}>Optional Works</Text>
-                <Text style={{ ...styles.totalsLineValue, color: AMBER }}>{formatCurrency(optionalWorksTotal)}</Text>
+                <Text style={{ ...styles.totalsLineValue, color: AMBER }}>{formatCurrency(view.optionalSubtotal)}</Text>
               </View>
             ) : null}
 
             <View style={styles.totalsDivider} />
 
             {/* With no optional works this row duplicates the works subtotal */}
-            {hasOptional ? (
+            {view.hasOptional ? (
               <View style={styles.totalsLine}>
                 <Text style={{ ...styles.totalsLineLabel, fontFamily: 'Helvetica-Bold', color: SLATE }}>
                   Subtotal (exc. VAT)
                 </Text>
                 <Text style={{ ...styles.totalsLineValue, fontFamily: 'Helvetica-Bold' }}>
-                  {formatCurrency(subtotalExVat)}
+                  {formatCurrency(view.subtotalExVat)}
                 </Text>
               </View>
             ) : null}
@@ -655,7 +635,7 @@ export function QuotationPDFDocument({ quotation, sections }: Props) {
                 </View>
                 <View style={styles.balanceLine}>
                   <Text style={styles.balanceLabel}>Balance due on completion</Text>
-                  <Text style={styles.balanceValue}>{formatCurrency(balanceDue)}</Text>
+                  <Text style={styles.balanceValue}>{formatCurrency(view.balanceDue)}</Text>
                 </View>
               </>
             ) : null}
