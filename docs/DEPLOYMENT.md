@@ -59,7 +59,7 @@ Migrations are applied manually (no automated migration runner):
 docker exec -i supabase-db-y04kk0wwoswogw0oowcs04gw psql -U supabase_admin -d postgres < survey-system/supabase/migrations/<filename>.sql
 ```
 
-52 migrations exist (51 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`). All applied to the live TTDP database through `20260711000007` (pricing RLS/audit/baselines).
+54 migrations exist (53 in `survey-system/supabase/migrations/` + 1 in root `supabase/migrations/`). All applied to the live TTDP database through `20260712000002` (company locations).
 
 ## Rollback procedure
 

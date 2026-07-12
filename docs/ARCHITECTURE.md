@@ -24,7 +24,7 @@ TyneTees_Damp/
 │   │   ├── app/                     # App Router pages
 │   │   │   ├── page.tsx             # Dashboard (stats, pipeline widget, activity feed)
 │   │   │   ├── admin/               # RoleGuard admin/office: availability, costing, materials, rates, team, workload
-│   │   │   ├── api/                 # 27 API routes (table below)
+│   │   │   ├── api/                 # 29 API routes (table below)
 │   │   │   ├── calendar/            # Booking calendar (FullCalendar)
 │   │   │   ├── enquiries/           # Pipeline Kanban + new enquiry form (RoleGuard layout)
 │   │   │   ├── materials/           # Materials catalogue view
@@ -76,7 +76,7 @@ TyneTees_Damp/
 
 ### Backend (Next.js API routes + Supabase)
 
-27 API routes handle server-side operations requiring secrets (LLM calls, email sending, PDF generation, cron triggers). All CRUD for surveys, enquiries, bookings, and notifications is done via direct Supabase client SDK calls from the frontend, not through API routes. The canonical data access layer is `src/lib/supabase-data.ts`.
+29 API routes handle server-side operations requiring secrets (LLM calls, email sending, PDF generation, cron triggers). All CRUD for surveys, enquiries, bookings, and notifications is done via direct Supabase client SDK calls from the frontend, not through API routes. The canonical data access layer is `src/lib/supabase-data.ts`.
 
 | Route | Purpose |
 |---|---|
@@ -100,6 +100,7 @@ TyneTees_Damp/
 | `/api/report/[reportId]/view` | Track public report view |
 | `/api/reports/[id]/send` | Send report email |
 | `/api/settings/company` | Company profile CRUD |
+| `/api/settings/company/locations` | Company locations CRUD (registered/regional/service areas/numbers) |
 | `/api/settings/company/logo` | Logo upload |
 | `/api/settings/notifications` | Notification preference CRUD |
 | `/api/settings/notifications/test-email` | Test email delivery |
@@ -107,31 +108,34 @@ TyneTees_Damp/
 | `/api/surveys/[id]/approve-and-send` | Combined approve report + send report & quote email |
 | `/api/surveys/[id]/quotation` | Generate quotation from survey |
 | `/api/transcribe` | Deepgram speech-to-text |
+| `/api/client-error` | Browser error reports from public-page error boundaries (rate-limited, tokens hashed) |
 
-**Public routes** (excluded from auth middleware): `/api/q/*`, `/api/report/*`, `/api/pay/*`. Middleware (`src/middleware.ts`) handles Supabase SSR session management and JWT refresh; route protection is client-side (`ProtectedRoute`, `RoleGuard`), not middleware.
+**Public routes** (excluded from auth middleware): `/api/q/*`, `/api/report/*`, `/api/pay/*`, `/api/client-error`. Middleware (`src/middleware.ts`) handles Supabase SSR session management and JWT refresh; route protection is client-side (`ProtectedRoute`, `RoleGuard`), not middleware.
 
 ### Component & lib index
 
-- **Wizard components (13):** `WizardStepper`, `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`, `UrgencySelector`
+- **Wizard components (14):** `WizardStepper`, `SurveyContextHeader` (read-only job context header), `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`, `UrgencySelector`
 - **Report components (21):** `CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
-- **Lib (35 files):**
+- **Lib (38 files):**
   - Supabase: `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer)
   - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine), `costing-summary.ts` (shared summary math — section adj/travel/VAT/deposit; imported by the parity runner, so golden-master-gated), `pricing-smoke.ts` (reference-job smoke check vs `pricing_smoke_baselines`; scenarios in `lib/smoke/scenarios/`), `pricing-audit.ts` (change-log reads)
   - Survey: `survey-wizard-data.ts` (persistence/auto-save), `survey-photo-service.ts`, `survey-tags.ts`
   - Reports: `report-generator.ts` (boilerplate + LLM narrative + methodology + woodworm images), `report-data.ts`, `report-publish.ts`, `report-validation.ts`
-  - PDF: `quotation-pdf-renderer.tsx` · Email: `email-service.ts`, `email-templates.ts`, `email-config.ts`
-  - Calendar: `calendar-data.ts`, `calendar-types.ts` · Company: `company-profile.ts`
+  - PDF: `quotation-pdf-renderer.tsx` · Quotation view: `quotation-presentation.ts` (single customer view model for /q + PDF + internal preview)
+  - Email: `email-service.ts` (incl. attachments), `email-templates.ts`, `email-config.ts`, `customer-send-guard.ts` (duplicate-send 409 guard)
+  - Calendar: `calendar-data.ts`, `calendar-types.ts` · Company: `company-profile.ts`, `company-locations.ts` (central addresses/numbers record)
   - Installer info: `installer-info-categories.ts`, `installer-info-data.ts`
   - Notifications: `notifications-server.ts`, `notification-preferences.ts` · Payments: `payment-data.ts`
   - CSV/handover: `cf-csv-export.ts`, `cf-export-config.ts`, `handover-pack.ts` (incl. `deriveGuaranteeType()`)
   - Concurrency: `write-queue.ts` (per-survey serialized writes) · Proposals: `proposal-items.ts`
   - Utilities: `cron-auth.ts`, `terms-hash.ts`, `status-labels.ts` (activity-title humanizer) · Tests: `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
 - **UI primitives (`components/ui/`):** `button`, `card`, `input` (auto password toggle), `confirm-dialog` (styled `window.confirm` replacement — required for all confirmations)
+- **Settings (`components/settings/`):** `CompanyLocationsSection` (locations CRUD on /settings/company) · **Public error UI:** `components/PublicErrorFallback.tsx` + `error.tsx` boundaries on /q, /pay, /report
 - **Admin shared (`components/admin/`):** `NumberField` (validated numeric input — mandatory for pricing fields), `PricingSaveConfirm`, `PricingSmokeCheck`, `PricingChangeLog`
 
 ### Database (Supabase / PostgreSQL)
 
-Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across these clusters:
+Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 45 tables across these clusters:
 
 - **CRM:** `enquiries` (incl. `won_at`, `cf_exported_at`, on-hold/decline reasons), `enquiry_activity`, `on_hold_message_templates`, `customers`, `communication_log`
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
@@ -143,9 +147,10 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 43 tables across t
 - **Reports:** `report_templates` (4, one per survey type), `survey_reports` (draft → generated → reviewed → finalised → published), `report_views`
 - **Calendar:** `survey_bookings` (status state machine), `surveyor_availability`, `availability_blocks` (leave/absence)
 - **Notifications:** `notifications` (realtime subscriptions)
-- **Company:** `company_profile`
+- **Company:** `company_profile`, `company_locations` (registered office / regional offices / service areas / contact numbers — feeds report footer)
+- **Support:** `client_errors` (browser failures reported by public-page error boundaries)
 
-44 migrations total (43 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
+54 migrations total (53 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
 
 ### Pricing config values (`pricing_config`, editable at `/admin/rates`)
 
