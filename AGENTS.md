@@ -106,6 +106,8 @@ All commands run from `survey-system/` directory:
 - **Company addresses, regional numbers and service-area towns come from the `company_locations` table** (managed at /settings/company, seeded from Steven's approved list) — never hardcode them in footers or customer documents. `service_area` rows render as town names only, never as postal offices.
 - **The wizard header's job context is `surveyContext` on the offline mirror** (`LocalSurvey.surveyContext`, populated by `fetchFromServer` in `lib/offline/local-data.ts`) — read-only display data stored ALONGSIDE `survey_data`, never inside it, and never synced back. Booking/admin notes shown there are structurally excluded from customer reports (report-generator reads only survey_data).
 
+- **Contractor/operative outputs come from `lib/contractor-costs.ts` and are parity-gated** (workbook U/V columns, per-line + totals, 15/15). Rules: materials = `materialAdjustedCost` × `contractor_material_uplift`, pay = hours × `contractor_hourly_rate`, travel = labourDays × round-trip miles × `contractor_mileage_rate`; `tiered_disposal`/`skip_hire` rows are third-party invoices — never operative pay. Customer section adjustments and markups NEVER touch contractor figures. These are internal (admin/office): never render them on customer surfaces or operative work instructions beyond pay rate + travel allowance. Assignments live in `survey_subcontractor_costs` (unique per survey+section; computed fields refresh, office fields survive).
+
 ## Do not touch
 
 - `workbook_extraction/` — analysis scripts for the original Excel workbooks; reference only

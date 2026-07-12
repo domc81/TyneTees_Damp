@@ -116,9 +116,9 @@ TyneTees_Damp/
 
 - **Wizard components (14):** `WizardStepper`, `SurveyContextHeader` (read-only job context header), `SiteDetailsStep`, `ExternalInspectionStep`, `RoomInspectionStep`, `DampFields`, `CondensationFields`, `TimberFields`, `WoodwormFields`, `AdditionalWorksStep`, `ReviewStep`, `AudioRecorder`, `PhotoCapture`, `UrgencySelector`
 - **Report components (21):** `CoverSection`, `ExecutiveSummarySection`, `ReportGuideSection`, `PropertySection`, `ExternalInspectionSection`, `RoomFindingsSection`, `ScopeOfWorksSection`, `TreatmentMethodologySection`, `WoodwormTreatmentSection`, `CondensationCausesSection`, `SurveyContextSection`, `SurveyorProfileSection`, `AboutUsSection`, `BoilerplateSection`, `ReportHeader`, `ReportFooter`, `PhotoGrid`, `PhotoLightbox`, `TextSection`, `TextContent`, `utils`
-- **Lib (38 files):**
+- **Lib (40 files):**
   - Supabase: `supabase-client.ts` (browser), `supabase-server.ts` (server), `supabase-data.ts` (canonical data layer)
-  - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine), `costing-summary.ts` (shared summary math — section adj/travel/VAT/deposit; imported by the parity runner, so golden-master-gated), `pricing-smoke.ts` (reference-job smoke check vs `pricing_smoke_baselines`; scenarios in `lib/smoke/scenarios/`), `pricing-audit.ts` (change-log reads)
+  - Pricing: `pricing-engine.ts` (9 formula types), `pricing-data.ts`, `survey-mapping.ts`, `travel-overhead.ts` (post-engine), `contractor-costs.ts` (operative outputs — workbook U/V, parity-gated) + `subcontractor-data.ts` (assignment rows), `costing-summary.ts` (shared summary math — section adj/travel/VAT/deposit; imported by the parity runner, so golden-master-gated), `pricing-smoke.ts` (reference-job smoke check vs `pricing_smoke_baselines`; scenarios in `lib/smoke/scenarios/`), `pricing-audit.ts` (change-log reads)
   - Survey: `survey-wizard-data.ts` (persistence/auto-save), `survey-photo-service.ts`, `survey-tags.ts`
   - Reports: `report-generator.ts` (boilerplate + LLM narrative + methodology + woodworm images), `report-data.ts`, `report-publish.ts`, `report-validation.ts`
   - PDF: `quotation-pdf-renderer.tsx` · Quotation view: `quotation-presentation.ts` (single customer view model for /q + PDF + internal preview)
@@ -150,7 +150,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 45 tables across t
 - **Company:** `company_profile`, `company_locations` (registered office / regional offices / service areas / contact numbers — feeds report footer)
 - **Support:** `client_errors` (browser failures reported by public-page error boundaries)
 
-54 migrations total (53 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
+55 migrations total (54 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
 
 ### Pricing config values (`pricing_config`, editable at `/admin/rates`)
 
