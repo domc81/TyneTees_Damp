@@ -19,11 +19,12 @@ import { getDB, isOfflineDbAvailable, type OutboxOp } from './db'
 import { enqueue } from './outbox'
 import { registerOpExecutor, requestFlush } from './sync-engine'
 import { timeoutSignal } from './connectivity'
-import type { SurveyWizardData, SurveyRoomRow } from '@/types/survey-wizard.types'
+import type { SurveyWizardData, SurveyRoomRow, CustomDefect } from '@/types/survey-wizard.types'
 
 export type TranscriptionTarget =
   | { kind: 'room'; roomId: string; field: 'findings' }
-  | { kind: 'wizard_section'; section: 'external_inspection'; field: 'notes' }
+  // field 'custom_defect_<id>' targets that custom defect's description
+  | { kind: 'wizard_section'; section: 'external_inspection'; field: 'notes' | `custom_defect_${string}` }
   | { kind: 'wizard'; field: 'surveyor_additional_comments' }
 
 interface AudioPayload {
@@ -152,10 +153,27 @@ async function applyToMirror(
         )
       } else if (target.kind === 'wizard_section') {
         const section = (wizardData[target.section] as unknown as Record<string, unknown>) || {}
-        wizardData = {
-          ...wizardData,
-          [target.section]: { ...section, notes: appendText(section.notes as string, replacement) },
-        } as SurveyWizardData
+        if (target.field.startsWith('custom_defect_')) {
+          // Append into that custom defect's description (stable-id match)
+          const defectId = target.field.slice('custom_defect_'.length)
+          const defects = (section.custom_defects as CustomDefect[] | undefined) ?? []
+          wizardData = {
+            ...wizardData,
+            [target.section]: {
+              ...section,
+              custom_defects: defects.map((d) =>
+                d.id === defectId
+                  ? { ...d, description: appendText(d.description, replacement) }
+                  : d
+              ),
+            },
+          } as SurveyWizardData
+        } else {
+          wizardData = {
+            ...wizardData,
+            [target.section]: { ...section, notes: appendText(section.notes as string, replacement) },
+          } as SurveyWizardData
+        }
       } else {
         wizardData = {
           ...wizardData,

@@ -72,6 +72,7 @@ export type ConstructionType =
 export interface ExternalInspection {
   building_defects_found: boolean
   building_defects: BuildingDefect[] // Multi-select
+  custom_defects?: CustomDefect[] // Free-form defects beyond the preset checklist (review pt 12)
   defect_urgency?: DefectUrgency
   urgency?: FindingUrgency // Traffic light overall external status
   wall_tie_concern: boolean
@@ -79,6 +80,36 @@ export interface ExternalInspection {
   notes?: string
   raw_notes?: string // Raw voice transcript — preserved as audit trail
 }
+
+// Custom external defect — surveyor-defined, unlimited count (review pt 12).
+// Photos link by STABLE ID (photo category = `custom_defect_${id}`), never by
+// title matching — titles are editable and non-unique.
+export interface CustomDefect {
+  id: string // stable uuid, generated when the defect card is added
+  title: string
+  description?: string
+  raw_description?: string // Raw voice transcript — preserved as audit trail
+  location?: CustomDefectLocation
+  urgency?: DefectUrgency
+  action?: string // Recommended action
+}
+
+export type CustomDefectLocation =
+  | 'front'
+  | 'rear'
+  | 'left_side'
+  | 'right_side'
+  | 'offshoot'
+  | 'other'
+
+export const CUSTOM_DEFECT_LOCATIONS: { value: CustomDefectLocation; label: string }[] = [
+  { value: 'front', label: 'Front elevation' },
+  { value: 'rear', label: 'Rear elevation' },
+  { value: 'left_side', label: 'Left side elevation' },
+  { value: 'right_side', label: 'Right side elevation' },
+  { value: 'offshoot', label: 'Offshoot' },
+  { value: 'other', label: 'Other / see description' },
+]
 
 export type BuildingDefect =
   | 'chimney_pointing'

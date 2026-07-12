@@ -5,10 +5,12 @@ import {
   ExternalInspection,
   BuildingDefect,
   BUILDING_DEFECTS,
+  CustomDefect,
+  CUSTOM_DEFECT_LOCATIONS,
   DefectUrgency,
   FindingUrgency,
 } from '@/types/survey-wizard.types'
-import { Home, AlertTriangle, CheckSquare, Square, FileText, Camera, Loader2 } from 'lucide-react'
+import { Home, AlertTriangle, CheckSquare, Square, FileText, Camera, Loader2, Plus, Trash2 } from 'lucide-react'
 import PhotoCapture from './PhotoCapture'
 import AudioRecorder from './AudioRecorder'
 import UrgencySelector from './UrgencySelector'
@@ -104,6 +106,59 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
     )
   }
 
+  // --- Custom defects (review pt 12) ---
+  // Photos link by STABLE ID via category = `custom_defect_${id}` — never by
+  // title matching (titles are editable and non-unique).
+  const customDefects = data.custom_defects || []
+
+  const getCustomDefectPhotos = (defectId: string): SurveyPhoto[] =>
+    externalPhotos.filter((p) => p.category === `custom_defect_${defectId}`)
+
+  const addCustomDefect = () => {
+    const newDefect: CustomDefect = {
+      id: crypto.randomUUID(),
+      title: '',
+    }
+    handleChange('custom_defects', [...customDefects, newDefect])
+  }
+
+  const updateCustomDefect = (id: string, patch: Partial<CustomDefect>) => {
+    handleChange(
+      'custom_defects',
+      customDefects.map((d) => (d.id === id ? { ...d, ...patch } : d))
+    )
+  }
+
+  const removeCustomDefect = (id: string) => {
+    handleChange('custom_defects', customDefects.filter((d) => d.id !== id))
+  }
+
+  const [polishingDefectId, setPolishingDefectId] = useState<string | null>(null)
+
+  const handlePolishCustomDefect = async (defect: CustomDefect) => {
+    if (!defect.description?.trim()) return
+    setPolishingDefectId(defect.id)
+    try {
+      const response = await fetch('/api/polish-observation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: defect.description }),
+      })
+      if (!response.ok) throw new Error('Polish failed')
+      const result = await response.json()
+      updateCustomDefect(defect.id, {
+        description: result.polished,
+        raw_description: defect.description,
+      })
+    } catch (err) {
+      console.error('Polish error:', err)
+      setPolishError(err instanceof Error ? err.message : 'Failed to polish text')
+      setTimeout(() => setPolishError(null), 5000)
+    } finally {
+      setPolishingDefectId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Building Defects Found Toggle */}
@@ -134,7 +189,7 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
                 const newValue = !data.building_defects_found
                 // Single onChange call to avoid stale-prop overwrites
                 if (!newValue) {
-                  onChange({ ...data, building_defects_found: false, building_defects: [], defect_urgency: undefined })
+                  onChange({ ...data, building_defects_found: false, building_defects: [], custom_defects: [], defect_urgency: undefined })
                 } else {
                   onChange({ ...data, building_defects_found: true })
                 }
@@ -220,6 +275,141 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
                     </div>
                   )
                 })}
+              </div>
+
+              {/* Custom defects — anything not on the preset checklist (review pt 12) */}
+              <div className="pt-3 space-y-3">
+                {customDefects.map((defect, idx) => (
+                  <div key={defect.id} className="p-4 rounded-xl bg-white/5 border border-brand-400/30 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-brand-300">Custom defect {idx + 1}</span>
+                      <button
+                        onClick={() => removeCustomDefect(defect.id)}
+                        className="p-1.5 rounded-lg text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                        aria-label="Remove custom defect"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-white/60 mb-1.5">Defect title *</label>
+                      <input
+                        type="text"
+                        value={defect.title}
+                        onChange={(e) => updateCustomDefect(defect.id, { title: e.target.value })}
+                        placeholder="e.g. Damaged coping stones to boundary wall"
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-white/60 mb-1.5">Location / elevation</label>
+                        <select
+                          value={defect.location || ''}
+                          onChange={(e) => updateCustomDefect(defect.id, { location: (e.target.value || undefined) as CustomDefect['location'] })}
+                          className="input-field"
+                        >
+                          <option value="">Select location...</option>
+                          {CUSTOM_DEFECT_LOCATIONS.map((loc) => (
+                            <option key={loc.value} value={loc.value}>{loc.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/60 mb-1.5">Urgency</label>
+                        <select
+                          value={defect.urgency || ''}
+                          onChange={(e) => updateCustomDefect(defect.id, { urgency: (e.target.value || undefined) as DefectUrgency })}
+                          className="input-field"
+                        >
+                          <option value="">Select urgency...</option>
+                          <option value="immediate">Immediate (urgent repair needed)</option>
+                          <option value="short_term">Short term (within 3 months)</option>
+                          <option value="medium_term">Medium term (within 6 months)</option>
+                          <option value="long_term">Long term (within 12 months)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-white/60 mb-1.5">Description</label>
+                      <textarea
+                        value={defect.description || ''}
+                        onChange={(e) => updateCustomDefect(defect.id, { description: e.target.value })}
+                        placeholder="Tap record to dictate, or type what you observe..."
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 resize-none focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20 text-sm"
+                      />
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex-1">
+                          <AudioRecorder
+                            onTranscriptionComplete={(text) => {
+                              const current = defect.description || ''
+                              updateCustomDefect(defect.id, {
+                                description: current ? `${current} ${text}` : text,
+                                raw_description: defect.raw_description ? `${defect.raw_description}\n${text}` : text,
+                              })
+                            }}
+                            disabled={polishingDefectId === defect.id}
+                            surveyId={surveyId}
+                            transcriptionTarget={{ kind: 'wizard_section', section: 'external_inspection', field: `custom_defect_${defect.id}` }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handlePolishCustomDefect(defect)}
+                          disabled={!defect.description?.trim() || polishingDefectId === defect.id}
+                          className="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white/90"
+                        >
+                          {polishingDefectId === defect.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>✨</span>}
+                          {polishingDefectId === defect.id ? 'Polishing...' : 'Polish'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-white/60 mb-1.5">Recommended action</label>
+                      <input
+                        type="text"
+                        value={defect.action || ''}
+                        onChange={(e) => updateCustomDefect(defect.id, { action: e.target.value })}
+                        placeholder="e.g. Rebed coping stones — general builder"
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Camera className="w-4 h-4 text-brand-300" />
+                        <span className="text-sm font-medium text-white/80">
+                          {defect.title.trim() || 'Photos'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/50 mb-3">
+                        Photograph this defect — photos stay linked to this defect in the report.
+                      </p>
+                      <PhotoCapture
+                        surveyId={surveyId}
+                        step="external_inspection"
+                        category={`custom_defect_${defect.id}`}
+                        label={defect.title.trim() || 'Custom defect'}
+                        maxPhotos={3}
+                        existingPhotos={getCustomDefectPhotos(defect.id)}
+                        onPhotosChange={onPhotosChange}
+                        autoDescription={defect.title.trim() || 'Custom defect'}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={addCustomDefect}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-white/25 text-sm text-white/70 hover:text-white hover:border-brand-400/50 hover:bg-white/5 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add custom defect (not on the list)
+                </button>
               </div>
 
               {/* Defect urgency selector - shown when defects selected */}

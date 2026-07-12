@@ -1099,6 +1099,11 @@ export async function generateReport(
     ext?.building_defects_found
       ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
       : 'No external defects noted.',
+    ...(ext?.custom_defects ?? [])
+      .filter((d) => d.title?.trim())
+      .map((d) =>
+        `Additional external defect: ${d.title.trim()}${d.description?.trim() ? ` — ${d.description.trim()}` : ''}`
+      ),
     ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
     ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
   ]
@@ -1337,6 +1342,55 @@ export async function generateReport(
           'findings',
           'survey_data',
           defectContent
+        )
+      )
+    }
+
+    // Custom defects (review pt 12) — surveyor-defined, beyond the preset
+    // checklist. Each renders with its location, urgency and recommended
+    // action; photos attach by stable id (category custom_defect_<id>).
+    const customDefects = (ext.custom_defects ?? []).filter((d) => d.title?.trim())
+    if (customDefects.length > 0) {
+      const urgencyLabels: Record<string, string> = {
+        immediate: 'Immediate attention required',
+        short_term: 'Short-term attention required (within 3 months)',
+        medium_term: 'Attention required within 6 months',
+        long_term: 'Attention required within 12 months',
+      }
+      const locationLabels: Record<string, string> = {
+        front: 'front elevation',
+        rear: 'rear elevation',
+        left_side: 'left side elevation',
+        right_side: 'right side elevation',
+        offshoot: 'offshoot',
+        other: 'location as described',
+      }
+
+      const defectBlocks = customDefects.map((d) => {
+        const parts: string[] = []
+        const title = d.location
+          ? `${d.title.trim()} — ${locationLabels[d.location] ?? d.location}`
+          : d.title.trim()
+        parts.push(` - ${title}`)
+        if (d.description?.trim()) parts.push(`   ${d.description.trim()}`)
+        if (d.urgency && urgencyLabels[d.urgency]) parts.push(`   ${urgencyLabels[d.urgency]}.`)
+        if (d.action?.trim()) parts.push(`   Recommended action: ${d.action.trim()}`)
+        return parts.join('\n')
+      })
+
+      const customDefectPhotoIds = photos
+        .filter((p) => (p.category ?? '').startsWith('custom_defect_'))
+        .map((p) => p.id)
+
+      extSubSections.push(
+        buildSection(
+          'custom_defects',
+          'Additional Defects Noted',
+          'findings',
+          'survey_data',
+          `In addition, our surveyor noted the following defects during the external inspection:\n\n${defectBlocks.join('\n\n')}`,
+          {},
+          customDefectPhotoIds
         )
       )
     }
@@ -2174,6 +2228,11 @@ export async function regenerateSection(
     ext?.building_defects_found
       ? `External defects: ${ext.building_defects.map((d: string) => getDefectLabel(d)).join(', ')}`
       : 'No external defects noted.',
+    ...(ext?.custom_defects ?? [])
+      .filter((d) => d.title?.trim())
+      .map((d) =>
+        `Additional external defect: ${d.title.trim()}${d.description?.trim() ? ` — ${d.description.trim()}` : ''}`
+      ),
     ext?.wall_tie_concern ? 'Wall tie concern identified.' : '',
     ext?.cracking_concern ? 'Structural cracking concern identified.' : '',
   ]
