@@ -31,6 +31,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getSupabase } from '@/lib/supabase-client'
 import { buildCustomerQuotationView } from '@/lib/quotation-presentation'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,8 @@ export default function QuotationManagementPage() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [sendConfirm, setSendConfirm] = useState(false)
+  // Duplicate-send guard (review pt 3): set when the API reports a prior send
+  const [resendPrompt, setResendPrompt] = useState<{ lastSentAt?: string; lastSentTo?: string } | null>(null)
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
@@ -231,13 +234,23 @@ export default function QuotationManagementPage() {
     setTimeout(() => setCopiedLink(false), 2500)
   }
 
-  async function handleSendToCustomer() {
+  async function handleSendToCustomer(confirmResend = false) {
     if (!quotation) return
     setIsSending(true)
     setSendResult(null)
     try {
-      const res = await fetch(`/api/quotations/${quotation.id}/send`, { method: 'POST' })
+      const res = await fetch(`/api/quotations/${quotation.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmResend }),
+      })
       const data = await res.json()
+
+      if (res.status === 409 && data.alreadySent) {
+        // Already sent — require an explicit typed confirmation to resend
+        setResendPrompt({ lastSentAt: data.lastSentAt, lastSentTo: data.lastSentTo })
+        return
+      }
 
       if (!res.ok) {
         setSendResult({ success: false, message: data.error || 'Failed to send quotation' })
@@ -251,6 +264,7 @@ export default function QuotationManagementPage() {
 
       // Update local state to reflect the new status
       const now = new Date().toISOString()
+      setResendPrompt(null)
       setQuotation({
         ...quotation,
         status: quotation.status === 'draft' ? 'sent' : quotation.status,
@@ -434,7 +448,7 @@ export default function QuotationManagementPage() {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={handleSendToCustomer}
+                          onClick={() => handleSendToCustomer()}
                           disabled={isSending}
                         >
                           {isSending ? (
@@ -479,6 +493,17 @@ export default function QuotationManagementPage() {
                     )}
                   </Button>
                 </div>
+
+                <ConfirmDialog
+                  open={resendPrompt !== null}
+                  title="Quotation already sent"
+                  message={`This quotation was already emailed${resendPrompt?.lastSentTo ? ` to ${resendPrompt.lastSentTo}` : ''}${resendPrompt?.lastSentAt ? ` on ${new Date(resendPrompt.lastSentAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}. Sending again will deliver a duplicate email to the customer. Customer documents are normally sent together from the pipeline's Approve & Send.`}
+                  confirmLabel="Resend to customer"
+                  requireText="RESEND"
+                  busy={isSending}
+                  onConfirm={() => handleSendToCustomer(true)}
+                  onCancel={() => setResendPrompt(null)}
+                />
 
                 {/* Send result feedback */}
                 {sendResult && (

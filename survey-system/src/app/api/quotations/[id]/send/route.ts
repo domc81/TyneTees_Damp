@@ -13,6 +13,7 @@ import { isNotificationEnabled } from '@/lib/notification-preferences'
 import { quotationEmail } from '@/lib/email-templates'
 import { sendEmail } from '@/lib/email-service'
 import { notifyQuotationSent } from '@/lib/notifications-server'
+import { findPriorCustomerSend, alreadySentPayload } from '@/lib/customer-send-guard'
 
 // Service-role client for privileged reads/writes (bypasses RLS)
 function getServiceClient() {
@@ -70,6 +71,15 @@ export async function POST(
       return NextResponse.json({ error: 'Missing quotation ID' }, { status: 400 })
     }
 
+    // Optional body — resend confirmation flag from the UI's typed confirm
+    let confirmResend = false
+    try {
+      const body = await request.json()
+      confirmResend = body?.confirmResend === true
+    } catch {
+      // No/invalid body — normal first send
+    }
+
     const db = getServiceClient()
 
     // 2. Load the quotation
@@ -120,7 +130,18 @@ export async function POST(
       || [customer?.first_name, customer?.last_name].filter(Boolean).join(' ')
       || 'Customer'
 
-    // 4. Check notification preferences
+    // 4. Duplicate-send guard (review pt 3) — this route is the office
+    //    fallback; the routine path is the pipeline's Approve & Send.
+    const prior = await findPriorCustomerSend(db, {
+      surveyId: quotation.survey_id,
+      quotationId: quotation.id,
+      templates: ['quotation', 'report_and_quotation'],
+    })
+    if (prior && !confirmResend) {
+      return NextResponse.json(alreadySentPayload(prior), { status: 409 })
+    }
+
+    // 5. Check notification preferences
     const emailEnabled = await isNotificationEnabled('quotation_sent', 'email')
     if (!emailEnabled) {
       return NextResponse.json({
@@ -128,6 +149,22 @@ export async function POST(
         sent: false,
         reason: 'Email notifications disabled for this event type',
       })
+    }
+
+    // Race-safe idempotency claim for first sends (double-click protection)
+    if (!confirmResend) {
+      const { data: claimed } = await db
+        .from('quotations')
+        .update({ sent_at: new Date().toISOString() })
+        .eq('id', quotationId)
+        .is('sent_at', null)
+        .select('id')
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json(
+          { error: 'This quotation has already been sent', alreadySent: true },
+          { status: 409 }
+        )
+      }
     }
 
     // 5. Build the public quotation URL and format the valid_until date
@@ -151,7 +188,7 @@ export async function POST(
     // 7. Send the email with full logging context
     const result = await sendEmail({
       to: customerEmail,
-      subject: email.subject,
+      subject: confirmResend ? `${email.subject} (resent)` : email.subject,
       html: email.html,
       templateName: 'quotation',
       quotationId: quotation.id,
@@ -162,6 +199,10 @@ export async function POST(
     })
 
     if (!result.success) {
+      // Release the idempotency claim so a retry after a transient failure works
+      if (!confirmResend) {
+        await db.from('quotations').update({ sent_at: null }).eq('id', quotationId)
+      }
       return NextResponse.json(
         { error: result.error || 'Failed to send quotation email' },
         { status: 500 }

@@ -22,6 +22,7 @@ import { createSurveyFeePayment, getPaymentsForEnquiry, markPaymentPaid } from '
 import type { Payment, PaymentMethod } from '@/lib/payment-data'
 import { loadPricingConfig } from '@/lib/pricing-data'
 import { humanizeActivityTitle } from '@/lib/status-labels'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SlotPicker } from '@/components/calendar/SlotPicker'
 import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
@@ -753,6 +754,9 @@ export default function EnquiryDrawer({
   const [linkedCreateCustomer, setLinkedCreateCustomer] = useState<Customer | null>(null)
   const [approveSending, setApproveSending] = useState(false)
   const [approveSendError, setApproveSendError] = useState<string | null>(null)
+  // Duplicate-send guard: set when the API reports the documents were already
+  // sent — resending then requires an explicit typed confirmation
+  const [resendPrompt, setResendPrompt] = useState<{ lastSentAt?: string; lastSentTo?: string } | null>(null)
   // Preflight for Approve & Send: null = checking, false = not ready, true = ready
   const [reportReady, setReportReady] = useState<boolean | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -1488,7 +1492,7 @@ export default function EnquiryDrawer({
   }
 
   // ── Approve & Send handler ──────────────────────────────────────
-  async function handleApproveAndSend() {
+  async function handleApproveAndSend(confirmResend = false) {
     if (!enquiry || linkedSurveys.length === 0) return
     setApproveSending(true)
     setApproveSendError(null)
@@ -1496,8 +1500,14 @@ export default function EnquiryDrawer({
       const res = await fetch(`/api/surveys/${linkedSurveys[0].id}/approve-and-send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmResend }),
       })
       const data = await res.json()
+      if (res.status === 409 && data.alreadySent) {
+        // Already sent — surface the typed-confirm resend dialog instead of an error
+        setResendPrompt({ lastSentAt: data.lastSentAt, lastSentTo: data.lastSentTo })
+        return
+      }
       if (!res.ok) {
         const message = data.error || 'Failed to send report and quotation'
         // Persist the reason inline in the panel — a toast alone is too
@@ -1507,6 +1517,7 @@ export default function EnquiryDrawer({
         checkReportReady()
         return
       }
+      setResendPrompt(null)
       onBoardSync({ ...enquiry, status: 'sent' }, enquiry.status)
       toast.success(`Report and quotation sent to ${data.sentTo}`)
     } catch (err) {
@@ -2168,7 +2179,7 @@ export default function EnquiryDrawer({
                       </div>
                     )}
                     <button
-                      onClick={handleApproveAndSend}
+                      onClick={() => handleApproveAndSend()}
                       disabled={approveSending || reportReady === false}
                       className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -2178,6 +2189,16 @@ export default function EnquiryDrawer({
                         <><Send className="w-4 h-4" /> Approve &amp; Send</>
                       )}
                     </button>
+                    <ConfirmDialog
+                      open={resendPrompt !== null}
+                      title="Documents already sent"
+                      message={`The report and quotation were sent${resendPrompt?.lastSentTo ? ` to ${resendPrompt.lastSentTo}` : ''}${resendPrompt?.lastSentAt ? ` on ${new Date(resendPrompt.lastSentAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}. Sending again will deliver a duplicate email to the customer.`}
+                      confirmLabel="Resend to customer"
+                      requireText="RESEND"
+                      busy={approveSending}
+                      onConfirm={() => handleApproveAndSend(true)}
+                      onCancel={() => setResendPrompt(null)}
+                    />
                     {approveSendError && (
                       <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-200/90">
                         {approveSendError}

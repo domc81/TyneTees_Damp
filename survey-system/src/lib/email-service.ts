@@ -21,6 +21,8 @@ export interface SendEmailOptions {
   subject: string
   html: string
   replyTo?: string
+  /** File attachments (e.g. quotation PDF). Resend accepts Buffer or base64 content. */
+  attachments?: { filename: string; content: Buffer | string }[]
   // Logging context — optional, for audit trail in communication_log
   templateName?: string
   customerId?: string
@@ -107,7 +109,7 @@ async function logCommunication(params: {
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const {
-    to, subject, html, replyTo,
+    to, subject, html, replyTo, attachments,
     templateName, customerId, surveyId, quotationId, bookingId, sentBy, recipientName,
   } = options
 
@@ -146,7 +148,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
-      ...(effectiveReplyTo ? { reply_to: effectiveReplyTo } : {}),
+      // Resend SDK v3+ expects camelCase replyTo — the old snake_case
+      // reply_to key is silently ignored and Reply-To never gets set
+      ...(effectiveReplyTo ? { replyTo: effectiveReplyTo } : {}),
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
     })
 
     if (error) {

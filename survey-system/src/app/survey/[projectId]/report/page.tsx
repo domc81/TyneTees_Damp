@@ -136,6 +136,8 @@ export default function ReportEditorPage() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [sendConfirm, setSendConfirm] = useState(false)
+  // Duplicate-send guard (review pt 3): set when the API reports a prior send
+  const [resendPrompt, setResendPrompt] = useState<{ lastSentAt?: string; lastSentTo?: string } | null>(null)
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [customerEmail, setCustomerEmail] = useState<string | null>(null)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
@@ -398,14 +400,24 @@ export default function ReportEditorPage() {
   }
 
   // Send report to customer
-  async function handleSendToCustomer() {
+  async function handleSendToCustomer(confirmResend = false) {
     if (!report) return
     setIsSending(true)
     setSendResult(null)
 
     try {
-      const res = await fetch(`/api/reports/${report.id}/send`, { method: 'POST' })
+      const res = await fetch(`/api/reports/${report.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmResend }),
+      })
       const data = await res.json()
+
+      if (res.status === 409 && data.alreadySent) {
+        // Already sent — require an explicit typed confirmation to resend
+        setResendPrompt({ lastSentAt: data.lastSentAt, lastSentTo: data.lastSentTo })
+        return
+      }
 
       if (!res.ok || !data.success) {
         setSendResult({ success: false, message: data.error || 'Failed to send report' })
@@ -419,6 +431,7 @@ export default function ReportEditorPage() {
       }
 
       const now = new Date().toISOString()
+      setResendPrompt(null)
       setReport({
         ...report,
         sent_at: now,
@@ -783,7 +796,7 @@ export default function ReportEditorPage() {
                               <Button
                                 variant="primary"
                                 size="sm"
-                                onClick={handleSendToCustomer}
+                                onClick={() => handleSendToCustomer()}
                                 disabled={isSending}
                               >
                                 {isSending ? (
@@ -803,6 +816,17 @@ export default function ReportEditorPage() {
                             </div>
                           )}
                         </div>
+
+                        <ConfirmDialog
+                          open={resendPrompt !== null}
+                          title="Report already sent"
+                          message={`This report was already emailed${resendPrompt?.lastSentTo ? ` to ${resendPrompt.lastSentTo}` : ''}${resendPrompt?.lastSentAt ? ` on ${new Date(resendPrompt.lastSentAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}. Sending again will deliver a duplicate email to the customer. Customer documents are normally sent together from the pipeline's Approve & Send.`}
+                          confirmLabel="Resend to customer"
+                          requireText="RESEND"
+                          busy={isSending}
+                          onConfirm={() => handleSendToCustomer(true)}
+                          onCancel={() => setResendPrompt(null)}
+                        />
 
                         {/* Last sent info */}
                         {report.sent_at && (

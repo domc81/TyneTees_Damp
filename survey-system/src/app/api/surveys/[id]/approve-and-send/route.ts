@@ -9,10 +9,15 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import React from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { sendEmail } from '@/lib/email-service'
 import { reportAndQuotationEmail } from '@/lib/email-templates'
+import { QuotationPDFDocument } from '@/lib/quotation-pdf-renderer'
+import type { QuotationForPDF, QuotationSectionForPDF } from '@/lib/quotation-pdf-renderer'
+import { findPriorCustomerSend, alreadySentPayload } from '@/lib/customer-send-guard'
 
 function getServiceClient() {
   return createClient(
@@ -66,6 +71,15 @@ export async function POST(
     const surveyId = params.id
     if (!surveyId) {
       return NextResponse.json({ error: 'Missing survey ID' }, { status: 400 })
+    }
+
+    // Optional body — resend confirmation flag from the UI's typed confirm
+    let confirmResend = false
+    try {
+      const body = await request.json()
+      confirmResend = body?.confirmResend === true
+    } catch {
+      // No/invalid body — normal first send
     }
 
     const db = getServiceClient()
@@ -128,7 +142,39 @@ export async function POST(
       )
     }
 
-    // 4. Build URLs
+    // 4. Duplicate-send guard (review pt 3): any prior successful customer
+    //    document email for this survey/quotation requires an explicit,
+    //    typed resend confirmation from the UI.
+    const prior = await findPriorCustomerSend(db, {
+      surveyId,
+      quotationId: quotation.id,
+      templates: ['report_and_quotation', 'quotation', 'report'],
+    })
+    if (prior && !confirmResend) {
+      return NextResponse.json(alreadySentPayload(prior), { status: 409 })
+    }
+
+    // Race-safe idempotency claim for first sends: only one concurrent
+    // request can flip sent_at from NULL — a double-click cannot fire twice.
+    if (!confirmResend) {
+      const { data: claimed } = await db
+        .from('survey_reports')
+        .update({ sent_at: new Date().toISOString() })
+        .eq('id', report.id)
+        .is('sent_at', null)
+        .select('id')
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json(
+          {
+            error: 'Customer documents have already been sent',
+            alreadySent: true,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    // 4b. Build URLs
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
     const reportUrl = `${appUrl}/report/${report.id}?token=${report.publish_token}`
     const quotationUrl = `${appUrl}/q/${quotation.share_token}`
@@ -140,7 +186,49 @@ export async function POST(
         })
       : undefined
 
-    // 5. Send combined email
+    // 5. Render the quotation PDF attachment. A render failure must not block
+    //    the send — the email still carries both links (decision D2: report
+    //    stays online-link until a report-PDF pipeline exists).
+    let attachments: { filename: string; content: Buffer }[] | undefined
+    try {
+      const [{ data: fullQuotation }, { data: sections }] = await Promise.all([
+        db.from('quotations').select('*').eq('id', quotation.id).single(),
+        db
+          .from('quotation_sections')
+          .select('*')
+          .eq('quotation_id', quotation.id)
+          .order('display_order', { ascending: true }),
+      ])
+      if (fullQuotation) {
+        const pdfBuffer = await Promise.race([
+          renderToBuffer(
+            React.createElement(QuotationPDFDocument, {
+              quotation: fullQuotation as QuotationForPDF,
+              sections: (sections || []) as QuotationSectionForPDF[],
+            })
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('PDF generation timeout')), 30000)
+          ),
+        ])
+        const companyName =
+          (fullQuotation as QuotationForPDF).company_name ?? 'Tyne Tees Damp Proofing'
+        attachments = [
+          {
+            filename: `Quotation ${quotation.quotation_number} - ${companyName}.pdf`
+              .replace(/[^a-zA-Z0-9 ._-]/g, '_'),
+            content: pdfBuffer,
+          },
+        ]
+      }
+    } catch (pdfErr) {
+      console.error(
+        '[approve-and-send] Quotation PDF attachment failed — sending with links only:',
+        pdfErr
+      )
+    }
+
+    // 6. Send combined email
     const email = await reportAndQuotationEmail({
       customerName,
       reportUrl,
@@ -150,16 +238,25 @@ export async function POST(
 
     const result = await sendEmail({
       to: customerEmail,
-      subject: email.subject,
+      subject: confirmResend ? `${email.subject} (resent)` : email.subject,
       html: email.html,
+      attachments,
       templateName: 'report_and_quotation',
       surveyId: survey.id,
+      quotationId: quotation.id,
       customerId: customer?.id,
       sentBy: profileId,
       recipientName: customerName,
     })
 
     if (!result.success) {
+      // Release the idempotency claim so a retry after a transient failure works
+      if (!confirmResend) {
+        await db
+          .from('survey_reports')
+          .update({ sent_at: null })
+          .eq('id', report.id)
+      }
       return NextResponse.json(
         { error: result.error || 'Failed to send email' },
         { status: 500 }
@@ -168,13 +265,14 @@ export async function POST(
 
     const now = new Date().toISOString()
 
-    // 6. Update report sent_at
+    // 7. Update report sent_at (the claim already stamped it on first sends;
+    //    this refreshes the timestamp and records the recipient)
     await db
       .from('survey_reports')
       .update({ sent_at: now, sent_to_email: customerEmail })
       .eq('id', report.id)
 
-    // 7. Update quotation status to 'sent' (if still draft)
+    // 8. Update quotation status to 'sent' (if still draft)
     if (quotation.status === 'draft') {
       await db
         .from('quotations')

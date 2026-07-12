@@ -16,6 +16,7 @@ import { isNotificationEnabled } from '@/lib/notification-preferences'
 import { reportEmail } from '@/lib/email-templates'
 import { sendEmail } from '@/lib/email-service'
 import { notifyReportSent } from '@/lib/notifications-server'
+import { findPriorCustomerSend, alreadySentPayload } from '@/lib/customer-send-guard'
 
 // Service-role client for privileged reads/writes (bypasses RLS)
 function getServiceClient() {
@@ -71,6 +72,15 @@ export async function POST(
     const reportId = params.id
     if (!reportId) {
       return NextResponse.json({ error: 'Missing report ID' }, { status: 400 })
+    }
+
+    // Optional body — resend confirmation flag from the UI's typed confirm
+    let confirmResend = false
+    try {
+      const body = await request.json()
+      confirmResend = body?.confirmResend === true
+    } catch {
+      // No/invalid body — normal first send
     }
 
     const db = getServiceClient()
@@ -131,7 +141,17 @@ export async function POST(
       || survey.client_name
       || 'Customer'
 
-    // 4. Check notification preferences
+    // 4. Duplicate-send guard (review pt 3) — this route is the office
+    //    fallback; the routine path is the pipeline's Approve & Send.
+    const prior = await findPriorCustomerSend(db, {
+      surveyId: report.survey_id,
+      templates: ['report', 'report_and_quotation'],
+    })
+    if (prior && !confirmResend) {
+      return NextResponse.json(alreadySentPayload(prior), { status: 409 })
+    }
+
+    // 5. Check notification preferences
     // Use 'report_published' (customer-facing) not 'report_sent' (internal-only)
     const emailEnabled = await isNotificationEnabled('report_published', 'email')
     if (!emailEnabled) {
@@ -140,6 +160,22 @@ export async function POST(
         sent: false,
         reason: 'Email notifications disabled for this event type',
       })
+    }
+
+    // Race-safe idempotency claim for first sends (double-click protection)
+    if (!confirmResend) {
+      const { data: claimed } = await db
+        .from('survey_reports')
+        .update({ sent_at: new Date().toISOString() })
+        .eq('id', reportId)
+        .is('sent_at', null)
+        .select('id')
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json(
+          { error: 'This report has already been sent', alreadySent: true },
+          { status: 409 }
+        )
+      }
     }
 
     // 5. Build the public report URL
@@ -165,7 +201,7 @@ export async function POST(
     // 7. Send the email with full logging context
     const result = await sendEmail({
       to: customerEmail,
-      subject: email.subject,
+      subject: confirmResend ? `${email.subject} (resent)` : email.subject,
       html: email.html,
       templateName: 'report',
       surveyId: survey.id,
@@ -175,6 +211,10 @@ export async function POST(
     })
 
     if (!result.success) {
+      // Release the idempotency claim so a retry after a transient failure works
+      if (!confirmResend) {
+        await db.from('survey_reports').update({ sent_at: null }).eq('id', reportId)
+      }
       return NextResponse.json(
         { error: result.error || 'Failed to send report email' },
         { status: 500 }
