@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks, Receipt, Download } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, DollarSign, Truck, Wrench, Package, FileText, HardHat, ListChecks, Receipt, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { loadWizardData } from '@/lib/survey-wizard-data'
@@ -318,6 +318,21 @@ export default function CostingReviewPage() {
   // CF CSV export feedback message (auto-clears)
   const [cfExportMessage, setCfExportMessage] = useState<string | null>(null)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
+
+  // Job Cost Summary: collapsed bottom bar on phone/tablet (review pt 13).
+  // Default collapsed; remembered per session.
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  useEffect(() => {
+    try {
+      setSummaryOpen(sessionStorage.getItem('ttdp-costing-summary-open') === '1')
+    } catch { /* sessionStorage unavailable — stay collapsed */ }
+  }, [])
+  const toggleSummary = () => {
+    setSummaryOpen(open => {
+      try { sessionStorage.setItem('ttdp-costing-summary-open', open ? '0' : '1') } catch { /* ignore */ }
+      return !open
+    })
+  }
 
   const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -710,10 +725,101 @@ export default function CostingReviewPage() {
     )
   }
 
+  // Job Cost Summary rows — shared by the desktop card and the mobile sheet.
+  // Row labels are frozen (payment-staging wording is review pt 16, phase 2).
+  const summaryRows = (
+    <div className="space-y-3">
+      {/* Mandatory works total */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2 text-white/70">
+          <span>Mandatory Works</span>
+        </div>
+        <span className="text-white font-medium">
+          {formatCurrency(mandatoryWorksTotal)}
+        </span>
+      </div>
+
+      {/* Optional included total — only shown when the job has optional sections */}
+      {hasOptionalSections && (
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 text-white/70">
+            <ListChecks className="w-4 h-4 text-amber-400/70" />
+            <span>
+              Optional Works <span className="text-xs">(included)</span>
+            </span>
+          </div>
+          <span className={`font-medium ${optionalIncludedTotal > 0 ? 'text-white' : 'text-white/40'}`}>
+            {formatCurrency(optionalIncludedTotal)}
+          </span>
+        </div>
+      )}
+
+      {/* Combined total */}
+      <div className="flex justify-between items-center pt-2 border-t border-white/10">
+        <span className="text-white/90 font-medium">
+          Combined Works
+        </span>
+        <span className="text-white font-semibold">
+          {formatCurrency(combinedWorksTotal)}
+        </span>
+      </div>
+
+      {/* Project Specific Overheads */}
+      {overheadAmount > 0 && (
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 text-white/70">
+            <Truck className="w-4 h-4" />
+            <span>Project Specific Overheads</span>
+          </div>
+          <span className="text-white font-medium">
+            {formatCurrency(overheadAmount)}
+          </span>
+        </div>
+      )}
+
+      {/* Subtotal (ex VAT) */}
+      <div className="flex justify-between items-center pt-3 border-t border-white/10">
+        <span className="text-white/90 font-medium">Subtotal (ex VAT)</span>
+        <span className="text-white font-semibold text-lg">
+          {formatCurrency(jobSubtotal)}
+        </span>
+      </div>
+
+      {/* VAT */}
+      <div className="flex justify-between items-center">
+        <span className="text-white/70">VAT (20%)</span>
+        <span className="text-white/90">
+          {formatCurrency(jobVAT)}
+        </span>
+      </div>
+
+      {/* Grand Total (inc VAT) */}
+      <div className="flex justify-between items-center pt-3 border-t border-white/10">
+        <span className="text-white font-bold text-lg">Grand Total (inc VAT)</span>
+        <span className="text-brand-300 font-bold text-2xl">
+          {formatCurrency(jobGrandTotalIncVAT)}
+        </span>
+      </div>
+
+      {/* Deposit required */}
+      {depositPct > 0 && (
+        <div className="flex justify-between items-center pt-3 border-t border-white/10">
+          <div className="flex items-center gap-2 text-white/70">
+            <Receipt className="w-4 h-4 text-brand-300/70" />
+            <span>Deposit required ({Math.round(depositPct * 100)}%)</span>
+          </div>
+          <span className="text-brand-300 font-semibold">
+            {formatCurrency(depositAmount)}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <ProtectedRoute>
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20 xl:pb-0">
           <div>
             <button
               type="button"
@@ -904,103 +1010,58 @@ export default function CostingReviewPage() {
         )}
 
         {/* ════════════════════════════════════════════════════════════
-            COMBINED JOB GRAND TOTAL — sticky footer
+            COMBINED JOB GRAND TOTAL (review pt 13)
+            ≥ xl: normal in-flow card — never covers the costing tables.
+            < xl: slim fixed bottom bar showing the live total, expanding
+                  to a bottom sheet with the full summary.
            ════════════════════════════════════════════════════════════ */}
-        <Card className="glass border-white/10 overflow-hidden sticky bottom-4">
+        <Card className="glass border-white/10 overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-br from-brand-500/20 to-brand-600/20">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
               Job Cost Summary
             </h2>
-
-            <div className="space-y-3">
-              {/* Mandatory works total */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-white/70">
-                  <span>Mandatory Works</span>
-                </div>
-                <span className="text-white font-medium">
-                  {formatCurrency(mandatoryWorksTotal)}
-                </span>
-              </div>
-
-              {/* Optional included total — only shown when the job has optional sections */}
-              {hasOptionalSections && (
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <ListChecks className="w-4 h-4 text-amber-400/70" />
-                    <span>
-                      Optional Works <span className="text-xs">(included)</span>
-                    </span>
-                  </div>
-                  <span className={`font-medium ${optionalIncludedTotal > 0 ? 'text-white' : 'text-white/40'}`}>
-                    {formatCurrency(optionalIncludedTotal)}
-                  </span>
-                </div>
-              )}
-
-              {/* Combined total */}
-              <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                <span className="text-white/90 font-medium">
-                  Combined Works
-                </span>
-                <span className="text-white font-semibold">
-                  {formatCurrency(combinedWorksTotal)}
-                </span>
-              </div>
-
-              {/* Project Specific Overheads */}
-              {overheadAmount > 0 && (
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Truck className="w-4 h-4" />
-                    <span>Project Specific Overheads</span>
-                  </div>
-                  <span className="text-white font-medium">
-                    {formatCurrency(overheadAmount)}
-                  </span>
-                </div>
-              )}
-
-              {/* Subtotal (ex VAT) */}
-              <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                <span className="text-white/90 font-medium">Subtotal (ex VAT)</span>
-                <span className="text-white font-semibold text-lg">
-                  {formatCurrency(jobSubtotal)}
-                </span>
-              </div>
-
-              {/* VAT */}
-              <div className="flex justify-between items-center">
-                <span className="text-white/70">VAT (20%)</span>
-                <span className="text-white/90">
-                  {formatCurrency(jobVAT)}
-                </span>
-              </div>
-
-              {/* Grand Total (inc VAT) */}
-              <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                <span className="text-white font-bold text-lg">Grand Total (inc VAT)</span>
-                <span className="text-brand-300 font-bold text-2xl">
-                  {formatCurrency(jobGrandTotalIncVAT)}
-                </span>
-              </div>
-
-              {/* Deposit required */}
-              {depositPct > 0 && (
-                <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Receipt className="w-4 h-4 text-brand-300/70" />
-                    <span>Deposit required ({Math.round(depositPct * 100)}%)</span>
-                  </div>
-                  <span className="text-brand-300 font-semibold">
-                    {formatCurrency(depositAmount)}
-                  </span>
-                </div>
-              )}
-            </div>
+            {summaryRows}
           </div>
         </Card>
+
+        {/* Fixed collapsed total bar + expanding sheet — phone/tablet only */}
+        <div className="xl:hidden">
+          {summaryOpen && (
+            <div
+              className="fixed inset-0 bg-black/60 z-30"
+              onClick={toggleSummary}
+              aria-hidden="true"
+            />
+          )}
+          <div className="fixed bottom-0 inset-x-0 z-40 flex flex-col">
+            {summaryOpen && (
+              <div className="bg-slate-900 border-t border-white/15 px-6 py-4 max-h-[70vh] overflow-y-auto shadow-2xl">
+                <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Job Cost Summary
+                </h2>
+                {summaryRows}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={toggleSummary}
+              aria-expanded={summaryOpen}
+              className="w-full bg-slate-900 border-t border-white/15 px-4 py-3 flex items-center justify-between gap-3 shadow-2xl"
+            >
+              <span className="text-sm font-medium text-white/80">Grand Total (inc VAT)</span>
+              <span className="flex items-center gap-2">
+                <span className="text-brand-300 font-bold text-lg tabular-nums">
+                  {formatCurrency(jobGrandTotalIncVAT)}
+                </span>
+                {summaryOpen
+                  ? <ChevronDown className="w-4 h-4 text-white/60" />
+                  : <ChevronUp className="w-4 h-4 text-white/60" />}
+              </span>
+            </button>
+          </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="mt-8 space-y-4">
