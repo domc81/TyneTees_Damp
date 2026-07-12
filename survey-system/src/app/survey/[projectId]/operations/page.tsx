@@ -14,7 +14,7 @@
 // parity-gated against the workbooks' U/V columns (lib/contractor-costs.ts).
 // =============================================================================
 
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -46,6 +46,14 @@ import {
   updateSubcontractorAssignment,
   type SubcontractorCostRow,
 } from '@/lib/subcontractor-data'
+import {
+  buildDampPurchaseList,
+  buildMeasurementList,
+  dampPurchaseSourceLines,
+  MATERIAL_LIST_CAVEAT,
+  type MeasurementItem,
+  type PurchaseItem,
+} from '@/lib/material-purchase-list'
 import { getSurvey } from '@/lib/supabase-data'
 import type { Survey } from '@/types/database.types'
 
@@ -56,14 +64,14 @@ function formatCurrency(value: number): string {
 }
 
 function formatSectionName(sectionKey: string): string {
+  // The workbook's Sub Contractor Costs tab lists Warmline as its own row
+  if (sectionKey === 'warmline_iwi') return 'Warmline Internal Wall Insulation'
   return sectionKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-interface MaterialLine {
-  sectionKey: string
-  description: string
-  quantity: number
-  dimension?: number
+/** Job quantity for display: strip float noise, no forced decimals */
+function formatQty(q: number): string {
+  return String(Number(q.toFixed(2)))
 }
 
 export default function OperationsPage() {
@@ -75,7 +83,9 @@ export default function OperationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [survey, setSurvey] = useState<Survey | null>(null)
   const [contractor, setContractor] = useState<ContractorOutputs | null>(null)
-  const [materials, setMaterials] = useState<MaterialLine[]>([])
+  const [purchase, setPurchase] = useState<PurchaseItem[]>([])
+  const [measurements, setMeasurements] = useState<MeasurementItem[]>([])
+  const [printMeasurements, setPrintMeasurements] = useState<MeasurementItem[]>([])
   const [rows, setRows] = useState<SubcontractorCostRow[]>([])
   const [travel, setTravel] = useState<TravelOverheadResult | null>(null)
   const [crew, setCrew] = useState(1)
@@ -135,21 +145,24 @@ export default function OperationsPage() {
       )
       setContractor(outputs)
 
-      // Material list — quantities before the job starts (review test 31)
-      const mats: MaterialLine[] = []
-      for (const r of Object.values(results)) {
-        for (const line of r.lines) {
-          if (!isSectionIncluded(line.sectionKey)) continue
-          if (line.result.materialAdjustedCost <= 0) continue
-          mats.push({
-            sectionKey: line.sectionKey,
-            description: line.templateDescription,
-            quantity: line.input.inputQuantity,
-            dimension: line.input.inputDimension || undefined,
-          })
-        }
+      // Material list — quantities before the job starts (review test 31).
+      // Damp jobs get the workbook `Material-List` purchase quantities
+      // (parity-gated, lib/material-purchase-list.ts); survey types without
+      // workbook purchase rules surface as job measurements instead.
+      const included = (line: CalculatedLine) => isSectionIncluded(line.sectionKey)
+      setPurchase(buildDampPurchaseList(dampPurchaseSourceLines(results).filter(included)))
+
+      const hasDamp = !!results['damp']
+      const measurementLines: CalculatedLine[] = []
+      const allLines: CalculatedLine[] = []
+      for (const [surveyType, r] of Object.entries(results)) {
+        allLines.push(...r.lines.filter(included))
+        if (hasDamp && (surveyType === 'damp' || surveyType === 'site_preparation')) continue
+        measurementLines.push(...r.lines.filter(included))
       }
-      setMaterials(mats)
+      setMeasurements(buildMeasurementList(measurementLines))
+      // Work instruction: job measurements for every survey type
+      setPrintMeasurements(buildMeasurementList(allLines))
 
       // Persist the computed figures, keeping office assignments/notes
       const sectionNames: Record<string, string> = {}
@@ -334,35 +347,86 @@ export default function OperationsPage() {
                 </div>
               </Card>
 
-              {/* ── Material list ── */}
-              <Card className="glass border-white/10 overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10">
-                  <h3 className="font-semibold text-white flex items-center gap-2"><Package className="w-4 h-4" /> Material list</h3>
-                  <p className="text-xs text-white/50 mt-0.5">Quantities to purchase/prepare before the job starts.</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs font-medium text-white/60 uppercase tracking-wider">
-                        <th className="px-5 py-3 text-left">Item</th>
-                        <th className="px-5 py-3 text-left">Section</th>
-                        <th className="px-5 py-3 text-right">Quantity</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {materials.map((m, i) => (
-                        <tr key={i} className="hover:bg-white/5">
-                          <td className="px-5 py-2.5 text-sm text-white/90">{m.description}</td>
-                          <td className="px-5 py-2.5 text-sm text-white/50">{formatSectionName(m.sectionKey)}</td>
-                          <td className="px-5 py-2.5 text-sm text-white/70 text-right">
-                            {m.quantity.toFixed(2)}{m.dimension ? ` × ${m.dimension}` : ''}
-                          </td>
+              {/* ── Material list — the damp workbook's Material-List sheet:
+                  purchasable units with the sheet's own pack rounding ── */}
+              {purchase.length > 0 && (
+                <Card className="glass border-white/10 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-white/10">
+                    <h3 className="font-semibold text-white flex items-center gap-2"><Package className="w-4 h-4" /> Material list</h3>
+                    <p className="text-xs text-white/50 mt-0.5">Purchase quantities per the costing workbook&apos;s Material-List sheet.</p>
+                    <p className="text-xs text-amber-400/80 mt-1">{MATERIAL_LIST_CAVEAT} — these are bought per job.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10 text-xs font-medium text-white/60 uppercase tracking-wider">
+                          <th className="px-5 py-3 text-left">Item</th>
+                          <th className="px-5 py-3 text-right">Qty</th>
+                          <th className="px-5 py-3 text-left">Unit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {Array.from(new Set(purchase.map((p) => p.group))).map((group) => (
+                          <Fragment key={group}>
+                            <tr className="bg-white/5">
+                              <td colSpan={3} className="px-5 py-2 text-xs font-semibold text-white/70 uppercase tracking-wider">{group}</td>
+                            </tr>
+                            {purchase.filter((p) => p.group === group).map((p) => (
+                              <tr key={p.sku} className="hover:bg-white/5">
+                                <td className="px-5 py-2.5 text-sm text-white/90">
+                                  {p.productUrl ? (
+                                    <a href={p.productUrl} target="_blank" rel="noopener noreferrer" className="hover:text-brand-300 hover:underline">{p.product}</a>
+                                  ) : (
+                                    p.product
+                                  )}
+                                  {p.usageNote && <p className="text-xs text-white/40 mt-0.5">{p.usageNote}</p>}
+                                </td>
+                                <td className="px-5 py-2.5 text-sm font-medium text-white text-right align-top">{p.quantity.toFixed(p.precision)}</td>
+                                <td className="px-5 py-2.5 text-sm text-white/60 align-top">{p.uom}</td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+
+              {/* ── Job measurements — survey types without workbook purchase
+                  rules (timber/woodworm "Sub Contractor Mats" is TBC) ── */}
+              {measurements.length > 0 && (
+                <Card className="glass border-white/10 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-white/10">
+                    <h3 className="font-semibold text-white flex items-center gap-2"><Package className="w-4 h-4" /> Job measurements</h3>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      The workbooks define purchase quantities for damp works only — these lines show surveyed job quantities, not pack counts.
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10 text-xs font-medium text-white/60 uppercase tracking-wider">
+                          <th className="px-5 py-3 text-left">Item</th>
+                          <th className="px-5 py-3 text-left">Section</th>
+                          <th className="px-5 py-3 text-right">Measurement</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {measurements.map((m, i) => (
+                          <tr key={i} className="hover:bg-white/5">
+                            <td className="px-5 py-2.5 text-sm text-white/90">{m.description}</td>
+                            <td className="px-5 py-2.5 text-sm text-white/50">{formatSectionName(m.sectionKey)}</td>
+                            <td className="px-5 py-2.5 text-sm text-white/70 text-right">
+                              {formatQty(m.quantity)}{m.uom ? ` ${m.uom}` : ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
             </>
           )}
         </div>
@@ -387,7 +451,7 @@ export default function OperationsPage() {
             <h2 className="text-base font-bold mt-4 mb-2 border-b border-black pb-1">Scope of works &amp; measurements</h2>
             {contractor.sections.map((s) => {
               const row = rowByKey.get(s.sectionKey)
-              const sectionMaterials = materials.filter((m) => m.sectionKey === s.sectionKey)
+              const sectionMeasurements = printMeasurements.filter((m) => m.sectionKey === s.sectionKey)
               return (
                 <div key={s.sectionKey} className="mb-3" style={{ breakInside: 'avoid' }}>
                   <p className="font-semibold">
@@ -395,8 +459,8 @@ export default function OperationsPage() {
                     {row?.assigned_to ? ` — assigned: ${row.assigned_to}` : ''}
                   </p>
                   <ul className="list-disc ml-5">
-                    {sectionMaterials.map((m, i) => (
-                      <li key={i}>{m.description}: {m.quantity.toFixed(2)}{m.dimension ? ` × ${m.dimension}` : ''}</li>
+                    {sectionMeasurements.map((m, i) => (
+                      <li key={i}>{m.description}: {formatQty(m.quantity)}{m.uom ? ` ${m.uom}` : ''}</li>
                     ))}
                   </ul>
                   {row?.notes && <p className="italic ml-5">Note: {row.notes}</p>}

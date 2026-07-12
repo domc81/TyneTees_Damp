@@ -37,6 +37,10 @@ import {
   contractorLineValues,
   contractorRatesFromConfig,
 } from '../../src/lib/contractor-costs'
+import {
+  computeDampPurchaseQuantities,
+  dampPurchaseSourceLines,
+} from '../../src/lib/material-purchase-list'
 
 const REPO_ROOT = path.resolve(__dirname, '../../..')
 const PARITY = path.join(REPO_ROOT, 'parity')
@@ -183,12 +187,17 @@ async function runScenario(scenario: Scenario, config: Record<string, number>, s
     }
   }
 
+  // ---- Material purchase list (damp workbook `Material-List` sheet) ----
+  // All SKUs including zeros so the differ catches rules that wrongly zero out.
+  const materialList = computeDampPurchaseQuantities(dampPurchaseSourceLines(results))
+
   const t = summary.totals
   return {
     scenario: scenario.id,
     engine: 'live pipeline: generateCostingFromSurvey + costing-summary lib',
     lines: linesOut,
     sections: sectionsOut,
+    material_list: materialList,
     totals: {
       materials_subtotal: round6(t.materials_subtotal),
       labour_subtotal: round6(t.labour_subtotal),

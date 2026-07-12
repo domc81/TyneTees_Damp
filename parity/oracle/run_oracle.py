@@ -118,10 +118,24 @@ def run_scenario(scenario: dict) -> dict:
     outputs += [ref(c) for c in cellmap["totals"].values()]
     outputs += [ref(c) for c in cellmap["rates"].values()]
 
+    # Material-List purchase quantities (damp workbook only) — the procurement
+    # sheet's qty cells, evaluated with the same injected Costing inputs.
+    mat = cellmap.get("material_list")
+
+    def mref(cell):
+        # the formulas model canonicalises sheet names to UPPERCASE
+        return f"'[{book_key}]{mat['sheet'].upper()}'!{cell}"
+
+    if mat:
+        outputs += [mref(spec["cell"]) for spec in mat["items"].values()]
+
     sol = xl.calculate(inputs=inputs, outputs=outputs)
 
     def get(cell):
         return scalar(sol[ref(cell)].value)
+
+    def mget(cell):
+        return scalar(sol[mref(cell)].value)
 
     result = {
         "scenario": scenario["id"],
@@ -150,6 +164,10 @@ def run_scenario(scenario: dict) -> dict:
         result["totals"][key] = get(cell)
     for key, cell in cellmap["rates"].items():
         result["rates"][key] = get(cell)
+    if mat:
+        result["material_list"] = {
+            key: mget(spec["cell"]) for key, spec in mat["items"].items()
+        }
     return result
 
 

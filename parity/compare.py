@@ -205,6 +205,20 @@ def compare_scenario(sid: str):
             fails += 1
         rows.append(("total", label, e, a, ok, ""))
 
+    # ---- Material purchase list (damp `Material-List` sheet) ----
+    # Purchase quantities are whole packs / 0.5-roll / 0.1-tub steps — compare
+    # tighter than money. Only present when the cellmap declares the sheet.
+    exp_mat = expected.get("material_list") or {}
+    act_mat = actual.get("material_list") or {}
+    for key in sorted(set(exp_mat) | (set(act_mat) if exp_mat else set())):
+        e, a = fnum(exp_mat.get(key)), fnum(act_mat.get(key))
+        if abs(e) < 1e-9 and abs(a) < 1e-9:
+            continue
+        ok = abs(e - a) <= 0.0005
+        if not ok:
+            fails += 1
+        rows.append(("material", f"purchase qty {key}", e, a, ok, ""))
+
     return rows, fails, expected, actual
 
 

@@ -143,10 +143,17 @@ export function calculateContractorOutputs(
       const { hours, materials, pay } = values
       if (hours === 0 && materials === 0) continue
 
+      // The workbook's Sub Contractor Costs tab splits Warmline out of
+      // Plastering into its own row (damp D16 = Costing!V79). Mirror that at
+      // the section level; line values and totals are untouched.
+      const displaySection = line.lineKey?.startsWith('warmline')
+        ? 'warmline_iwi'
+        : line.sectionKey
+
       lines.push({
         templateId: line.templateId,
         description: line.templateDescription,
-        sectionKey: line.sectionKey,
+        sectionKey: displaySection,
         surveyType,
         quantity: line.input.inputQuantity,
         hours,
@@ -155,8 +162,8 @@ export function calculateContractorOutputs(
         total: materials + pay,
       })
 
-      const existing = sectionMap.get(line.sectionKey) ?? {
-        sectionKey: line.sectionKey,
+      const existing = sectionMap.get(displaySection) ?? {
+        sectionKey: displaySection,
         surveyType,
         hours: 0,
         materials: 0,
@@ -167,7 +174,7 @@ export function calculateContractorOutputs(
       existing.materials += materials
       existing.pay += pay
       existing.total += materials + pay
-      sectionMap.set(line.sectionKey, existing)
+      sectionMap.set(displaySection, existing)
     }
   }
 

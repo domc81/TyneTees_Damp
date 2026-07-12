@@ -798,5 +798,135 @@
     "labour_rate": "D155",
     "contractor_rate": "E155",
     "vehicle_cost_per_mile": "J155"
+  },
+  "material_list": {
+    "sheet": "Material-List",
+    "comment": "The damp workbook's procurement sheet (rows 13-59). Each item's qty cell converts Costing F/D inputs into purchasable units; compared against src/lib/material-purchase-list.ts. Timber/woodworm 'Sub Contractor Mats' sheets are TBC in the workbooks - damp is the only golden master.",
+    "items": {
+      "antinox_boards": {
+        "cell": "E13",
+        "label": "Antinox HD Floor Protection Boards 2.4x1.2"
+      },
+      "dpc_cream_cartridges": {
+        "cell": "E16",
+        "label": "Wykamol Ultracure DPC Cream 1ltr cartridge"
+      },
+      "dpc_drill_plugs": {
+        "cell": "E17",
+        "label": "Drill Plugs 12mm (multiples of 50)"
+      },
+      "mursec_eco_unit": {
+        "cell": "E18",
+        "label": "Mursec Eco Unit (digital DPC)"
+      },
+      "cm3_membrane_1m": {
+        "cell": "E21",
+        "label": "CM3 membrane 1m (M2, multiples of 5)"
+      },
+      "cm3_membrane_1_2m": {
+        "cell": "E22",
+        "label": "CM3 membrane 1.2m (M2, multiples of 5)"
+      },
+      "cm3_membrane_2m": {
+        "cell": "E23",
+        "label": "CM3 membrane 2m (M2, multiples of 5)"
+      },
+      "membrane_fixing_plugs": {
+        "cell": "E24",
+        "label": "Cavity membrane fixing plugs 50mm (multiples of 20)"
+      },
+      "membrane_sealing_tape": {
+        "cell": "E25",
+        "label": "Membrane sealing tape 22m rolls"
+      },
+      "technoseal_dpm": {
+        "cell": "E26",
+        "label": "Technoseal DPM 5ltr (0.1 steps)"
+      },
+      "universal_mortar": {
+        "cell": "E27",
+        "label": "Universal Mortar 25kg bags"
+      },
+      "fleece_tape": {
+        "cell": "E28",
+        "label": "Fibre/fleece tape 5m rolls"
+      },
+      "fixing_rope": {
+        "cell": "E29",
+        "label": "Rope 10mm 5m rolls"
+      },
+      "sbr_latex": {
+        "cell": "E32",
+        "label": "SBR Latex 5ltr"
+      },
+      "building_sand": {
+        "cell": "E33",
+        "label": "Building sand bags"
+      },
+      "cement_25kg": {
+        "cell": "E34",
+        "label": "Cement 25kg bags"
+      },
+      "hydradry_slurry": {
+        "cell": "E35",
+        "label": "Hydradry tanking slurry 20kg"
+      },
+      "renovating_plaster": {
+        "cell": "E36",
+        "label": "Renovating plaster 20kg bags"
+      },
+      "ep40_primer": {
+        "cell": "E39",
+        "label": "EP40 resin primer 5ltr"
+      },
+      "ep40_topcoat": {
+        "cell": "E40",
+        "label": "EP40 resin top coat 5ltr"
+      },
+      "grip_grit": {
+        "cell": "E41",
+        "label": "Grip grit bags"
+      },
+      "plasterboards": {
+        "cell": "E44",
+        "label": "Plasterboards 1220x900x9.5"
+      },
+      "stop_bead_3m": {
+        "cell": "E45",
+        "label": "Stop bead 3m"
+      },
+      "corner_bead_2_4m": {
+        "cell": "E46",
+        "label": "Corner bead 2.4m"
+      },
+      "corner_bead_3m": {
+        "cell": "E47",
+        "label": "Corner bead 3m"
+      },
+      "multi_finish_plaster": {
+        "cell": "E48",
+        "label": "Multi finish plaster 25kg bags"
+      },
+      "tiwi_rolls": {
+        "cell": "E49",
+        "label": "ISO-THERM TIWI rolls (0.5 steps)"
+      },
+      "tiwi_adhesive": {
+        "cell": "E50",
+        "label": "ISO-THERM adhesive 15kg tubs"
+      },
+      "plastic_airbricks": {
+        "cell": "E53",
+        "label": "Plastic airbricks 9x3"
+      },
+      "microtech_concentrate": {
+        "cell": "E56",
+        "label": "Microtech dual purpose 400g bottles"
+      },
+      "enviroseal_repellent": {
+        "cell": "E59",
+        "label": "Enviroseal water repellent 5ltr"
+      }
+    }
   }
 }

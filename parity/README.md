@@ -4,8 +4,8 @@ Proves — to the penny — that the platform's costing engine reproduces the
 original Excel workbooks, which are the **golden master** for all pricing
 (client requirement, technical review 11 July 2026). **No costing change is
 complete until every scenario in this harness passes** (review "release gate"):
-customer prices, labour hours, materials, travel and (when implemented)
-subcontractor outputs must all match.
+customer prices, labour hours, materials, travel, subcontractor outputs and
+material purchase quantities must all match.
 
 ## How it works
 
@@ -81,9 +81,19 @@ translation to engine code/templates.
   as UNEXPECTED-line failures.
 - Workbook labour-hours subtotal (O140) excludes the asbestos section and skips;
   quirks are reproduced, not corrected.
-- Subcontractor outputs (workbook columns U/V, rates D155/E155/J155) are in
-  `expected/*.json` already; the engine has no subcontractor computation yet
-  (review point 15) — the differ will start comparing them once it exists.
+- Subcontractor outputs (workbook columns U/V, rates D155/E155/J155) are gated:
+  per-line contractor materials/pay plus the four contractor totals compare
+  against `lib/contractor-costs.ts` (review point 15).
+- **Material purchase quantities** (damp workbook `Material-List` sheet) are
+  gated: the damp cellmap's `material_list` block declares the sheet's Qty
+  cells (rows 13–59); the oracle evaluates them cross-sheet with the same
+  injected Costing inputs (sheet names canonicalise to UPPERCASE in the
+  `formulas` model) and the differ compares them against
+  `src/lib/material-purchase-list.ts` (emitted as `material_list` in
+  `actual/*.json`, all SKUs incl. zeros). The damp workbook is the only golden
+  master here — the timber/woodworm "Sub Contractor Mats" sheets are literally
+  "TBC" and condensation has none, so non-damp survey types get measurement
+  lists, not invented purchase rules.
 
 ## Editing rules
 

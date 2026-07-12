@@ -48,6 +48,10 @@ export interface CalculatedLine {
   sectionKey: string
   /** Template cost formula — contractor outputs exclude third-party rows by it */
   costFormula?: string
+  /** Template line_key — the material purchase-list rules key on it */
+  lineKey?: string
+  /** Template unit of measure — measurement displays (operations/work instruction) */
+  uom?: string | null
 }
 
 /**
@@ -267,6 +271,7 @@ export async function loadSectionTemplates(
       display_order,
       costing_line_templates (
         id,
+        line_key,
         cost_formula,
         base_unit_cost,
         labour_rate_per_unit,
@@ -299,6 +304,7 @@ export async function loadSectionTemplates(
       .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
       .map((template: any) => ({
         id: template.id,
+        line_key: template.line_key,
         cost_formula: template.cost_formula,
         base_unit_cost: template.base_unit_cost,
         labour_rate_per_unit: template.labour_rate_per_unit,
@@ -311,7 +317,7 @@ export async function loadSectionTemplates(
         description: template.description,
         uom: template.uom,
         display_order: template.display_order
-      } as LineTemplate & { description?: string | null; uom?: string | null; display_order: number }))
+      } as LineTemplate & { line_key?: string; description?: string | null; uom?: string | null; display_order: number }))
 
     return {
       id: section.id,
@@ -817,13 +823,16 @@ export async function calculateSurveyCosting(
     const result = calculateLine(input, template, config, materials)
 
     // Add to calculated lines
+    const ext = template as LineTemplate & { line_key?: string; uom?: string | null }
     calculatedLines.push({
       templateId: input.templateId,
       input,
       result,
       templateDescription: description,
       sectionKey,
-      costFormula: template.cost_formula
+      costFormula: template.cost_formula,
+      lineKey: ext.line_key,
+      uom: ext.uom,
     })
 
     // Aggregate section totals
