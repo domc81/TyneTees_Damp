@@ -157,6 +157,8 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
   const [showBookingPicker, setShowBookingPicker] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
   const [isBooking, setIsBooking] = useState(false)
+  const [cfRef, setCfRef] = useState('')
+  const [cfSaving, setCfSaving] = useState(false)
 
   useEffect(() => {
     async function loadSurvey() {
@@ -176,6 +178,7 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
         }
 
         setSurvey(data)
+        setCfRef(data?.cf_project_reference ?? '')
 
         if (data) {
           const supabase = getSupabase()
@@ -292,6 +295,23 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
       toast.error('Failed to book appointment. Please try again.')
     } finally {
       setIsBooking(false)
+    }
+  }
+
+  async function handleSaveCfRef() {
+    if (!survey) return
+    const trimmed = cfRef.trim()
+    if (trimmed === (survey.cf_project_reference ?? '')) return
+    setCfSaving(true)
+    const updated = await updateSurvey(survey.id, { cf_project_reference: trimmed || null })
+    setCfSaving(false)
+    if (updated) {
+      setSurvey(prev => (prev ? { ...prev, cf_project_reference: trimmed || null } : prev))
+      setCfRef(trimmed)
+      toast.success(trimmed ? 'CF Project Reference saved' : 'CF Project Reference cleared')
+    } else {
+      setCfRef(survey.cf_project_reference ?? '')
+      toast.error('Failed to save CF Project Reference')
     }
   }
 
@@ -571,6 +591,23 @@ export default function SurveyDetailPage({ params }: { params: { surveyId: strin
                   ? weatherConditions.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
                   : '-'} />
                 <InfoRow label="Reference" value={survey.project_number} />
+                <div>
+                  <p className="text-sm text-white/50">CF Project Reference</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={cfRef}
+                      onChange={(e) => setCfRef(e.target.value)}
+                      onBlur={handleSaveCfRef}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                      disabled={cfSaving}
+                      autoComplete="off"
+                      placeholder="Add the Contractor Foreman project ID"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/40 disabled:opacity-50"
+                    />
+                    {cfSaving && <Loader2 className="w-4 h-4 text-white/40 animate-spin shrink-0" />}
+                  </div>
+                </div>
                 {reportStatus && (
                   <div>
                     <p className="text-sm text-white/50">Report Status</p>

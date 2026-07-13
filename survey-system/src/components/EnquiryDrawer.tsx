@@ -24,6 +24,7 @@ import type { Payment, PaymentMethod } from '@/lib/payment-data'
 import { loadPricingConfig } from '@/lib/pricing-data'
 import { humanizeActivityTitle } from '@/lib/status-labels'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { CfReferencePrompt } from '@/components/CfReferencePrompt'
 import { SlotPicker } from '@/components/calendar/SlotPicker'
 import type { SelectedSlot } from '@/components/calendar/SlotPicker'
 import { SurveyorSelect } from '@/components/calendar/SurveyorSelect'
@@ -665,6 +666,8 @@ export default function EnquiryDrawer({
 
   // Linked records (lazy loaded)
   const [linkedSurveys, setLinkedSurveys] = useState<LinkedSurvey[]>([])
+  // Soft prompt to record the Contractor Foreman project reference after a win
+  const [cfPromptEnquiryId, setCfPromptEnquiryId] = useState<string | null>(null)
   const [linkedQuotations, setLinkedQuotations] = useState<LinkedQuotation[]>([])
   const [linkedLoaded, setLinkedLoaded] = useState(false)
   const [linkedLoading, setLinkedLoading] = useState(false)
@@ -1156,6 +1159,9 @@ export default function EnquiryDrawer({
       await updateEnquiryStatus(enquiry.id, newStatus, currentUserId)
       const previousStatus = enquiry.status
       onBoardSync({ ...enquiry, status: newStatus }, previousStatus)
+      // Soft prompt: won jobs get a CF project created manually in Contractor
+      // Foreman — nudge the office to record its reference while it's fresh
+      if (newStatus === 'won') setCfPromptEnquiryId(enquiry.id)
     } catch (err) {
       console.error('Status update failed:', err)
       toast.error('Failed to update status')
@@ -1505,6 +1511,10 @@ export default function EnquiryDrawer({
       if (updated.payment_type === 'deposit' && enquiry.status === 'won') {
         await markEnquiryWon(enquiry.id, currentUserId)
         onBoardSync({ ...enquiry, won_at: new Date().toISOString() } as Enquiry, enquiry.status)
+        // Covers the auto-won path (customer accepted the quote online): the
+        // deposit being marked paid is the office's first touchpoint after the
+        // win, so nudge for the CF reference here (skips if already recorded)
+        setCfPromptEnquiryId(enquiry.id)
       }
 
       // If this was a survey fee, transition enquiry to booked and refresh
@@ -3521,6 +3531,11 @@ export default function EnquiryDrawer({
         )}
       </div>
 
+      <CfReferencePrompt
+        enquiryId={cfPromptEnquiryId}
+        clientName={enquiry?.client_name}
+        onClose={() => setCfPromptEnquiryId(null)}
+      />
     </div>
   )
 }

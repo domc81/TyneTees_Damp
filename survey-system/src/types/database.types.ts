@@ -171,6 +171,7 @@ export interface Survey {
   is_complete?: boolean | null
   submitted_at?: string | null
   office_notes?: string | null
+  cf_project_reference?: string | null  // Contractor Foreman project ID, created manually in CF
   created_at: string
   updated_at: string
   // Joined data (populated by queries with joins, not stored in DB)

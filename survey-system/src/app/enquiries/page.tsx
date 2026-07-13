@@ -20,6 +20,7 @@ import {
 import Layout from '@/components/layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import EnquiryDrawer from '@/components/EnquiryDrawer'
+import { CfReferencePrompt } from '@/components/CfReferencePrompt'
 import { useAuth } from '@/context/AuthContext'
 import {
   getEnquiriesByStatus,
@@ -1250,6 +1251,9 @@ export default function EnquiriesPage() {
     toStatus: EnquiryStatus
   } | null>(null)
 
+  // Soft prompt to record the CF project reference after a card is moved to Won
+  const [cfPromptEnquiry, setCfPromptEnquiry] = useState<Enquiry | null>(null)
+
   // Toast (supports error, success, and warning variants)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastType, setToastType] = useState<'error' | 'success' | 'warning'>('error')
@@ -1553,6 +1557,9 @@ export default function EnquiriesPage() {
     const { enquiry, fromStatus, toStatus } = pendingDrag
     moveCard(enquiry, fromStatus, toStatus)
     setPendingDrag(null)
+    // Soft prompt: won jobs get a CF project created manually in Contractor
+    // Foreman — nudge the office to record its reference against the survey
+    if (toStatus === 'won') setCfPromptEnquiry(enquiry)
   }
 
   // ---------------------------------------------------------------------------
@@ -1936,6 +1943,13 @@ export default function EnquiriesPage() {
             onCancel={handleModalCancel}
           />
         )}
+
+        {/* CF Project Reference soft prompt (after a move to Won) */}
+        <CfReferencePrompt
+          enquiryId={cfPromptEnquiry?.id ?? null}
+          clientName={cfPromptEnquiry?.client_name}
+          onClose={() => setCfPromptEnquiry(null)}
+        />
 
         {/* Toast */}
         {toastMessage && (
