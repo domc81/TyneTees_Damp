@@ -43,7 +43,7 @@ TyneTees_Damp/
 │   │   ├── middleware.ts            # Supabase SSR session management + token rotation
 │   │   ├── lib/                     # 41 library files (index below)
 │   │   └── types/                   # database / survey-wizard / survey-report / survey-photo / installer-info types
-│   ├── supabase/migrations/         # 42 SQL migrations (applied manually via docker exec)
+│   ├── supabase/migrations/         # 55 SQL migrations (applied manually via docker exec)
 │   ├── supabase/functions/          # Legacy edge functions — dead code
 │   ├── public/images/woodworm/      # Beetle + treatment equipment reference images
 │   ├── Dockerfile                   # Multi-stage node:22-alpine, standalone output, port 3000
@@ -131,7 +131,7 @@ TyneTees_Damp/
   - Concurrency: `write-queue.ts` (per-survey serialized writes) · Proposals: `proposal-items.ts`
   - Utilities: `cron-auth.ts`, `terms-hash.ts`, `status-labels.ts` (activity-title humanizer) · Tests: `cf-csv-export.test.ts`, `__tests__/pricing-engine.smoke.ts`
 - **UI primitives (`components/ui/`):** `button`, `card`, `input` (auto password toggle), `confirm-dialog` (styled `window.confirm` replacement — required for all confirmations)
-- **Settings (`components/settings/`):** `CompanyLocationsSection` (locations CRUD on /settings/company) · **Public error UI:** `components/PublicErrorFallback.tsx` + `error.tsx` boundaries on /q, /pay, /report
+- **Settings (`components/settings/`):** `CompanyLocationsSection` (locations CRUD on /settings/company) · **Public error UI:** `components/PublicErrorFallback.tsx` + `error.tsx` boundaries on /q, /pay, /report · **CRM:** `CfReferencePrompt` (soft Save/Skip modal for `surveys.cf_project_reference` at win touchpoints; field also editable on the survey hub)
 - **Admin shared (`components/admin/`):** `NumberField` (validated numeric input — mandatory for pricing fields), `PricingSaveConfirm`, `PricingSmokeCheck`, `PricingChangeLog`
 
 ### Database (Supabase / PostgreSQL)
@@ -140,7 +140,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 45 tables across t
 
 - **CRM:** `enquiries` (incl. `won_at`, `cf_exported_at`, on-hold/decline reasons), `enquiry_activity`, `on_hold_message_templates`, `customers`, `communication_log`
 - **User & Team:** `user_profiles`, `platform_settings`, `notification_preferences`
-- **Surveys:** `surveys` (central table, `survey_data` JSONB, `tags` TEXT[]), `survey_rooms` (`issues_identified` TEXT[] + `room_data` JSONB), `survey_images`, `photos`, `survey_installer_info`
+- **Surveys:** `surveys` (central table, `survey_data` JSONB, `tags` TEXT[], `cf_project_reference` — manual Contractor Foreman ID), `survey_rooms` (`issues_identified` TEXT[] + `room_data` JSONB), `survey_images`, `photos`, `survey_installer_info`
 - **Survey-type extensions (provisioned but UNUSED — wizard stores everything in JSONB):** `survey_damp_report`, `survey_damp_wall_readings`, `survey_condensation_report`, `survey_condensation_rooms`, `survey_timber_report`, `survey_timber_rooms`, `survey_woodworm_report`
 - **Costing:** `costing_sections` (44), `costing_line_templates` (220), `pricing_config` (18 values — table below), `materials_catalog` (34 products), `survey_costing_lines`, `costing_section_adjustments`, `survey_customer_summary`, `survey_overheads`, `survey_subcontractor_costs`, `survey_caf1`, `pricing_change_log` (trigger-written audit of the 4 pricing tables), `pricing_smoke_baselines` (accepted reference-job totals)
 - **Payments:** `payments` — `survey_fee` or `deposit` type, token-based public access, linked to enquiry/survey/quotation
