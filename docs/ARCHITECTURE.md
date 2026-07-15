@@ -43,7 +43,7 @@ TyneTees_Damp/
 │   │   ├── middleware.ts            # Supabase SSR session management + token rotation
 │   │   ├── lib/                     # 41 library files (index below)
 │   │   └── types/                   # database / survey-wizard / survey-report / survey-photo / installer-info types
-│   ├── supabase/migrations/         # 55 SQL migrations (applied manually via docker exec)
+│   ├── supabase/migrations/         # 56 SQL migrations (applied manually via docker exec)
 │   ├── supabase/functions/          # Legacy edge functions — dead code
 │   ├── public/images/woodworm/      # Beetle + treatment equipment reference images
 │   ├── Dockerfile                   # Multi-stage node:22-alpine, standalone output, port 3000
@@ -61,7 +61,7 @@ TyneTees_Damp/
 ### Frontend (Next.js 14, App Router)
 
 - **Dashboard** — survey stats, enquiry pipeline widget, recent activity feed
-- **Enquiry Pipeline** — Kanban board via @dnd-kit; stages New → Awaiting Payment → Booked → Survey Complete → Sent → Won → Closed (side lanes: On Hold, Lost); detail drawer with tabs, inline editing and integrated customer management; SLA traffic lights; auto-status transitions; on-hold email templates; convert-and-book flow (enquiry → customer + survey + provisional booking + survey fee payment)
+- **Enquiry Pipeline** — Kanban board via @dnd-kit; stages New → Awaiting Payment → Booked → Survey Complete → Sent → Won → Closed (side lanes: On Hold, Lost); detail drawer with tabs, inline editing and integrated customer management (contact/site edits propagate to the linked survey, live bookings and customer record via `propagateEnquiryContactDetails()`); SLA traffic lights; auto-status transitions; on-hold email templates; convert-and-book flow (enquiry → customer + survey + provisional booking + survey fee payment)
 - **Survey Wizard** — 5-step room-first workflow: Site Details → External Inspection → Room Inspection (repeats) → Additional Works → Review. Voice recording via Deepgram, photo capture with visibility tiers (customer/technician/office), auto-save with 2-second debounce. Per-finding urgency (green/amber/red) captured via UrgencySelector on all issue types. Review step includes proposal quick-select (13 predefined items) and limitations quick-select (12 access restrictions)
 - **Costing Review** — auto-calculated from wizard data, section-by-section breakdown with adjustment controls, multi-survey-type tabs
 - **Quotations** — PDF generation via @react-pdf/renderer, email delivery, public accept/decline page with e-signature; deposit payment auto-created on acceptance
@@ -151,7 +151,7 @@ Self-hosted Supabase stack (14 containers, prefix `y04kk0w`). 45 tables across t
 - **Company:** `company_profile`, `company_locations` (registered office / regional offices / service areas / contact numbers — feeds report footer)
 - **Support:** `client_errors` (browser failures reported by public-page error boundaries)
 
-55 migrations total (54 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
+57 migrations total (56 in `survey-system/supabase/migrations/` + 1 root-level), applied manually via `docker exec`.
 
 ### Pricing config values (`pricing_config`, editable at `/admin/rates`)
 
