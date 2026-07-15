@@ -180,6 +180,28 @@ export async function updateCustomer(
   return data
 }
 
+/** Split a free-text client name into title/first/last (used for customer create + contact sync). */
+function splitClientName(clientName: string | null | undefined): {
+  title?: string
+  firstName: string
+  lastName: string
+} {
+  const TITLES = ['mr', 'mrs', 'ms', 'dr', 'miss']
+  const nameParts = (clientName || '').trim().split(/\s+/).filter(Boolean)
+
+  if (nameParts.length > 0 && TITLES.includes(nameParts[0].toLowerCase())) {
+    return {
+      title: nameParts[0],                          // e.g. "Mr"
+      firstName: nameParts[1] || '',                // e.g. "John"
+      lastName: nameParts.slice(2).join(' ') || '', // e.g. "Smith"
+    }
+  }
+  return {
+    firstName: nameParts[0] || '',
+    lastName: nameParts.slice(1).join(' ') || '',
+  }
+}
+
 /**
  * Find or create a customer record from an enquiry's inline text fields.
  * Idempotent: calling twice for the same enquiry won't create duplicates.
@@ -231,20 +253,7 @@ export async function findOrCreateCustomerFromEnquiry(
   }
 
   // 3. Auto-create a new customer from enquiry fields
-  const TITLES = ['mr', 'mrs', 'ms', 'dr', 'miss']
-  const nameParts = (enquiry.client_name || '').trim().split(/\s+/)
-  let title: string | undefined
-  let firstName = ''
-  let lastName = ''
-
-  if (nameParts.length > 0 && TITLES.includes(nameParts[0].toLowerCase())) {
-    title = nameParts[0]            // e.g. "Mr"
-    firstName = nameParts[1] || ''  // e.g. "John"
-    lastName = nameParts.slice(2).join(' ') || '' // e.g. "Smith"
-  } else {
-    firstName = nameParts[0] || ''
-    lastName = nameParts.slice(1).join(' ') || ''
-  }
+  const { title, firstName, lastName } = splitClientName(enquiry.client_name)
 
   const newCustomer = await createCustomer({
     first_name: firstName || 'Unknown',
@@ -274,6 +283,130 @@ export async function findOrCreateCustomerFromEnquiry(
     .eq('id', enquiry.id)
 
   return newCustomer
+}
+
+export interface PropagateContactResult {
+  surveysUpdated: number
+  bookingsUpdated: number
+  customerUpdated: boolean
+  /** Other leads linked to the same customer record; when > 0 the customers row is left untouched */
+  customerSharedWith: number
+}
+
+/**
+ * Push an enquiry's contact + site details to every live surface that holds a
+ * denormalised copy: the linked surveys' client_name/site_* columns, the
+ * customer_* columns on provisional/scheduled bookings (what the calendar
+ * renders), and the canonical customers row. Sent quotations, generated
+ * reports, and completed/cancelled bookings are point-in-time snapshots and
+ * are never touched.
+ *
+ * The customers row is skipped when other enquiries share it (repeat
+ * landlord/agent) — renaming it would rewrite that customer across all their
+ * jobs. Callers should surface customerSharedWith to the user when > 0.
+ */
+export async function propagateEnquiryContactDetails(
+  enquiry: Enquiry
+): Promise<PropagateContactResult> {
+  const supabase = getSupabase()
+  if (!supabase) throw new Error('Supabase client not available')
+
+  const result: PropagateContactResult = {
+    surveysUpdated: 0,
+    bookingsUpdated: 0,
+    customerUpdated: false,
+    customerSharedWith: 0,
+  }
+
+  // 1. Linked surveys — denormalised display columns (site_address is NOT NULL)
+  const { data: surveys, error: surveyError } = await supabase
+    .from('surveys')
+    .update({
+      client_name: enquiry.client_name || null,
+      site_address: enquiry.site_address_1 || '',
+      site_address_line2: enquiry.site_address_2 || null,
+      site_city: enquiry.site_city || null,
+      site_county: enquiry.site_county || null,
+      site_postcode: enquiry.site_postcode || null,
+    })
+    .eq('enquiry_id', enquiry.id)
+    .select('id')
+
+  if (surveyError) {
+    throw new Error(`Survey sync failed: ${surveyError.message}`)
+  }
+  result.surveysUpdated = surveys?.length ?? 0
+
+  // 2. Live bookings on those surveys — completed/cancelled/no_show stay as history
+  if (surveys && surveys.length > 0) {
+    const fullAddress = [
+      enquiry.site_address_1,
+      enquiry.site_address_2,
+      enquiry.site_city,
+      enquiry.site_county,
+      enquiry.site_postcode,
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+    const { data: bookings, error: bookingError } = await supabase
+      .from('survey_bookings')
+      .update({
+        customer_name: enquiry.client_name || '',
+        customer_phone: enquiry.client_phone || null,
+        customer_email: enquiry.client_email || null,
+        customer_address: fullAddress || null,
+      })
+      .in('survey_id', surveys.map(s => s.id))
+      .in('status', ['provisional', 'scheduled'])
+      .select('id')
+
+    if (bookingError) {
+      throw new Error(`Booking sync failed: ${bookingError.message}`)
+    }
+    result.bookingsUpdated = bookings?.length ?? 0
+  }
+
+  // 3. Canonical customers row — only when this lead is its sole enquiry
+  if (enquiry.customer_id) {
+    const { count } = await supabase
+      .from('enquiries')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', enquiry.customer_id)
+      .neq('id', enquiry.id)
+
+    if ((count ?? 0) > 0) {
+      result.customerSharedWith = count ?? 0
+    } else {
+      const { title, firstName, lastName } = splitClientName(enquiry.client_name)
+      const customerUpdate: Record<string, string | null> = {
+        first_name: firstName || 'Unknown',
+        last_name: lastName,
+        phone: enquiry.client_phone?.trim() || '',
+        address_line1: enquiry.site_address_1 || '',
+        address_line2: enquiry.site_address_2 || null,
+        city: enquiry.site_city || '',
+        county: enquiry.site_county || null,
+        postcode: enquiry.site_postcode || '',
+        updated_at: new Date().toISOString(),
+      }
+      if (title) customerUpdate.title = title
+      // email is NOT NULL with a placeholder convention — only overwrite when provided
+      if (enquiry.client_email?.trim()) customerUpdate.email = enquiry.client_email.trim()
+
+      const { error: customerError } = await supabase
+        .from('customers')
+        .update(customerUpdate)
+        .eq('id', enquiry.customer_id)
+
+      if (customerError) {
+        throw new Error(`Customer sync failed: ${customerError.message}`)
+      }
+      result.customerUpdated = true
+    }
+  }
+
+  return result
 }
 
 // ============================================================================

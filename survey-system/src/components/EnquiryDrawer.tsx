@@ -16,6 +16,7 @@ import {
   markEnquiryWon,
   markEnquiryClosed,
   setCfExportedAt,
+  propagateEnquiryContactDetails,
 } from '@/lib/supabase-data'
 import { createBooking, getBookingBySurveyId } from '@/lib/calendar-data'
 import type { SurveyBooking } from '@/lib/calendar-data'
@@ -145,6 +146,18 @@ const ALL_PRIORITIES: EnquiryPriority[] = ['low', 'medium', 'high', 'urgent']
 
 // Convert & Book flow step labels
 const FLOW_STEP_LABELS = ['Review', 'Surveyor', 'Schedule', 'Confirm'] as const
+
+// Edits to these fields propagate to the linked survey, live bookings, and customer record
+const CONTACT_SYNC_FIELDS = new Set([
+  'client_name',
+  'client_email',
+  'client_phone',
+  'site_address_1',
+  'site_address_2',
+  'site_city',
+  'site_county',
+  'site_postcode',
+])
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1259,38 +1272,57 @@ export default function EnquiryDrawer({
   // Handles saving any editable Details-tab field. Fields covered by
   // updateEnquiry() go through it; site address + survey_type go via
   // the Supabase client directly (they aren't in updateEnquiry's Pick).
+  // Contact/site edits also propagate to the linked survey, live
+  // bookings (calendar), and the customer record via
+  // propagateEnquiryContactDetails().
 
   const saveField = useCallback(async (field: string, newValue: string | null) => {
     if (!enquiry) return
+    let merged: Enquiry
     if (field === 'client_name') {
       const u = await updateEnquiry(enquiry.id, { client_name: newValue ?? '' })
-      onBoardSync({ ...enquiry, ...u }); return
-    }
-    if (field === 'client_email') {
+      merged = { ...enquiry, ...u }
+    } else if (field === 'client_email') {
       const u = await updateEnquiry(enquiry.id, { client_email: newValue })
-      onBoardSync({ ...enquiry, ...u }); return
-    }
-    if (field === 'client_phone') {
+      merged = { ...enquiry, ...u }
+    } else if (field === 'client_phone') {
       const u = await updateEnquiry(enquiry.id, { client_phone: newValue })
-      onBoardSync({ ...enquiry, ...u }); return
-    }
-    if (field === 'source') {
+      merged = { ...enquiry, ...u }
+    } else if (field === 'source') {
       const u = await updateEnquiry(enquiry.id, { source: newValue })
-      onBoardSync({ ...enquiry, ...u }); return
-    }
-    if (field === 'proposed_survey_date') {
+      merged = { ...enquiry, ...u }
+    } else if (field === 'proposed_survey_date') {
       const u = await updateEnquiry(enquiry.id, { proposed_survey_date: newValue })
-      onBoardSync({ ...enquiry, ...u }); return
-    }
-    if (field === 'reported_problem') {
+      merged = { ...enquiry, ...u }
+    } else if (field === 'reported_problem') {
       const u = await updateEnquiry(enquiry.id, { reported_problem: newValue })
-      onBoardSync({ ...enquiry, ...u }); return
+      merged = { ...enquiry, ...u }
+    } else {
+      // Direct Supabase for site address fields and survey_type
+      const supabase = createClient()
+      const { error } = await supabase.from('enquiries').update({ [field]: newValue }).eq('id', enquiry.id)
+      if (error) throw new Error(error.message)
+      merged = { ...enquiry, [field]: newValue } as Enquiry
     }
-    // Direct Supabase for site address fields and survey_type
-    const supabase = createClient()
-    const { error } = await supabase.from('enquiries').update({ [field]: newValue }).eq('id', enquiry.id)
-    if (error) throw new Error(error.message)
-    onBoardSync({ ...enquiry, [field]: newValue } as Enquiry)
+    onBoardSync(merged)
+
+    if (CONTACT_SYNC_FIELDS.has(field)) {
+      // Non-fatal: the lead itself saved fine — report sync trouble separately
+      try {
+        const sync = await propagateEnquiryContactDetails(merged)
+        if (sync.surveysUpdated > 0 || sync.bookingsUpdated > 0) {
+          toast.success('Survey and calendar details updated to match')
+        }
+        if (sync.customerSharedWith > 0) {
+          toast.info(
+            `Customer record is shared with ${sync.customerSharedWith} other lead${sync.customerSharedWith === 1 ? '' : 's'} — it was not changed`
+          )
+        }
+      } catch (err) {
+        console.error('Contact detail sync failed:', err)
+        toast.error('Saved to the lead, but syncing to survey/calendar failed')
+      }
+    }
   }, [enquiry, onBoardSync])
 
   async function handleFollowUpChange(dateValue: string) {
