@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   SurveyWizardData,
   SurveyRoomRow,
@@ -19,12 +20,15 @@ import {
   Trash2,
   ClipboardList,
   ShieldAlert,
+  Loader2,
 } from 'lucide-react'
 import { PROPOSAL_ITEMS, LIMITATION_ITEMS } from '@/lib/proposal-items'
+import AudioRecorder from './AudioRecorder'
 
 interface ReviewStepProps {
   wizardData: SurveyWizardData
   rooms: SurveyRoomRow[]
+  surveyId: string
   onCommentsChange?: (value: string) => void
   onProposalItemsChange?: (items: string[]) => void
   onProposalCommentsChange?: (value: string) => void
@@ -38,7 +42,59 @@ const ISSUE_ICONS = {
   woodworm: Bug,
 }
 
-export default function ReviewStep({ wizardData, rooms, onCommentsChange, onProposalItemsChange, onProposalCommentsChange, onLimitationsChange }: ReviewStepProps) {
+export default function ReviewStep({ wizardData, rooms, surveyId, onCommentsChange, onProposalItemsChange, onProposalCommentsChange, onLimitationsChange }: ReviewStepProps) {
+  // Voice note + polish state for the additional comments field (mirrors Room Observations)
+  const [isPolishing, setIsPolishing] = useState(false)
+  const [polishError, setPolishError] = useState<string | null>(null)
+  const [wasPolished, setWasPolished] = useState(false)
+  const [rawBeforePolish, setRawBeforePolish] = useState<string | null>(null)
+
+  // Handle transcription from audio recorder — append to existing comments
+  const handleCommentsTranscription = (text: string) => {
+    const current = wizardData.surveyor_additional_comments || ''
+    onCommentsChange?.(current ? `${current} ${text}` : text)
+    setWasPolished(false)
+  }
+
+  // Polish comments with AI
+  const handlePolishComments = async () => {
+    const rawText = wizardData.surveyor_additional_comments?.trim()
+    if (!rawText || isPolishing) return
+    setIsPolishing(true)
+    setPolishError(null)
+
+    try {
+      const response = await fetch('/api/polish-observation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: rawText }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Polish failed')
+      }
+
+      const result = await response.json()
+      setRawBeforePolish(rawText)
+      onCommentsChange?.(result.polished)
+      setWasPolished(true)
+    } catch (err) {
+      console.error('Polish error:', err)
+      setPolishError(err instanceof Error ? err.message : 'Failed to polish text')
+      setTimeout(() => setPolishError(null), 5000)
+    } finally {
+      setIsPolishing(false)
+    }
+  }
+
+  // Undo polish — restore the raw text captured before the polish call
+  const handleUndoPolish = () => {
+    if (rawBeforePolish == null) return
+    onCommentsChange?.(rawBeforePolish)
+    setWasPolished(false)
+  }
+
   // Calculate summary statistics
   const totalRooms = rooms.length
   const completedRooms = rooms.filter((r) => r.is_completed).length
@@ -446,11 +502,55 @@ export default function ReviewStep({ wizardData, rooms, onCommentsChange, onProp
         </p>
         <textarea
           value={wizardData.surveyor_additional_comments || ''}
-          onChange={(e) => onCommentsChange?.(e.target.value)}
-          placeholder="Add any additional observations, context, or recommendations not covered by the room-specific findings above..."
+          onChange={(e) => {
+            onCommentsChange?.(e.target.value)
+            setWasPolished(false)
+          }}
+          placeholder="Tap record to dictate, or type any additional observations, context, or recommendations not covered by the room-specific findings above..."
           rows={5}
-          className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400/50"
+          className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400/50 mb-4"
         />
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <AudioRecorder
+              onTranscriptionComplete={handleCommentsTranscription}
+              disabled={isPolishing}
+              surveyId={surveyId}
+              transcriptionTarget={{ kind: 'wizard', field: 'surveyor_additional_comments' }}
+            />
+          </div>
+          <button
+            onClick={handlePolishComments}
+            disabled={!wizardData.surveyor_additional_comments?.trim() || isPolishing}
+            className="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white/90"
+          >
+            {isPolishing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <span>✨</span>
+            )}
+            {isPolishing ? 'Polishing...' : 'Polish'}
+          </button>
+        </div>
+
+        {wasPolished && (
+          <div className="flex items-center gap-3 mt-3 text-sm">
+            <span className="text-brand-300">✨ Polished</span>
+            <button
+              onClick={handleUndoPolish}
+              className="text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors"
+            >
+              Undo
+            </button>
+          </div>
+        )}
+
+        {polishError && (
+          <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+            {polishError}
+          </div>
+        )}
       </div>
 
       {/* Completion Status */}

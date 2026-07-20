@@ -405,7 +405,7 @@ export default function SurveyWizardPage() {
           />
         )
       case 4:
-        return <ReviewStep wizardData={wizardData} rooms={rooms} onCommentsChange={handleCommentsChange} onProposalItemsChange={handleProposalItemsChange} onProposalCommentsChange={handleProposalCommentsChange} onLimitationsChange={handleLimitationsChange} />
+        return <ReviewStep wizardData={wizardData} rooms={rooms} surveyId={projectId} onCommentsChange={handleCommentsChange} onProposalItemsChange={handleProposalItemsChange} onProposalCommentsChange={handleProposalCommentsChange} onLimitationsChange={handleLimitationsChange} />
       default:
         return null
     }
