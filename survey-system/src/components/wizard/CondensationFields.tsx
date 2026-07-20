@@ -285,10 +285,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   </label>
                   <input
                     type="number"
-                    value={data.cpass_passive_vent_count ?? 0}
-                    onChange={(e) => handleChange('cpass_passive_vent_count', parseInt(e.target.value) || 0)}
+                    value={data.cpass_passive_vent_count ?? ''}
+                    onChange={(e) => handleChange('cpass_passive_vent_count', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                     className="input-field"
                     min="0"
+                    placeholder="0"
                   />
                 </div>
 
@@ -298,10 +299,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   </label>
                   <input
                     type="number"
-                    value={data.dryaire_cvent_count ?? 0}
-                    onChange={(e) => handleChange('dryaire_cvent_count', parseInt(e.target.value) || 0)}
+                    value={data.dryaire_cvent_count ?? ''}
+                    onChange={(e) => handleChange('dryaire_cvent_count', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                     className="input-field"
                     min="0"
+                    placeholder="0"
                   />
                 </div>
 
@@ -312,10 +314,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                     </label>
                     <input
                       type="number"
-                      value={data.cvent_core_hole_count ?? 0}
-                      onChange={(e) => handleChange('cvent_core_hole_count', parseInt(e.target.value) || 0)}
+                      value={data.cvent_core_hole_count ?? ''}
+                      onChange={(e) => handleChange('cvent_core_hole_count', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                       className="input-field"
                       min="0"
+                      placeholder="0"
                     />
                     <p className="text-xs text-white/40 mt-1">
                       0 when replacing a vent in an existing suitable opening.
@@ -397,10 +400,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   </label>
                   <input
                     type="number"
-                    value={data.electrical_pack_count ?? 0}
-                    onChange={(e) => handleChange('electrical_pack_count', parseInt(e.target.value) || 0)}
+                    value={data.electrical_pack_count ?? ''}
+                    onChange={(e) => handleChange('electrical_pack_count', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                     className="input-field"
                     min="0"
+                    placeholder="0"
                   />
                   <p className="mt-1 text-xs text-white/50">0 = none needed</p>
                 </div>
@@ -411,10 +415,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   </label>
                   <input
                     type="number"
-                    value={data.core_hole_count_active ?? 0}
-                    onChange={(e) => handleChange('core_hole_count_active', parseInt(e.target.value) || 0)}
+                    value={data.core_hole_count_active ?? ''}
+                    onChange={(e) => handleChange('core_hole_count_active', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                     className="input-field"
                     min="0"
+                    placeholder="0"
                   />
                   <p className="mt-1 text-xs text-white/50">0 = none needed</p>
                 </div>
@@ -425,10 +430,11 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   </label>
                   <input
                     type="number"
-                    value={data.fan_grille_count ?? 0}
-                    onChange={(e) => handleChange('fan_grille_count', parseInt(e.target.value) || 0)}
+                    value={data.fan_grille_count ?? ''}
+                    onChange={(e) => handleChange('fan_grille_count', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
                     className="input-field"
                     min="0"
+                    placeholder="0"
                   />
                   <p className="mt-1 text-xs text-white/50">0 = none needed</p>
                 </div>
