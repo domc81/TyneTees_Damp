@@ -4,11 +4,17 @@
 // PUBLIC — no authentication. Token in query string IS the credential.
 // Server Component: fetches data directly from DB using service role key.
 // Core content is server-rendered HTML. PhotoLightbox adds JS progressively.
+//
+// Staff preview — /report/[reportId]?preview=1 (no token): renders the SAME
+// page for an authenticated admin/office/surveyor session, so the office can
+// see exactly what the customer will receive BEFORE finalising/publishing.
+// Preview renders a banner and never records a customer view.
 // =============================================================================
 
 import type { Metadata } from 'next'
 import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createAuthClient } from '@/lib/supabase-server'
 import type { ReportSection } from '@/types/survey-report.types'
 import { isSectionEmpty } from '@/components/report/utils'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
@@ -94,6 +100,41 @@ function createServiceClient() {
       fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
     },
   })
+}
+
+// =============================================================================
+// Staff preview authorisation — cookie session + role check
+// =============================================================================
+
+/**
+ * True when the request carries an authenticated session with an active staff
+ * role. Used ONLY for ?preview=1 — the customer token path never reaches this.
+ */
+async function isStaffPreviewAuthorised(
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<boolean> {
+  try {
+    const auth = createAuthClient()
+    const {
+      data: { user },
+      error,
+    } = await auth.auth.getUser()
+    if (error || !user) return false
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role, is_active')
+      .eq('user_id', user.id)
+      .single()
+
+    return (
+      !!profile &&
+      profile.is_active !== false &&
+      ['admin', 'office', 'surveyor'].includes(profile.role)
+    )
+  } catch {
+    return false
+  }
 }
 
 // =============================================================================
@@ -475,8 +516,9 @@ export default async function PublicReportPage({
 }) {
   const { reportId } = params
   const token = typeof searchParams.token === 'string' ? searchParams.token : ''
+  const wantsPreview = searchParams.preview === '1'
 
-  if (!token) {
+  if (!token && !wantsPreview) {
     return <InvalidReportPage />
   }
 
@@ -488,7 +530,7 @@ export default async function PublicReportPage({
     return <InvalidReportPage />
   }
 
-  // Load report + validate token
+  // Load report + validate access
   const { data: report, error: reportError } = await supabase
     .from('survey_reports')
     .select(
@@ -501,7 +543,14 @@ export default async function PublicReportPage({
     return <InvalidReportPage />
   }
 
-  if (!report.publish_token || report.publish_token !== token) {
+  // Access control: a valid publish token (customer) OR an authenticated staff
+  // session asking for preview. The token gate is unchanged for customers.
+  let isPreview = false
+  if (token && report.publish_token && report.publish_token === token) {
+    // Customer path — token is the credential
+  } else if (wantsPreview && (await isStaffPreviewAuthorised(supabase))) {
+    isPreview = true
+  } else {
     return <InvalidReportPage />
   }
 
@@ -587,6 +636,19 @@ export default async function PublicReportPage({
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
+      {/* Staff preview banner — never part of the customer experience */}
+      {isPreview && (
+        <div className="bg-[#FEF3C7] border-b border-[#FCD34D] px-4 py-2.5 text-center print:hidden">
+          <p className="text-sm text-[#92400E]">
+            <strong>Internal preview</strong> — this is exactly what the
+            customer will see.
+            {report.publish_token
+              ? ' The customer link is separate and unaffected.'
+              : ' The report has not been published — no customer link exists yet.'}
+          </p>
+        </div>
+      )}
+
       {/* Sticky brand header */}
       <header className="report-header-bar">
         <ReportHeader company={company} />
@@ -622,8 +684,10 @@ export default async function PublicReportPage({
         />
       </footer>
 
-      {/* Analytics beacon — fires on page load, non-blocking */}
-      <ReportViewTracker reportId={report.id} token={token} />
+      {/* Analytics beacon — fires on page load, non-blocking.
+          Never rendered in staff preview: internal views must not pollute
+          view_count / first_viewed_at (they signal CUSTOMER engagement). */}
+      {!isPreview && <ReportViewTracker reportId={report.id} token={token} />}
 
       {/* Client component — progressive enhancement for photo lightbox */}
       <PhotoLightbox />

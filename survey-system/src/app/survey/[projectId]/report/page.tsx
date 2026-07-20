@@ -585,6 +585,17 @@ export default function ReportEditorPage() {
 
             {/* Status progression buttons */}
             <div className="flex gap-2">
+              <a
+                href={`/report/${report.id}?preview=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 border border-white/10 transition-colors"
+                title="See the report exactly as the customer will receive it"
+              >
+                <Eye className="w-4 h-4" />
+                <span className="hidden sm:inline">Customer Preview</span>
+                <span className="sm:hidden">Preview</span>
+              </a>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1098,7 +1109,7 @@ export default function ReportEditorPage() {
       <ConfirmDialog
         open={confirmAction === 'finalise'}
         title="Finalise this report?"
-        message="Once finalised, the report will be locked and no further edits can be made. You can then publish it to share with the customer."
+        message="Once finalised, the report will be locked and no further edits can be made. You can then publish it to share with the customer. If you haven't already, use Customer Preview to check exactly what the customer will receive before locking it."
         confirmLabel="Finalise Report"
         onConfirm={() => {
           setConfirmAction(null)
