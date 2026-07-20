@@ -745,7 +745,8 @@ function buildSection(
 
 export async function generateReport(
   surveyId: string,
-  supabaseOverride?: any
+  supabaseOverride?: any,
+  options?: { replaceReportId?: string }
 ): Promise<SurveyReport> {
   const supabase = supabaseOverride || getSupabase()
   if (!supabase) {
@@ -2127,6 +2128,33 @@ export async function generateReport(
   )
 
   // 5. SAVE REPORT TO DATABASE
+  // Regeneration path: rebuild sections into the EXISTING report row, preserving
+  // its identity (id, publish token, send history, created_at) so customer links
+  // and the duplicate-send guard survive. Content returns to 'generated' for a
+  // fresh office review; any manual section edits are replaced.
+  if (options?.replaceReportId) {
+    const now = new Date().toISOString()
+    const { data: updated, error: updateError } = await supabase
+      .from('survey_reports')
+      .update({
+        sections: sections as any,
+        status: 'generated',
+        generated_at: now,
+        updated_at: now,
+        reviewed_by: null,
+        finalised_at: null,
+      })
+      .eq('id', options.replaceReportId)
+      .select('*')
+      .single()
+
+    if (updateError || !updated) {
+      throw new Error(`Failed to update report: ${updateError?.message}`)
+    }
+
+    return updated as SurveyReport
+  }
+
   const reportId = crypto.randomUUID()
   const report: SurveyReport = {
     id: reportId,
@@ -2157,6 +2185,35 @@ export async function generateReport(
   }
 
   return report
+}
+
+// =============================================================================
+// Regenerate Report — Full rebuild from the latest survey data
+// =============================================================================
+
+/**
+ * Rebuilds an existing report's sections from the current survey data.
+ * Used when wizard data (photos, comments, room findings) changed after the
+ * report was generated. Preserves the report row's identity — publish token,
+ * send history, created_at — and resets status to 'generated' for re-review.
+ */
+export async function regenerateReport(reportId: string): Promise<SurveyReport> {
+  const supabase = getSupabase()
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+
+  const { data: existing, error } = await supabase
+    .from('survey_reports')
+    .select('survey_id')
+    .eq('id', reportId)
+    .single()
+
+  if (error || !existing) {
+    throw new Error(`Failed to load report: ${error?.message}`)
+  }
+
+  return generateReport(existing.survey_id, undefined, { replaceReportId: reportId })
 }
 
 // =============================================================================

@@ -35,7 +35,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { generateReport, regenerateSection } from '@/lib/report-generator'
+import { generateReport, regenerateReport, regenerateSection } from '@/lib/report-generator'
 import {
   loadReportBySurvey,
   updateReportSection,
@@ -142,7 +142,11 @@ export default function ReportEditorPage() {
   const [customerEmail, setCustomerEmail] = useState<string | null>(null)
   const [projectNumber, setProjectNumber] = useState<string | null>(null)
   // Pending styled-dialog confirmation (replaces native window.confirm)
-  const [confirmAction, setConfirmAction] = useState<null | 'finalise' | 'unpublish'>(null)
+  const [confirmAction, setConfirmAction] = useState<null | 'finalise' | 'unpublish' | 'regenerate'>(null)
+  // Live wizard state used to detect data added AFTER report generation
+  // (TT-2026-0035: defect photos + extended comments arrived post-generation)
+  const [liveComments, setLiveComments] = useState<string>('')
+  const [liveRoomIds, setLiveRoomIds] = useState<string[]>([])
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -204,18 +208,28 @@ export default function ReportEditorPage() {
         }
       }
 
-      // Load photos
+      // Load photos + live wizard state (for stale-report detection)
       const supabase = getSupabase()
       if (supabase) {
-        const { data: survey } = await supabase
-          .from('surveys')
-          .select('survey_data')
-          .eq('id', projectId)
-          .single()
+        const [{ data: survey }, { data: roomRows }] = await Promise.all([
+          supabase
+            .from('surveys')
+            .select('survey_data')
+            .eq('id', projectId)
+            .single(),
+          supabase
+            .from('survey_rooms')
+            .select('id')
+            .eq('survey_id', projectId),
+        ])
 
         if (survey?.survey_data?.photos) {
           setPhotos(survey.survey_data.photos)
         }
+        setLiveComments(
+          ((survey?.survey_data?.surveyor_additional_comments as string) || '').trim()
+        )
+        setLiveRoomIds((roomRows || []).map((r: { id: string }) => r.id))
       }
     } catch (err) {
       console.error('Error loading report:', err)
@@ -247,6 +261,28 @@ export default function ReportEditorPage() {
     } finally {
       setIsGenerating(false)
       isGeneratingRef.current = false
+    }
+  }
+
+  // Regenerate the whole report from the latest survey data (photos, comments,
+  // room findings added after the original generation). Replaces all sections
+  // in the existing row — manual edits are lost (confirmed via dialog first).
+  async function handleRegenerateReport() {
+    if (!report) return
+    setIsGenerating(true)
+    setError(null)
+    setEditingSection(null)
+
+    try {
+      const refreshed = await regenerateReport(report.id)
+      setReport(refreshed)
+      setShowOriginal({})
+      toast.success('Report rebuilt from the latest survey data')
+    } catch (err) {
+      console.error('Error regenerating report:', err)
+      toast.error('Failed to regenerate report. Please try again.')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -549,6 +585,16 @@ export default function ReportEditorPage() {
 
             {/* Status progression buttons */}
             <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmAction('regenerate')}
+                disabled={isGenerating}
+                title="Rebuild all sections from the latest survey data"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Regenerate
+              </Button>
               {report.status === 'generated' && (
                 <Button
                   variant="primary"
@@ -600,6 +646,43 @@ export default function ReportEditorPage() {
           if (!room.data?.urgency) {
             warnings.push({ message: `${room.data?.room_name || room.title}: urgency not set`, severity: 'warning' })
           }
+        }
+
+        // Stale-report detection: survey data added AFTER this report was
+        // generated is invisible until the report is regenerated.
+        const reportPhotoIds = new Set<string>()
+        for (const s of report.sections) {
+          for (const id of s.photos || []) reportPhotoIds.add(id)
+          for (const sub of s.sub_sections || []) {
+            for (const id of sub.photos || []) reportPhotoIds.add(id)
+          }
+        }
+        // Only count photos that a regenerate WOULD pick up — photos of since-
+        // deleted rooms can never re-enter the report and must not warn forever.
+        const missingRoomPhotos = photos.filter(
+          (p) =>
+            p.step === 'room_inspection' &&
+            (!p.room_id || liveRoomIds.includes(p.room_id)) &&
+            !reportPhotoIds.has(p.id)
+        ).length
+        if (missingRoomPhotos > 0) {
+          warnings.push({
+            message: `${missingRoomPhotos} room photo${missingRoomPhotos !== 1 ? 's' : ''} (defect evidence / meter readings) added after this report was generated — press Regenerate to include them`,
+            severity: 'critical',
+          })
+        }
+
+        const commentsSection = report.sections.find(s => s.key === 'surveyor_comments')
+        if (liveComments && !commentsSection) {
+          warnings.push({
+            message: "Surveyor's additional comments are not in this report — press Regenerate to include them",
+            severity: 'critical',
+          })
+        } else if (liveComments && commentsSection && !commentsSection.is_edited && commentsSection.content.trim() !== liveComments) {
+          warnings.push({
+            message: "Surveyor's additional comments changed after this report was generated — press Regenerate to update them",
+            severity: 'warning',
+          })
         }
 
         if (warnings.length === 0) return null
@@ -1035,6 +1118,17 @@ export default function ReportEditorPage() {
         }}
         onCancel={() => setConfirmAction(null)}
       />
+      <ConfirmDialog
+        open={confirmAction === 'regenerate'}
+        title="Regenerate this report?"
+        message="All sections will be rebuilt from the latest survey data — photos, comments and findings added since the last generation will be included. Any manual edits to sections will be lost, and the report will return to Generated status for review."
+        confirmLabel="Regenerate Report"
+        onConfirm={() => {
+          setConfirmAction(null)
+          void handleRegenerateReport()
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
       </Layout>
     </ProtectedRoute>
   )
@@ -1220,7 +1314,8 @@ function SectionCard({
                 onSketchChange={onSketchChange}
               />
 
-              {/* Sub-sections */}
+              {/* Sub-sections — pass each one's own photos (room ID, defect
+                  evidence, meter readings) so they're visible in the editor */}
               {section.sub_sections && section.sub_sections.length > 0 && (
                 <div className="mt-6 space-y-4 pl-4 border-l-2 border-white/10">
                   {section.sub_sections.map((subSection) => (
@@ -1228,7 +1323,11 @@ function SectionCard({
                       <h4 className="text-sm font-semibold text-white/90 mb-2">
                         {subSection.title}
                       </h4>
-                      <SectionContent section={subSection} showOriginal={false} photos={[]} />
+                      <SectionContent
+                        section={subSection}
+                        showOriginal={false}
+                        photos={photos.filter((p) => subSection.photos?.includes(p.id))}
+                      />
                     </div>
                   ))}
                 </div>
