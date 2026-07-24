@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
+import { recordUsage } from '@/lib/usage'
 
 interface TranscriptionResult {
   text: string
@@ -192,6 +193,17 @@ export async function POST(request: NextRequest) {
         confidence: Math.round(confidence * 100) / 100,
         duration: Math.round(duration * 100) / 100,
       }
+
+      // Fire-and-forget usage tracking — only on the final successful response
+      recordUsage({
+        category: 'media',
+        provider: 'deepgram',
+        service: 'nova-3',
+        feature: 'survey-transcription',
+        quantity: duration / 60,
+        unit: 'minutes',
+        source: 'api/transcribe',
+      })
 
       return NextResponse.json(result)
     } catch (error) {

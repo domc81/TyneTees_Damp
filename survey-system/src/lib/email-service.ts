@@ -11,6 +11,7 @@
 import { Resend } from 'resend'
 import { createServerClient as createSSRClient } from '@supabase/ssr'
 import { getEmailConfig } from './email-config'
+import { recordUsage } from '@/lib/usage'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -165,6 +166,16 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
     const messageId = data?.id
     await logCommunication({ ...logBase, status: 'sent', messageId })
+
+    // Fire-and-forget usage tracking — one event per successful send
+    recordUsage({
+      category: 'email',
+      provider: 'resend',
+      quantity: 1,
+      unit: 'emails',
+      source: 'lib/email-service',
+      source_ref: messageId ? `resend:${messageId}` : undefined,
+    })
 
     return { success: true, messageId }
   } catch (err) {

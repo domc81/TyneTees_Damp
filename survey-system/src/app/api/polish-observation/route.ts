@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
+import { recordUsage } from '@/lib/usage'
 
 interface PolishRequest {
   text: string
@@ -146,6 +147,8 @@ CLEANUP RULES:
             // Disable reasoning so thinking tokens don't bleed into the content
             // field / eat the max_tokens budget and corrupt the polished output.
             reasoning: { enabled: false },
+            // Include token/cost accounting in the response for usage tracking
+            usage: { include: true },
           }),
           signal: controller.signal,
         }
@@ -173,6 +176,19 @@ CLEANUP RULES:
     }
 
     const data = await response.json()
+
+    // Fire-and-forget usage tracking — one event per polish call
+    recordUsage({
+      category: 'llm',
+      provider: 'openrouter',
+      service: 'anthropic/claude-sonnet-5',
+      feature: 'polish-observation',
+      input_tokens: data.usage?.prompt_tokens,
+      output_tokens: data.usage?.completion_tokens,
+      amount: data.usage?.cost,
+      currency: 'USD',
+      source: 'api/polish-observation',
+    })
 
     if (!data.choices || data.choices.length === 0) {
       return NextResponse.json(
