@@ -91,7 +91,7 @@ function ToggleSwitch({
       >
         {/* Thumb */}
         <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-[#fff] shadow-sm transition-transform duration-200 ${
             checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
           }`}
         />
@@ -834,9 +834,9 @@ export default function CostingReviewPage() {
           </div>
 
           {missingTemplates.length > 0 && (
-            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-400/30 text-amber-200 text-sm space-y-1">
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-400/30 text-amber-300 text-sm space-y-1">
               <p className="font-medium">Warning: {missingTemplates.length} costing template{missingTemplates.length > 1 ? 's' : ''} not found — these line items are excluded from the quotation:</p>
-              <ul className="list-disc list-inside text-amber-200/70 text-xs">
+              <ul className="list-disc list-inside text-amber-300/70 text-xs">
                 {missingTemplates.map(key => <li key={key}>{key}</li>)}
               </ul>
             </div>

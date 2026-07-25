@@ -233,7 +233,7 @@ export default function PhotoCapture({
 
       {/* Error Display */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-start gap-2">
+        <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
           <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div className="flex-1">{error}</div>
           <button
@@ -412,7 +412,7 @@ export default function PhotoCapture({
                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20"
               >
                 {PHOTO_VISIBILITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-navy-900 text-white">
+                  <option key={opt.value} value={opt.value} className="themed-option">
                     {opt.label}
                   </option>
                 ))}
@@ -486,7 +486,7 @@ export default function PhotoCapture({
                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20"
               >
                 {PHOTO_VISIBILITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-navy-900 text-white">
+                  <option key={opt.value} value={opt.value} className="themed-option">
                     {opt.label}
                   </option>
                 ))}
@@ -497,7 +497,7 @@ export default function PhotoCapture({
               <button
                 onClick={() => setConfirmDeletePhoto(editingPhoto)}
                 disabled={savingEdit}
-                className="px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/35 border border-red-500/30 text-red-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/35 border border-red-500/30 text-red-300 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete

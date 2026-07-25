@@ -1619,11 +1619,11 @@ function TreatmentMethodologyEditorView({
   }
 
   const HEADER_COLOURS: Record<string, { bg: string; text: string }> = {
-    cavity_drain_membrane: { bg: 'bg-blue-900/40', text: 'text-blue-200' },
-    cementitious_tanking:  { bg: 'bg-blue-900/40', text: 'text-blue-200' },
-    dpc_injection:         { bg: 'bg-blue-900/40', text: 'text-blue-200' },
-    wet_rot_treatment:     { bg: 'bg-green-900/40', text: 'text-green-200' },
-    dry_rot_treatment:     { bg: 'bg-amber-900/40', text: 'text-amber-200' },
+    cavity_drain_membrane: { bg: 'bg-blue-900/40', text: 'text-blue-300' },
+    cementitious_tanking:  { bg: 'bg-blue-900/40', text: 'text-blue-300' },
+    dpc_injection:         { bg: 'bg-blue-900/40', text: 'text-blue-300' },
+    wet_rot_treatment:     { bg: 'bg-green-900/40', text: 'text-green-300' },
+    dry_rot_treatment:     { bg: 'bg-amber-900/40', text: 'text-amber-300' },
   }
 
   return (
@@ -1684,7 +1684,7 @@ function WoodwormTreatmentEditorView({
       {/* Treatment steps block */}
       <div className="rounded-lg border border-white/10 overflow-hidden">
         <div className="bg-amber-900/30 px-4 py-2.5 border-b border-white/10">
-          <p className="text-sm font-semibold text-amber-200">{methodology.title}</p>
+          <p className="text-sm font-semibold text-amber-300">{methodology.title}</p>
         </div>
         <div className="px-4 py-3 bg-white/5">
           <p className="text-xs text-white/50 italic mb-3">{methodology.intro}</p>
@@ -1706,7 +1706,7 @@ function WoodwormTreatmentEditorView({
         <div className="rounded-lg border border-amber-400/40 overflow-hidden">
           <div className="bg-amber-500/20 px-4 py-2.5 border-b border-amber-400/30 flex items-center gap-2">
             <span className="text-amber-300 text-base">⚠</span>
-            <p className="text-sm font-bold text-amber-200 uppercase tracking-wide">
+            <p className="text-sm font-bold text-amber-300 uppercase tracking-wide">
               Important Safety Information — Exclusion Zone
             </p>
           </div>

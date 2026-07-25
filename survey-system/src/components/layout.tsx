@@ -16,8 +16,11 @@ import {
   Inbox,
   BarChart3,
   BookOpen,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme } from '@/context/ThemeContext'
 import { useCompanyProfile } from '@/context/CompanyProfileContext'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -51,6 +54,7 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { signOut, isAdmin, isOffice, profile, role } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const companyProfile = useCompanyProfile()
   const sync = useSyncStatus()
   const pendingTotal = sync.pendingData + sync.pendingPhotos + sync.pendingAudio + sync.failed
@@ -136,7 +140,23 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm font-medium"
+            aria-pressed={theme === 'light'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-brand-400" />
+            )}
+            <span className="flex-1 text-left">
+              {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+            </span>
+          </button>
+
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
               {cardName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}

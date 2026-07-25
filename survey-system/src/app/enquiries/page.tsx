@@ -578,7 +578,7 @@ function EnquiryCard({
             onClick={() => onConvertAndBook?.(enquiry)}
             title="Convert &amp; Book Survey"
             className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold
-              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-200 border border-blue-400/20
+              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-300 border border-blue-400/20
               transition-colors"
           >
             <CalendarPlus className="w-3 h-3" />
@@ -874,7 +874,7 @@ function MobileEnquiryCard({
             onClick={() => onConvertAndBook?.(enquiry)}
             title="Convert &amp; Book Survey"
             className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold
-              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-200 border border-blue-400/20
+              bg-blue-500/15 text-blue-300/80 hover:bg-blue-500/25 hover:text-blue-300 border border-blue-400/20
               transition-colors"
           >
             <CalendarPlus className="w-3 h-3" />
@@ -1007,8 +1007,8 @@ function OnHoldModal({
       <div
         className="relative w-full max-w-lg rounded-2xl border border-white/15 p-6 space-y-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(30,42,56,0.98) 0%, rgba(13,21,32,0.99) 100%)',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+          background: 'var(--tt-modal-bg)',
+          boxShadow: 'var(--tt-modal-shadow)',
         }}
       >
         <div>
@@ -1116,8 +1116,8 @@ function LostModal({
       <div
         className="relative w-full max-w-lg rounded-2xl border border-white/15 p-6 space-y-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(30,42,56,0.98) 0%, rgba(13,21,32,0.99) 100%)',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+          background: 'var(--tt-modal-bg)',
+          boxShadow: 'var(--tt-modal-shadow)',
         }}
       >
         <div>
@@ -1195,8 +1195,8 @@ function MoveConfirmModal({
       <div
         className="relative w-full max-w-md rounded-2xl border border-white/15 p-6 space-y-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(30,42,56,0.98) 0%, rgba(13,21,32,0.99) 100%)',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+          background: 'var(--tt-modal-bg)',
+          boxShadow: 'var(--tt-modal-shadow)',
         }}
       >
         <div>
@@ -1204,7 +1204,7 @@ function MoveConfirmModal({
           <p className="text-sm text-white/60 mt-2">
             Move <span className="text-white font-medium">&ldquo;{enquiry.client_name || 'Unnamed lead'}&rdquo;</span>{' '}
             from <span className="text-white/90">{fromLabel}</span> to{' '}
-            <span className="font-semibold" style={{ color: toCol?.color ?? '#fff' }}>{toLabel}</span>?
+            <span className="font-semibold" style={{ color: toCol?.color ?? 'rgb(var(--tt-ink))' }}>{toLabel}</span>?
           </p>
           {MOVE_CONSEQUENCE[toStatus] && (
             <p className="text-xs text-amber-300/80 mt-2">{MOVE_CONSEQUENCE[toStatus]}</p>
@@ -1775,7 +1775,7 @@ export default function EnquiriesPage() {
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[#fff] shadow transition-transform duration-200 ${
                         showArchivedColumns ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />

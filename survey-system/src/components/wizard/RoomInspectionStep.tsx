@@ -588,7 +588,7 @@ export default function RoomInspectionStep({ rooms, onRoomsChange, surveyId, pho
             )}
 
             {polishError && (
-              <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+              <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
                 {polishError}
               </div>
             )}

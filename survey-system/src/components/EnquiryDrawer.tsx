@@ -1691,7 +1691,7 @@ export default function EnquiryDrawer({
                         placeholder="Search by name, email, phone or postcode…"
                       />
                       {customerMatches.length > 0 && (
-                        <div className="absolute z-20 mt-1 w-full rounded-xl border border-white/15 bg-[#0d1522] shadow-2xl overflow-hidden">
+                        <div className="absolute z-20 mt-1 w-full rounded-xl border border-white/15 bg-[var(--background-secondary)] shadow-2xl overflow-hidden">
                           {customerMatches.map(c => (
                             <button
                               key={c.id}
@@ -2028,7 +2028,7 @@ export default function EnquiryDrawer({
               {showStatusDropdown && (
                 <div
                   className="absolute top-full left-0 mt-1 w-40 rounded-lg border border-white/15 overflow-hidden shadow-xl z-10"
-                  style={{ background: 'rgba(20,30,45,0.98)' }}
+                  style={{ background: 'var(--background-secondary)' }}
                 >
                   {ALL_STATUSES
                     .filter(s => s !== enquiry.status)
@@ -2070,7 +2070,7 @@ export default function EnquiryDrawer({
               {showPriorityDropdown && (
                 <div
                   className="absolute top-full left-0 mt-1 w-36 rounded-lg border border-white/15 overflow-hidden shadow-xl z-10"
-                  style={{ background: 'rgba(20,30,45,0.98)' }}
+                  style={{ background: 'var(--background-secondary)' }}
                 >
                   {ALL_PRIORITIES
                     .filter(p => p !== enquiry.priority)
@@ -2116,7 +2116,7 @@ export default function EnquiryDrawer({
               {showAssigneeDropdown && (
                 <div
                   className="absolute top-full left-0 mt-1 w-52 max-h-60 overflow-y-auto rounded-lg border border-white/15 shadow-xl z-10"
-                  style={{ background: 'rgba(20,30,45,0.98)' }}
+                  style={{ background: 'var(--background-secondary)' }}
                 >
                   {teamMembers.map(member => (
                     <button
@@ -2323,7 +2323,7 @@ export default function EnquiryDrawer({
                       Review Report
                     </a>
                     {reportReady === false && (
-                      <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90">
+                      <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300/90">
                         Report not yet published — open Review Report and publish it, then come back here.{' '}
                         <button onClick={checkReportReady} className="underline underline-offset-2 hover:text-amber-100">
                           Re-check
@@ -2352,7 +2352,7 @@ export default function EnquiryDrawer({
                       onCancel={() => setResendPrompt(null)}
                     />
                     {approveSendError && (
-                      <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-200/90">
+                      <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-300/90">
                         {approveSendError}
                       </div>
                     )}
@@ -2890,7 +2890,7 @@ export default function EnquiryDrawer({
                           <Clock className="w-3 h-3" />
                           Time in status
                         </span>
-                        <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: slaColor ?? 'rgba(255,255,255,0.7)' }}>
+                        <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: slaColor ?? 'rgb(var(--tt-ink) / 0.7)' }}>
                           {sla && (
                             <span
                               className={`inline-block w-2 h-2 rounded-full flex-shrink-0${sla === 'red' ? ' animate-pulse' : ''}`}

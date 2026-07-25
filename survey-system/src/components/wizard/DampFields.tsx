@@ -385,7 +385,7 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.dpc_required ? 'translate-x-6' : 'translate-x-1'}
                   `}
@@ -923,7 +923,7 @@ export default function DampFields({ data, onChange, surveyId, roomId, photos, o
                   >
                     <span
                       className={`
-                        inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                        inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                         transition-transform duration-300
                         ${data.strip_existing_floor ? 'translate-x-6' : 'translate-x-1'}
                       `}

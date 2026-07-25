@@ -609,7 +609,7 @@ export default function InstallerInfoPage({ params }: { params: { projectId: str
           {isOffice && !isAdmin && (
             <div className="glass-card px-6 py-4 flex items-center gap-3 border-l-4 border-amber-400/50">
               <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-              <p className="text-sm text-amber-200/80">
+              <p className="text-sm text-amber-300/80">
                 You have view-only access. Only admins and surveyors can edit installer information.
               </p>
             </div>

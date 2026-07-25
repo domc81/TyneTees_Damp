@@ -9,7 +9,7 @@ export default function NotFound() {
   const pathname = usePathname()
 
   return (
-    <div className="min-h-screen bg-[#0d1520] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
       <div className="glass-card p-10 max-w-md w-full text-center">
         {/* 404 numeral — large, faint, behind content */}
         <p className="text-8xl font-bold text-white/8 mb-0 font-mono leading-none select-none">

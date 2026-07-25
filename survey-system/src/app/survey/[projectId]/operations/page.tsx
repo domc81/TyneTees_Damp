@@ -434,7 +434,7 @@ export default function OperationsPage() {
         {/* ══ PRINT-ONLY: operative work instruction — scope, measurements,
             pay rate and travel allowance. NO customer prices or margins. ══ */}
         {contractor && survey && (
-          <div className="hidden print:block text-black bg-white p-2 text-[13px] leading-relaxed">
+          <div className="hidden print:block text-black bg-[#fff] p-2 text-[13px] leading-relaxed">
             <h1 className="text-xl font-bold mb-1">Work Instruction — {survey.project_number}</h1>
             <p className="mb-4 text-sm">Tyne Tees Damp Proofing — operative/subcontractor copy</p>
 

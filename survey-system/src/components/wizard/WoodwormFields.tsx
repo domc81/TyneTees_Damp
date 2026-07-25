@@ -168,7 +168,7 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
           >
             <span
               className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                 transition-transform duration-300
                 ${data.structural_damage ? 'translate-x-6' : 'translate-x-1'}
               `}
@@ -698,7 +698,7 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.include_lifting_loft_insulation ? 'translate-x-6' : 'translate-x-1'}
                   `}
@@ -736,7 +736,7 @@ export default function WoodwormFields({ data, onChange }: WoodwormFieldsProps) 
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.include_relaying_loft_insulation ? 'translate-x-6' : 'translate-x-1'}
                   `}

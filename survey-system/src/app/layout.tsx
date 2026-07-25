@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { cache } from 'react'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import { Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
+import { ThemeProvider } from '@/context/ThemeContext'
 import { CompanyProfileProvider } from '@/context/CompanyProfileContext'
 import { getCompanyProfilePublic } from '@/lib/company-profile'
 import OfflineBootstrap from '@/components/offline/OfflineBootstrap'
@@ -54,15 +54,26 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-screen bg-[#0d1520] text-white antialiased">
-        <AuthProvider>
-          <CompanyProfileProvider company={company}>
-            {children}
-          </CompanyProfileProvider>
-          <OfflineBootstrap />
-        </AuthProvider>
-        <Toaster richColors position="top-right" theme="dark" />
+    // suppressHydrationWarning: the inline script below may add
+    // data-theme="light" to <html> before React hydrates.
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="min-h-screen bg-[var(--background)] text-white antialiased">
+        {/* Apply the saved theme before first paint to avoid a flash of the
+            wrong theme. Dark is the default and needs no attribute. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('ttdp-theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}",
+          }}
+        />
+        <ThemeProvider>
+          <AuthProvider>
+            <CompanyProfileProvider company={company}>
+              {children}
+            </CompanyProfileProvider>
+            <OfflineBootstrap />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -96,8 +96,8 @@ export function CfReferencePrompt({ enquiryId, clientName, onClose }: CfReferenc
       <div
         className="relative w-full max-w-md rounded-2xl border border-white/15 p-6 space-y-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(30,42,56,0.98) 0%, rgba(13,21,32,0.99) 100%)',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+          background: 'var(--tt-modal-bg)',
+          boxShadow: 'var(--tt-modal-shadow)',
         }}
       >
         <div>

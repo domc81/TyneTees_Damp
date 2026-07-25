@@ -1,4 +1,26 @@
 import type { Config } from 'tailwindcss'
+import colors from 'tailwindcss/colors'
+
+// Theme-adaptive color tokens. `--tt-*` variables are defined in globals.css:
+// dark values on :root (and .theme-native), light values under
+// [data-theme='light']. `white` is the app's "ink" — white text/tints on the
+// dark theme, deep navy ink on the light theme — so the ~3k text-white/*,
+// bg-white/*, border-white/* utilities adapt without per-component edits.
+// Shades 300/400 (plus brand-200) are the "light ink on dark" shades; they
+// flip to 700/600 (brand-800) equivalents in light mode. Literal colors are
+// still available via arbitrary values (e.g. bg-[#fff]) where a surface must
+// not follow the theme.
+const themed = (token: string) => `rgb(var(--tt-${token}) / <alpha-value>)`
+const adaptiveHues = [
+  'amber', 'blue', 'cyan', 'emerald', 'gray', 'green', 'indigo', 'orange',
+  'pink', 'purple', 'red', 'rose', 'sky', 'slate', 'teal', 'violet',
+] as const
+const adaptivePalette = Object.fromEntries(
+  adaptiveHues.map((hue) => [
+    hue,
+    { ...colors[hue], 300: themed(`${hue}-300`), 400: themed(`${hue}-400`) },
+  ])
+)
 
 const config: Config = {
   content: [
@@ -9,13 +31,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ...adaptivePalette,
+        white: themed('ink'),
         // Brand palette - deep naval blue for Tyne Tees
         brand: {
           50: '#f0f7ff',
           100: '#e0efff',
-          200: '#b9dfff',
-          300: '#7cc4ff',
-          400: '#36a6ff',
+          200: themed('brand-200'),
+          300: themed('brand-300'),
+          400: themed('brand-400'),
           500: '#0c8ce9',
           600: '#006fc7',
           700: '#0058a1',
@@ -52,13 +76,13 @@ const config: Config = {
           900: '#18181b',
           950: '#09090b',
         },
-        // Glass effect colors
+        // Glass effect colors (ink-based so they adapt to the active theme)
         glass: {
-          light: 'rgba(255, 255, 255, 0.1)',
-          medium: 'rgba(255, 255, 255, 0.15)',
-          heavy: 'rgba(255, 255, 255, 0.25)',
-          border: 'rgba(255, 255, 255, 0.2)',
-          borderStrong: 'rgba(255, 255, 255, 0.3)',
+          light: 'rgb(var(--tt-ink) / 0.1)',
+          medium: 'rgb(var(--tt-ink) / 0.15)',
+          heavy: 'rgb(var(--tt-ink) / 0.25)',
+          border: 'rgb(var(--tt-ink) / 0.2)',
+          borderStrong: 'rgb(var(--tt-ink) / 0.3)',
         },
       },
       fontFamily: {

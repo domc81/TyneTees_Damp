@@ -69,7 +69,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           >
             <span
               className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                 transition-transform duration-300
                 ${data.condensation_on_windows ? 'translate-x-6' : 'translate-x-1'}
               `}
@@ -96,7 +96,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           >
             <span
               className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                 transition-transform duration-300
                 ${data.black_mould_present ? 'translate-x-6' : 'translate-x-1'}
               `}
@@ -163,7 +163,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           >
             <span
               className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                 transition-transform duration-300
                 ${data.ventilation_adequate ? 'translate-x-6' : 'translate-x-1'}
               `}
@@ -229,7 +229,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
           >
             <span
               className={`
-                inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                 transition-transform duration-300
                 ${data.extraction_needed ? 'translate-x-6' : 'translate-x-1'}
               `}
@@ -345,7 +345,7 @@ export default function CondensationFields({ data, onChange, rhReading }: Conden
                   >
                     <span
                       className={`
-                        inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                        inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                         transition-transform duration-300
                         ${data.core_hole_required ? 'translate-x-6' : 'translate-x-1'}
                       `}

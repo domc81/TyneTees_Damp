@@ -270,7 +270,7 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.sub_floor_inspected ? 'translate-x-6' : 'translate-x-1'}
                   `}
@@ -450,7 +450,7 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.timber_replacement_needed ? 'translate-x-6' : 'translate-x-1'}
                   `}
@@ -664,7 +664,7 @@ export default function TimberFields({ data, onChange }: TimberFieldsProps) {
               >
                 <span
                   className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                    inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                     transition-transform duration-300
                     ${data.ceiling_affected ? 'translate-x-6' : 'translate-x-1'}
                   `}

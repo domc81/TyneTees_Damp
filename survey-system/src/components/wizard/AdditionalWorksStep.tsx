@@ -155,7 +155,7 @@ export default function AdditionalWorksStep({
                 >
                   <span
                     className={`
-                      inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                      inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                       transition-transform duration-300
                       ${piv.piv_recommended ? 'translate-x-6' : 'translate-x-1'}
                     `}
@@ -302,7 +302,7 @@ export default function AdditionalWorksStep({
                         >
                           <span
                             className={`
-                              inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                              inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                               transition-transform duration-300
                               ${piv.ducting_components_as_exists ? 'translate-x-6' : 'translate-x-1'}
                             `}
@@ -400,7 +400,7 @@ export default function AdditionalWorksStep({
                     >
                       <span
                         className={`
-                          inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                          inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                           transition-transform duration-300
                           ${data.loft_hatch_new_required ? 'translate-x-6' : 'translate-x-1'}
                         `}
@@ -428,7 +428,7 @@ export default function AdditionalWorksStep({
                     >
                       <span
                         className={`
-                          inline-block h-4 w-4 transform rounded-full bg-white shadow-lg
+                          inline-block h-4 w-4 transform rounded-full bg-[#fff] shadow-lg
                           transition-transform duration-300
                           ${data.loft_hatch_enlarge_required ? 'translate-x-6' : 'translate-x-1'}
                         `}

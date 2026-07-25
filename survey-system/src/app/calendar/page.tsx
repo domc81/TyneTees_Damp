@@ -286,7 +286,7 @@ export default function CalendarPage() {
     if (isCancelled) {
       bgColour = 'rgba(100, 100, 100, 0.5)'
       borderColour = 'rgba(100, 100, 100, 0.6)'
-      textColour = 'rgba(255, 255, 255, 0.6)'
+      textColour = 'rgb(var(--tt-ink) / 0.6)'
     } else if (isCompleted) {
       bgColour = '#16a34a'
       borderColour = '#15803d'
@@ -294,7 +294,7 @@ export default function CalendarPage() {
     } else if (isProvisional) {
       bgColour = 'rgba(245, 158, 11, 0.3)'
       borderColour = 'rgba(245, 158, 11, 0.6)'
-      textColour = '#fbbf24'
+      textColour = 'rgb(var(--tt-amber-400))'
     }
 
     const classNames: string[] = []
@@ -600,7 +600,7 @@ export default function CalendarPage() {
                     >
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: isSelected ? colour.bg : 'rgba(255,255,255,0.2)' }}
+                        style={{ backgroundColor: isSelected ? colour.bg : 'rgb(var(--tt-ink) / 0.2)' }}
                       />
                       {s.display_name}
                     </button>

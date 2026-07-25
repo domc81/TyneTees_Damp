@@ -2,13 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* =============================================================================
+   Theme tokens
+   -----------------------------------------------------------------------------
+   Dark theme is the default (:root). Light theme is activated by
+   data-theme="light" on <html> (set pre-paint by the inline script in
+   app/layout.tsx, toggled via ThemeContext).
+
+   `.theme-native` re-declares every token with its dark-theme (original)
+   value. Public customer pages (/q, /pay, /report) are wrapped in it so they
+   render EXACTLY as designed regardless of the staff member's theme choice
+   (Customer Preview included) — CSS variables set on the wrapper win over the
+   values inherited from <html>.
+
+   --tt-ink is the "ink" colour behind Tailwind's `white` (see
+   tailwind.config.ts): white on dark surfaces, deep navy on light ones.
+   --tt-<hue>-<shade> back the adaptive palette shades.
+   ========================================================================== */
+:root,
+.theme-native {
   --foreground: #f1f5f9;
   --background: #0d1520;
   --background-secondary: #14202d;
+  --tt-ink: 255 255 255;
+  --tt-focus: #36a6ff;
+  --tt-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --tt-modal-bg: linear-gradient(135deg, rgba(30, 42, 56, 0.98) 0%, rgba(13, 21, 32, 0.99) 100%);
+  --tt-modal-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
   --font-geist-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-geist-mono: 'Geist Mono', 'SF Mono', Monaco, Consolas, monospace;
   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --tt-brand-200: 185 223 255;
+  --tt-brand-300: 124 196 255;
+  --tt-brand-400: 54 166 255;
+  --tt-amber-300: 252 211 77;
+  --tt-amber-400: 251 191 36;
+  --tt-blue-300: 147 197 253;
+  --tt-blue-400: 96 165 250;
+  --tt-cyan-300: 103 232 249;
+  --tt-cyan-400: 34 211 238;
+  --tt-emerald-300: 110 231 183;
+  --tt-emerald-400: 52 211 153;
+  --tt-gray-300: 209 213 219;
+  --tt-gray-400: 156 163 175;
+  --tt-green-300: 134 239 172;
+  --tt-green-400: 74 222 128;
+  --tt-indigo-300: 165 180 252;
+  --tt-indigo-400: 129 140 248;
+  --tt-orange-300: 253 186 116;
+  --tt-orange-400: 251 146 60;
+  --tt-pink-300: 249 168 212;
+  --tt-pink-400: 244 114 182;
+  --tt-purple-300: 216 180 254;
+  --tt-purple-400: 192 132 252;
+  --tt-red-300: 252 165 165;
+  --tt-red-400: 248 113 113;
+  --tt-rose-300: 253 164 175;
+  --tt-rose-400: 251 113 133;
+  --tt-sky-300: 125 211 252;
+  --tt-sky-400: 56 189 248;
+  --tt-slate-300: 203 213 225;
+  --tt-slate-400: 148 163 184;
+  --tt-teal-300: 94 234 212;
+  --tt-teal-400: 45 212 191;
+  --tt-violet-300: 196 181 253;
+  --tt-violet-400: 167 139 250;
+}
+
+/* Light theme — ink flips to deep navy, "light on dark" palette shades flip
+   to their 700/600 equivalents so status colours keep their meaning. */
+[data-theme='light'] {
+  --foreground: #10203a;
+  --background: #eef2f7;
+  --background-secondary: #ffffff;
+  --tt-ink: 16 32 58;
+  --tt-focus: #006fc7;
+  --tt-card-shadow: 0 8px 24px rgba(16, 32, 58, 0.08);
+  --tt-modal-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 248, 252, 0.99) 100%);
+  --tt-modal-shadow: 0 25px 60px rgba(16, 32, 58, 0.25);
+  --tt-brand-200: 0 72 131;
+  --tt-brand-300: 0 88 161;
+  --tt-brand-400: 0 111 199;
+  --tt-amber-300: 180 83 9;
+  --tt-amber-400: 217 119 6;
+  --tt-blue-300: 29 78 216;
+  --tt-blue-400: 37 99 235;
+  --tt-cyan-300: 14 116 144;
+  --tt-cyan-400: 8 145 178;
+  --tt-emerald-300: 4 120 87;
+  --tt-emerald-400: 5 150 105;
+  --tt-gray-300: 55 65 81;
+  --tt-gray-400: 75 85 99;
+  --tt-green-300: 21 128 61;
+  --tt-green-400: 22 163 74;
+  --tt-indigo-300: 67 56 202;
+  --tt-indigo-400: 79 70 229;
+  --tt-orange-300: 194 65 12;
+  --tt-orange-400: 234 88 12;
+  --tt-pink-300: 190 24 93;
+  --tt-pink-400: 219 39 119;
+  --tt-purple-300: 126 34 206;
+  --tt-purple-400: 147 51 234;
+  --tt-red-300: 185 28 28;
+  --tt-red-400: 220 38 38;
+  --tt-rose-300: 190 18 60;
+  --tt-rose-400: 225 29 72;
+  --tt-sky-300: 3 105 161;
+  --tt-sky-400: 2 132 199;
+  --tt-slate-300: 51 65 85;
+  --tt-slate-400: 71 85 105;
+  --tt-teal-300: 15 118 110;
+  --tt-teal-400: 13 148 136;
+  --tt-violet-300: 109 40 217;
+  --tt-violet-400: 124 58 237;
 }
 
 * {
@@ -79,8 +185,8 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(to right, rgb(var(--tt-ink) / 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--tt-ink) / 0.02) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
 }
@@ -92,22 +198,22 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgb(var(--tt-ink) / 0.02);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgb(var(--tt-ink) / 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgb(var(--tt-ink) / 0.25);
 }
 
 /* Focus styles */
 *:focus-visible {
-  outline: 2px solid #36a6ff;
+  outline: 2px solid var(--tt-focus);
   outline-offset: 2px;
 }
 
@@ -115,15 +221,15 @@ body {
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #14202d inset !important;
-  box-shadow: 0 0 0 1000px #14202d inset !important;
-  -webkit-text-fill-color: #f1f5f9 !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--background-secondary) inset !important;
+  box-shadow: 0 0 0 1000px var(--background-secondary) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
 }
 
 /* Selection color */
 ::selection {
   background: rgba(12, 140, 233, 0.3);
-  color: #f1f5f9;
+  color: var(--foreground);
 }
 
 @layer components {
@@ -164,32 +270,32 @@ input:-webkit-autofill:focus {
     @apply relative overflow-hidden rounded-2xl;
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.04) 50%,
-      rgba(255, 255, 255, 0.06) 100%
+      rgb(var(--tt-ink) / 0.08) 0%,
+      rgb(var(--tt-ink) / 0.04) 50%,
+      rgb(var(--tt-ink) / 0.06) 100%
     );
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgb(var(--tt-ink) / 0.12);
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-      0 -1px 0 rgba(255, 255, 255, 0.05) inset;
+      0 0 0 1px rgb(var(--tt-ink) / 0.05) inset,
+      0 -1px 0 rgb(var(--tt-ink) / 0.05) inset;
     transition: all 0.3s ease;
   }
 
   .glass-card:hover {
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.12) 0%,
-      rgba(255, 255, 255, 0.06) 50%,
-      rgba(255, 255, 255, 0.08) 100%
+      rgb(var(--tt-ink) / 0.12) 0%,
+      rgb(var(--tt-ink) / 0.06) 50%,
+      rgb(var(--tt-ink) / 0.08) 100%
     );
-    border-color: rgba(255, 255, 255, 0.18);
+    border-color: rgb(var(--tt-ink) / 0.18);
     box-shadow:
       0 12px 40px rgba(0, 0, 0, 0.4),
       0 0 40px rgba(12, 140, 233, 0.1),
-      0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+      0 0 0 1px rgb(var(--tt-ink) / 0.08) inset;
     transform: translateY(-2px);
   }
 
@@ -204,7 +310,7 @@ input:-webkit-autofill:focus {
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.03),
+      rgb(var(--tt-ink) / 0.03),
       transparent
     );
     transform: skewX(-15deg);
@@ -226,10 +332,10 @@ input:-webkit-autofill:focus {
     );
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgb(var(--tt-ink) / 0.08);
     box-shadow:
       4px 0 24px rgba(0, 0, 0, 0.3),
-      1px 0 0 rgba(255, 255, 255, 0.05) inset;
+      1px 0 0 rgb(var(--tt-ink) / 0.05) inset;
   }
 
   /* Glass button primary */
@@ -249,6 +355,7 @@ input:-webkit-autofill:focus {
   .btn-primary::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    /* Literal white shimmer — the button face is always brand-coloured */
     background: linear-gradient(
       90deg,
       transparent,
@@ -308,8 +415,13 @@ input:-webkit-autofill:focus {
     background-size: 18px;
   }
 
-  .input-select option {
-    @apply bg-[#14202d] text-white;
+  /* Native <option> popups can't be fully styled; keep them on the solid
+     theme surface so entries stay legible in both themes. `.themed-option`
+     is for selects that don't use .input-select (e.g. wizard PhotoCapture). */
+  .input-select option,
+  option.themed-option {
+    background-color: var(--background-secondary);
+    color: var(--foreground);
   }
 
   /* Badge styles */
@@ -338,18 +450,18 @@ input:-webkit-autofill:focus {
     @apply rounded-2xl overflow-hidden;
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.06) 0%,
-      rgba(255, 255, 255, 0.03) 100%
+      rgb(var(--tt-ink) / 0.06) 0%,
+      rgb(var(--tt-ink) / 0.03) 100%
     );
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgb(var(--tt-ink) / 0.08);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
   }
 
   .section-card:hover {
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: rgb(var(--tt-ink) / 0.12);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
   }
 
@@ -357,7 +469,7 @@ input:-webkit-autofill:focus {
     @apply px-6 py-5 border-b border-white/10;
     background: linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.03) 0%,
+      rgb(var(--tt-ink) / 0.03) 0%,
       transparent 100%
     );
   }
@@ -369,7 +481,7 @@ input:-webkit-autofill:focus {
   /* Table styles */
   .table-container {
     @apply overflow-x-auto rounded-xl border border-white/10;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgb(var(--tt-ink) / 0.02);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
@@ -508,17 +620,17 @@ input:-webkit-autofill:focus {
 
   /* Glass utilities */
   .glass {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgb(var(--tt-ink) / 0.1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgb(var(--tt-ink) / 0.15);
   }
 
   .glass-strong {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgb(var(--tt-ink) / 0.15);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgb(var(--tt-ink) / 0.2);
   }
 
   /* Contain scroll chaining — prevents scroll events from bubbling to parent/body on Edge */
@@ -595,17 +707,17 @@ input:-webkit-autofill:focus {
    ============================================================================= */
 
 .fc {
-  --fc-border-color: rgba(255, 255, 255, 0.08);
-  --fc-button-bg-color: rgba(255, 255, 255, 0.1);
-  --fc-button-border-color: rgba(255, 255, 255, 0.15);
-  --fc-button-text-color: #f1f5f9;
-  --fc-button-hover-bg-color: rgba(255, 255, 255, 0.2);
-  --fc-button-hover-border-color: rgba(255, 255, 255, 0.25);
+  --fc-border-color: rgb(var(--tt-ink) / 0.08);
+  --fc-button-bg-color: rgb(var(--tt-ink) / 0.1);
+  --fc-button-border-color: rgb(var(--tt-ink) / 0.15);
+  --fc-button-text-color: var(--foreground);
+  --fc-button-hover-bg-color: rgb(var(--tt-ink) / 0.2);
+  --fc-button-hover-border-color: rgb(var(--tt-ink) / 0.25);
   --fc-button-active-bg-color: rgba(12, 140, 233, 0.3);
   --fc-button-active-border-color: rgba(12, 140, 233, 0.5);
   --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: rgba(255, 255, 255, 0.03);
-  --fc-neutral-text-color: rgba(255, 255, 255, 0.5);
+  --fc-neutral-bg-color: rgb(var(--tt-ink) / 0.03);
+  --fc-neutral-text-color: rgb(var(--tt-ink) / 0.5);
   --fc-today-bg-color: rgba(12, 140, 233, 0.08);
   --fc-now-indicator-color: #36a6ff;
   --fc-event-border-color: transparent;
@@ -617,7 +729,7 @@ input:-webkit-autofill:focus {
 
 /* Toolbar */
 .fc .fc-toolbar-title {
-  color: #f1f5f9;
+  color: var(--foreground);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -649,13 +761,13 @@ input:-webkit-autofill:focus {
 
 /* Column headers */
 .fc .fc-col-header-cell {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--tt-ink) / 0.04);
+  border-color: rgb(var(--tt-ink) / 0.08);
   padding: 0.6rem 0;
 }
 
 .fc .fc-col-header-cell-cushion {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgb(var(--tt-ink) / 0.6);
   font-weight: 600;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -665,27 +777,27 @@ input:-webkit-autofill:focus {
 
 /* Time slots */
 .fc .fc-timegrid-slot {
-  border-color: rgba(255, 255, 255, 0.04);
+  border-color: rgb(var(--tt-ink) / 0.04);
   height: 2.5rem;
 }
 
 .fc .fc-timegrid-slot-minor {
   border-top-style: dotted;
-  border-color: rgba(255, 255, 255, 0.03);
+  border-color: rgb(var(--tt-ink) / 0.03);
 }
 
 .fc .fc-timegrid-slot-label-cushion {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgb(var(--tt-ink) / 0.4);
   font-size: 0.75rem;
 }
 
 .fc .fc-timegrid-axis-cushion {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgb(var(--tt-ink) / 0.4);
 }
 
 /* Day grid cells */
 .fc .fc-daygrid-day-number {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(var(--tt-ink) / 0.7);
   text-decoration: none;
   font-weight: 500;
   padding: 0.5rem;
@@ -731,13 +843,13 @@ input:-webkit-autofill:focus {
     -45deg,
     transparent,
     transparent 4px,
-    rgba(255, 255, 255, 0.1) 4px,
-    rgba(255, 255, 255, 0.1) 8px
+    rgb(var(--tt-ink) / 0.1) 4px,
+    rgb(var(--tt-ink) / 0.1) 8px
   );
 }
 
 .fc .fc-bg-event .fc-event-title {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(var(--tt-ink) / 0.7);
   font-style: italic;
   font-size: 0.7rem;
 }
@@ -764,13 +876,13 @@ input:-webkit-autofill:focus {
 }
 
 .fc .fc-scroller::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(var(--tt-ink) / 0.12);
   border-radius: 3px;
 }
 
 /* All-day section */
 .fc .fc-daygrid-body {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgb(var(--tt-ink) / 0.06);
 }
 
 /* Cancelled event style */
@@ -799,4 +911,109 @@ input:-webkit-autofill:focus {
     padding: 0.3rem 0.6rem;
     font-size: 0.78rem;
   }
+}
+
+/* =============================================================================
+   Light theme surface overrides
+   -----------------------------------------------------------------------------
+   Most colours flip automatically through the --tt-* tokens above. The rules
+   here re-style the handful of surfaces whose dark-glass construction (white
+   tint over navy) needs a genuinely different treatment on a light canvas:
+   elevated white cards, a white sidebar, soft shadows, and controls that must
+   keep a literal-white part (primary button text, toggle thumbs).
+   ========================================================================== */
+
+[data-theme='light'] .app-background {
+  background-image:
+    radial-gradient(ellipse at 20% 20%, rgba(12, 140, 233, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 88, 161, 0.05) 0%, transparent 50%);
+}
+
+[data-theme='light'] .app-background::before {
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(12, 140, 233, 0.07) 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 85%, rgba(0, 88, 161, 0.05) 0%, transparent 40%);
+}
+
+[data-theme='light'] .glass-card,
+[data-theme='light'] .section-card {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgb(var(--tt-ink) / 0.1);
+  box-shadow: var(--tt-card-shadow);
+}
+
+[data-theme='light'] .glass-card:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgb(var(--tt-ink) / 0.16);
+  box-shadow: 0 12px 32px rgba(16, 32, 58, 0.12);
+}
+
+[data-theme='light'] .section-card:hover {
+  border-color: rgb(var(--tt-ink) / 0.14);
+  box-shadow: 0 12px 28px rgba(16, 32, 58, 0.1);
+}
+
+[data-theme='light'] .card-hover-lift:hover {
+  box-shadow:
+    0 20px 40px rgba(16, 32, 58, 0.12),
+    0 0 30px rgba(12, 140, 233, 0.08);
+}
+
+[data-theme='light'] .glass-sidebar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(244, 248, 252, 0.98) 100%
+  );
+  border-right: 1px solid rgb(var(--tt-ink) / 0.1);
+  box-shadow:
+    4px 0 24px rgba(16, 32, 58, 0.06),
+    1px 0 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+[data-theme='light'] .glass,
+[data-theme='light'] .glass-strong {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgb(var(--tt-ink) / 0.12);
+}
+
+[data-theme='light'] .table-container {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Primary buttons keep white text on their brand-gradient face */
+[data-theme='light'] .btn-primary {
+  color: #fff;
+}
+
+/* Toggle thumbs stay literal white — they sit on coloured/grey tracks */
+[data-theme='light'] .toggle-thumb {
+  background-color: #fff;
+}
+
+/* Select chevron: dark stroke on light fields */
+[data-theme='light'] .input-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgba(16,32,58,0.55)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Inputs read better on white cards with a touch more border */
+[data-theme='light'] .input-field,
+[data-theme='light'] .input-select {
+  background-color: rgb(var(--tt-ink) / 0.03);
+}
+
+/* FullCalendar on the light canvas */
+[data-theme='light'] .fc {
+  --fc-non-business-color: rgb(var(--tt-ink) / 0.05);
+  --fc-today-bg-color: rgba(12, 140, 233, 0.07);
+}
+
+[data-theme='light'] .fc .fc-event:hover {
+  box-shadow: 0 4px 12px rgba(16, 32, 58, 0.25);
+}
+
+/* Glow accents are a dark-theme device — soften them on light */
+[data-theme='light'] .glow-blue,
+[data-theme='light'] .glow-blue-intense {
+  box-shadow: 0 0 20px 2px rgba(12, 140, 233, 0.18);
 }

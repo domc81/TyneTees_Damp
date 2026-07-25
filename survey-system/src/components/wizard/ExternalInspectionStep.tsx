@@ -202,7 +202,7 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
             >
               <span
                 className={`
-                  inline-block h-5 w-5 transform rounded-full bg-white shadow-lg
+                  inline-block h-5 w-5 transform rounded-full bg-[#fff] shadow-lg
                   transition-transform duration-300
                   ${hasDefects ? 'translate-x-8' : 'translate-x-1'}
                 `}
@@ -479,7 +479,7 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
             >
               <span
                 className={`
-                  inline-block h-5 w-5 transform rounded-full bg-white shadow-lg
+                  inline-block h-5 w-5 transform rounded-full bg-[#fff] shadow-lg
                   transition-transform duration-300
                   ${data.wall_tie_concern ? 'translate-x-8' : 'translate-x-1'}
                 `}
@@ -505,7 +505,7 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
             >
               <span
                 className={`
-                  inline-block h-5 w-5 transform rounded-full bg-white shadow-lg
+                  inline-block h-5 w-5 transform rounded-full bg-[#fff] shadow-lg
                   transition-transform duration-300
                   ${data.cracking_concern ? 'translate-x-8' : 'translate-x-1'}
                 `}
@@ -581,7 +581,7 @@ export default function ExternalInspectionStep({ data, onChange, surveyId, photo
         )}
 
         {polishError && (
-          <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+          <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
             {polishError}
           </div>
         )}
