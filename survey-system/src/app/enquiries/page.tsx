@@ -99,6 +99,11 @@ const SURVEY_TYPE_COLORS: Record<SurveyType, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Column hexes are dark-theme colours; light mixes them toward ink for contrast
+function themedHex(hex: string): string {
+  return `color-mix(in srgb, ${hex} var(--tt-hex-mix, 100%), rgb(var(--tt-ink)))`
+}
+
 function relativeAge(dateStr: string): string {
   const diffMs = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diffMs / 60000)
@@ -300,7 +305,7 @@ function KanbanColumn({
               className="text-xs font-bold px-2 py-0.5 rounded-full"
               style={{
                 backgroundColor: `${col.color}25`,
-                color: col.color,
+                color: themedHex(col.color),
               }}
             >
               {enquiries.length}
@@ -321,7 +326,7 @@ function KanbanColumn({
           ${isOver ? 'border-dashed' : ''}
         `}
         style={{
-          backgroundColor: isOver ? `${col.color}10` : 'rgba(255,255,255,0.02)',
+          backgroundColor: isOver ? `${col.color}10` : 'rgb(var(--tt-ink) / 0.02)',
           borderColor: isOver ? `${col.color}40` : undefined,
         }}
       >
@@ -419,10 +424,10 @@ function EnquiryCard({
       onClick={handleClick}
       style={style}
       className={`
-        relative rounded-lg p-3 cursor-grab active:cursor-grabbing group/card
+        kanban-card relative rounded-lg p-3 cursor-grab active:cursor-grabbing group/card
         border border-white/10 border-l-[3px] ${priorityBorder}
         transition-all duration-150
-        hover:border-white/20 hover:bg-white/[0.06]
+        hover:border-white/20
         ${isDragging ? 'scale-[1.03] shadow-2xl shadow-black/50 z-50' : ''}
         ${enquiry.priority === 'urgent' ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}
       `}
@@ -430,13 +435,6 @@ function EnquiryCard({
       tabIndex={0}
       aria-label={`Enquiry: ${enquiry.client_name}`}
     >
-      <div
-        className="absolute inset-0 rounded-lg pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-        }}
-      />
-
       {/* Client name + SLA dot */}
       <div className="flex items-center justify-between mb-0.5 relative z-10">
         <p className="text-sm font-semibold text-white truncate pr-2">
@@ -541,7 +539,7 @@ function EnquiryCard({
           </button>
 
           {showDatePicker && (
-            <div className="absolute bottom-full mb-1 left-0 z-50 bg-gray-900 border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
+            <div className="absolute bottom-full mb-1 left-0 z-50 bg-[var(--background-secondary)] border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
               <input
                 type="date"
                 defaultValue={enquiry.follow_up_date ?? ''}
@@ -604,12 +602,11 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
   return (
     <div
       className={`
-        relative rounded-lg p-3 cursor-grabbing w-[280px]
+        kanban-card--overlay relative rounded-lg p-3 cursor-grabbing w-[280px]
         border border-white/20 border-l-[3px] ${priorityBorder}
         scale-[1.04] shadow-2xl shadow-black/60 opacity-90
       `}
       style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.04) 100%)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -711,9 +708,8 @@ function MobileEnquiryCard({
     <div
       onClick={() => onCardClick?.(enquiry)}
       className={`
-        relative rounded-lg p-3 cursor-pointer
+        kanban-card relative rounded-lg p-3 cursor-pointer
         border border-white/10 border-l-[3px] ${priorityBorder}
-        bg-white/[0.03]
         ${enquiry.priority === 'urgent' ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}
       `}
     >
@@ -785,11 +781,11 @@ function MobileEnquiryCard({
           }}
           className="text-[11px] bg-white/5 border border-white/15 rounded-lg px-2 py-1.5 text-white/50 cursor-pointer hover:border-white/30 transition-colors flex-shrink-0"
         >
-          <option value="" disabled>Move to…</option>
+          <option value="" disabled className="themed-option">Move to…</option>
           {COLUMNS
             .filter((col) => col.status !== enquiry.status)
             .map((col) => (
-              <option key={col.status} value={col.status}>
+              <option key={col.status} value={col.status} className="themed-option">
                 {col.label}
               </option>
             ))}
@@ -837,7 +833,7 @@ function MobileEnquiryCard({
           </button>
 
           {showDatePicker && (
-            <div className="absolute bottom-full mb-1 left-0 z-50 bg-gray-900 border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
+            <div className="absolute bottom-full mb-1 left-0 z-50 bg-[var(--background-secondary)] border border-white/15 rounded-lg p-2 shadow-xl min-w-[180px]">
               <input
                 type="date"
                 defaultValue={enquiry.follow_up_date ?? ''}
@@ -938,7 +934,7 @@ function MobileStatusSection({
           )}
           <span
             className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: `${col.color}25`, color: col.color }}
+            style={{ backgroundColor: `${col.color}25`, color: themedHex(col.color) }}
           >
             {enquiries.length}
           </span>
@@ -1204,7 +1200,7 @@ function MoveConfirmModal({
           <p className="text-sm text-white/60 mt-2">
             Move <span className="text-white font-medium">&ldquo;{enquiry.client_name || 'Unnamed lead'}&rdquo;</span>{' '}
             from <span className="text-white/90">{fromLabel}</span> to{' '}
-            <span className="font-semibold" style={{ color: toCol?.color ?? 'rgb(var(--tt-ink))' }}>{toLabel}</span>?
+            <span className="font-semibold" style={{ color: toCol ? themedHex(toCol.color) : 'rgb(var(--tt-ink))' }}>{toLabel}</span>?
           </p>
           {MOVE_CONSEQUENCE[toStatus] && (
             <p className="text-xs text-amber-300/80 mt-2">{MOVE_CONSEQUENCE[toStatus]}</p>

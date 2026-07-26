@@ -25,6 +25,7 @@
   --background: #0d1520;
   --background-secondary: #14202d;
   --tt-ink: 255 255 255;
+  --tt-hex-mix: 100%; /* dynamic hex status colours render as-is on dark… */
   --tt-focus: #36a6ff;
   --tt-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   --tt-modal-bg: linear-gradient(135deg, rgba(30, 42, 56, 0.98) 0%, rgba(13, 21, 32, 0.99) 100%);
@@ -76,6 +77,7 @@
   --background: #eef2f7;
   --background-secondary: #ffffff;
   --tt-ink: 16 32 58;
+  --tt-hex-mix: 58%; /* …and darken toward ink on light for contrast (color-mix) */
   --tt-focus: #006fc7;
   --tt-card-shadow: 0 8px 24px rgba(16, 32, 58, 0.08);
   --tt-modal-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 248, 252, 0.99) 100%);
@@ -320,6 +322,30 @@ input:-webkit-autofill:focus {
 
   .glass-card:hover::before {
     left: 100%;
+  }
+
+  /* Kanban card face (pipeline board) — ink-tint glass on dark; the light
+     theme re-surfaces these as elevated white cards (see light section) */
+  .kanban-card {
+    background: linear-gradient(
+      135deg,
+      rgb(var(--tt-ink) / 0.05) 0%,
+      rgb(var(--tt-ink) / 0.02) 100%
+    );
+  }
+
+  /* Dark hover tint lives here (not a hover:bg-white utility) so the light
+     theme's solid-white face below can win the cascade */
+  .kanban-card:hover {
+    background-color: rgb(var(--tt-ink) / 0.06);
+  }
+
+  .kanban-card--overlay {
+    background: linear-gradient(
+      135deg,
+      rgb(var(--tt-ink) / 0.1) 0%,
+      rgb(var(--tt-ink) / 0.04) 100%
+    );
   }
 
   /* Glass sidebar */
@@ -951,6 +977,22 @@ input:-webkit-autofill:focus {
 [data-theme='light'] .section-card:hover {
   border-color: rgb(var(--tt-ink) / 0.14);
   box-shadow: 0 12px 28px rgba(16, 32, 58, 0.1);
+}
+
+[data-theme='light'] .kanban-card {
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(16, 32, 58, 0.08),
+    0 6px 16px rgba(16, 32, 58, 0.07);
+}
+
+[data-theme='light'] .kanban-card:hover {
+  box-shadow: 0 10px 24px rgba(16, 32, 58, 0.14);
+}
+
+[data-theme='light'] .kanban-card--overlay {
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(16, 32, 58, 0.25);
 }
 
 [data-theme='light'] .card-hover-lift:hover {
