@@ -254,7 +254,7 @@ function FollowUpIndicator({ date }: { date: string | null }) {
       className="flex items-center gap-0.5 text-white/30"
     >
       <Calendar className="w-3 h-3 flex-shrink-0" />
-      <span className="text-[9px]">In {daysUntil}d</span>
+      <span className="text-[9px] font-medium">In {daysUntil}d</span>
     </span>
   )
 }
@@ -451,7 +451,7 @@ function EnquiryCard({
       )}
 
       {/* Address */}
-      <p className="text-xs text-white/40 relative z-10 mb-2 leading-tight">
+      <p className="text-xs font-medium text-white/40 relative z-10 mb-2 leading-tight">
         {truncateAddress(enquiry.site_address_1, enquiry.site_postcode)}
       </p>
 
@@ -482,7 +482,7 @@ function EnquiryCard({
           ) : (
             <div className="flex items-center gap-1 text-white/20">
               <User className="w-3 h-3" />
-              <span className="text-[10px]">Unassigned</span>
+              <span className="text-[10px] font-medium">Unassigned</span>
             </div>
           )}
         </div>
@@ -491,7 +491,7 @@ function EnquiryCard({
           <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
-            <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
+            <span className="text-[10px] font-medium">{relativeAge(enquiry.created_at)}</span>
           </div>
         </div>
       </div>
@@ -499,7 +499,7 @@ function EnquiryCard({
       {/* ── Quick Action Bar ─────────────────────────────── */}
       <div
         className="relative z-10 flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.06]
-          opacity-40 group-hover/card:opacity-100 transition-opacity"
+          opacity-[var(--tt-actions-idle)] group-hover/card:opacity-100 transition-opacity"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -614,7 +614,7 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
         <p className="text-sm font-semibold text-white truncate pr-2">{enquiry.client_name}</p>
         <SlaIndicator status={enquiry.status} statusChangedAt={enquiry.status_changed_at} />
       </div>
-      <p className="text-xs text-white/40 mb-2 leading-tight">
+      <p className="text-xs font-medium text-white/40 mb-2 leading-tight">
         {truncateAddress(enquiry.site_address_1, enquiry.site_postcode)}
       </p>
       <div className="flex items-center gap-2 mb-2">
@@ -638,7 +638,7 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
           ) : (
             <div className="flex items-center gap-1 text-white/20">
               <User className="w-3 h-3" />
-              <span className="text-[10px]">Unassigned</span>
+              <span className="text-[10px] font-medium">Unassigned</span>
             </div>
           )}
         </div>
@@ -646,7 +646,7 @@ function EnquiryCardOverlay({ enquiry }: { enquiry: Enquiry }) {
           <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
-            <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
+            <span className="text-[10px] font-medium">{relativeAge(enquiry.created_at)}</span>
           </div>
         </div>
       </div>
@@ -727,7 +727,7 @@ function MobileEnquiryCard({
       )}
 
       {/* Address */}
-      <p className="text-xs text-white/40 mb-2 leading-tight">
+      <p className="text-xs font-medium text-white/40 mb-2 leading-tight">
         {truncateAddress(enquiry.site_address_1, enquiry.site_postcode)}
       </p>
 
@@ -758,13 +758,13 @@ function MobileEnquiryCard({
           ) : (
             <div className="flex items-center gap-1 text-white/20">
               <User className="w-3 h-3" />
-              <span className="text-[10px]">Unassigned</span>
+              <span className="text-[10px] font-medium">Unassigned</span>
             </div>
           )}
           <FollowUpIndicator date={enquiry.follow_up_date} />
           <div className="flex items-center gap-0.5 text-white/25">
             <Clock className="w-3 h-3" />
-            <span className="text-[10px]">{relativeAge(enquiry.created_at)}</span>
+            <span className="text-[10px] font-medium">{relativeAge(enquiry.created_at)}</span>
           </div>
         </div>
 

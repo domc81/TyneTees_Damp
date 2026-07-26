@@ -26,6 +26,7 @@
   --background-secondary: #14202d;
   --tt-ink: 255 255 255;
   --tt-hex-mix: 100%; /* dynamic hex status colours render as-is on dark… */
+  --tt-actions-idle: 0.4; /* idle opacity of card action bars (hover reveals) */
   --tt-focus: #36a6ff;
   --tt-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   --tt-modal-bg: linear-gradient(135deg, rgba(30, 42, 56, 0.98) 0%, rgba(13, 21, 32, 0.99) 100%);
@@ -78,6 +79,7 @@
   --background-secondary: #ffffff;
   --tt-ink: 16 32 58;
   --tt-hex-mix: 58%; /* …and darken toward ink on light for contrast (color-mix) */
+  --tt-actions-idle: 0.8; /* faded icons vanish on white — keep them mostly visible */
   --tt-focus: #006fc7;
   --tt-card-shadow: 0 8px 24px rgba(16, 32, 58, 0.08);
   --tt-modal-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 248, 252, 0.99) 100%);
@@ -1059,3 +1061,25 @@ input:-webkit-autofill:focus {
 [data-theme='light'] .glow-blue-intense {
   box-shadow: 0 0 20px 2px rgba(12, 140, 233, 0.18);
 }
+
+/* Muted ink text: white at ≤60% alpha reads ~2.5:1 on a white canvas vs
+   ~4:1 for the same alpha on dark navy, so the alpha floor rises on light.
+   TEXT COLOUR ONLY — borders and background tints keep their real alphas.
+   The remapped values stay monotonic (…/20 < /25 < /30 < /40 < /45 < /50
+   < /60 < untouched /70) so visual hierarchy is preserved. :where() keeps
+   each selector at (0,2,0) so the later-emitted hover:text-white/* variant
+   utilities still win on hover, and .theme-native subtrees (customer
+   pages) keep their pinned dark-theme values. */
+[data-theme='light'] .text-white\/60:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.66); }
+[data-theme='light'] .text-white\/50:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.62); }
+[data-theme='light'] .text-white\/45:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.6); }
+[data-theme='light'] .text-white\/40:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.58); }
+[data-theme='light'] .text-white\/30:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.52); }
+[data-theme='light'] .text-white\/25:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.48); }
+[data-theme='light'] .text-white\/20:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.44); }
+[data-theme='light'] .text-white\/15:where(:not(.theme-native *)) { color: rgb(var(--tt-ink) / 0.38); }
+
+/* Same floor for input placeholders */
+[data-theme='light'] .placeholder-white\/40:where(:not(.theme-native *))::placeholder { color: rgb(var(--tt-ink) / 0.5); }
+[data-theme='light'] .placeholder-white\/30:where(:not(.theme-native *))::placeholder { color: rgb(var(--tt-ink) / 0.45); }
+[data-theme='light'] .placeholder-white\/20:where(:not(.theme-native *))::placeholder { color: rgb(var(--tt-ink) / 0.4); }
